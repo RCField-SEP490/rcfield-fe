@@ -7,6 +7,8 @@ import { RoleGuard } from "@/shared/components/RoleGuard"
 import { ForbiddenPage } from "@/pages/ForbiddenPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
 import { PlaceholderPage } from "@/pages/PlaceholderPage"
+import { LandingPage } from "@/pages/LandingPage"
+import { LoginPage } from "@/pages/LoginPage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -16,7 +18,7 @@ export const router = createBrowserRouter([
       {
         element: <PublicLayout />,
         children: [
-          { index: true, element: <PlaceholderPage title="Home" /> },
+          { index: true, element: <LandingPage /> },
           { path: routePaths.cafes, element: <PlaceholderPage title="Cafes" /> },
           { path: routePaths.cafeDetail, element: <PlaceholderPage title="Cafe detail" /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
@@ -28,7 +30,7 @@ export const router = createBrowserRouter([
       {
         element: <AuthLayout />,
         children: [
-          { path: routePaths.login, element: <PlaceholderPage title="Login" /> },
+          { path: routePaths.login, element: <LoginPage /> },
           { path: routePaths.register, element: <PlaceholderPage title="Register" /> },
           { path: routePaths.forgotPassword, element: <PlaceholderPage title="Forgot password" /> },
           { path: routePaths.resetPassword, element: <PlaceholderPage title="Reset password" /> },
