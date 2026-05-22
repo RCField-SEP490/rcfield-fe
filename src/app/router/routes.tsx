@@ -4,11 +4,18 @@ import { DashboardLayout } from "@/app/layouts/DashboardLayout"
 import { PublicLayout } from "@/app/layouts/PublicLayout"
 import { RootLayout } from "@/app/layouts/RootLayout"
 import { RoleGuard } from "@/shared/components/RoleGuard"
-import { ForbiddenPage } from "@/pages/ForbiddenPage"
-import { NotFoundPage } from "@/pages/NotFoundPage"
-import { PlaceholderPage } from "@/pages/PlaceholderPage"
-import { LandingPage } from "@/pages/LandingPage"
-import { LoginPage } from "@/pages/LoginPage"
+import { ForbiddenPage } from "@/pages/public/ForbiddenPage"
+import { NotFoundPage } from "@/pages/public/NotFoundPage"
+import { PlaceholderPage } from "@/pages/public/PlaceholderPage"
+import { LandingPage } from "@/pages/public/LandingPage"
+import { LoginPage } from "@/pages/auth/LoginPage"
+import { RegisterPage } from "@/pages/auth/RegisterPage"
+import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
+import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
+import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
+import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
+import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
+import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -31,9 +38,9 @@ export const router = createBrowserRouter([
         element: <AuthLayout />,
         children: [
           { path: routePaths.login, element: <LoginPage /> },
-          { path: routePaths.register, element: <PlaceholderPage title="Register" /> },
-          { path: routePaths.forgotPassword, element: <PlaceholderPage title="Forgot password" /> },
-          { path: routePaths.resetPassword, element: <PlaceholderPage title="Reset password" /> },
+          { path: routePaths.register, element: <RegisterPage /> },
+          { path: routePaths.forgotPassword, element: <ForgotPasswordPage /> },
+          { path: routePaths.resetPassword, element: <ResetPasswordPage /> },
         ],
       },
       {
@@ -43,12 +50,12 @@ export const router = createBrowserRouter([
           </RoleGuard>
         ),
         children: [
-          { path: routePaths.customerBookings, element: <PlaceholderPage title="My bookings" /> },
+          { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
           { path: routePaths.customerBookingDetail, element: <PlaceholderPage title="My booking detail" /> },
-          { path: routePaths.customerPackages, element: <PlaceholderPage title="Customer packages" /> },
+          { path: routePaths.customerPackages, element: <CustomerPackagesPage /> },
           { path: routePaths.customerSubscriptions, element: <PlaceholderPage title="Customer subscriptions" /> },
-          { path: routePaths.customerVehicles, element: <PlaceholderPage title="Customer vehicles" /> },
-          { path: routePaths.customerReviews, element: <PlaceholderPage title="Customer reviews" /> },
+          { path: routePaths.customerVehicles, element: <CustomerVehiclesPage /> },
+          { path: routePaths.customerReviews, element: <CustomerReviewsPage /> },
           { path: routePaths.staffDashboard, element: <PlaceholderPage title="Staff dashboard" /> },
           { path: routePaths.staffTodayBookings, element: <PlaceholderPage title="Today bookings" /> },
           { path: routePaths.staffSessionDetail, element: <PlaceholderPage title="Session detail" /> },
