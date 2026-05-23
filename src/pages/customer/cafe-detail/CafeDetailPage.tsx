@@ -36,17 +36,16 @@ export function CafeDetailPage() {
 
       <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6">
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <CafeDetailHero cafe={cafe} />
-
-          <aside className="lg:sticky lg:top-20">
-            <CafeBookingCard cafe={cafe} />
-          </aside>
-
           <div className="min-w-0 space-y-8">
+            <CafeDetailHero cafe={cafe} />
             <CafeVehiclesSection cafe={cafe} />
             <CafeFnbSection />
             <CafeDetailContent description={cafe.description} />
           </div>
+
+          <aside className="lg:sticky lg:top-20">
+            <CafeBookingCard cafe={cafe} />
+          </aside>
         </div>
       </main>
     </div>
