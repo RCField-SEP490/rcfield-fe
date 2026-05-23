@@ -211,7 +211,7 @@ export function RegisterPage() {
                   <button 
                     key={role.key}
                     type="button"
-                    onClick={() => setSelectedRole(role.key as any)}
+                    onClick={() => setSelectedRole(role.key as "customer" | "provider")}
                     className={`py-3 px-4 rounded-xl border text-left transition-all flex flex-col gap-1.5 ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-950 shadow-sm shadow-orange-500/5' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
                   >
                     <div className="flex items-center justify-between w-full">

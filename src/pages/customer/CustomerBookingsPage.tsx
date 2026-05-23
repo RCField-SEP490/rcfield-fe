@@ -107,7 +107,7 @@ export function CustomerBookingsPage() {
           ].map(filter => (
             <button 
               key={filter.key}
-              onClick={() => setActiveFilter(filter.key as any)}
+              onClick={() => setActiveFilter(filter.key as "all" | "pending" | "confirmed" | "completed" | "cancelled")}
               className={`py-2 px-4 rounded-xl text-xs font-bold transition-all ${activeFilter === filter.key ? 'bg-slate-950 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'}`}
             >
               {filter.label}

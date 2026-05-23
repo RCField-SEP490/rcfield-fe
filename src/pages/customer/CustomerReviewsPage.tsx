@@ -52,7 +52,7 @@ export function CustomerReviewsPage() {
   // Submit handler
   const onSubmit = (data: ReviewFormValues) => {
     const newReview: MockReview = {
-      reviewId: `RV-${Math.floor(100 + Math.random() * 900)}`,
+      reviewId: `RV-${reviews.length + 101}`,
       cafeName: data.cafeName,
       trackName: data.trackName,
       rating: data.rating,

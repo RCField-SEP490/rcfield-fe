@@ -16,6 +16,7 @@ import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
 import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
+import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -26,7 +27,7 @@ export const router = createBrowserRouter([
         element: <PublicLayout />,
         children: [
           { index: true, element: <LandingPage /> },
-          { path: routePaths.cafes, element: <PlaceholderPage title="Cafes" /> },
+          { path: routePaths.cafes, element: <ExplorePage /> },
           { path: routePaths.cafeDetail, element: <PlaceholderPage title="Cafe detail" /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
           { path: routePaths.bookingCreate, element: <PlaceholderPage title="Create booking" /> },

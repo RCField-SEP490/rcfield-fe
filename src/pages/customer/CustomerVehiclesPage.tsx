@@ -52,7 +52,7 @@ export function CustomerVehiclesPage() {
   // Submit handler for new Vehicle
   const onSubmit = (data: VehicleFormValues) => {
     const newVehicle: MockVehicle = {
-      vehicleId: `VH-${Math.floor(100 + Math.random() * 900)}`,
+      vehicleId: `VH-${vehicles.length + 101}`,
       name: data.name,
       scale: data.scale,
       chassisType: data.chassisType,

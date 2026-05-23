@@ -213,7 +213,7 @@ export function LoginPage() {
                   <button 
                     key={role.key}
                     type="button"
-                    onClick={() => setSelectedRole(role.key as any)}
+                    onClick={() => setSelectedRole(role.key as "customer" | "staff" | "provider" | "admin")}
                     className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all flex flex-col items-center gap-1.5 ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm shadow-orange-500/10' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
                   >
                     <RoleIcon className={`h-4 w-4 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
