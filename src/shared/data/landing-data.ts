@@ -193,3 +193,70 @@ export const faqsData: FAQItem[] = [
     answer: "Theo quy định, hệ thống phiên chạy (Session) sẽ tự động đếm ngược giờ theo đúng khung giờ đặt lịch (Booking). Tuy nhiên, nhân viên trực quán (Staff) hoàn toàn có quyền hỗ trợ dời giờ hoặc kéo dài thời gian chơi trực tiếp trên Dashboard nếu track kế tiếp vẫn còn trống."
   }
 ]
+export type LandingStat = {
+  label: string
+  value: string
+}
+
+export type LandingFeature = {
+  title: string
+  description: string
+  icon: "map" | "calendar" | "shield" | "car"
+}
+
+export type LandingStep = {
+  title: string
+  description: string
+}
+
+export const landingStats: LandingStat[] = [
+  { label: "cơ sở RC Cafe", value: "50+" },
+  { label: "phiên chơi hoàn tất", value: "12k+" },
+  { label: "đánh giá tích cực", value: "4.8/5" },
+]
+
+export const landingFeatures: LandingFeature[] = [
+  {
+    title: "Tìm sân theo nhu cầu",
+    description: "Lọc nhanh theo thành phố, loại track, giá thuê xe và tiện ích tại quán.",
+    icon: "map",
+  },
+  {
+    title: "Đặt lịch rõ ràng",
+    description: "Chuyển thẳng từ form đặt nhanh sang danh sách cơ sở phù hợp để giữ chỗ.",
+    icon: "calendar",
+  },
+  {
+    title: "Serious Inspection",
+    description: "Ưu tiên các cơ sở có quy trình kiểm xe minh bạch trước và sau phiên chơi.",
+    icon: "shield",
+  },
+  {
+    title: "Xe thuê sẵn sàng",
+    description: "Xem nhanh đội xe của từng cơ sở và đặt kèm xe khi cần.",
+    icon: "car",
+  },
+]
+
+export const landingSteps: LandingStep[] = [
+  {
+    title: "Chọn lịch chơi",
+    description: "Nhập thành phố, ngày chơi và dòng xe hoặc loại đường đua muốn trải nghiệm.",
+  },
+  {
+    title: "So sánh cơ sở",
+    description: "Xem rating, tiện ích, mức giá và xe đang có ở từng RC Cafe.",
+  },
+  {
+    title: "Giữ chỗ nhanh",
+    description: "Chọn cơ sở phù hợp rồi chuyển sang luồng tạo booking với cafe và xe đã chọn.",
+  },
+]
+
+export const quickBookingVehicleOptions = [
+  { value: "all", label: "Tất cả loại xe" },
+  { value: "Drift", label: "Drift 1:10" },
+  { value: "Offroad", label: "Offroad / Buggy" },
+  { value: "Touring", label: "Touring" },
+  { value: "Mini", label: "Mini-Z" },
+]

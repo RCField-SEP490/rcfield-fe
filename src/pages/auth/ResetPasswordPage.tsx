@@ -1,15 +1,15 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router"
+import { useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { 
-  Zap, 
   Lock, 
   ShieldCheck, 
   ChevronLeft
 } from "lucide-react"
 
+import { AppLogo } from "@/shared/components/AppLogo"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -56,14 +56,7 @@ export function ResetPasswordPage() {
       <div className="absolute bottom-[10%] right-[10%] w-[450px] h-[450px] rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none" />
 
       {/* Brand logo header */}
-      <Link to="/" className="flex items-center gap-2 group mb-8 relative z-10">
-        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
-          <Zap className="h-5 w-5 fill-current" />
-        </div>
-        <span className="text-xl font-black tracking-tight text-white">
-          RCField
-        </span>
-      </Link>
+      <AppLogo variant="dark" className="relative z-10 mb-8" />
 
       <div className="w-full max-w-md relative z-10">
         
