@@ -13,9 +13,9 @@ export function VehicleCardHorizontal({ vehicle, onBookNow }: VehicleCardHorizon
     <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm grid grid-cols-1 sm:grid-cols-12 gap-4">
       
       {/* Image (3 cols) */}
-      <div className="sm:col-span-3 rounded-xl overflow-hidden aspect-[4/3] bg-slate-100 relative">
-        <img src={vehicle.image} alt={vehicle.name} className="object-cover w-full h-full" />
-        <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/75 text-[8px] font-black text-white">
+      <div className="sm:col-span-3 rounded-xl overflow-hidden aspect-[4/3] bg-slate-100 relative w-full">
+        <img src={vehicle.image} alt={vehicle.name} className="absolute inset-0 object-cover w-full h-full" />
+        <span className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded bg-black/75 text-[8px] font-black text-white">
           Tỷ lệ {vehicle.scale}
         </span>
       </div>

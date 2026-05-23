@@ -25,9 +25,9 @@ export function CafeCardHorizontal({
       }`}
     >
       {/* Aspect Image col (4 cols on sm up) */}
-      <div className="sm:col-span-4 relative rounded-xl overflow-hidden aspect-[4/3] bg-slate-100">
-        <img src={cafe.image} alt={cafe.name} className="object-cover w-full h-full" />
-        <div className="absolute top-2 left-2">
+      <div className="sm:col-span-4 relative rounded-xl overflow-hidden aspect-[4/3] bg-slate-100 w-full">
+        <img src={cafe.image} alt={cafe.name} className="absolute inset-0 object-cover w-full h-full" />
+        <div className="absolute top-2 left-2 z-10">
           <Badge className="bg-white/95 text-slate-900 border-none font-extrabold text-[9px] py-0.5 px-1.5 shadow-sm">
             ★ {cafe.rating}
           </Badge>
