@@ -43,9 +43,9 @@ export function CafeDetailPage() {
           </aside>
 
           <div className="min-w-0 space-y-8">
-            <CafeDetailContent description={cafe.description} />
             <CafeVehiclesSection cafe={cafe} />
             <CafeFnbSection />
+            <CafeDetailContent description={cafe.description} />
           </div>
         </div>
       </main>

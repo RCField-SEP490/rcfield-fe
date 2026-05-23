@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { Heart, Images, MapPin, Share2, Star } from "lucide-react"
+import { CarFront, Clock3, Heart, Images, MapPin, Share2, Star, WalletCards } from "lucide-react"
 import type { Cafe } from "@/shared/data/explore-data"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
@@ -97,14 +97,27 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="outline" className="rounded-full">{cafe.priceRange}</Badge>
-        <Badge variant="outline" className="rounded-full">{cafe.availableVehicles.length} xe thuê</Badge>
-        {cafe.features.slice(0, 5).map((feature) => (
-          <Badge key={feature} variant="outline" className="rounded-full">{feature}</Badge>
-        ))}
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <QuickFact icon={WalletCards} label="Giá tham khảo" value={cafe.priceRange} />
+        <QuickFact icon={Clock3} label="Slot tiêu chuẩn" value="24 slot/ngày · 60 phút" />
+        <QuickFact icon={CarFront} label="Xe thuê" value={`${cafe.availableVehicles.length} mẫu sẵn sàng`} />
+        <QuickFact icon={Star} label="Đánh giá" value={`${cafe.rating}/5 · ${cafe.reviewsCount} lượt`} />
       </div>
     </section>
+  )
+}
+
+function QuickFact({ icon: Icon, label, value }: { icon: typeof Star; label: string; value: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 rounded-xl border bg-white px-3 py-2 shadow-sm">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+        <Icon className="h-4 w-4" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium text-slate-500">{label}</span>
+        <span className="block truncate text-xs font-bold text-slate-950">{value}</span>
+      </span>
+    </div>
   )
 }
 
