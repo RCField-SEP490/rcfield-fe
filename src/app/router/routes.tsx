@@ -17,6 +17,8 @@ import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
+import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
+import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -28,9 +30,9 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <LandingPage /> },
           { path: routePaths.cafes, element: <ExplorePage /> },
-          { path: routePaths.cafeDetail, element: <PlaceholderPage title="Cafe detail" /> },
+          { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
-          { path: routePaths.bookingCreate, element: <PlaceholderPage title="Create booking" /> },
+          { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
           { path: routePaths.bookingDetail, element: <PlaceholderPage title="Booking detail" /> },
           { path: routePaths.paymentResult, element: <PlaceholderPage title="Payment result" /> },
         ],
@@ -88,3 +90,6 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+
+
+

@@ -1,43 +1,51 @@
-import { Eye, MapPin, ShieldCheck, Star } from "lucide-react"
+import { Eye, MapPin, ShieldCheck, Star, Zap } from "lucide-react"
+import { Link } from "react-router"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
+import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
 import { VehicleMiniList } from "./VehicleMiniList"
 
-export function CafeCard({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQuickView: (cafe: Cafe) => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
+export function CafeCard({ cafe, onBookNow }: { cafe: Cafe; onQuickView: (cafe: Cafe) => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
   return (
-    <Card className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-lg">
-      <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-        <img src={cafe.image} alt={cafe.name} className="h-full w-full object-cover transition duration-500 hover:scale-105" />
-        <div className="absolute left-3 top-3 flex gap-2">
-          <Badge className="bg-white/95 font-black text-slate-950 shadow-sm"><Star className="h-3 w-3 fill-orange-500 text-orange-500" /> {cafe.rating}</Badge>
-          {cafe.features.includes("Serious Inspection") && <Badge className="bg-emerald-600 font-black text-white"><ShieldCheck className="h-3 w-3" /> Serious</Badge>}
+    <Card className="group overflow-hidden rounded-[1.75rem] border-white/70 bg-white shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-slate-300/60">
+      <Link to={buildCafeDetailPath(cafe)} className="block">
+        <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+          <img src={cafe.image} alt={cafe.name} className="h-full w-full object-cover transition duration-700 group-hover:scale-110" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+          <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+            <Badge className="bg-white/95 font-black text-slate-950 shadow-sm"><Star className="h-3 w-3 fill-orange-500 text-orange-500" /> {cafe.rating}</Badge>
+            {cafe.features.includes("Serious Inspection") && <Badge className="bg-emerald-500/95 font-black text-white"><ShieldCheck className="h-3 w-3" /> Serious</Badge>}
+          </div>
+          <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3 text-white">
+            <div>
+              <p className="flex items-center gap-1 text-xs font-bold text-slate-200"><MapPin className="h-3.5 w-3.5 text-orange-400" /> {cafe.district}, {cafe.city}</p>
+              <h2 className="mt-1 line-clamp-1 text-xl font-black">{cafe.name}</h2>
+            </div>
+            <Badge className="shrink-0 bg-orange-500 font-black text-white"><Zap className="h-3 w-3" /> Live</Badge>
+          </div>
         </div>
-      </div>
+      </Link>
 
       <CardHeader className="space-y-3 p-4">
         <div className="flex flex-wrap gap-1.5">
           {cafe.trackTypes.map((type) => <Badge key={type} variant="secondary" className="bg-orange-50 text-[10px] font-black text-orange-700">{type}</Badge>)}
         </div>
-        <div>
-          <CardTitle className="line-clamp-1 text-lg font-black text-slate-950">{cafe.name}</CardTitle>
-          <p className="mt-1 flex items-center gap-1 text-xs font-bold text-slate-500"><MapPin className="h-3.5 w-3.5 text-orange-600" /> {cafe.district}, {cafe.city}</p>
-        </div>
         <p className="line-clamp-2 min-h-10 text-sm font-medium leading-5 text-slate-500">{cafe.description}</p>
+        <CardTitle className="flex items-center justify-between gap-3 text-sm font-black text-slate-950">
+          <span>{cafe.availableVehicles.length} xe thuê</span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs">{cafe.priceRange}</span>
+        </CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-3 p-4 pt-0">
-        <div className="flex items-center justify-between text-xs font-black text-slate-500">
-          <span>{cafe.availableVehicles.length} xe thuê</span>
-          <span className="text-slate-950">{cafe.priceRange}</span>
-        </div>
         <VehicleMiniList cafeId={cafe.id} vehicles={cafe.availableVehicles} onBookNow={onBookNow} />
       </CardContent>
 
-      <CardFooter className="grid grid-cols-2 gap-2 border-t border-slate-100 bg-slate-50 p-4">
-        <Button type="button" variant="outline" onClick={() => onQuickView(cafe)} className="h-10 rounded-xl bg-white font-black"><Eye className="h-4 w-4" /> Chi tiết</Button>
-        <Button type="button" onClick={() => onBookNow(cafe.id)} className="h-10 rounded-xl bg-slate-950 font-black text-white hover:bg-orange-600">Đặt sân</Button>
+      <CardFooter className="grid grid-cols-2 gap-2 border-t border-slate-100 bg-slate-50/80 p-4">
+        <Button asChild type="button" variant="outline" className="h-11 rounded-2xl bg-white font-black"><Link to={buildCafeDetailPath(cafe)}><Eye className="h-4 w-4" /> Chi tiết</Link></Button>
+        <Button type="button" onClick={() => onBookNow(cafe.id)} className="h-11 rounded-2xl bg-slate-950 font-black text-white hover:bg-orange-600">Đặt nhanh</Button>
       </CardFooter>
     </Card>
   )

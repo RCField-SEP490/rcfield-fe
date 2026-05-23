@@ -1,39 +1,73 @@
-import { Eye, MapPin, ShieldCheck, Star } from "lucide-react"
+import { MapPin, Star } from "lucide-react"
+import { Link } from "react-router"
 import type { Cafe } from "@/shared/data/explore-data"
-import { Badge } from "@/shared/ui/badge"
-import { Button } from "@/shared/ui/button"
-import { VehicleMiniList } from "./VehicleMiniList"
+import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
+import { formatCurrency } from "@/shared/lib/format"
 
 export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQuickView: (cafe: Cafe) => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
+  const cheapest = cafe.availableVehicles.length > 0
+    ? Math.min(...cafe.availableVehicles.map((v) => v.pricePerHour))
+    : 0
+  const availCount = cafe.availableVehicles.filter((v) => v.status === "available").length
+
   return (
-    <article className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md md:grid-cols-[260px_1fr]">
-      <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-slate-100 md:aspect-auto">
-        <img src={cafe.image} alt={cafe.name} className="h-full w-full object-cover" />
-        <Badge className="absolute left-3 top-3 bg-white/95 font-black text-slate-950"><Star className="h-3 w-3 fill-orange-500 text-orange-500" /> {cafe.rating}</Badge>
-      </div>
-      <div className="flex min-w-0 flex-col justify-between gap-4">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="truncate text-xl font-black text-slate-950">{cafe.name}</h2>
-              <p className="mt-1 flex items-center gap-1 text-sm font-bold text-slate-500"><MapPin className="h-4 w-4 text-orange-600" /> {cafe.address}</p>
-            </div>
-            <p className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{cafe.priceRange}</p>
+    <div className="flex gap-3 border-b border-slate-100 px-0 py-3 transition hover:bg-slate-50">
+      {/* Image */}
+      <Link to={buildCafeDetailPath(cafe)} className="relative h-[120px] w-[180px] shrink-0 overflow-hidden border border-slate-200 bg-slate-100">
+        <img src={cafe.image} alt={cafe.name} className="h-full w-full object-cover transition duration-300 hover:scale-105" />
+        <span className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          ★ {cafe.rating}
+        </span>
+      </Link>
+
+      {/* Info */}
+      <div className="flex min-w-0 flex-1 gap-3">
+        <div className="min-w-0 flex-1">
+          <Link to={buildCafeDetailPath(cafe)} className="text-sm font-bold text-slate-900 hover:text-orange-600 line-clamp-1">
+            {cafe.name}
+          </Link>
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{cafe.address}</span>
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {cafe.trackTypes.map((t) => (
+              <span key={t} className="border border-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">{t}</span>
+            ))}
           </div>
-          <p className="line-clamp-2 text-sm font-medium leading-6 text-slate-600">{cafe.description}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {cafe.trackTypes.map((type) => <Badge key={type} variant="secondary" className="bg-orange-50 font-black text-orange-700">{type}</Badge>)}
-            {cafe.features.includes("Serious Inspection") && <Badge className="bg-emerald-50 font-black text-emerald-700"><ShieldCheck className="h-3 w-3" /> Serious Inspection</Badge>}
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {cafe.features.slice(0, 3).map((f) => (
+              <span key={f} className="text-[10px] text-slate-400">• {f}</span>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+            <span>{cafe.availableVehicles.length} xe</span>
+            <span className="text-emerald-600">{availCount} sẵn sàng</span>
           </div>
         </div>
-        <div className="space-y-3">
-          <VehicleMiniList cafeId={cafe.id} vehicles={cafe.availableVehicles} onBookNow={onBookNow} />
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="outline" onClick={() => onQuickView(cafe)} className="h-10 rounded-xl bg-white font-black"><Eye className="h-4 w-4" /> Chi tiết</Button>
-            <Button type="button" onClick={() => onBookNow(cafe.id)} className="h-10 rounded-xl bg-slate-950 font-black text-white hover:bg-orange-600">Đặt sân ngay</Button>
+
+        {/* Price & CTA */}
+        <div className="flex shrink-0 flex-col items-end justify-between">
+          <div className="text-right">
+            <p className="text-xs font-bold text-slate-900">{formatCurrency(cheapest)}</p>
+            <p className="text-[10px] text-slate-400">/giờ</p>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => onQuickView(cafe)}
+              className="border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100"
+            >
+              Xem
+            </button>
+            <button
+              onClick={() => onBookNow(cafe.id)}
+              className="bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-orange-600"
+            >
+              Đặt
+            </button>
           </div>
         </div>
       </div>
-    </article>
+    </div>
   )
 }

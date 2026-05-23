@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { getCafes } from "@/features/explore/api/explore.api"
 import type { Cafe } from "@/shared/data/explore-data"
-import { ExploreFiltersPanel } from "./components/ExploreFiltersPanel"
-import { ExploreResults } from "./components/ExploreResults"
-import { ExploreToolbar } from "./components/ExploreToolbar"
+import { ExploreFiltersSidebar } from "./components/ExploreFiltersSidebar"
+import { ExploreMapPanel } from "./components/ExploreMapPanel"
+import { CafeListItem } from "./components/CafeListItem"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
-import { buildBookingUrl, filterCafes, filterVehicles, flattenCafeVehicles } from "./explore-utils"
+import { buildBookingUrl, filterCafes } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
 
 export function ExplorePage() {
@@ -16,18 +16,14 @@ export function ExplorePage() {
   const [quickViewCafe, setQuickViewCafe] = useState<Cafe | null>(null)
 
   useEffect(() => {
-    let isMounted = true
+    let mounted = true
     getCafes(filters.params).then((items) => {
-      if (isMounted) setCafes(items)
+      if (mounted) setCafes(items)
     })
-    return () => {
-      isMounted = false
-    }
+    return () => { mounted = false }
   }, [filters.params])
 
-  const vehicles = useMemo(() => flattenCafeVehicles(cafes), [cafes])
   const filteredCafes = useMemo(() => filterCafes(cafes, filters.params), [cafes, filters.params])
-  const filteredVehicles = useMemo(() => filterVehicles(vehicles, filters.params), [vehicles, filters.params])
 
   const handleBookNow = (cafeId: string, vehicleId?: string) => {
     navigate(buildBookingUrl(cafeId, vehicleId))
@@ -35,62 +31,114 @@ export function ExplorePage() {
 
   return (
     <div className="bg-slate-50">
-      <ExploreToolbar
-        query={filters.query}
-        onQueryChange={filters.setQuery}
-        searchTarget={filters.searchTarget}
-        onSearchTargetChange={filters.setSearchTarget}
-        viewMode={filters.viewMode}
-        onViewModeChange={filters.setViewMode}
-        cafeCount={filteredCafes.length}
-        vehicleCount={filteredVehicles.length}
-        city={filters.city}
-        onCityChange={filters.setCity}
-        trackType={filters.trackType}
-        onTrackTypeChange={filters.setTrackType}
-        priceRange={filters.priceRange}
-        onPriceRangeChange={filters.setPriceRange}
-        feature={filters.feature}
-        onFeatureChange={filters.setFeature}
-        vehicleType={filters.vehicleType}
-        onVehicleTypeChange={filters.setVehicleType}
-        date={filters.date}
-        onDateChange={filters.setDate}
-        activeFilterCount={filters.activeFilterCount}
-        onClear={filters.clearFilters}
-      />
-
-      <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 md:px-6 lg:grid-cols-[280px_1fr]">
-        <div className="hidden lg:block">
-          <div className="sticky top-24">
-            <ExploreFiltersPanel
-              city={filters.city}
-              onCityChange={filters.setCity}
-              trackType={filters.trackType}
-              onTrackTypeChange={filters.setTrackType}
-              priceRange={filters.priceRange}
-              onPriceRangeChange={filters.setPriceRange}
-              feature={filters.feature}
-              onFeatureChange={filters.setFeature}
-              vehicleType={filters.vehicleType}
-              onVehicleTypeChange={filters.setVehicleType}
-              date={filters.date}
-              onDateChange={filters.setDate}
-              activeFilterCount={filters.activeFilterCount}
-              onClear={filters.clearFilters}
+      {/* Top search bar - compact like Agoda */}
+      <div className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-3 md:px-6">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              value={filters.query}
+              onChange={(e) => filters.setQuery(e.target.value)}
+              placeholder="Tìm cơ sở, địa điểm..."
+              className="h-9 w-full border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:border-slate-400 focus:bg-white"
             />
+          </div>
+          <select
+            value={filters.city}
+            onChange={(e) => filters.setCity(e.target.value)}
+            className="h-9 border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-slate-400 focus:bg-white"
+          >
+            <option value="all">Tất cả TP</option>
+            <option value="Hồ Chí Minh">Hồ Chí Minh</option>
+            <option value="Hà Nội">Hà Nội</option>
+            <option value="Đà Nẵng">Đà Nẵng</option>
+            <option value="Hải Phòng">Hải Phòng</option>
+          </select>
+          <select
+            value={filters.trackType}
+            onChange={(e) => filters.setTrackType(e.target.value)}
+            className="h-9 border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-slate-400 focus:bg-white"
+          >
+            <option value="all">Loại đua</option>
+            <option value="Drift">Drift</option>
+            <option value="Offroad">Offroad</option>
+            <option value="Touring">Touring</option>
+            <option value="Mini-Z">Mini-Z</option>
+          </select>
+          <select
+            value={filters.priceRange}
+            onChange={(e) => filters.setPriceRange(e.target.value)}
+            className="h-9 border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-slate-400 focus:bg-white"
+          >
+            <option value="all">Giá</option>
+            <option value="under100">Dưới 100k</option>
+            <option value="100to200">100k-200k</option>
+            <option value="over200">Trên 200k</option>
+          </select>
+          <select
+            value={filters.feature}
+            onChange={(e) => filters.setFeature(e.target.value)}
+            className="hidden h-9 border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:border-slate-400 focus:bg-white sm:block"
+          >
+            <option value="all">Tiện ích</option>
+            <option value="Serious Inspection">Kiểm xe</option>
+            <option value="Đồ ăn & Nước uống">F&B</option>
+            <option value="Hệ thống Đèn đêm">Đèn đêm</option>
+          </select>
+          <button
+            onClick={filters.clearFilters}
+            className="h-9 px-3 text-sm font-semibold text-slate-500 hover:text-slate-900"
+          >
+            Xoá
+          </button>
+          <span className="text-xs text-slate-400">{filteredCafes.length} cơ sở</span>
+        </div>
+      </div>
+
+      {/* Main: 3-column layout like Agoda */}
+      <div className="mx-auto flex w-full max-w-7xl gap-0 md:px-6">
+        {/* Left sidebar - compact filters */}
+        <aside className="hidden w-56 shrink-0 border-r border-slate-200 bg-white p-4 lg:block">
+          <ExploreFiltersSidebar {...filters} />
+        </aside>
+
+        {/* Center - cafe list */}
+        <div className="min-w-0 flex-1 bg-white">
+          <div className="px-4 py-3 md:px-6">
+            {filteredCafes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <svg className="h-12 w-12 text-slate-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <h3 className="mt-4 text-base font-semibold text-slate-700">Không tìm thấy kết quả</h3>
+                <p className="mt-1 text-sm text-slate-500">Thử thay đổi bộ lọc hoặc từ khoá.</p>
+                <button onClick={filters.clearFilters} className="mt-4 border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Xoá bộ lọc</button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredCafes.map((cafe) => (
+                  <CafeListItem
+                    key={cafe.id}
+                    cafe={cafe}
+                    onQuickView={setQuickViewCafe}
+                    onBookNow={handleBookNow}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        <ExploreResults
-          cafes={filteredCafes}
-          vehicles={filteredVehicles}
-          viewMode={filters.viewMode}
-          searchTarget={filters.searchTarget}
-          onQuickView={setQuickViewCafe}
-          onBookNow={handleBookNow}
-          onClearFilters={filters.clearFilters}
-        />
+        {/* Right - map panel (always visible on xl) */}
+        <aside className="hidden w-[340px] shrink-0 border-l border-slate-200 xl:block">
+          <div className="sticky top-16 h-[calc(100vh-4rem)]">
+            <ExploreMapPanel
+              cafes={filteredCafes}
+              active={true}
+              onClose={() => {}}
+              onSelectCafe={setQuickViewCafe}
+              compact
+            />
+          </div>
+        </aside>
       </div>
 
       <CafeQuickViewDialog cafe={quickViewCafe} onClose={() => setQuickViewCafe(null)} onBookNow={handleBookNow} />
