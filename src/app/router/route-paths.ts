@@ -10,6 +10,7 @@ export const routePaths = {
   register: "/auth/register",
   forgotPassword: "/auth/forgot-password",
   resetPassword: "/auth/reset-password",
+  customerHome: "/customer",
   customerBookings: "/customer/bookings",
   customerProfile: "/customer/profile",
   customerBookingDetail: "/customer/bookings/:bookingId",

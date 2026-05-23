@@ -23,6 +23,7 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { toast } from "sonner"
+import { routePaths } from "@/app/router/route-paths"
 
 // Form validation schema with Zod
 const loginSchema = z.object({
@@ -96,7 +97,7 @@ export function LoginPage() {
       
       // Navigate to home or dashboard accordingly
       if (selectedRole === "customer") {
-        navigate("/")
+        navigate(routePaths.customerProfile)
       } else if (selectedRole === "staff") {
         navigate("/staff/dashboard")
       } else if (selectedRole === "provider") {

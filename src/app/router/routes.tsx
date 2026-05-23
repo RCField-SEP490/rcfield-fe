@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router"
+import { createBrowserRouter, Navigate } from "react-router"
 import { AuthLayout } from "@/app/layouts/AuthLayout"
 import { DashboardLayout } from "@/app/layouts/DashboardLayout"
 import { PublicLayout } from "@/app/layouts/PublicLayout"
@@ -56,6 +56,7 @@ export const router = createBrowserRouter([
           </RoleGuard>
         ),
         children: [
+          { path: routePaths.customerHome, element: <Navigate replace to={routePaths.customerProfile} /> },
           { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
           { path: routePaths.customerProfile, element: <CustomerProfilePage /> },
           { path: routePaths.customerBookingDetail, element: <PlaceholderPage title="My booking detail" /> },

@@ -9,6 +9,7 @@ import { cn } from "@/shared/lib/utils"
 const navItems = [
   { label: "Khám phá", to: routePaths.cafes },
   { label: "Đơn đặt", to: routePaths.customerBookings },
+  { label: "Khách hàng", to: routePaths.customerProfile },
   { label: "Cơ sở", to: routePaths.providerCafes },
   { label: "Quản trị", to: routePaths.adminDashboard },
 ]
