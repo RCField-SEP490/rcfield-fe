@@ -23,15 +23,34 @@ export function CreateBookingPage() {
   const modeParam = searchParams.get("mode") as BookingMode | null
   const cafe = mockCafes.find((item) => item.id === cafeId) ?? mockCafes[0]
 
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>("schedule")
+  // Parse F&B quantities from URL e.g. "fnb-1:2,fnb-2:1"
+  const parseFnbParam = (param: string | null): Record<string, number> => {
+    if (!param) return {}
+    const res: Record<string, number> = {}
+    param.split(",").forEach((pair) => {
+      const [id, qtyStr] = pair.split(":")
+      if (id && qtyStr) {
+        const qty = parseInt(qtyStr, 10)
+        if (!isNaN(qty) && qty > 0) {
+          res[id] = qty
+        }
+      }
+    })
+    return res
+  }
+
+  const stepParam = searchParams.get("step")
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>(
+    stepParam === "payment" ? "payment" : "schedule"
+  )
   const [mode, setMode] = useState<BookingMode>(modeParam ?? "hourly")
   const [planId, setPlanId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [time, setTime] = useState(bookingCatalog.timeOptions[0])
-  const [playMode, setPlayMode] = useState<CustomerPlayMode>("RENTAL")
+  const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
+  const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
+  const [playMode, setPlayMode] = useState<CustomerPlayMode>(vehicleId ? "RENTAL" : "BYOC")
   const [participants, setParticipants] = useState(2)
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(vehicleId)
-  const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
+  const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(() => parseFnbParam(searchParams.get("fnb")))
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
 
   const selectedVehicle = cafe.availableVehicles.find((vehicle) => vehicle.id === selectedVehicleId)

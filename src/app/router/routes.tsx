@@ -20,7 +20,11 @@ import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePage"
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
-import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
+import { CustomerBookingDetailPage } from "@/pages/customer/booking-detail/CustomerBookingDetailPage"
+import { CustomerInspectionConfirmPage } from "@/pages/customer/inspection/CustomerInspectionConfirmPage"
+import { CustomerActiveSessionPage } from "@/pages/customer/session/CustomerActiveSessionPage"
+import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamageReviewPage"
+import { CustomerExtensionResponsePage } from "@/pages/customer/extension/CustomerExtensionResponsePage"
 import { PaymentResultPage } from "@/pages/booking/PaymentResultPage"
 import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
 import { routePaths } from "./route-paths"
@@ -37,7 +41,7 @@ export const router = createBrowserRouter([
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
-          { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
+          { path: routePaths.bookingDetail, element: <CustomerBookingDetailPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
         ],
       },
@@ -62,11 +66,15 @@ export const router = createBrowserRouter([
           { path: routePaths.customerHome, element: <Navigate replace to={routePaths.customerProfile} /> },
           { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
           { path: routePaths.customerProfile, element: <CustomerProfilePage /> },
-          { path: routePaths.customerBookingDetail, element: <PlaceholderPage title="My booking detail" /> },
+          { path: routePaths.customerBookingDetail, element: <CustomerBookingDetailPage /> },
           { path: routePaths.customerPackages, element: <CustomerPackagesPage /> },
           { path: routePaths.customerSubscriptions, element: <PlaceholderPage title="Customer subscriptions" /> },
           { path: routePaths.customerVehicles, element: <CustomerVehiclesPage /> },
           { path: routePaths.customerReviews, element: <CustomerReviewsPage /> },
+          { path: routePaths.customerInspectionConfirm, element: <CustomerInspectionConfirmPage /> },
+          { path: routePaths.customerActiveSession, element: <CustomerActiveSessionPage /> },
+          { path: routePaths.customerDamageReview, element: <CustomerDamageReviewPage /> },
+          { path: routePaths.customerExtensionResponse, element: <CustomerExtensionResponsePage /> },
         ],
       },
       {

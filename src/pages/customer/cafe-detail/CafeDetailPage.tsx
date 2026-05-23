@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, useParams } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
@@ -7,10 +8,18 @@ import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
 import { getCafeBySlug } from "./cafe-detail-utils"
+import type { BookingMode } from "@/features/booking/data/booking-options"
 
 export function CafeDetailPage() {
   const { cafeSlug } = useParams()
   const cafe = getCafeBySlug(cafeSlug)
+
+  // Hoisted Booking Selections
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
+  const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
+  const [bookingMode, setBookingMode] = useState<BookingMode>("hourly")
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
+  const [selectedSlotId, setSelectedSlotId] = useState("")
 
   if (!cafe) {
     return (
@@ -39,15 +48,42 @@ export function CafeDetailPage() {
           <div className="min-w-0 space-y-8">
             <CafeDetailHero cafe={cafe} />
             <div className="lg:hidden">
-              <CafeBookingCard cafe={cafe} />
+              <CafeBookingCard
+                cafe={cafe}
+                selectedVehicleId={selectedVehicleId}
+                fnbQuantities={fnbQuantities}
+                mode={bookingMode}
+                setMode={setBookingMode}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                selectedSlotId={selectedSlotId}
+                setSelectedSlotId={setSelectedSlotId}
+              />
             </div>
-            <CafeVehiclesSection cafe={cafe} />
-            <CafeFnbSection />
+            <CafeVehiclesSection
+              cafe={cafe}
+              selectedVehicleId={selectedVehicleId}
+              onSelectVehicle={setSelectedVehicleId}
+            />
+            <CafeFnbSection
+              fnbQuantities={fnbQuantities}
+              onChangeFnb={setFnbQuantities}
+            />
             <CafeDetailContent description={cafe.description} />
           </div>
 
           <aside className="hidden lg:sticky lg:top-20 lg:block">
-            <CafeBookingCard cafe={cafe} />
+            <CafeBookingCard
+              cafe={cafe}
+              selectedVehicleId={selectedVehicleId}
+              fnbQuantities={fnbQuantities}
+              mode={bookingMode}
+              setMode={setBookingMode}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              selectedSlotId={selectedSlotId}
+              setSelectedSlotId={setSelectedSlotId}
+            />
           </aside>
         </div>
       </main>
