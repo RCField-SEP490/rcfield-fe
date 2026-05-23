@@ -11,6 +11,7 @@ export const routePaths = {
   forgotPassword: "/auth/forgot-password",
   resetPassword: "/auth/reset-password",
   customerBookings: "/customer/bookings",
+  customerProfile: "/customer/profile",
   customerBookingDetail: "/customer/bookings/:bookingId",
   customerPackages: "/customer/packages",
   customerSubscriptions: "/customer/subscriptions",

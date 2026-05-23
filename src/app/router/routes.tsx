@@ -16,6 +16,7 @@ import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
 import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
+import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePage"
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
 import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
+          { path: routePaths.customerProfile, element: <CustomerProfilePage /> },
           { path: routePaths.customerBookingDetail, element: <PlaceholderPage title="My booking detail" /> },
           { path: routePaths.customerPackages, element: <CustomerPackagesPage /> },
           { path: routePaths.customerSubscriptions, element: <PlaceholderPage title="Customer subscriptions" /> },

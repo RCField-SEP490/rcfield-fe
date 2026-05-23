@@ -1,14 +1,15 @@
 import { Link } from "react-router"
-import { CalendarCheck, Car, Package, Star } from "lucide-react"
+import { CalendarCheck, Car, Package, Star, UserRound } from "lucide-react"
 import { cn } from "@/shared/lib/utils"
 
-export type CustomerTab = "bookings" | "vehicles" | "packages" | "reviews"
+export type CustomerTab = "profile" | "bookings" | "vehicles" | "packages" | "reviews"
 
 interface CustomerSubNavProps {
   activeTab: CustomerTab
 }
 
 const tabConfig = [
+  { id: "profile" as const, label: "Hồ sơ", path: "/customer/profile", icon: UserRound },
   { id: "bookings" as const, label: "Lịch đặt sân", path: "/customer/bookings", icon: CalendarCheck },
   { id: "vehicles" as const, label: "Đội xe cá nhân", path: "/customer/vehicles", icon: Car },
   { id: "packages" as const, label: "Gói hội viên", path: "/customer/packages", icon: Package },
