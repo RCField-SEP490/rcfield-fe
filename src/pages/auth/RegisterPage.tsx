@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react"
-import { useNavigate, Link } from "react-router"
+import { useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
-  Zap, 
   Mail, 
   Lock, 
   User, 
@@ -17,6 +16,7 @@ import {
   CheckCircle2
 } from "lucide-react"
 
+import { AppLogo } from "@/shared/components/AppLogo"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -108,14 +108,7 @@ export function RegisterPage() {
         <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none" />
 
         {/* Brand logo link */}
-        <Link to="/" className="flex items-center gap-2 group self-start relative z-10">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
-            <Zap className="h-4.5 w-4.5 fill-current" />
-          </div>
-          <span className="text-lg font-black tracking-tight text-white">
-            RCField
-          </span>
-        </Link>
+        <AppLogo variant="dark" className="self-start relative z-10" />
 
         {/* Rotating animated showcase content */}
         <div className="relative z-10 my-auto max-w-md space-y-8">

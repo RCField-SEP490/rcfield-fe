@@ -18,12 +18,14 @@ import {
   Sparkles
 } from "lucide-react"
 
+import { routePaths } from "@/app/router/route-paths"
+import { demoAuthUser, useAuthStore } from "@/features/auth/stores/auth.store"
+import { AppLogo } from "@/shared/components/AppLogo"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { toast } from "sonner"
-import { routePaths } from "@/app/router/route-paths"
 
 // Form validation schema with Zod
 const loginSchema = z.object({
@@ -67,6 +69,7 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState<"customer" | "staff" | "provider" | "admin">("customer")
   const [taglineIndex, setTaglineIndex] = useState(0)
+  const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
 
   // Auto rotate the taglines on the left panel
   useEffect(() => {
@@ -93,6 +96,10 @@ export function LoginPage() {
       setIsLoading(false)
       toast.success(`Đăng nhập thành công với vai trò ${selectedRole.toUpperCase()}!`, {
         description: `Chào mừng quay trở lại, ${data.email}.`
+      })
+      setAuthenticated(selectedRole, {
+        ...demoAuthUser,
+        email: data.email.includes("@") ? data.email : demoAuthUser.email,
       })
       
       // Navigate to home or dashboard accordingly
@@ -121,14 +128,7 @@ export function LoginPage() {
         <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] rounded-full bg-red-600/10 blur-[130px] pointer-events-none" />
 
         {/* Header brand info */}
-        <Link to="/" className="flex items-center gap-2 group self-start relative z-10">
-          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
-            <Zap className="h-4.5 w-4.5 fill-current" />
-          </div>
-          <span className="text-lg font-black tracking-tight text-white">
-            RCField
-          </span>
-        </Link>
+        <AppLogo variant="dark" className="self-start relative z-10" />
 
         {/* Rotating animated showcase content */}
         <div className="relative z-10 my-auto max-w-md space-y-12">

@@ -22,11 +22,11 @@ export function CafeVehiclesSection({ cafe }: { cafe: Cafe }) {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {cafe.availableVehicles.map((vehicle) => (
-          <Card key={vehicle.id} className="overflow-hidden rounded-xl border-slate-200 shadow-sm">
+          <Card key={vehicle.id} className="flex h-full flex-col overflow-hidden rounded-xl border-slate-200 shadow-sm">
             <div className="aspect-[4/3] overflow-hidden bg-slate-100">
-              <img src={vehicle.image} alt={vehicle.name} className="h-full w-full object-cover" />
+              <img src={vehicle.image} alt={vehicle.name} className="h-full w-full object-cover object-center" />
             </div>
-            <CardContent className="space-y-3 p-3">
+            <CardContent className="flex flex-1 flex-col space-y-3 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="truncate text-sm font-bold text-slate-950">{vehicle.name}</h3>
@@ -43,7 +43,7 @@ export function CafeVehiclesSection({ cafe }: { cafe: Cafe }) {
                 <Spec icon={Car} label={vehicle.specs.brand} />
               </div>
 
-              <div className="flex items-center justify-between gap-3 border-t pt-3">
+              <div className="mt-auto flex items-center justify-between gap-3 border-t pt-3">
                 <div>
                   <p className="text-xs text-slate-500">Từ</p>
                   <p className="text-sm font-bold text-slate-950">{formatCurrency(vehicle.pricePerHour)}/giờ</p>

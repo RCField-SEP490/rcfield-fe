@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react"
 import type { ExploreCafe, ExploreVehicle } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
+import { formatCurrency } from "@/shared/lib/format"
 
 interface VehicleCardHorizontalProps {
   vehicle: ExploreVehicle & { cafe: ExploreCafe }
@@ -24,7 +25,7 @@ export function VehicleCardHorizontal({ vehicle, onBookNow }: VehicleCardHorizon
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[8px] font-black text-orange-600 uppercase tracking-widest">
             <span>{vehicle.type}</span>
-            <span className="text-xs font-black text-slate-900">{vehicle.pricePerHour.toLocaleString("vi-VN")}đ / giờ</span>
+            <span className="text-xs font-black text-slate-900">{formatCurrency(vehicle.pricePerHour)} / giờ</span>
           </div>
 
           <h3 className="text-sm font-black text-slate-950 truncate">{vehicle.name}</h3>

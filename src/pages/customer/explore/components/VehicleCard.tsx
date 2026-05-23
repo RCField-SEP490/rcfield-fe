@@ -4,6 +4,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Badge } from "@/shared/ui/badge"
 import { Separator } from "@/shared/ui/separator"
+import { formatCurrency } from "@/shared/lib/format"
 
 interface VehicleCardProps {
   vehicle: ExploreVehicle & { cafe: ExploreCafe }
@@ -56,7 +57,7 @@ export function VehicleCard({ vehicle, onBookNow }: VehicleCardProps) {
         <Separator className="bg-slate-100" />
         <div className="flex items-center justify-between text-xs font-bold text-slate-700">
           <span className="text-slate-500 text-[10px]">Giá thuê theo giờ:</span>
-          <span className="text-sm font-black text-slate-900">{vehicle.pricePerHour.toLocaleString("vi-VN")}đ / h</span>
+          <span className="text-sm font-black text-slate-900">{formatCurrency(vehicle.pricePerHour)} / h</span>
         </div>
       </CardContent>
 
