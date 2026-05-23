@@ -34,21 +34,19 @@ export function CafeDetailPage() {
         <span className="text-slate-900">{cafe.name}</span>
       </div>
 
-      <main className="mx-auto w-full max-w-[1440px] space-y-6 px-4 md:px-6">
-        <CafeDetailHero cafe={cafe} />
+      <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <CafeDetailHero cafe={cafe} />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <aside className="lg:sticky lg:top-20">
+            <CafeBookingCard cafe={cafe} />
+          </aside>
+
           <div className="min-w-0 space-y-8">
             <CafeDetailContent description={cafe.description} />
             <CafeVehiclesSection cafe={cafe} />
             <CafeFnbSection />
           </div>
-
-          <aside className="lg:pt-1">
-            <div className="sticky top-20">
-              <CafeBookingCard cafe={cafe} />
-            </div>
-          </aside>
         </div>
       </main>
     </div>

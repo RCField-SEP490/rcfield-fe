@@ -43,7 +43,7 @@ export function CafeBookingCard({ cafe }: { cafe: Cafe }) {
 
   return (
     <Card className="rounded-2xl border-slate-200 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-      <CardHeader className="space-y-2 pb-3">
+      <CardHeader className="space-y-1 p-4 pb-2">
         <div className="flex items-start justify-between gap-3">
           <div>
             <CardTitle className="text-lg">Đặt lịch chạy</CardTitle>
@@ -55,7 +55,7 @@ export function CafeBookingCard({ cafe }: { cafe: Cafe }) {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 p-4 pt-0">
         <div className="grid grid-cols-3 gap-1.5">
           {bookingModes.map((item) => {
             const Icon = item.icon
@@ -68,7 +68,7 @@ export function CafeBookingCard({ cafe }: { cafe: Cafe }) {
                 variant={isActive ? "default" : "outline"}
                 size="sm"
                 onClick={() => setMode(item.value)}
-                className={cn("h-10 flex-col gap-0 rounded-lg px-1.5 text-[10px]", isActive && "shadow-sm")}
+              className={cn("h-9 flex-col gap-0 rounded-lg px-1.5 text-[10px]", isActive && "shadow-sm")}
               >
                 <span className="flex items-center gap-1 text-[11px]">
                   <Icon className="h-3 w-3" />
@@ -80,7 +80,7 @@ export function CafeBookingCard({ cafe }: { cafe: Cafe }) {
           })}
         </div>
 
-        <div className="rounded-xl border bg-slate-50/80 p-3">
+        <div className="rounded-xl border bg-slate-50/80 p-2.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-foreground">{plan.label}</p>
@@ -103,7 +103,7 @@ export function CafeBookingCard({ cafe }: { cafe: Cafe }) {
 
         <DailySlotGrid slots={slots} selectedSlotId={selectedSlotId} onSelectSlot={setSelectedSlotId} />
 
-        <div className="rounded-xl border bg-white p-3">
+        <div className="rounded-xl border bg-white p-2.5">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Tạm tính</span>
             <span className="font-bold text-foreground">{formatCurrency(plan.price)}</span>
@@ -114,7 +114,7 @@ export function CafeBookingCard({ cafe }: { cafe: Cafe }) {
           </div>
         </div>
 
-        <Button asChild className="h-11 w-full rounded-lg text-sm font-semibold">
+        <Button asChild className="h-10 w-full rounded-lg text-sm font-semibold">
           <Link to={buildCafeBookingPath(cafe.id, mode, { date: selectedDate, slot: selectedSlotId })}>
             Tiến hành đặt lịch
           </Link>

@@ -51,7 +51,7 @@ export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot }: DailySlot
               disabled={isDisabled}
               onClick={() => onSelectSlot(slot.id)}
               className={cn(
-                "h-12 flex-col gap-0.5 rounded-md px-1 text-[11px] font-semibold",
+                "h-10 flex-col gap-0 rounded-md px-1 text-[11px] font-semibold",
                 !isSelected && slot.status === "available" && "border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100",
                 !isSelected && slot.status === "limited" && "border-amber-200 bg-amber-50/80 text-amber-900 hover:bg-amber-100",
                 isDisabled && "bg-muted text-muted-foreground opacity-80",
@@ -65,7 +65,7 @@ export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot }: DailySlot
       </div>
 
       <Badge variant="secondary" className="rounded-md px-2 py-1 text-[11px] font-medium">
-        1 slot = 60 phút. Demo hiển thị đủ 24 slot/ngày để sau này map trực tiếp từ API availability.
+        24 slot/ngày, mỗi slot 60 phút.
       </Badge>
     </div>
   )

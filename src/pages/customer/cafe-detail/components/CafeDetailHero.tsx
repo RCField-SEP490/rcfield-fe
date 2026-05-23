@@ -51,12 +51,12 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-        <div className="grid gap-2 p-2 md:h-[430px] md:grid-cols-[1.35fr_0.9fr]">
+        <div className="grid gap-2 p-2 md:h-[340px] md:grid-cols-[1.35fr_0.9fr]">
           <GalleryButton
             image={activeImage}
             label={`${cafe.name} ảnh chính`}
             onClick={() => setActiveImage(activeImage)}
-            className="h-[300px] md:h-full"
+            className="h-[260px] md:h-full"
             imageClassName="rounded-xl"
           />
 
@@ -67,7 +67,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
                 image={image}
                 label={`${cafe.name} ảnh ${index + 2}`}
                 onClick={() => setActiveImage(image)}
-                className="h-32 md:h-full"
+                className="h-24 md:h-full"
               >
                 {index === 3 && images.length > 5 ? (
                   <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-slate-950/45 text-sm font-semibold text-white">
@@ -87,7 +87,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
               type="button"
               onClick={() => setActiveImage(image)}
               className={cn(
-                "h-16 w-24 shrink-0 overflow-hidden rounded-lg border bg-muted transition hover:opacity-100",
+                "h-14 w-20 shrink-0 overflow-hidden rounded-lg border bg-muted transition hover:opacity-100",
                 image === activeImage ? "border-slate-950 opacity-100 ring-2 ring-slate-950/10" : "opacity-70",
               )}
             >
