@@ -1,3 +1,4 @@
+import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { createBrowserRouter, Navigate } from "react-router"
 import { AuthLayout } from "@/app/layouts/AuthLayout"
 import { DashboardLayout } from "@/app/layouts/DashboardLayout"
@@ -51,9 +52,11 @@ export const router = createBrowserRouter([
       },
       {
         element: (
-          <RoleGuard allowedRoles={["customer", "staff", "provider", "admin"]}>
-            <DashboardLayout />
-          </RoleGuard>
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={["customer"]}>
+              <PublicLayout />
+            </RoleGuard>
+          </ProtectedRoute>
         ),
         children: [
           { path: routePaths.customerHome, element: <Navigate replace to={routePaths.customerProfile} /> },
@@ -64,6 +67,17 @@ export const router = createBrowserRouter([
           { path: routePaths.customerSubscriptions, element: <PlaceholderPage title="Customer subscriptions" /> },
           { path: routePaths.customerVehicles, element: <CustomerVehiclesPage /> },
           { path: routePaths.customerReviews, element: <CustomerReviewsPage /> },
+        ],
+      },
+      {
+        element: (
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={["staff", "provider", "admin"]}>
+              <DashboardLayout />
+            </RoleGuard>
+          </ProtectedRoute>
+        ),
+        children: [
           { path: routePaths.staffDashboard, element: <PlaceholderPage title="Staff dashboard" /> },
           { path: routePaths.staffTodayBookings, element: <PlaceholderPage title="Today bookings" /> },
           { path: routePaths.staffSessionDetail, element: <PlaceholderPage title="Session detail" /> },
@@ -95,6 +109,3 @@ export const router = createBrowserRouter([
     ],
   },
 ])
-
-
-

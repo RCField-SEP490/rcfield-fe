@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -13,7 +14,8 @@ import {
   Calendar, 
   MapPin, 
   ThumbsUp,
-  Award
+  Award,
+  ChevronLeft
 } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
@@ -34,6 +36,7 @@ const reviewSchema = z.object({
 type ReviewFormValues = z.infer<typeof reviewSchema>
 
 export function CustomerReviewsPage() {
+  const navigate = useNavigate()
   const [reviews, setReviews] = useState<MockReview[]>(mockCustomerReviews)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [hoveredStar, setHoveredStar] = useState<number | null>(null)
@@ -81,8 +84,19 @@ export function CustomerReviewsPage() {
       <div className="absolute top-0 left-[10%] w-[350px] h-[350px] rounded-full bg-orange-400/10 blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-indigo-400/10 blur-[100px] pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto space-y-8 relative z-10">
+      <div className="max-w-5xl mx-auto space-y-6 relative z-10">
         
+        {/* Back Button */}
+        <div>
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-sm hover:bg-slate-50"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Quay lại trang trước
+          </button>
+        </div>
+
         {/* Header Ribbon */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
           <div className="space-y-1">
