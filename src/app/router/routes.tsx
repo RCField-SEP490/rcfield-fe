@@ -16,6 +16,18 @@ import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
 import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
+import { ProviderBookingsPage } from "@/pages/provider/ProviderBookingsPage"
+import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
+import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
+import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
+import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
+import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
+import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
+import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
+import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
+import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
+import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
+import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -61,18 +73,18 @@ export const router = createBrowserRouter([
           { path: routePaths.staffSessionDetail, element: <PlaceholderPage title="Session detail" /> },
           { path: routePaths.staffInspection, element: <PlaceholderPage title="Inspection" /> },
           { path: routePaths.staffFnbOrders, element: <PlaceholderPage title="FnB orders" /> },
-          { path: routePaths.providerDashboard, element: <PlaceholderPage title="Provider dashboard" /> },
-          { path: routePaths.providerCafes, element: <PlaceholderPage title="Provider cafes" /> },
-          { path: routePaths.providerCafeDetail, element: <PlaceholderPage title="Provider cafe detail" /> },
-          { path: routePaths.providerVehicles, element: <PlaceholderPage title="Provider vehicles" /> },
-          { path: routePaths.providerBookings, element: <PlaceholderPage title="Provider bookings" /> },
-          { path: routePaths.providerSessions, element: <PlaceholderPage title="Provider sessions" /> },
-          { path: routePaths.providerMenu, element: <PlaceholderPage title="Provider menu" /> },
-          { path: routePaths.providerPackages, element: <PlaceholderPage title="Provider packages" /> },
-          { path: routePaths.providerSubscriptions, element: <PlaceholderPage title="Provider subscriptions" /> },
-          { path: routePaths.providerPromotions, element: <PlaceholderPage title="Provider promotions" /> },
-          { path: routePaths.providerStaff, element: <PlaceholderPage title="Provider staff" /> },
-          { path: routePaths.providerRevenue, element: <PlaceholderPage title="Provider revenue" /> },
+          { path: routePaths.providerDashboard, element: <ProviderDashboardPage /> },
+          { path: routePaths.providerCafes, element: <ProviderCafesPage /> },
+          { path: routePaths.providerCafeDetail, element: <ProviderCafeDetailPage /> },
+          { path: routePaths.providerVehicles, element: <ProviderVehiclesPage /> },
+          { path: routePaths.providerBookings, element: <ProviderBookingsPage /> },
+          { path: routePaths.providerSessions, element: <ProviderSessionsPage /> },
+          { path: routePaths.providerMenu, element: <ProviderMenuPage /> },
+          { path: routePaths.providerPackages, element: <ProviderPackagesPage /> },
+          { path: routePaths.providerSubscriptions, element: <ProviderSubscriptionsPage /> },
+          { path: routePaths.providerPromotions, element: <ProviderPromotionsPage /> },
+          { path: routePaths.providerStaff, element: <ProviderStaffPage /> },
+          { path: routePaths.providerRevenue, element: <ProviderRevenuePage /> },
           { path: routePaths.adminDashboard, element: <PlaceholderPage title="Admin dashboard" /> },
           { path: routePaths.adminUsers, element: <PlaceholderPage title="Admin users" /> },
           { path: routePaths.adminCafes, element: <PlaceholderPage title="Admin cafes" /> },
