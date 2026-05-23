@@ -38,12 +38,15 @@ export function CafeDetailPage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-8">
             <CafeDetailHero cafe={cafe} />
+            <div className="lg:hidden">
+              <CafeBookingCard cafe={cafe} />
+            </div>
             <CafeVehiclesSection cafe={cafe} />
             <CafeFnbSection />
             <CafeDetailContent description={cafe.description} />
           </div>
 
-          <aside className="lg:sticky lg:top-20">
+          <aside className="hidden lg:sticky lg:top-20 lg:block">
             <CafeBookingCard cafe={cafe} />
           </aside>
         </div>
