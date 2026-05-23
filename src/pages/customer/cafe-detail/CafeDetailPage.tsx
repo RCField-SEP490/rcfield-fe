@@ -4,6 +4,8 @@ import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
 import { CafeDetailContent } from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
+import { CafeFnbSection } from "./components/CafeFnbSection"
+import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
 import { getCafeBySlug } from "./cafe-detail-utils"
 
 export function CafeDetailPage() {
@@ -23,8 +25,7 @@ export function CafeDetailPage() {
   }
 
   return (
-    <div className="bg-white">
-      {/* Breadcrumb */}
+    <div className="bg-white pb-10">
       <div className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6">
         <Link to={routePaths.cafes} className="hover:text-slate-900">Cơ sở</Link>
         <span>/</span>
@@ -33,20 +34,23 @@ export function CafeDetailPage() {
         <span className="text-slate-900">{cafe.name}</span>
       </div>
 
-      {/* Content layout: gallery + booking card side by side */}
-      <div className="mx-auto flex w-full max-w-[1440px] gap-6 px-4 pb-8 md:px-6">
-        {/* Left: Gallery + Info */}
-        <div className="min-w-0 flex-1 space-y-6">
-          <CafeDetailHero cafe={cafe} />
-          <CafeDetailContent description={cafe.description} />
-        </div>
-        {/* Right: Sticky booking card */}
-        <aside className="hidden w-[340px] shrink-0 lg:block">
-          <div className="sticky top-20">
-            <CafeBookingCard cafe={cafe} />
+      <main className="mx-auto w-full max-w-[1440px] space-y-6 px-4 md:px-6">
+        <CafeDetailHero cafe={cafe} />
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 space-y-8">
+            <CafeDetailContent description={cafe.description} />
+            <CafeVehiclesSection cafe={cafe} />
+            <CafeFnbSection />
           </div>
-        </aside>
-      </div>
+
+          <aside className="lg:pt-1">
+            <div className="sticky top-20">
+              <CafeBookingCard cafe={cafe} />
+            </div>
+          </aside>
+        </div>
+      </main>
     </div>
   )
 }
