@@ -18,6 +18,8 @@ import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
+import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
+import { PaymentResultPage } from "@/pages/booking/PaymentResultPage"
 import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
 import { routePaths } from "./route-paths"
 
@@ -33,8 +35,8 @@ export const router = createBrowserRouter([
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
-          { path: routePaths.bookingDetail, element: <PlaceholderPage title="Booking detail" /> },
-          { path: routePaths.paymentResult, element: <PlaceholderPage title="Payment result" /> },
+          { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
+          { path: routePaths.paymentResult, element: <PaymentResultPage /> },
         ],
       },
       {
