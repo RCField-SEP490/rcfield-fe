@@ -52,7 +52,7 @@ export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQ
             <p className="text-xs font-bold text-slate-900">{formatCurrency(cheapest)}</p>
             <p className="text-[10px] text-slate-400">/giờ</p>
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1">
             <button
               onClick={() => onQuickView(cafe)}
               className="border border-slate-200 px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100"

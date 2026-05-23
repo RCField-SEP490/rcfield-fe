@@ -8,7 +8,7 @@ import { VehicleMiniList } from "./VehicleMiniList"
 export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe | null; onClose: () => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
   return (
     <Dialog open={!!cafe} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90svh] max-w-3xl overflow-hidden rounded-2xl border-slate-200 bg-white p-0">
+      <DialogContent className="max-h-[90svh] max-w-3xl overflow-hidden border border-slate-200 bg-white p-0">
         {cafe && (
           <>
             <div className="relative h-64 overflow-hidden bg-slate-100">

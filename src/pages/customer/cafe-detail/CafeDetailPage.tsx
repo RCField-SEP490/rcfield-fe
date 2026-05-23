@@ -25,7 +25,7 @@ export function CafeDetailPage() {
   return (
     <div className="bg-white">
       {/* Breadcrumb */}
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6">
         <Link to={routePaths.cafes} className="hover:text-slate-900">Cơ sở</Link>
         <span>/</span>
         <span className="text-slate-400">{cafe.city}</span>
@@ -34,7 +34,7 @@ export function CafeDetailPage() {
       </div>
 
       {/* Content layout: gallery + booking card side by side */}
-      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-4 md:px-6">
+      <div className="mx-auto flex w-full max-w-[1440px] gap-6 px-4 pb-8 md:px-6">
         {/* Left: Gallery + Info */}
         <div className="min-w-0 flex-1 space-y-6">
           <CafeDetailHero cafe={cafe} />

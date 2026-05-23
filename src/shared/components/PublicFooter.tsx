@@ -12,21 +12,21 @@ const footerLinks = [
 export function PublicFooter() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 md:flex-row md:items-center md:justify-between md:px-6">
-        <div className="space-y-3">
-          <AppLogo className="items-center" />
-          <p className="max-w-sm text-sm font-medium leading-6 text-slate-500">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 py-6 md:flex-row md:items-center md:justify-between md:px-6">
+        <div className="flex items-center gap-4">
+          <AppLogo />
+          <p className="max-w-md text-xs leading-5 text-slate-500">
             Nền tảng tìm kiếm sân RC Cafe, đặt lịch nhanh và vận hành phiên chơi minh bạch.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-5 text-sm font-bold text-slate-500">
+        <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
           {footerLinks.map((item) => (
-            <Link key={item.label} to={item.to} className="hover:text-orange-600">
+            <Link key={item.label} to={item.to} className="hover:text-slate-900">
               {item.label}
             </Link>
           ))}
+          <span className="text-slate-300">© 2026</span>
         </div>
-        <p className="text-xs font-bold text-slate-400">© 2026 RCField. All rights reserved.</p>
       </div>
     </footer>
   )

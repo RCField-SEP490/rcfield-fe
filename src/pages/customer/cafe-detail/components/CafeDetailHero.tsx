@@ -30,7 +30,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
         </div>
       </div>
 
-      {/* Gallery: main image + thumbnails row - compact like hotel detail */}
+      {/* Gallery: main image + thumbnails row */}
       <div className="flex gap-2">
         {/* Main image */}
         <div className="relative h-[280px] w-[420px] shrink-0 overflow-hidden border border-slate-200 bg-slate-100">
