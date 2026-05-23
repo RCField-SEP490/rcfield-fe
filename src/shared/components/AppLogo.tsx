@@ -19,7 +19,7 @@ export function AppLogo({
       <img
         src="/brand/rcfield-logo.png"
         alt="RCField"
-        className="h-10 w-10 rounded-xl border border-border bg-white object-contain shadow-sm"
+        className="h-9 w-9 rounded-xl border border-border/50 bg-white object-contain shadow-sm transition-transform duration-200 hover:scale-105"
       />
       {showText && (
         <span

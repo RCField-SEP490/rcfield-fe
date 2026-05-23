@@ -24,8 +24,8 @@ export function QuickBookingSearch() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-[2rem] border border-slate-200 bg-slate-50 p-4 shadow-2xl shadow-slate-200/70 md:p-6">
-      <div className="rounded-[1.5rem] bg-white p-5 shadow-sm">
+    <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200/60 bg-white/60 p-1 shadow-xl shadow-slate-200/40 backdrop-blur-md md:p-1.5">
+      <div className="rounded-[1.25rem] bg-white p-5 shadow-sm md:p-6">
         <div className="mb-6 space-y-2">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">Đặt lịch nhanh</p>
           <h2 className="text-2xl font-black tracking-tight text-slate-950">Bạn muốn chạy ở đâu?</h2>
@@ -36,7 +36,7 @@ export function QuickBookingSearch() {
           <label className="space-y-2">
             <span className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500"><MapPin className="h-4 w-4 text-orange-500" /> Thành phố</span>
             <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold">
+              <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-slate-50/50 font-bold">
                 <SelectValue placeholder="Chọn thành phố" />
               </SelectTrigger>
               <SelectContent>
@@ -49,13 +49,13 @@ export function QuickBookingSearch() {
 
           <label className="space-y-2">
             <span className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500"><CalendarDays className="h-4 w-4 text-orange-500" /> Ngày chơi</span>
-            <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="h-12 rounded-xl border-slate-200 bg-white font-bold" />
+            <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="h-12 rounded-xl border-slate-200 bg-slate-50/50 font-bold" />
           </label>
 
           <label className="space-y-2">
             <span className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-500"><Car className="h-4 w-4 text-orange-500" /> Loại xe</span>
             <Select value={vehicleType} onValueChange={setVehicleType}>
-              <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-white font-bold">
+              <SelectTrigger className="h-12 rounded-xl border-slate-200 bg-slate-50/50 font-bold">
                 <SelectValue placeholder="Chọn loại xe" />
               </SelectTrigger>
               <SelectContent>
@@ -67,7 +67,7 @@ export function QuickBookingSearch() {
           </label>
         </div>
 
-        <Button type="submit" className="mt-5 h-12 w-full rounded-xl bg-orange-600 font-black text-white hover:bg-slate-950">
+        <Button type="submit" className="mt-5 h-12 w-full rounded-xl bg-orange-600 font-black text-white shadow-md shadow-orange-600/25 transition-all hover:bg-slate-950 hover:shadow-slate-900/25">
           <Search className="h-4 w-4" /> Tìm cơ sở phù hợp
         </Button>
       </div>

@@ -186,8 +186,8 @@ export function CreateBookingPage() {
                     key={plan.id}
                     type="button"
                     onClick={() => setSelectedPlanId(plan.id)}
-                    className={`border p-3 text-left transition ${
-                      isSelected ? "border-black bg-black text-white" : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                    className={`rounded-xl border p-3 text-left transition-all duration-200 ${
+                      isSelected ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:shadow-sm"
                     }`}
                   >
                     <p className={`text-sm font-semibold ${isSelected ? "text-white" : "text-slate-900"}`}>{plan.label}</p>
@@ -208,7 +208,7 @@ export function CreateBookingPage() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="h-10 w-full border border-slate-200 px-3 text-sm font-medium text-slate-800 focus:border-black focus:outline-none"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-800 transition-all focus:border-slate-400 focus:outline-none focus:shadow-sm"
               />
             </div>
 
@@ -247,7 +247,7 @@ export function CreateBookingPage() {
                     <button
                       key={wd}
                       type="button"
-                      className="border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-400"
+                      className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-all duration-200 hover:border-slate-300 hover:shadow-sm"
                     >
                       {wd}
                     </button>
@@ -268,11 +268,11 @@ export function CreateBookingPage() {
 
           {/* RIGHT: Summary panel - sticky */}
           <aside className="lg:sticky lg:top-6 lg:self-start">
-            <div className="border border-slate-200 bg-white">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
               {/* Cafe mini info */}
               <div className="border-b border-slate-200 p-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 shrink-0 overflow-hidden bg-slate-100">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100">
                     <img src={cafe.image} alt={cafe.name} className="h-full w-full object-cover" />
                   </div>
                   <div className="min-w-0">

@@ -50,7 +50,7 @@ export function CafeDetailContent({ description }: { description: string }) {
 function AmenityItem({ item }: { item: CafeAmenity }) {
   const Icon = amenityIcons[item.icon]
   return (
-    <article className="flex gap-2.5 border border-slate-200 bg-white p-3">
+    <article className="flex gap-2.5 rounded-xl border border-slate-200 bg-white p-3 transition-all hover:shadow-sm">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-blue-50 text-blue-600"><Icon className="h-3.5 w-3.5" /></span>
       <span>
         <span className="block text-xs font-semibold text-slate-900">{item.title}</span>

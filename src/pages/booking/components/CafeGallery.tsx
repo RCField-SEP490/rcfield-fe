@@ -8,7 +8,7 @@ interface CafeGalleryProps {
   name: string
 }
 
-export function CafeGallery({ images, name }: CafeGalleryProps) {
+export function CafeGallery({ images }: CafeGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0)
 
   if (!images.length) return null
@@ -18,7 +18,7 @@ export function CafeGallery({ images, name }: CafeGalleryProps) {
   return (
     <div className="grid grid-cols-[1fr_100px] gap-1.5">
       {/* Main image */}
-      <div className="group relative aspect-[4/3] overflow-hidden bg-slate-100">
+      <div className="group relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-100">
         <img src={active.src} alt={active.alt} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
         <div className="absolute bottom-2.5 left-2.5">
@@ -31,14 +31,14 @@ export function CafeGallery({ images, name }: CafeGalleryProps) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setActiveIndex((i) => (i - 1 + images.length) % images.length) }}
-              className="absolute left-1.5 top-1/2 -translate-y-1/2 bg-black/40 p-1 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100"
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 rounded-xl bg-black/40 p-1 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setActiveIndex((i) => (i + 1) % images.length) }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-black/40 p-1 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-xl bg-black/40 p-1 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -57,7 +57,7 @@ export function CafeGallery({ images, name }: CafeGalleryProps) {
             type="button"
             onClick={() => setActiveIndex(idx)}
             className={cn(
-              "relative aspect-[4/3] shrink-0 overflow-hidden border bg-slate-100 transition",
+              "relative aspect-[4/3] shrink-0 overflow-hidden rounded-lg border bg-slate-100 transition-all",
               idx === activeIndex ? "border-black" : "border-transparent opacity-60 hover:opacity-100",
             )}
           >

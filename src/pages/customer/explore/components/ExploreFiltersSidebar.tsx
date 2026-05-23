@@ -1,13 +1,10 @@
-import type { CafeSearchParams } from "@/shared/data/explore-data"
+import { CalendarDays, RotateCcw, SlidersHorizontal } from "lucide-react"
+import { Button } from "@/shared/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import { Input } from "@/shared/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 
-interface FilterSection {
-  label: string
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-}
-
-export function ExploreFiltersSidebar(props: {
+export type ExploreFiltersSidebarProps = {
   city: string
   onCityChange: (v: string) => void
   trackType: string
@@ -22,102 +19,59 @@ export function ExploreFiltersSidebar(props: {
   onDateChange: (v: string) => void
   activeFilterCount: number
   onClear: () => void
-}) {
-  const sections: FilterSection[] = [
-    {
-      label: "Thành phố", value: props.city, onChange: props.onCityChange,
-      options: [
-        { value: "all", label: "Tất cả" },
-        { value: "Hồ Chí Minh", label: "Hồ Chí Minh" },
-        { value: "Hà Nội", label: "Hà Nội" },
-        { value: "Đà Nẵng", label: "Đà Nẵng" },
-        { value: "Hải Phòng", label: "Hải Phòng" },
-      ],
-    },
-    {
-      label: "Loại đường đua", value: props.trackType, onChange: props.onTrackTypeChange,
-      options: [
-        { value: "all", label: "Tất cả" },
-        { value: "Drift", label: "Drift" },
-        { value: "Offroad", label: "Offroad" },
-        { value: "Touring", label: "Touring" },
-        { value: "Mini-Z", label: "Mini-Z" },
-        { value: "Drag", label: "Drag" },
-      ],
-    },
-    {
-      label: "Khung giá", value: props.priceRange, onChange: props.onPriceRangeChange,
-      options: [
-        { value: "all", label: "Tất cả" },
-        { value: "under100", label: "Dưới 100k/h" },
-        { value: "100to200", label: "100k - 200k/h" },
-        { value: "over200", label: "Trên 200k/h" },
-      ],
-    },
-    {
-      label: "Tiện ích", value: props.feature, onChange: props.onFeatureChange,
-      options: [
-        { value: "all", label: "Tất cả" },
-        { value: "Serious Inspection", label: "Kiểm xe" },
-        { value: "Đồ ăn & Nước uống", label: "F&B" },
-        { value: "Hệ thống Đèn đêm", label: "Đèn đêm" },
-        { value: "Pit Lane chuyên nghiệp", label: "Pit Lane" },
-        { value: "Mát lạnh Điều hòa", label: "Điều hòa" },
-      ],
-    },
-    {
-      label: "Loại xe", value: props.vehicleType, onChange: props.onVehicleTypeChange,
-      options: [
-        { value: "all", label: "Tất cả" },
-        { value: "Drift", label: "Drift" },
-        { value: "Offroad", label: "Offroad" },
-        { value: "Touring", label: "Touring" },
-        { value: "Mini", label: "Mini-Z" },
-      ],
-    },
-  ]
+}
 
+const filterGroups = {
+  feature: [
+    { value: "all", label: "Tất cả tiện ích" },
+    { value: "Serious Inspection", label: "Kiểm xe" },
+    { value: "Đồ ăn & Nước uống", label: "F&B" },
+    { value: "Hệ thống Đèn đêm", label: "Đèn đêm" },
+    { value: "Pit Lane chuyên nghiệp", label: "Pit Lane" },
+    { value: "Mát lạnh Điều hòa", label: "Điều hòa" },
+  ],
+  vehicleType: [
+    { value: "all", label: "Tất cả loại xe" },
+    { value: "Drift", label: "Drift" },
+    { value: "Offroad", label: "Offroad" },
+    { value: "Touring", label: "Touring" },
+    { value: "Mini", label: "Mini-Z" },
+  ],
+}
+
+export function ExploreFiltersSidebar(props: ExploreFiltersSidebarProps) {
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Bộ lọc</h3>
-        {props.activeFilterCount > 0 && (
-          <button onClick={props.onClear} className="text-xs font-semibold text-orange-600 hover:text-orange-700">
-            Xoá {props.activeFilterCount}
-          </button>
-        )}
-      </div>
-
-      {sections.map((section) => (
-        <div key={section.label}>
-          <p className="mb-1.5 text-xs font-semibold text-slate-700">{section.label}</p>
-          <div className="space-y-0.5">
-            {section.options.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => section.onChange(opt.value)}
-                className={`block w-full px-2 py-1.5 text-left text-xs transition ${
-                  section.value === opt.value
-                    ? "bg-slate-900 font-semibold text-white"
-                    : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+    <Card className="rounded-xl shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base"><SlidersHorizontal className="h-4 w-4" /> Bộ lọc</CardTitle>
+          {props.activeFilterCount > 0 && (
+            <Button type="button" variant="ghost" size="sm" onClick={props.onClear} className="gap-1 text-muted-foreground">
+              <RotateCcw className="h-3.5 w-3.5" /> Xóa
+            </Button>
+          )}
         </div>
-      ))}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <FilterSelect label="Tiện ích" value={props.feature} onChange={props.onFeatureChange} options={filterGroups.feature} />
+        <FilterSelect label="Loại xe" value={props.vehicleType} onChange={props.onVehicleTypeChange} options={filterGroups.vehicleType} />
+        <label className="block space-y-2">
+          <span className="flex items-center gap-2 text-sm font-medium"><CalendarDays className="h-4 w-4 text-muted-foreground" /> Ngày chạy</span>
+          <Input type="date" value={props.date} onChange={(event) => props.onDateChange(event.target.value)} />
+        </label>
+      </CardContent>
+    </Card>
+  )
+}
 
-      <div>
-        <p className="mb-1.5 text-xs font-semibold text-slate-700">Ngày</p>
-        <input
-          type="date"
-          value={props.date}
-          onChange={(e) => props.onDateChange(e.target.value)}
-          className="w-full border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-slate-400"
-        />
-      </div>
-    </div>
+function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: { value: string; label: string }[] }) {
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm font-medium">{label}</span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+      </Select>
+    </label>
   )
 }

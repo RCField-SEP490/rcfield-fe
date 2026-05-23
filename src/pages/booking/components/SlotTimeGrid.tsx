@@ -19,10 +19,10 @@ export function SlotTimeGrid({ timeOptions, selectedTimes, onToggle, mode }: Slo
             type="button"
             onClick={() => onToggle(time)}
             className={cn(
-              "border px-3 py-2.5 text-center text-sm font-semibold transition",
+              "rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200",
               isSelected
-                ? "border-black bg-black text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-slate-400",
+                ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-900/15"
+                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:shadow-sm",
             )}
           >
             {time}

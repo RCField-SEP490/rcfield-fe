@@ -1,4 +1,3 @@
-import { Car } from "lucide-react"
 import type { Vehicle } from "@/shared/data/explore-data"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
@@ -27,12 +26,12 @@ export function BookingVehiclePicker({ vehicles, selectedId, onSelect }: Booking
               disabled={isUnavailable}
               onClick={() => onSelect(v.id)}
               className={cn(
-                "border p-2 text-left transition",
+                "rounded-xl border p-2 text-left transition-all duration-200",
                 isSelected
-                  ? "border-black bg-black text-white"
+                  ? "border-slate-900 bg-slate-900 text-white shadow-md shadow-slate-900/15"
                   : isUnavailable
-                    ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-50"
-                    : "border-slate-200 bg-white hover:border-slate-400",
+                    ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-50 rounded-xl"
+                    : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm",
               )}
             >
               <div className="aspect-[4/3] overflow-hidden bg-slate-100">

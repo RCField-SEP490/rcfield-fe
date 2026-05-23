@@ -121,7 +121,7 @@ export function LoginPage() {
 
         {/* Header brand info */}
         <Link to="/" className="flex items-center gap-2 group self-start relative z-10">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
             <Zap className="h-4.5 w-4.5 fill-current" />
           </div>
           <span className="text-lg font-black tracking-tight text-white">
@@ -214,7 +214,7 @@ export function LoginPage() {
                     key={role.key}
                     type="button"
                     onClick={() => setSelectedRole(role.key as "customer" | "staff" | "provider" | "admin")}
-                    className={`py-2 px-3 rounded-lg border text-xs font-bold transition-all flex flex-col items-center gap-1.5 ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm shadow-orange-500/10' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center gap-1.5 ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm shadow-orange-500/10' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                   >
                     <RoleIcon className={`h-4 w-4 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
                     {role.label}
@@ -238,7 +238,7 @@ export function LoginPage() {
                   id="email" 
                   type="text" 
                   placeholder="name@example.com hoặc 0987654321" 
-                  className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
+                  className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 bg-white ${errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                   {...register("email")}
                 />
               </div>

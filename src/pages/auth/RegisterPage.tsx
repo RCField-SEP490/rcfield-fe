@@ -109,7 +109,7 @@ export function RegisterPage() {
 
         {/* Brand logo link */}
         <Link to="/" className="flex items-center gap-2 group self-start relative z-10">
-          <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform">
             <Zap className="h-4.5 w-4.5 fill-current" />
           </div>
           <span className="text-lg font-black tracking-tight text-white">
