@@ -28,6 +28,13 @@ import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
 import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
+import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage"
+import { AdminCafesPage } from "@/pages/admin/AdminCafesPage"
+import { AdminDisputesPage } from "@/pages/admin/AdminDisputesPage"
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
+import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage"
+import { AdminFeatureFlagsPage } from "@/pages/admin/AdminFeatureFlagsPage"
+import { AdminTrustScoreLogsPage } from "@/pages/admin/AdminTrustScoreLogsPage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -85,13 +92,13 @@ export const router = createBrowserRouter([
           { path: routePaths.providerPromotions, element: <ProviderPromotionsPage /> },
           { path: routePaths.providerStaff, element: <ProviderStaffPage /> },
           { path: routePaths.providerRevenue, element: <ProviderRevenuePage /> },
-          { path: routePaths.adminDashboard, element: <PlaceholderPage title="Admin dashboard" /> },
-          { path: routePaths.adminUsers, element: <PlaceholderPage title="Admin users" /> },
-          { path: routePaths.adminCafes, element: <PlaceholderPage title="Admin cafes" /> },
-          { path: routePaths.adminDisputes, element: <PlaceholderPage title="Admin disputes" /> },
-          { path: routePaths.adminPayments, element: <PlaceholderPage title="Admin payments" /> },
-          { path: routePaths.adminFeatureFlags, element: <PlaceholderPage title="Feature flags" /> },
-          { path: routePaths.adminTrustScoreLogs, element: <PlaceholderPage title="Trust score logs" /> },
+          { path: routePaths.adminDashboard, element: <AdminDashboardPage /> },
+          { path: routePaths.adminUsers, element: <AdminUsersPage /> },
+          { path: routePaths.adminCafes, element: <AdminCafesPage /> },
+          { path: routePaths.adminDisputes, element: <AdminDisputesPage /> },
+          { path: routePaths.adminPayments, element: <AdminPaymentsPage /> },
+          { path: routePaths.adminFeatureFlags, element: <AdminFeatureFlagsPage /> },
+          { path: routePaths.adminTrustScoreLogs, element: <AdminTrustScoreLogsPage /> },
         ],
       },
       { path: routePaths.forbidden, element: <ForbiddenPage /> },
