@@ -19,7 +19,7 @@ import {
 import * as z from "zod"
 
 import { routePaths } from "@/app/router/route-paths"
-import { loginWithPassword, logoutSession } from "@/features/auth/api/auth.api"
+import { loginWithPassword } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Button } from "@/shared/ui/button"
@@ -117,14 +117,6 @@ export function LoginPage() {
         email: data.email.trim().toLowerCase(),
         password: data.password,
       })
-
-      if (auth.user.role !== selectedRole) {
-        await logoutSession(auth.accessToken, auth.refreshToken).catch(() => undefined)
-        toast.error("Sai vai trò đăng nhập", {
-          description: `${auth.user.email} là tài khoản ${roleLabels[auth.user.role]}. Hãy chọn đúng vai trò trước khi đăng nhập.`,
-        })
-        return
-      }
 
       setAuthenticated(auth.user.role)
 

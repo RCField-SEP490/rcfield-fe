@@ -1,5 +1,6 @@
 import { api } from "@/shared/lib/axios"
 import type { UserRole } from "@/shared/types/common"
+import { getAuthFromJwt } from "../lib/jwt"
 
 type BackendRole = "CUSTOMER" | "STAFF" | "PROVIDER" | "ADMIN"
 
@@ -41,24 +42,18 @@ type BackendLoginResponse = {
   }
 }
 
-const roleMap: Record<BackendRole, UserRole> = {
-  CUSTOMER: "customer",
-  STAFF: "staff",
-  PROVIDER: "provider",
-  ADMIN: "admin",
-}
-
 export async function loginWithPassword(payload: LoginRequest): Promise<LoginResponse> {
   const response = await api.post<BackendLoginResponse>("/v1/auth/login", payload)
   const { access_token, refresh_token, user } = response.data.data
+  const jwtUser = getAuthFromJwt(access_token)
 
   return {
     accessToken: access_token,
     refreshToken: refresh_token,
     user: {
-      id: user.id,
-      email: user.email,
-      role: roleMap[user.role],
+      id: jwtUser.id || user.id,
+      email: jwtUser.email || user.email,
+      role: jwtUser.role,
     },
   }
 }
@@ -72,14 +67,15 @@ export async function registerWithPassword(payload: RegisterRequest): Promise<Lo
     role: payload.role.toUpperCase(),
   })
   const { access_token, refresh_token, user } = response.data.data
+  const jwtUser = getAuthFromJwt(access_token)
 
   return {
     accessToken: access_token,
     refreshToken: refresh_token,
     user: {
-      id: user.id,
-      email: user.email,
-      role: roleMap[user.role],
+      id: jwtUser.id || user.id,
+      email: jwtUser.email || user.email,
+      role: jwtUser.role,
     },
   }
 }
