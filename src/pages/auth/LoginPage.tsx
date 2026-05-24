@@ -19,28 +19,40 @@ import {
 } from "lucide-react"
 
 import { routePaths } from "@/app/router/route-paths"
-import { demoAuthUser, useAuthStore } from "@/features/auth/stores/auth.store"
+import { loginWithPassword } from "@/features/auth/api/auth.api"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { AppLogo } from "@/shared/components/AppLogo"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
+import { storageKeys } from "@/shared/lib/storage"
+import type { UserRole } from "@/shared/types/common"
 import { toast } from "sonner"
 
 // Form validation schema with Zod
 const loginSchema = z.object({
-  email: z.string()
-    .min(1, { message: "Vui lòng nhập email hoặc số điện thoại" })
-    .refine(val => {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      const phoneRegex = /(84|0[3|5|7|8|9])+([0-9]{8})\b/
-      return emailRegex.test(val) || phoneRegex.test(val)
-    }, { message: "Email hoặc số điện thoại không hợp lệ" }),
+  email: z.string().min(1, { message: "Vui long nhap email" }).email({ message: "Email khong hop le" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 ký tự" }),
   rememberMe: z.boolean().optional(),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
+type LoginRole = UserRole
+
+const roleLabels: Record<LoginRole, string> = {
+  customer: "NgÆ°á»i chÆ¡i",
+  staff: "NhÃ¢n viÃªn",
+  provider: "Chá»§ quÃ¡n",
+  admin: "Quáº£n trá»‹",
+}
+
+const roleRedirects: Record<LoginRole, string> = {
+  customer: routePaths.customerProfile,
+  staff: routePaths.staffDashboard,
+  provider: routePaths.providerDashboard,
+  admin: routePaths.adminDashboard,
+}
 
 const rotatingTaglines = [
   {
@@ -67,7 +79,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<"customer" | "staff" | "provider" | "admin">("customer")
+  const [selectedRole, setSelectedRole] = useState<LoginRole>("customer")
   const [taglineIndex, setTaglineIndex] = useState(0)
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
 
@@ -79,7 +91,7 @@ export function LoginPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
@@ -87,32 +99,64 @@ export function LoginPage() {
       rememberMe: false
     }
   })
+  const rememberMe = watch("rememberMe")
 
-  const onSubmit = (data: LoginFormValues) => {
+  const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true)
-    
-    // Simulate API authorization response
-    setTimeout(() => {
-      setIsLoading(false)
-      toast.success(`Đăng nhập thành công với vai trò ${selectedRole.toUpperCase()}!`, {
-        description: `Chào mừng quay trở lại, ${data.email}.`
+
+    try {
+      const auth = await loginWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
       })
-      setAuthenticated(selectedRole, {
-        ...demoAuthUser,
-        email: data.email.includes("@") ? data.email : demoAuthUser.email,
+
+      setAuthenticated(auth.user.role, {
+        id: auth.user.id,
+        fullName: auth.user.email,
+        email: auth.user.email,
       })
-      
-      // Navigate to home or dashboard accordingly
-      if (selectedRole === "customer") {
-        navigate(routePaths.customerProfile)
-      } else if (selectedRole === "staff") {
-        navigate("/staff/dashboard")
-      } else if (selectedRole === "provider") {
-        navigate("/provider/dashboard")
+
+      const authPayload = JSON.stringify({
+        accessToken: auth.accessToken,
+        refreshToken: auth.refreshToken,
+        user: auth.user,
+        role: auth.user.role,
+        email: auth.user.email,
+      })
+      const storage = data.rememberMe ? localStorage : sessionStorage
+      const staleStorage = data.rememberMe ? sessionStorage : localStorage
+      staleStorage.removeItem(storageKeys.auth)
+      storage.setItem(storageKeys.auth, authPayload)
+
+      toast.success(`Đăng nhập thành công với vai trò ${roleLabels[auth.user.role]}!`, {
+        description: `Chào mừng quay trở lại, ${auth.user.email}.`,
+      })
+
+      navigate(roleRedirects[auth.user.role])
+    } catch (error: any) {
+      const code = error?.response?.data?.code
+      const message = error?.response?.data?.message
+
+      if (code === "INVALID_CREDENTIALS") {
+        toast.error("Email hoặc mật khẩu không đúng", {
+          description: "Vui lòng kiểm tra lại thông tin đăng nhập từ hệ thống.",
+        })
+      } else if (code === "ACCOUNT_LOCKED") {
+        toast.error("Tài khoản đang bị khóa", {
+          description: message ?? "Vui lòng liên hệ quản trị viên để được hỗ trợ.",
+        })
+      } else if (code === "VALIDATION_ERROR") {
+        toast.error("Thông tin đăng nhập không hợp lệ", {
+          description: "Backend hiện hỗ trợ đăng nhập bằng email và mật khẩu.",
+        })
       } else {
-        navigate("/admin/dashboard")
+        toast.error("Không thể đăng nhập", {
+          description: message ?? "Không kết nối được tới máy chủ xác thực. Vui lòng thử lại.",
+        })
       }
-    }, 1500)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const ActiveIcon = rotatingTaglines[taglineIndex].icon
@@ -228,17 +272,17 @@ export function LoginPage() {
           {/* LOGIN FORM */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             
-            {/* Input Email/Phone */}
+            {/* Input Email */}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-bold text-slate-700">Email hoặc Số điện thoại</Label>
+              <Label htmlFor="email" className="text-xs font-bold text-slate-700">Email</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Mail className="h-4.5 w-4.5" />
                 </div>
                 <Input 
                   id="email" 
-                  type="text" 
-                  placeholder="name@example.com hoặc 0987654321" 
+                  type="email" 
+                  placeholder="name@example.com" 
                   className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 bg-white ${errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                   {...register("email")}
                 />
@@ -288,10 +332,14 @@ export function LoginPage() {
             <div className="flex items-center gap-2 select-none">
               <Checkbox 
                 id="rememberMe" 
+                checked={rememberMe === true}
                 className="border-slate-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                onCheckedChange={() => {
-                  // Direct mapping as needed
-                }}
+                onCheckedChange={(checked) =>
+                  setValue("rememberMe", checked === true, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
               />
               <Label htmlFor="rememberMe" className="text-xs font-bold text-slate-600 cursor-pointer">
                 Ghi nhớ tài khoản này trên thiết bị

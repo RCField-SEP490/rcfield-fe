@@ -1,9 +1,10 @@
-import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
+import type { ReactNode } from "react"
 import { createBrowserRouter, Navigate } from "react-router"
 import { AuthLayout } from "@/app/layouts/AuthLayout"
 import { DashboardLayout } from "@/app/layouts/DashboardLayout"
 import { PublicLayout } from "@/app/layouts/PublicLayout"
 import { RootLayout } from "@/app/layouts/RootLayout"
+import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { RoleGuard } from "@/shared/components/RoleGuard"
 import { ForbiddenPage } from "@/pages/public/ForbiddenPage"
 import { NotFoundPage } from "@/pages/public/NotFoundPage"
@@ -47,6 +48,11 @@ import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { routePaths } from "./route-paths"
+import type { UserRole } from "@/shared/types/common"
+
+const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (
+  <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>
+)
 
 export const router = createBrowserRouter([
   {
@@ -105,30 +111,30 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { path: routePaths.staffDashboard, element: <PlaceholderPage title="Staff dashboard" /> },
-          { path: routePaths.staffTodayBookings, element: <PlaceholderPage title="Today bookings" /> },
-          { path: routePaths.staffSessionDetail, element: <PlaceholderPage title="Session detail" /> },
-          { path: routePaths.staffInspection, element: <PlaceholderPage title="Inspection" /> },
-          { path: routePaths.staffFnbOrders, element: <PlaceholderPage title="FnB orders" /> },
-           { path: routePaths.providerDashboard, element: <ProviderDashboardPage /> },
-          { path: routePaths.providerCafes, element: <ProviderCafesPage /> },
-          { path: routePaths.providerCafeDetail, element: <ProviderCafeDetailPage /> },
-          { path: routePaths.providerVehicles, element: <ProviderVehiclesPage /> },
-          { path: routePaths.providerBookings, element: <ProviderBookingsPage /> },
-          { path: routePaths.providerSessions, element: <ProviderSessionsPage /> },
-          { path: routePaths.providerMenu, element: <ProviderMenuPage /> },
-          { path: routePaths.providerPackages, element: <ProviderPackagesPage /> },
-          { path: routePaths.providerSubscriptions, element: <ProviderSubscriptionsPage /> },
-          { path: routePaths.providerPromotions, element: <ProviderPromotionsPage /> },
-          { path: routePaths.providerStaff, element: <ProviderStaffPage /> },
-          { path: routePaths.providerRevenue, element: <ProviderRevenuePage /> },
-          { path: routePaths.adminDashboard, element: <AdminDashboardPage /> },
-          { path: routePaths.adminUsers, element: <AdminUsersPage /> },
-          { path: routePaths.adminCafes, element: <AdminCafesPage /> },
-          { path: routePaths.adminDisputes, element: <AdminDisputesPage /> },
-          { path: routePaths.adminPayments, element: <AdminPaymentsPage /> },
-          { path: routePaths.adminFeatureFlags, element: <AdminFeatureFlagsPage /> },
-          { path: routePaths.adminTrustScoreLogs, element: <AdminTrustScoreLogsPage /> },
+          { path: routePaths.staffDashboard, element: guardRoute(<PlaceholderPage title="Staff dashboard" />, ["staff"]) },
+          { path: routePaths.staffTodayBookings, element: guardRoute(<PlaceholderPage title="Today bookings" />, ["staff"]) },
+          { path: routePaths.staffSessionDetail, element: guardRoute(<PlaceholderPage title="Session detail" />, ["staff"]) },
+          { path: routePaths.staffInspection, element: guardRoute(<PlaceholderPage title="Inspection" />, ["staff"]) },
+          { path: routePaths.staffFnbOrders, element: guardRoute(<PlaceholderPage title="FnB orders" />, ["staff"]) },
+          { path: routePaths.providerDashboard, element: guardRoute(<ProviderDashboardPage />, ["provider"]) },
+          { path: routePaths.providerCafes, element: guardRoute(<ProviderCafesPage />, ["provider"]) },
+          { path: routePaths.providerCafeDetail, element: guardRoute(<ProviderCafeDetailPage />, ["provider"]) },
+          { path: routePaths.providerVehicles, element: guardRoute(<ProviderVehiclesPage />, ["provider"]) },
+          { path: routePaths.providerBookings, element: guardRoute(<ProviderBookingsPage />, ["provider"]) },
+          { path: routePaths.providerSessions, element: guardRoute(<ProviderSessionsPage />, ["provider"]) },
+          { path: routePaths.providerMenu, element: guardRoute(<ProviderMenuPage />, ["provider"]) },
+          { path: routePaths.providerPackages, element: guardRoute(<ProviderPackagesPage />, ["provider"]) },
+          { path: routePaths.providerSubscriptions, element: guardRoute(<ProviderSubscriptionsPage />, ["provider"]) },
+          { path: routePaths.providerPromotions, element: guardRoute(<ProviderPromotionsPage />, ["provider"]) },
+          { path: routePaths.providerStaff, element: guardRoute(<ProviderStaffPage />, ["provider"]) },
+          { path: routePaths.providerRevenue, element: guardRoute(<ProviderRevenuePage />, ["provider"]) },
+          { path: routePaths.adminDashboard, element: guardRoute(<AdminDashboardPage />, ["admin"]) },
+          { path: routePaths.adminUsers, element: guardRoute(<AdminUsersPage />, ["admin"]) },
+          { path: routePaths.adminCafes, element: guardRoute(<AdminCafesPage />, ["admin"]) },
+          { path: routePaths.adminDisputes, element: guardRoute(<AdminDisputesPage />, ["admin"]) },
+          { path: routePaths.adminPayments, element: guardRoute(<AdminPaymentsPage />, ["admin"]) },
+          { path: routePaths.adminFeatureFlags, element: guardRoute(<AdminFeatureFlagsPage />, ["admin"]) },
+          { path: routePaths.adminTrustScoreLogs, element: guardRoute(<AdminTrustScoreLogsPage />, ["admin"]) },
         ],
       },
       { path: routePaths.forbidden, element: <ForbiddenPage /> },
