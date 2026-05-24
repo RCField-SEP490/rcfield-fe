@@ -31,22 +31,22 @@ export interface FAQItem {
 export const liveSessionsData: LiveSession[] = [
   {
     track: "Track 1 - Drift Pro",
-    user: "John Doe",
-    details: "Thuê xe RX-7 Drift Spec",
+    user: "Hoàng Minh",
+    details: "Thuê xe RX-7 Drift Spec (RENTAL)",
     timeRemaining: "45:20",
     status: "active"
   },
   {
-    track: "Track 2 - Beginner",
-    user: "Jane Smith",
-    details: "Mang xe riêng (BYOC)",
+    track: "Track 2 - Circuit",
+    user: "Ngọc Linh",
+    details: "Mang xe cá nhân (BYOC)",
     timeRemaining: "12:05",
     status: "warning"
   },
   {
     track: "Track 3 - Offroad Arena",
     user: "Minh Tuấn",
-    details: "Thuê xe Buggy Monster",
+    details: "Thuê xe Buggy Monster (RENTAL)",
     timeRemaining: "28:15",
     status: "active"
   }
@@ -79,7 +79,7 @@ export const playerFeatures: Feature[] = [
   {
     id: "booking-pay",
     title: "Đặt lịch & Thanh toán cọc",
-    description: "Chọn khung giờ mong muốn, đặt trước xe thuê chất lượng cao và thanh toán tiền cọc trực tuyến cực kỳ nhanh chóng.",
+    description: "Chọn khung giờ, đặt xe thuê (RENTAL) hoặc đăng ký mang xe cá nhân (BYOC) — thậm chí kết hợp cả hai trong một booking. Thanh toán cọc trực tuyến, lịch giữ ngay lập tức.",
     icon: "CalendarCheck"
   },
   {
@@ -104,9 +104,9 @@ export const playerFeatures: Feature[] = [
 
 export const providerFeatures: Feature[] = [
   {
-    id: "partner-approve",
-    title: "Phê duyệt đối tác nhanh",
-    description: "Đăng ký thông tin quán cafe, xác thực pháp lý, địa chỉ và mở rộng tệp khách hàng đam mê RC cực nhanh.",
+    id: "branch-manage",
+    title: "Quản lý chuỗi chi nhánh",
+    description: "1 Provider quản lý toàn bộ chuỗi từ một dashboard: cấu hình giờ mở cửa, sức chứa, loại track và đội xe riêng cho từng chi nhánh.",
     icon: "UserCheck"
   },
   {
@@ -178,7 +178,7 @@ export const pricingPlans: PricingPlan[] = [
 export const faqsData: FAQItem[] = [
   {
     question: "Hệ thống thanh toán cọc hoạt động như thế nào?",
-    answer: "RCField hỗ trợ thanh toán cọc tự động qua cổng chuyển khoản ngân hàng (quét mã VietQR) và ví điện tử. Tiền cọc của khách hàng sẽ được ghi nhận vào hệ thống Ledger và chuyển trực tiếp về tài khoản của chủ quán (Provider) sau khi trừ phí nền tảng theo chính sách."
+    answer: "Khi booking được xác nhận, toàn bộ phí slot, phí thuê xe và tiền cọc bảo đảm được ghi vào Ledger dưới dạng các component độc lập. Sau khi session hoàn tất, doanh thu được giải ngân về Provider sau khi trừ phí nền tảng 15% (chỉ tính trên booking xe, không tính F&B). Tiền cọc hoàn trả 100% cho khách nếu xe không có hư hỏng mới."
   },
   {
     question: "Ai chịu trách nhiệm khi xe thuê bị hỏng hóc trong phiên chơi?",
@@ -190,7 +190,7 @@ export const faqsData: FAQItem[] = [
   },
   {
     question: "Nếu khách hàng đến trễ so với khung giờ đã đặt trước thì sao?",
-    answer: "Theo quy định, hệ thống phiên chạy (Session) sẽ tự động đếm ngược giờ theo đúng khung giờ đặt lịch (Booking). Tuy nhiên, nhân viên trực quán (Staff) hoàn toàn có quyền hỗ trợ dời giờ hoặc kéo dài thời gian chơi trực tiếp trên Dashboard nếu track kế tiếp vẫn còn trống."
+    answer: "Khung giờ đặt lịch được giữ nguyên. Nếu khách đến trễ, phiên chơi thực tế (Session) sẽ bắt đầu muộn hơn nhưng thời lượng được tính từ lúc thực tế check-in. Nếu không check-in trong khoảng thời gian quy định, booking sẽ chuyển trạng thái NO_SHOW và tiền cọc được xử lý theo chính sách của từng chi nhánh."
   }
 ]
 export type LandingStat = {
