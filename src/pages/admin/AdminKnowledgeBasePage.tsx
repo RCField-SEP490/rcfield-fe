@@ -276,7 +276,7 @@ export function AdminKnowledgeBasePage() {
 
   const cafeId = widgetConfig?.cafeId ?? ""
 
-  const { data: docs = [], isLoading: loadingDocs } = useQuery({
+  const { data: docs = [], isLoading: loadingDocs, isError: docsError } = useQuery({
     queryKey: ["kb-documents", cafeId],
     queryFn: () => listKbDocuments(cafeId),
     enabled: !!cafeId,
@@ -304,7 +304,7 @@ export function AdminKnowledgeBasePage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Knowledge Base Trang chủ"
+        title="Knowledge Base"
         description="Tài liệu AI sẽ dùng để trả lời câu hỏi trong chat widget của landing page."
       />
 
@@ -357,6 +357,12 @@ export function AdminKnowledgeBasePage() {
           {loadingDocs ? (
             <div className="flex h-40 items-center justify-center text-sm text-[#747878]">
               Đang tải danh sách...
+            </div>
+          ) : docsError ? (
+            <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">
+              <AlertCircle className="size-10 text-red-300" />
+              <p className="text-sm font-bold text-red-600">Không thể tải danh sách tài liệu</p>
+              <p className="text-xs text-[#747878]">Token hết hạn hoặc không có quyền. Đăng nhập lại và thử lại.</p>
             </div>
           ) : docs.length === 0 ? (
             <div className="flex h-48 flex-col items-center justify-center gap-2 text-center">

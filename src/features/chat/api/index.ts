@@ -1,18 +1,6 @@
 import { api } from '@/shared/lib/axios'
 import { env } from '@/shared/lib/env'
-import { storageKeys } from '@/shared/lib/storage'
 import type { SystemWidgetConfig, HistoryMessage, ChatDonePayload, ChatQuickRepliesPayload, KbDocument, KbContentType } from '../types'
-
-function getAuthHeader(): Record<string, string> {
-  const stored = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
-  if (!stored) return {}
-  try {
-    const { accessToken } = JSON.parse(stored) as { accessToken?: string }
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
-  } catch {
-    return {}
-  }
-}
 
 // TODO: replace with API call once seed-cafes.ts is run and system cafe is seeded
 const HARDCODED_SYSTEM_CAFE_ID = '7a00648b-c247-47d0-8f24-799ec5e38413'
@@ -44,13 +32,12 @@ export type UpdateWidgetConfigPayload = {
 }
 
 export async function updateSystemWidgetConfig(payload: UpdateWidgetConfigPayload): Promise<void> {
-  await api.put('/v1/system/widget-config', payload, { headers: getAuthHeader() })
+  await api.put('/v1/system/widget-config', payload)
 }
 
 export async function listKbDocuments(cafeId: string): Promise<KbDocument[]> {
   const res = await api.get<{ data: KbDocument[]; total: number }>(
     `/v1/cafes/${cafeId}/kb/documents`,
-    { headers: getAuthHeader() },
   )
   return res.data.data
 }
@@ -65,14 +52,12 @@ export async function uploadKbDocument(
   form.append('file', file)
   form.append('title', title)
   form.append('content_type', contentType)
-  const res = await api.post<KbDocument>(`/v1/cafes/${cafeId}/kb/documents`, form, {
-    headers: { ...getAuthHeader(), 'Content-Type': 'multipart/form-data' },
-  })
+  const res = await api.post<KbDocument>(`/v1/cafes/${cafeId}/kb/documents`, form)
   return res.data
 }
 
 export async function deleteKbDocument(cafeId: string, documentId: string): Promise<void> {
-  await api.delete(`/v1/cafes/${cafeId}/kb/documents/${documentId}`, { headers: getAuthHeader() })
+  await api.delete(`/v1/cafes/${cafeId}/kb/documents/${documentId}`)
 }
 
 export async function* streamChat(

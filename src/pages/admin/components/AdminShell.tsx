@@ -29,8 +29,8 @@ import { Button } from "@/shared/ui/button"
 const adminNav = [
   { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.adminDashboard },
   { label: "Duyệt đối tác", icon: Building2, to: routePaths.adminCafes },
+  { label: "Đối Tác", icon: Users, to: routePaths.adminUsers },
   { label: "Giải quyết khiếu nại", icon: Scale, to: routePaths.adminDisputes },
-  { label: "Người dùng", icon: Users, to: routePaths.adminUsers },
   { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
   { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
   { label: "Chat Widget", icon: MessageCircle, to: routePaths.adminSystemChat },
