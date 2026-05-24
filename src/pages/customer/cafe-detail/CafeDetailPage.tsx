@@ -1,0 +1,92 @@
+import { useState } from "react"
+import { Link, useParams } from "react-router"
+import { routePaths } from "@/app/router/route-paths"
+import { Button } from "@/shared/ui/button"
+import { CafeBookingCard } from "./components/CafeBookingCard"
+import { CafeDetailContent } from "./components/CafeDetailContent"
+import { CafeDetailHero } from "./components/CafeDetailHero"
+import { CafeFnbSection } from "./components/CafeFnbSection"
+import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
+import { getCafeBySlug } from "./cafe-detail-utils"
+import type { BookingMode } from "@/features/booking/data/booking-options"
+
+export function CafeDetailPage() {
+  const { cafeSlug } = useParams()
+  const cafe = getCafeBySlug(cafeSlug)
+
+  // Hoisted Booking Selections
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
+  const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
+  const [bookingMode, setBookingMode] = useState<BookingMode>("hourly")
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
+  const [selectedSlotId, setSelectedSlotId] = useState("")
+
+  if (!cafe) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-20 text-center">
+        <h1 className="text-2xl font-bold text-slate-950">Không tìm thấy cơ sở</h1>
+        <p className="mt-2 text-sm text-slate-500">Cơ sở này không tồn tại hoặc đã bị ẩn.</p>
+        <Button asChild className="mt-4 bg-slate-950 font-semibold text-white hover:bg-orange-600">
+          <Link to={routePaths.cafes}>Quay lại khám phá</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white pb-10">
+      <div className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6">
+        <Link to={routePaths.cafes} className="hover:text-slate-900">Cơ sở</Link>
+        <span>/</span>
+        <span className="text-slate-400">{cafe.city}</span>
+        <span>/</span>
+        <span className="text-slate-900">{cafe.name}</span>
+      </div>
+
+      <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 space-y-8">
+            <CafeDetailHero cafe={cafe} />
+            <div className="lg:hidden">
+              <CafeBookingCard
+                cafe={cafe}
+                selectedVehicleId={selectedVehicleId}
+                fnbQuantities={fnbQuantities}
+                mode={bookingMode}
+                setMode={setBookingMode}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                selectedSlotId={selectedSlotId}
+                setSelectedSlotId={setSelectedSlotId}
+              />
+            </div>
+            <CafeVehiclesSection
+              cafe={cafe}
+              selectedVehicleId={selectedVehicleId}
+              onSelectVehicle={setSelectedVehicleId}
+            />
+            <CafeFnbSection
+              fnbQuantities={fnbQuantities}
+              onChangeFnb={setFnbQuantities}
+            />
+            <CafeDetailContent description={cafe.description} />
+          </div>
+
+          <aside className="hidden lg:sticky lg:top-20 lg:block">
+            <CafeBookingCard
+              cafe={cafe}
+              selectedVehicleId={selectedVehicleId}
+              fnbQuantities={fnbQuantities}
+              mode={bookingMode}
+              setMode={setBookingMode}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              selectedSlotId={selectedSlotId}
+              setSelectedSlotId={setSelectedSlotId}
+            />
+          </aside>
+        </div>
+      </main>
+    </div>
+  )
+}
