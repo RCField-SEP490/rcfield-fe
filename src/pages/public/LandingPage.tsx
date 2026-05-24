@@ -1,3 +1,4 @@
+import { ChatWidget } from "@/features/chat/components/ChatWidget"
 import { FeatureHighlights } from "./components/FeatureHighlights"
 import { HowItWorks } from "./components/HowItWorks"
 import { LandingCta } from "./components/LandingCta"
@@ -10,6 +11,7 @@ export function LandingPage() {
       <FeatureHighlights />
       <HowItWorks />
       <LandingCta />
+      <ChatWidget />
     </>
   )
 }
