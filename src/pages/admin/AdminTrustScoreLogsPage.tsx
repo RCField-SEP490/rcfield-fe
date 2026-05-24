@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Award, ArrowUpRight, ArrowDownRight, AwardIcon } from "lucide-react"
+import { Award, ArrowUpRight, ArrowDownRight } from "lucide-react"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import {
@@ -90,7 +90,7 @@ export function AdminTrustScoreLogsPage() {
 
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm flex items-center gap-3">
           <div className="size-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600">
-            <AwardIcon className="size-5 rotate-180" />
+            <Award className="size-5 rotate-180" />
           </div>
           <div>
             <div className="text-[10px] font-bold text-[#747878] uppercase tracking-wider">Tổng lượt khấu trừ phạt</div>

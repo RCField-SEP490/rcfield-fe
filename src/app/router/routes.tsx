@@ -27,6 +27,25 @@ import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamage
 import { CustomerExtensionResponsePage } from "@/pages/customer/extension/CustomerExtensionResponsePage"
 import { PaymentResultPage } from "@/pages/booking/PaymentResultPage"
 import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
+import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage"
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
+import { AdminCafesPage } from "@/pages/admin/AdminCafesPage"
+import { AdminDisputesPage } from "@/pages/admin/AdminDisputesPage"
+import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage"
+import { AdminFeatureFlagsPage } from "@/pages/admin/AdminFeatureFlagsPage"
+import { AdminTrustScoreLogsPage } from "@/pages/admin/AdminTrustScoreLogsPage"
+import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
+import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
+import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
+import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
+import { ProviderBookingsPage } from "@/pages/provider/ProviderBookingsPage"
+import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
+import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
+import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
+import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
+import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
+import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
+import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { routePaths } from "./route-paths"
 
 export const router = createBrowserRouter([
@@ -91,25 +110,25 @@ export const router = createBrowserRouter([
           { path: routePaths.staffSessionDetail, element: <PlaceholderPage title="Session detail" /> },
           { path: routePaths.staffInspection, element: <PlaceholderPage title="Inspection" /> },
           { path: routePaths.staffFnbOrders, element: <PlaceholderPage title="FnB orders" /> },
-          { path: routePaths.providerDashboard, element: <PlaceholderPage title="Provider dashboard" /> },
-          { path: routePaths.providerCafes, element: <PlaceholderPage title="Provider cafes" /> },
-          { path: routePaths.providerCafeDetail, element: <PlaceholderPage title="Provider cafe detail" /> },
-          { path: routePaths.providerVehicles, element: <PlaceholderPage title="Provider vehicles" /> },
-          { path: routePaths.providerBookings, element: <PlaceholderPage title="Provider bookings" /> },
-          { path: routePaths.providerSessions, element: <PlaceholderPage title="Provider sessions" /> },
-          { path: routePaths.providerMenu, element: <PlaceholderPage title="Provider menu" /> },
-          { path: routePaths.providerPackages, element: <PlaceholderPage title="Provider packages" /> },
-          { path: routePaths.providerSubscriptions, element: <PlaceholderPage title="Provider subscriptions" /> },
-          { path: routePaths.providerPromotions, element: <PlaceholderPage title="Provider promotions" /> },
-          { path: routePaths.providerStaff, element: <PlaceholderPage title="Provider staff" /> },
-          { path: routePaths.providerRevenue, element: <PlaceholderPage title="Provider revenue" /> },
-          { path: routePaths.adminDashboard, element: <PlaceholderPage title="Admin dashboard" /> },
-          { path: routePaths.adminUsers, element: <PlaceholderPage title="Admin users" /> },
-          { path: routePaths.adminCafes, element: <PlaceholderPage title="Admin cafes" /> },
-          { path: routePaths.adminDisputes, element: <PlaceholderPage title="Admin disputes" /> },
-          { path: routePaths.adminPayments, element: <PlaceholderPage title="Admin payments" /> },
-          { path: routePaths.adminFeatureFlags, element: <PlaceholderPage title="Feature flags" /> },
-          { path: routePaths.adminTrustScoreLogs, element: <PlaceholderPage title="Trust score logs" /> },
+           { path: routePaths.providerDashboard, element: <ProviderDashboardPage /> },
+          { path: routePaths.providerCafes, element: <ProviderCafesPage /> },
+          { path: routePaths.providerCafeDetail, element: <ProviderCafeDetailPage /> },
+          { path: routePaths.providerVehicles, element: <ProviderVehiclesPage /> },
+          { path: routePaths.providerBookings, element: <ProviderBookingsPage /> },
+          { path: routePaths.providerSessions, element: <ProviderSessionsPage /> },
+          { path: routePaths.providerMenu, element: <ProviderMenuPage /> },
+          { path: routePaths.providerPackages, element: <ProviderPackagesPage /> },
+          { path: routePaths.providerSubscriptions, element: <ProviderSubscriptionsPage /> },
+          { path: routePaths.providerPromotions, element: <ProviderPromotionsPage /> },
+          { path: routePaths.providerStaff, element: <ProviderStaffPage /> },
+          { path: routePaths.providerRevenue, element: <ProviderRevenuePage /> },
+          { path: routePaths.adminDashboard, element: <AdminDashboardPage /> },
+          { path: routePaths.adminUsers, element: <AdminUsersPage /> },
+          { path: routePaths.adminCafes, element: <AdminCafesPage /> },
+          { path: routePaths.adminDisputes, element: <AdminDisputesPage /> },
+          { path: routePaths.adminPayments, element: <AdminPaymentsPage /> },
+          { path: routePaths.adminFeatureFlags, element: <AdminFeatureFlagsPage /> },
+          { path: routePaths.adminTrustScoreLogs, element: <AdminTrustScoreLogsPage /> },
         ],
       },
       { path: routePaths.forbidden, element: <ForbiddenPage /> },
