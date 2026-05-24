@@ -46,5 +46,7 @@ export const routePaths = {
   adminPayments: "/admin/payments",
   adminFeatureFlags: "/admin/feature-flags",
   adminTrustScoreLogs: "/admin/trust-score-logs",
+  adminSystemChat: "/admin/system-chat",
+  adminKnowledgeBase: "/admin/knowledge-base",
   forbidden: "/forbidden",
 } as const

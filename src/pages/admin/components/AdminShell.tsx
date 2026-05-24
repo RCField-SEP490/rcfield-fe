@@ -3,12 +3,14 @@ import type { ReactNode } from "react"
 import { useState } from "react"
 import {
   Award,
+  BookOpen,
   Building2,
   CircleHelp,
   CreditCard,
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircle,
   Scale,
   Settings2,
   Users,
@@ -31,7 +33,10 @@ const adminNav = [
   { label: "Người dùng", icon: Users, to: routePaths.adminUsers },
   { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
   { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
+  { label: "Chat Widget", icon: MessageCircle, to: routePaths.adminSystemChat },
+  { label: "Knowledge Base", icon: BookOpen, to: routePaths.adminKnowledgeBase },
   { label: "Lịch sử điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
+  
 ]
 
 export function AdminShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {

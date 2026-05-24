@@ -18,7 +18,22 @@ export interface SystemWidgetConfig {
   position: string
   primaryColor: string
   quickReplies: string[]
+  systemPrompt?: string | null
   isEnabled: boolean
+}
+
+export type KbContentType = 'POLICY' | 'FAQ' | 'ANNOUNCEMENT' | 'CUSTOM'
+export type KbDocumentStatus = 'PENDING' | 'INDEXED' | 'FAILED'
+
+export interface KbDocument {
+  id: string
+  title: string
+  original_filename: string
+  content_type: KbContentType
+  status: KbDocumentStatus
+  chunk_count: number
+  created_at: string
+  updated_at: string
 }
 
 export interface ChatDonePayload {
