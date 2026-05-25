@@ -181,7 +181,7 @@ export function AdminUsersPage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Danh sách Người dùng"
+        title="Danh sách đối tác"
         description="Quản lý tài khoản khách chơi, chủ quán và nhân viên sân chơi. Thiết lập điểm uy tín và phân quyền truy cập."
       />
 

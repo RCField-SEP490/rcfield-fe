@@ -25,6 +25,7 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 
 const providerNav = [
   { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.providerDashboard },
@@ -115,9 +116,12 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
       <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[#c4c7c8] bg-[#fcf8f8] px-4 md:hidden">
         <div className="text-[32px] font-bold leading-tight tracking-tight text-[#1c1b1b]">RCField</div>
-        <Button variant="ghost" size="icon" aria-label="Mở menu" className="text-[#5d5f5f]">
-          <Menu className="size-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <Button variant="ghost" size="icon" aria-label="Mở menu" className="text-[#5d5f5f]">
+            <Menu className="size-5" />
+          </Button>
+        </div>
       </header>
 
       <main className="h-full w-full flex-1 overflow-y-auto bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">

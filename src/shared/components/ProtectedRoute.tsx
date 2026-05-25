@@ -8,7 +8,10 @@ export type ProtectedRouteProps = {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation()
+  const isInitialized = useAuthStore((state) => state.isInitialized)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+
+  if (!isInitialized) return null
 
   if (!isAuthenticated) {
     return <Navigate replace to={routePaths.login} state={{ from: location }} />

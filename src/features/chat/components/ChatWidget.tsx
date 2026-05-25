@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, type KeyboardEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { MessageCircle, X, Send, RotateCcw, Bot } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
