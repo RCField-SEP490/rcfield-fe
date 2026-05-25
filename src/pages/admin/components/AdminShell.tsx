@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Scale,
   Settings2,
+  Share2,
   Users,
   X,
   Zap,
@@ -34,6 +35,7 @@ const adminNav = [
   { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
   { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
   { label: "Chat Widget", icon: MessageCircle, to: routePaths.adminSystemChat },
+  { label: "Kênh Messenger", icon: Share2, to: routePaths.adminChannels },
   { label: "Knowledge Base", icon: BookOpen, to: routePaths.adminKnowledgeBase },
   { label: "Lịch sử điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
   

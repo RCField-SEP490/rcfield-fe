@@ -48,5 +48,8 @@ export const routePaths = {
   adminTrustScoreLogs: "/admin/trust-score-logs",
   adminSystemChat: "/admin/system-chat",
   adminKnowledgeBase: "/admin/knowledge-base",
+  providerChannels: "/provider/channels",
+  facebookOAuthCallback: "/provider/channels/facebook/callback",
+  adminChannels: "/admin/channels",
   forbidden: "/forbidden",
 } as const

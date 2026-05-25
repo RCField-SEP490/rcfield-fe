@@ -37,6 +37,7 @@ import { AdminFeatureFlagsPage } from "@/pages/admin/AdminFeatureFlagsPage"
 import { AdminTrustScoreLogsPage } from "@/pages/admin/AdminTrustScoreLogsPage"
 import { AdminSystemChatPage } from "@/pages/admin/AdminSystemChatPage"
 import { AdminKnowledgeBasePage } from "@/pages/admin/AdminKnowledgeBasePage"
+import { AdminChannelSettingsPage } from "@/pages/admin/AdminChannelSettingsPage"
 import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
@@ -49,6 +50,8 @@ import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscription
 import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
+import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
+import { FacebookOAuthCallbackPage } from "@/pages/FacebookOAuthCallbackPage"
 import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
 
@@ -130,6 +133,8 @@ export const router = createBrowserRouter([
           { path: routePaths.providerPromotions, element: guardRoute(<ProviderPromotionsPage />, ["provider"]) },
           { path: routePaths.providerStaff, element: guardRoute(<ProviderStaffPage />, ["provider"]) },
           { path: routePaths.providerRevenue, element: guardRoute(<ProviderRevenuePage />, ["provider"]) },
+          { path: routePaths.providerChannels, element: guardRoute(<ChannelSettingsPage />, ["provider"]) },
+          { path: routePaths.facebookOAuthCallback, element: guardRoute(<FacebookOAuthCallbackPage />, ["provider"]) },
           { path: routePaths.adminDashboard, element: guardRoute(<AdminDashboardPage />, ["admin"]) },
           { path: routePaths.adminUsers, element: guardRoute(<AdminUsersPage />, ["admin"]) },
           { path: routePaths.adminCafes, element: guardRoute(<AdminCafesPage />, ["admin"]) },
@@ -139,6 +144,7 @@ export const router = createBrowserRouter([
           { path: routePaths.adminTrustScoreLogs, element: guardRoute(<AdminTrustScoreLogsPage />, ["admin"]) },
           { path: routePaths.adminSystemChat, element: guardRoute(<AdminSystemChatPage />, ["admin"]) },
           { path: routePaths.adminKnowledgeBase, element: guardRoute(<AdminKnowledgeBasePage />, ["admin"]) },
+          { path: routePaths.adminChannels, element: guardRoute(<AdminChannelSettingsPage />, ["admin"]) },
         ],
       },
       { path: routePaths.forbidden, element: <ForbiddenPage /> },

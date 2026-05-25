@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import ReactMarkdown from "react-markdown"
-import { Bot, Plus, RotateCcw, Save, Send, X } from "lucide-react"
+import { Bot, Plus, RotateCcw, Save, Send, Wand2, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
@@ -23,6 +23,28 @@ const POSITIONS = [
 const PRESET_COLORS = [
   "#EA580C", "#DC2626", "#7C3AED", "#0EA5E9", "#10B981", "#F59E0B",
 ]
+
+const SYSTEM_PROMPT_TEMPLATE = `Bạn là trợ lý AI chính thức của RCField — nền tảng đặt lịch sân xe RC tại Việt Nam.
+
+## Vai trò
+Hỗ trợ khách hàng tìm hiểu dịch vụ, kiểm tra lịch trống và giải đáp thắc mắc về chi nhánh.
+
+## Nguyên tắc trả lời
+- Luôn trả lời bằng tiếng Việt, thân thiện và chuyên nghiệp.
+- Câu trả lời ngắn gọn, tối đa 3–4 câu trừ khi cần liệt kê chi tiết.
+- Dùng danh sách gạch đầu dòng khi có từ 3 mục trở lên.
+- Không bịa thông tin — nếu không chắc, hãy gợi ý khách liên hệ trực tiếp chi nhánh.
+
+## Phạm vi hỗ trợ
+✅ Giới thiệu dịch vụ, gói thuê xe, bảng giá.
+✅ Kiểm tra lịch trống theo ngày/giờ khách yêu cầu.
+✅ Hướng dẫn quy trình đặt lịch, thanh toán, hủy lịch.
+✅ Chính sách hoàn tiền, bảo hiểm, quy định sân.
+❌ Không xử lý thanh toán hay đặt lịch trực tiếp qua chat.
+❌ Không trả lời các chủ đề ngoài dịch vụ RCField.
+
+## Giọng điệu
+Nhiệt tình, dễ gần. Dùng emoji ở mức vừa phải (1–2 emoji/tin nhắn) để tạo cảm giác thân thiện.`.trim()
 
 type FormState = {
   isEnabled: boolean
@@ -440,14 +462,23 @@ export function AdminSystemChatPage() {
 
           {/* System prompt */}
           <AdminPanel>
-            <AdminPanelTitle
-              title="System Prompt"
-              subtitle="Hướng dẫn hành vi cho AI. Để trống để dùng prompt mặc định."
-            />
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <AdminPanelTitle
+                title="System Prompt"
+                subtitle="Hướng dẫn hành vi cho AI. Để trống để dùng prompt mặc định."
+              />
+              <button
+                onClick={() => setForm((f) => ({ ...f, systemPrompt: SYSTEM_PROMPT_TEMPLATE }))}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-100"
+              >
+                <Wand2 className="size-3.5" />
+                Dùng mẫu
+              </button>
+            </div>
             <textarea
               value={form.systemPrompt}
               onChange={(e) => setForm((f) => ({ ...f, systemPrompt: e.target.value }))}
-              rows={8}
+              rows={12}
               placeholder="Ví dụ: Bạn là trợ lý AI của RCField. Hãy trả lời ngắn gọn, chuyên nghiệp bằng tiếng Việt..."
               className="w-full resize-y rounded-lg border border-[#e5e2e1] bg-white p-3 font-mono text-xs leading-relaxed text-[#1c1b1b] placeholder:text-[#747878] focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400/20"
             />
