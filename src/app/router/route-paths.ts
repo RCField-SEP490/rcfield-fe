@@ -51,5 +51,9 @@ export const routePaths = {
   providerChannels: "/provider/channels",
   facebookOAuthCallback: "/provider/channels/facebook/callback",
   adminChannels: "/admin/channels",
+  adminProviders: "/admin/providers",
+  adminPaymentRequests: "/admin/payment-requests",
+  adminSubscriptionPlans: "/admin/subscription-plans",
+  providerRegister: "/auth/register-provider",
   forbidden: "/forbidden",
 } as const

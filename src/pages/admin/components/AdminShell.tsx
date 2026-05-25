@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router"
-import type { ReactNode } from "react"
+import type { ReactNode, ElementType } from "react"
 import { useState } from "react"
 import {
   Award,
@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  Package,
   Scale,
   Settings2,
   Share2,
@@ -27,18 +28,48 @@ import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 
-const adminNav = [
-  { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.adminDashboard },
-  { label: "Duyệt đối tác", icon: Building2, to: routePaths.adminCafes },
-  { label: "Đối Tác", icon: Users, to: routePaths.adminUsers },
-  { label: "Giải quyết khiếu nại", icon: Scale, to: routePaths.adminDisputes },
-  { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
-  { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
-  { label: "Chat Widget", icon: MessageCircle, to: routePaths.adminSystemChat },
-  { label: "Kênh Messenger", icon: Share2, to: routePaths.adminChannels },
-  { label: "Knowledge Base", icon: BookOpen, to: routePaths.adminKnowledgeBase },
-  { label: "Lịch sử điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
-  
+type NavItem = { label: string; icon: ElementType; to: string }
+type NavGroup = { heading: string; items: NavItem[] }
+
+const adminNavGroups: NavGroup[] = [
+  {
+    heading: "Tổng quan",
+    items: [
+      { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.adminDashboard },
+    ],
+  },
+  {
+    heading: "Provider & SaaS",
+    items: [
+      { label: "Duyệt đối tác", icon: Building2, to: routePaths.adminCafes },
+      { label: "Quản lý Provider", icon: Users, to: routePaths.adminProviders },
+      { label: "Yêu cầu thanh toán", icon: CreditCard, to: routePaths.adminPaymentRequests },
+      { label: "Cấu hình gói", icon: Package, to: routePaths.adminSubscriptionPlans },
+      { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
+    ],
+  },
+  {
+    heading: "Người dùng & Khiếu nại",
+    items: [
+      { label: "Người dùng", icon: Users, to: routePaths.adminUsers },
+      { label: "Giải quyết khiếu nại", icon: Scale, to: routePaths.adminDisputes },
+      { label: "Điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
+    ],
+  },
+  {
+    heading: "AI & Kênh",
+    items: [
+      { label: "Chat Widget", icon: MessageCircle, to: routePaths.adminSystemChat },
+      { label: "Kênh Messenger", icon: Share2, to: routePaths.adminChannels },
+      { label: "Knowledge Base", icon: BookOpen, to: routePaths.adminKnowledgeBase },
+    ],
+  },
+  {
+    heading: "Hệ thống",
+    items: [
+      { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
+    ],
+  },
 ]
 
 export function AdminShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
@@ -83,27 +114,35 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
           </div>
         </Link>
 
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto pr-1">
-          {adminNav.map((item) => {
-            const Icon = item.icon
-            const active = location.pathname === item.to || (item.to !== routePaths.adminDashboard && location.pathname.startsWith(item.to))
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold transition-all duration-150",
-                  active
-                    ? "bg-orange-50 text-orange-700 shadow-sm border border-orange-100/50"
-                    : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
-                )}
-              >
-                <Icon className={cn("size-5", active ? "text-orange-600" : "text-[#747878]")} />
-                {item.label}
-              </Link>
-            )
-          })}
+        <nav className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1">
+          {adminNavGroups.map((group) => (
+            <div key={group.heading}>
+              <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
+                {group.heading}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const active = location.pathname === item.to || (item.to !== routePaths.adminDashboard && location.pathname.startsWith(item.to))
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
+                        active
+                          ? "bg-orange-50 text-orange-700 shadow-sm border border-orange-100/50"
+                          : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
+                      )}
+                    >
+                      <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
@@ -143,28 +182,36 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
               </Button>
             </div>
 
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
-              {adminNav.map((item) => {
-                const Icon = item.icon
-                const active = location.pathname === item.to || (item.to !== routePaths.adminDashboard && location.pathname.startsWith(item.to))
-
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold transition-all",
-                      active
-                        ? "bg-orange-50 text-orange-700 shadow-sm border border-orange-100"
-                        : "text-[#444748] hover:bg-[#f6f3f2]"
-                    )}
-                  >
-                    <Icon className={cn("size-5", active ? "text-orange-600" : "text-[#747878]")} />
-                    {item.label}
-                  </Link>
-                )
-              })}
+            <nav className="flex flex-1 flex-col gap-4 overflow-y-auto">
+              {adminNavGroups.map((group) => (
+                <div key={group.heading}>
+                  <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
+                    {group.heading}
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      const active = location.pathname === item.to || (item.to !== routePaths.adminDashboard && location.pathname.startsWith(item.to))
+                      return (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
+                            active
+                              ? "bg-orange-50 text-orange-700 shadow-sm border border-orange-100"
+                              : "text-[#444748] hover:bg-[#f6f3f2]"
+                          )}
+                        >
+                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                          {item.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
 
             <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">

@@ -4,17 +4,14 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Zap, 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  ChevronLeft, 
-  Car, 
-  User, 
-  ShieldAlert, 
-  Briefcase,
+import {
+  Zap,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ChevronLeft,
+  Car,
   Sparkles
 } from "lucide-react"
 
@@ -38,16 +35,7 @@ const loginSchema = z.object({
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
-type LoginRole = UserRole
-
-const roleLabels: Record<LoginRole, string> = {
-  customer: "NgÆ°á»i chÆ¡i",
-  staff: "NhÃ¢n viÃªn",
-  provider: "Chá»§ quÃ¡n",
-  admin: "Quáº£n trá»‹",
-}
-
-const roleRedirects: Record<LoginRole, string> = {
+const roleRedirects: Record<UserRole, string> = {
   customer: routePaths.customerProfile,
   staff: routePaths.staffDashboard,
   provider: routePaths.providerDashboard,
@@ -79,7 +67,6 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<LoginRole>("customer")
   const [taglineIndex, setTaglineIndex] = useState(0)
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
 
@@ -94,10 +81,10 @@ export function LoginPage() {
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      email: localStorage.getItem(storageKeys.lastEmail) ?? "",
       password: "",
-      rememberMe: false
-    }
+      rememberMe: false,
+    },
   })
   const rememberMe = watch("rememberMe")
 
@@ -128,9 +115,7 @@ export function LoginPage() {
       staleStorage.removeItem(storageKeys.auth)
       storage.setItem(storageKeys.auth, authPayload)
 
-      toast.success(`Đăng nhập thành công với vai trò ${roleLabels[auth.user.role]}!`, {
-        description: `Chào mừng quay trở lại, ${auth.user.email}.`,
-      })
+      toast.success(`Chào mừng quay trở lại, ${auth.user.email}!`)
 
       navigate(roleRedirects[auth.user.role])
     } catch (error: any) {
@@ -240,33 +225,6 @@ export function LoginPage() {
             <p className="text-xs font-semibold text-slate-500">
               Đăng nhập tài khoản để đặt sân đua và quản lý phiên chơi của bạn.
             </p>
-          </div>
-
-          {/* ROLE SELECTOR GRID */}
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Đăng nhập với tư cách</Label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {[
-                { key: "customer", label: "Người chơi", icon: User },
-                { key: "staff", label: "Nhân viên", icon: Car },
-                { key: "provider", label: "Chủ quán", icon: Briefcase },
-                { key: "admin", label: "Quản trị", icon: ShieldAlert }
-              ].map(role => {
-                const RoleIcon = role.icon
-                const isSelected = selectedRole === role.key
-                return (
-                  <button 
-                    key={role.key}
-                    type="button"
-                    onClick={() => setSelectedRole(role.key as "customer" | "staff" | "provider" | "admin")}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all duration-200 flex flex-col items-center gap-1.5 ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-sm shadow-orange-500/10' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
-                  >
-                    <RoleIcon className={`h-4 w-4 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
-                    {role.label}
-                  </button>
-                )
-              })}
-            </div>
           </div>
 
           {/* LOGIN FORM */}

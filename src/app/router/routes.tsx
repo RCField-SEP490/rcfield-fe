@@ -38,6 +38,10 @@ import { AdminTrustScoreLogsPage } from "@/pages/admin/AdminTrustScoreLogsPage"
 import { AdminSystemChatPage } from "@/pages/admin/AdminSystemChatPage"
 import { AdminKnowledgeBasePage } from "@/pages/admin/AdminKnowledgeBasePage"
 import { AdminChannelSettingsPage } from "@/pages/admin/AdminChannelSettingsPage"
+import { AdminProvidersPage } from "@/pages/admin/AdminProvidersPage"
+import { AdminPaymentRequestsPage } from "@/pages/admin/AdminPaymentRequestsPage"
+import { AdminSubscriptionPlansPage } from "@/pages/admin/AdminSubscriptionPlansPage"
+import { ProviderRegisterPage } from "@/pages/auth/ProviderRegisterPage"
 import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
@@ -80,6 +84,7 @@ export const router = createBrowserRouter([
         children: [
           { path: routePaths.login, element: <LoginPage /> },
           { path: routePaths.register, element: <RegisterPage /> },
+          { path: routePaths.providerRegister, element: <ProviderRegisterPage /> },
           { path: routePaths.forgotPassword, element: <ForgotPasswordPage /> },
           { path: routePaths.resetPassword, element: <ResetPasswordPage /> },
         ],
@@ -145,6 +150,9 @@ export const router = createBrowserRouter([
           { path: routePaths.adminSystemChat, element: guardRoute(<AdminSystemChatPage />, ["admin"]) },
           { path: routePaths.adminKnowledgeBase, element: guardRoute(<AdminKnowledgeBasePage />, ["admin"]) },
           { path: routePaths.adminChannels, element: guardRoute(<AdminChannelSettingsPage />, ["admin"]) },
+          { path: routePaths.adminProviders, element: guardRoute(<AdminProvidersPage />, ["admin"]) },
+          { path: routePaths.adminPaymentRequests, element: guardRoute(<AdminPaymentRequestsPage />, ["admin"]) },
+          { path: routePaths.adminSubscriptionPlans, element: guardRoute(<AdminSubscriptionPlansPage />, ["admin"]) },
         ],
       },
       { path: routePaths.forbidden, element: <ForbiddenPage /> },

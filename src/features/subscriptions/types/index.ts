@@ -1,0 +1,85 @@
+export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'GRACE_PERIOD' | 'EXPIRED'
+export type ProviderStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED'
+export type PaymentRequestStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED'
+export type PlanName = 'TRIAL' | 'STARTER' | 'GROWTH' | 'PRO'
+
+export interface SubscriptionPlan {
+  id: string
+  name: PlanName
+  branchLimit: number
+  aiQuotaPerMonth: number
+  channelLimit: number
+  pricePerMonth: number
+  isTrial: boolean
+}
+
+export interface ProviderSubscription {
+  id: string
+  providerId: string
+  planId: string
+  status: SubscriptionStatus
+  startedAt: string
+  expiresAt: string
+  graceEndsAt: string | null
+  aiMessagesUsed: number
+  aiQuotaResetAt: string
+  plan?: SubscriptionPlan
+}
+
+export interface PaymentRequest {
+  id: string
+  providerId: string
+  planId: string
+  status: PaymentRequestStatus
+  transferReference: string
+  transferDate: string
+  transferAmount: number
+  adminNotes: string | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  createdAt: string
+}
+
+export interface ProviderListItem {
+  id: string
+  email: string
+  full_name: string
+  created_at: string
+  business_name: string
+  registration_status: ProviderStatus
+  plan_name: PlanName | null
+  subscription_status: SubscriptionStatus | null
+  expires_at: string | null
+}
+
+export interface ProviderDetail extends ProviderListItem {
+  phone: string | null
+  business_description: string | null
+  rejection_reason: string | null
+  suspended_at: string | null
+  suspended_reason: string | null
+  started_at: string | null
+  grace_ends_at: string | null
+  ai_messages_used: number | null
+  ai_quota_per_month: number | null
+  branch_limit: number | null
+  channel_limit: number | null
+}
+
+export interface AdminPaymentRequestItem {
+  id: string
+  provider_id: string
+  plan_id: string
+  status: PaymentRequestStatus
+  transfer_reference: string
+  transfer_date: string
+  transfer_amount: number
+  admin_notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+  email: string
+  business_name: string | null
+  plan_name: PlanName | null
+  price_per_month: number | null
+}
