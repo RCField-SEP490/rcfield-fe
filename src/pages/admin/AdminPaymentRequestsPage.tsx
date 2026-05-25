@@ -67,7 +67,7 @@ export function AdminPaymentRequestsPage() {
 
   return (
     <AdminShell>
-      <AdminHeader title="Yêu cầu thanh toán" subtitle="Xác nhận hoặc từ chối yêu cầu nâng cấp gói của Provider" />
+      <AdminHeader title="Yêu cầu thanh toán" description="Xác nhận hoặc từ chối yêu cầu nâng cấp gói của Provider" />
 
       <AdminPanel>
         <div className="mb-4">

@@ -4,7 +4,7 @@ import { CheckCircle, XCircle, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight
 import { toast } from "sonner"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
-import { AdminHeader, AdminPanel, AdminPanelTitle, AdminSearchBar } from "@/pages/admin/components/AdminPrimitives"
+import { AdminHeader, AdminPanel, AdminSearchBar } from "@/pages/admin/components/AdminPrimitives"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog"
@@ -86,13 +86,13 @@ export function AdminProvidersPage() {
 
   return (
     <AdminShell>
-      <AdminHeader title="Quản lý Provider" subtitle="Duyệt đăng ký, quản lý trạng thái tài khoản đối tác" />
+      <AdminHeader title="Quản lý Provider" description="Duyệt đăng ký, quản lý trạng thái tài khoản đối tác" />
 
       <AdminPanel>
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <AdminSearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(v) => setSearch(v)}
             placeholder="Tìm theo tên doanh nghiệp hoặc email..."
           />
           <select

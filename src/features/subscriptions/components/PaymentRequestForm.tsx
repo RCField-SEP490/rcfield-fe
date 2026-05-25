@@ -1,8 +1,7 @@
-import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { CreditCard } from "lucide-react"
 
@@ -10,7 +9,6 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { subscriptionApi } from "../api/subscription.api"
-import type { PaymentRequest } from "../types"
 
 const PLANS = [
   { id: "__starter__", name: "STARTER", label: "Starter — 299,000₫/tháng", price: 299000 },
@@ -35,7 +33,7 @@ interface Props {
 export function PaymentRequestForm({ hasPendingRequest, onSuccess }: Props) {
   const qc = useQueryClient()
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<FormValues>,
   })
 
   const mutation = useMutation({
