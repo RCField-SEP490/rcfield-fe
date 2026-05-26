@@ -117,4 +117,9 @@ export const subscriptionApi = {
     const res = await api.patch<SubscriptionPlan>(`/v1/admin/subscription-plans/${id}`, body)
     return res.data
   },
+
+  getProviderMe: async (): Promise<{ success: boolean; data: ProviderDetail }> => {
+    const res = await api.get<{ success: boolean; data: ProviderDetail }>("/v1/provider/me")
+    return res.data
+  },
 }

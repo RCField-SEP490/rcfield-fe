@@ -25,6 +25,7 @@ export type AuthUser = {
   id: string
   email: string
   role: UserRole
+  registrationStatus?: string
 }
 
 export type LoginResponse = {
@@ -42,6 +43,7 @@ type BackendLoginResponse = {
       id: string
       email: string
       role: BackendRole
+      registration_status?: string
     }
   }
 }
@@ -58,6 +60,7 @@ export async function loginWithPassword(payload: LoginRequest): Promise<LoginRes
       id: jwtUser.id || user.id,
       email: jwtUser.email || user.email,
       role: jwtUser.role,
+      registrationStatus: user.registration_status,
     },
   }
 }
@@ -76,6 +79,7 @@ export async function loginWithGoogle(payload: GoogleLoginRequest): Promise<Logi
       id: jwtUser.id || user.id,
       email: jwtUser.email || user.email,
       role: jwtUser.role,
+      registrationStatus: user.registration_status,
     },
   }
 }
@@ -98,6 +102,7 @@ export async function registerWithPassword(payload: RegisterRequest): Promise<Lo
       id: jwtUser.id || user.id,
       email: jwtUser.email || user.email,
       role: jwtUser.role,
+      registrationStatus: user.registration_status,
     },
   }
 }

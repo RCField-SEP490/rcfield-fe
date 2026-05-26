@@ -8,6 +8,7 @@ export type AuthUser = {
   email: string
   phone?: string
   avatarUrl?: string
+  registrationStatus?: string
 }
 
 type AuthState = {
