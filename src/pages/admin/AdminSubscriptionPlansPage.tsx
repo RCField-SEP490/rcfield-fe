@@ -218,7 +218,7 @@ function PlanCard({ plan, onEdit }: { plan: SubscriptionPlan; onEdit: () => void
 
       <ul className="space-y-2 text-sm text-[#444748]">
         <LimitRow label="Chi nhánh" value={plan.branchLimit} />
-        <LimitRow label="AI msgs/tháng" value={plan.aiQuotaPerMonth} />
+        <LimitRow label="Tin nhắn (AI)/tháng" value={plan.aiQuotaPerMonth} />
         <LimitRow label="Kênh kết nối" value={plan.channelLimit} />
       </ul>
     </div>

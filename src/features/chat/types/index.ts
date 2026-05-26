@@ -14,12 +14,14 @@ export interface HistoryMessage {
 
 export interface SystemWidgetConfig {
   cafeId: string
+  cafeSlug: string
   greetingMessage: string
   position: string
   primaryColor: string
   quickReplies: string[]
   systemPrompt?: string | null
   isEnabled: boolean
+  fullPageEnabled: boolean
 }
 
 export type KbContentType = 'POLICY' | 'FAQ' | 'ANNOUNCEMENT' | 'CUSTOM'

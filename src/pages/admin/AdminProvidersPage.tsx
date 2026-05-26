@@ -139,7 +139,7 @@ export function AdminProvidersPage() {
                       </td>
                       <td className="px-4 py-3 text-slate-500 text-xs">
                         {p.plan_name ? (
-                          <span>{p.plan_name} · {p.subscription_status}</span>
+                          <span>{p.plan_name}</span>
                         ) : (
                           <span className="text-slate-300">—</span>
                         )}
