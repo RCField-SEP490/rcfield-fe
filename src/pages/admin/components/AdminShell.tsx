@@ -48,14 +48,14 @@ const adminNavGroups: NavGroup[] = [
       { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
     ],
   },
-  {
-    heading: "Người dùng & Khiếu nại",
-    items: [
-      { label: "Người dùng", icon: Users, to: routePaths.adminUsers },
-      { label: "Giải quyết khiếu nại", icon: Scale, to: routePaths.adminDisputes },
-      { label: "Điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
-    ],
-  },
+  // {
+  //   heading: "Người dùng & Khiếu nại",
+  //   items: [
+  //     { label: "Người dùng", icon: Users, to: routePaths.adminUsers },
+  //     { label: "Giải quyết khiếu nại", icon: Scale, to: routePaths.adminDisputes },
+  //     { label: "Điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
+  //   ],
+  // },
   {
     heading: "AI & Kênh",
     items: [

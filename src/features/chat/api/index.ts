@@ -13,11 +13,13 @@ export async function getSystemWidgetConfig(): Promise<SystemWidgetConfig> {
     // TODO: remove fallback once system cafe is seeded
     return {
       cafeId: HARDCODED_SYSTEM_CAFE_ID,
+      cafeSlug: 'rcfield-system',
       greetingMessage: 'Xin chào! Tôi là trợ lý AI của RCField. Hỏi tôi về nền tảng, tính năng hoặc cách đăng ký nhé!',
       position: 'BOTTOM_RIGHT',
       primaryColor: '#EA580C',
       quickReplies: ['RCField là gì?', 'Cách đăng ký', 'Tính năng nổi bật', 'Chi phí sử dụng'],
       isEnabled: true,
+      fullPageEnabled: false,
     }
   }
 }
@@ -29,6 +31,7 @@ export type UpdateWidgetConfigPayload = {
   quickReplies?: string[]
   systemPrompt?: string | null
   isEnabled?: boolean
+  fullPageEnabled?: boolean
 }
 
 export async function updateSystemWidgetConfig(payload: UpdateWidgetConfigPayload): Promise<void> {
