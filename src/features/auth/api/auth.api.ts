@@ -9,6 +9,10 @@ export type LoginRequest = {
   password: string
 }
 
+export type GoogleLoginRequest = {
+  idToken: string
+}
+
 export type RegisterRequest = {
   fullName: string
   email: string
@@ -44,6 +48,24 @@ type BackendLoginResponse = {
 
 export async function loginWithPassword(payload: LoginRequest): Promise<LoginResponse> {
   const response = await api.post<BackendLoginResponse>("/v1/auth/login", payload)
+  const { access_token, refresh_token, user } = response.data.data
+  const jwtUser = getAuthFromJwt(access_token)
+
+  return {
+    accessToken: access_token,
+    refreshToken: refresh_token,
+    user: {
+      id: jwtUser.id || user.id,
+      email: jwtUser.email || user.email,
+      role: jwtUser.role,
+    },
+  }
+}
+
+export async function loginWithGoogle(payload: GoogleLoginRequest): Promise<LoginResponse> {
+  const response = await api.post<BackendLoginResponse>("/v1/auth/google", {
+    id_token: payload.idToken,
+  })
   const { access_token, refresh_token, user } = response.data.data
   const jwtUser = getAuthFromJwt(access_token)
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, Link } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -16,13 +16,14 @@ import {
 } from "lucide-react"
 
 import { routePaths } from "@/app/router/route-paths"
-import { loginWithPassword } from "@/features/auth/api/auth.api"
+import { loginWithGoogle, loginWithPassword, type LoginResponse } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { AppLogo } from "@/shared/components/AppLogo"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
+import { env } from "@/shared/lib/env"
 import { storageKeys } from "@/shared/lib/storage"
 import type { UserRole } from "@/shared/types/common"
 import { toast } from "sonner"
@@ -67,7 +68,9 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [taglineIndex, setTaglineIndex] = useState(0)
+  const googleButtonRef = useRef<HTMLDivElement | null>(null)
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
 
   // Auto rotate the taglines on the left panel
@@ -88,15 +91,8 @@ export function LoginPage() {
   })
   const rememberMe = watch("rememberMe")
 
-  const onSubmit = async (data: LoginFormValues) => {
-    setIsLoading(true)
-
-    try {
-      const auth = await loginWithPassword({
-        email: data.email.trim().toLowerCase(),
-        password: data.password,
-      })
-
+  const completeLogin = useCallback(
+    (auth: LoginResponse, remember: boolean) => {
       setAuthenticated(auth.user.role, {
         id: auth.user.id,
         fullName: auth.user.email,
@@ -110,14 +106,111 @@ export function LoginPage() {
         role: auth.user.role,
         email: auth.user.email,
       })
-      const storage = data.rememberMe ? localStorage : sessionStorage
-      const staleStorage = data.rememberMe ? sessionStorage : localStorage
+      const storage = remember ? localStorage : sessionStorage
+      const staleStorage = remember ? sessionStorage : localStorage
       staleStorage.removeItem(storageKeys.auth)
       storage.setItem(storageKeys.auth, authPayload)
 
       toast.success(`Chào mừng quay trở lại, ${auth.user.email}!`)
 
       navigate(roleRedirects[auth.user.role])
+    },
+    [navigate, setAuthenticated],
+  )
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setIsGoogleLoading(true)
+
+      try {
+        const auth = await loginWithGoogle({ idToken: credential })
+        completeLogin(auth, rememberMe === true)
+      } catch (error: any) {
+        const code = error?.response?.data?.code
+        const message = error?.response?.data?.message
+
+        if (code === "GOOGLE_AUTH_FAILED") {
+          toast.error("KhÃ´ng thá»ƒ xÃ¡c thá»±c Google", {
+            description: "Vui lÃ²ng kiá»ƒm tra Google Client ID vÃ  thá»­ láº¡i.",
+          })
+        } else if (code === "ACCOUNT_LOCKED") {
+          toast.error("TÃ i khoáº£n Ä‘ang bá»‹ khÃ³a", {
+            description: message ?? "Vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn Ä‘á»ƒ Ä‘Æ°á»£c há»— trá»£.",
+          })
+        } else {
+          toast.error("KhÃ´ng thá»ƒ Ä‘Äƒng nháº­p Google", {
+            description: message ?? "KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c tá»›i mÃ¡y chá»§ xÃ¡c thá»±c.",
+          })
+        }
+      } finally {
+        setIsGoogleLoading(false)
+      }
+    },
+    [completeLogin, rememberMe],
+  )
+
+  useEffect(() => {
+    if (!env.googleClientId || !googleButtonRef.current) return
+
+    const renderGoogleButton = () => {
+      if (!window.google || !googleButtonRef.current || !env.googleClientId) return
+
+      googleButtonRef.current.innerHTML = ""
+      window.google.accounts.id.initialize({
+        client_id: env.googleClientId,
+        callback: (response) => {
+          if (response.credential) {
+            void handleGoogleCredential(response.credential)
+          } else {
+            toast.error("Google khÃ´ng tráº£ vá» token Ä‘Äƒng nháº­p.")
+          }
+        },
+      })
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        type: "standard",
+        shape: "rectangular",
+        text: "continue_with",
+        logo_alignment: "left",
+        width: Math.min(384, Math.floor(googleButtonRef.current.getBoundingClientRect().width || 384)),
+      })
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]',
+    )
+
+    if (window.google) {
+      renderGoogleButton()
+      return
+    }
+
+    if (existingScript) {
+      existingScript.addEventListener("load", renderGoogleButton)
+      return () => existingScript.removeEventListener("load", renderGoogleButton)
+    }
+
+    const script = document.createElement("script")
+    script.src = "https://accounts.google.com/gsi/client"
+    script.async = true
+    script.defer = true
+    script.onload = renderGoogleButton
+    script.onerror = () => {
+      toast.error("KhÃ´ng táº£i Ä‘Æ°á»£c Google Sign-In.")
+    }
+    document.head.appendChild(script)
+  }, [handleGoogleCredential])
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsLoading(true)
+
+    try {
+      const auth = await loginWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      })
+
+      completeLogin(auth, data.rememberMe === true)
     } catch (error: any) {
       const code = error?.response?.data?.code
       const message = error?.response?.data?.message
@@ -334,6 +427,14 @@ export function LoginPage() {
           </div>
 
           {/* Google Sign-in */}
+          {env.googleClientId ? (
+            <div className="relative flex min-h-11 w-full justify-center">
+              <div ref={googleButtonRef} className={`flex w-full justify-center ${isGoogleLoading ? "pointer-events-none opacity-60" : ""}`} />
+              {isGoogleLoading && (
+                <span className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin" />
+              )}
+            </div>
+          ) : (
           <Button 
             variant="outline" 
             className="w-full border-slate-200 hover:bg-slate-50 font-bold h-11 rounded-xl text-slate-700 flex items-center justify-center gap-2.5"
@@ -350,6 +451,7 @@ export function LoginPage() {
             </svg>
             Google
           </Button>
+          )}
 
           {/* Go to Signup */}
           <p className="text-center text-xs font-semibold text-slate-500">
