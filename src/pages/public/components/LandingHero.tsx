@@ -35,6 +35,18 @@ export function LandingHero() {
               <Link to={routePaths.login}>Đăng nhập để đặt lịch</Link>
             </Button>
           </div>
+          <div className="bg-orange-50/50 border border-orange-100/60 rounded-2xl p-4 flex items-center justify-between gap-4 max-w-xl">
+            <div>
+              <p className="text-xs font-bold text-slate-800">Bạn sở hữu Sân đua hoặc RC Cafe?</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Số hóa đặt lịch, quản trị xe rental & tăng doanh thu với giải pháp SaaS của RCField.</p>
+            </div>
+            <Link 
+              to={routePaths.partnerLanding}
+              className="inline-flex items-center gap-1 text-xs font-black text-orange-600 hover:text-orange-700 shrink-0 hover:underline"
+            >
+              Hợp tác đối tác <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
           <div className="grid max-w-xl grid-cols-3 gap-4 border-t border-slate-200 pt-6">
             {landingStats.map((stat) => (
               <div key={stat.label}>
