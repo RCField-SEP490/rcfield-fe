@@ -13,6 +13,21 @@ export type GoogleLoginRequest = {
   idToken: string
 }
 
+export type ForgotPasswordRequest = {
+  email: string
+}
+
+export type VerifyPasswordResetCodeRequest = {
+  email: string
+  code: string
+}
+
+export type ResetPasswordRequest = {
+  email: string
+  code: string
+  password: string
+}
+
 export type RegisterRequest = {
   fullName: string
   email: string
@@ -105,6 +120,27 @@ export async function registerWithPassword(payload: RegisterRequest): Promise<Lo
       registrationStatus: user.registration_status,
     },
   }
+}
+
+export async function requestPasswordReset(payload: ForgotPasswordRequest): Promise<void> {
+  await api.post("/v1/auth/forgot-password", {
+    email: payload.email,
+  })
+}
+
+export async function verifyPasswordResetCode(payload: VerifyPasswordResetCodeRequest): Promise<void> {
+  await api.post("/v1/auth/forgot-password/verify", {
+    email: payload.email,
+    code: payload.code,
+  })
+}
+
+export async function resetPasswordWithCode(payload: ResetPasswordRequest): Promise<void> {
+  await api.post("/v1/auth/reset-password", {
+    email: payload.email,
+    code: payload.code,
+    password: payload.password,
+  })
 }
 
 export async function logoutSession(accessToken: string, refreshToken: string): Promise<void> {
