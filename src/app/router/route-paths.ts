@@ -59,5 +59,6 @@ export const routePaths = {
   rejected: "/rejected",
   suspended: "/suspended",
   partnerLanding: "/partner",
+  cafeChat: "/cafes/:cafeSlug/chat",
   forbidden: "/forbidden",
 } as const

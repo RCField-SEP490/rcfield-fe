@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import ReactMarkdown from "react-markdown"
-import { Bot, Plus, RotateCcw, Save, Send, Wand2, X } from "lucide-react"
+import { Bot, CheckCircle2, Copy, ExternalLink, Plus, RotateCcw, Save, Send, Wand2, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
@@ -48,6 +48,7 @@ Nhiệt tình, dễ gần. Dùng emoji ở mức vừa phải (1–2 emoji/tin n
 
 type FormState = {
   isEnabled: boolean
+  fullPageEnabled: boolean
   greetingMessage: string
   position: string
   primaryColor: string
@@ -58,6 +59,7 @@ type FormState = {
 function toForm(cfg: SystemWidgetConfig): FormState {
   return {
     isEnabled: cfg.isEnabled,
+    fullPageEnabled: cfg.fullPageEnabled ?? false,
     greetingMessage: cfg.greetingMessage,
     position: cfg.position,
     primaryColor: cfg.primaryColor,
@@ -239,6 +241,7 @@ export function AdminSystemChatPage() {
 
   const [form, setForm] = useState<FormState>({
     isEnabled: false,
+    fullPageEnabled: false,
     greetingMessage: "Xin chào! Tôi có thể giúp gì cho bạn?",
     position: "BOTTOM_RIGHT",
     primaryColor: "#EA580C",
@@ -262,6 +265,7 @@ export function AdminSystemChatPage() {
     try {
       await updateSystemWidgetConfig({
         isEnabled: form.isEnabled,
+        fullPageEnabled: form.fullPageEnabled,
         greetingMessage: form.greetingMessage,
         position: form.position,
         primaryColor: form.primaryColor,
@@ -343,6 +347,74 @@ export function AdminSystemChatPage() {
                   )}
                 />
               </button>
+            </div>
+          </AdminPanel>
+
+          {/* Full-page Chat */}
+          <AdminPanel>
+            <AdminPanelTitle
+              title="Full-page Chat"
+              subtitle="Mỗi cafe có trang chat riêng tại /cafes/:slug/chat để chia sẻ link hoặc dán QR code tại quán."
+            />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-[#e5e2e1] p-4">
+                <div>
+                  <p className="text-sm font-bold text-[#1c1b1b]">Bật Full-page Chat</p>
+                  <p className="text-xs font-semibold text-[#747878] mt-0.5">
+                    Khi bật, trang <code className="bg-slate-100 px-1 rounded text-orange-600">/cafes/{config?.cafeSlug}/chat</code> sẽ hoạt động.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setForm((f) => ({ ...f, fullPageEnabled: !f.fullPageEnabled }))}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none",
+                    form.fullPageEnabled ? "bg-orange-600" : "bg-[#c4c7c8]",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 rounded-full bg-white shadow transition-transform",
+                      form.fullPageEnabled ? "translate-x-6" : "translate-x-1",
+                    )}
+                  />
+                </button>
+              </div>
+
+              {form.fullPageEnabled && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                    <p className="text-sm font-bold text-emerald-700">Full-page mode is active</p>
+                  </div>
+                  <p className="text-xs font-semibold text-emerald-600">
+                    Trang chat có thể truy cập tại URL sau:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={`${window.location.origin}/cafes/${config?.cafeSlug}/chat`}
+                      className="min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 font-mono text-xs text-slate-700 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/cafes/${config?.cafeSlug}/chat`)
+                        toast.success("Đã sao chép URL!")
+                      }}
+                      title="Sao chép URL"
+                      className="rounded-lg border border-emerald-200 bg-white p-2 text-emerald-600 transition-colors hover:bg-emerald-100"
+                    >
+                      <Copy className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => window.open(`${window.location.origin}/cafes/${config?.cafeSlug}/chat`, "_blank")}
+                      title="Mở trong tab mới"
+                      className="rounded-lg border border-emerald-200 bg-white p-2 text-emerald-600 transition-colors hover:bg-emerald-100"
+                    >
+                      <ExternalLink className="size-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </AdminPanel>
 

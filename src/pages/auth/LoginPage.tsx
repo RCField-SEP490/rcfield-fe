@@ -87,7 +87,7 @@ export function LoginPage() {
     defaultValues: {
       email: localStorage.getItem(storageKeys.lastEmail) ?? "",
       password: "",
-      rememberMe: false,
+      rememberMe: localStorage.getItem(storageKeys.rememberMe) === "true",
     },
   })
   const rememberMe = watch("rememberMe")
@@ -400,12 +400,11 @@ export function LoginPage() {
                 id="rememberMe" 
                 checked={rememberMe === true}
                 className="border-slate-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                onCheckedChange={(checked) =>
-                  setValue("rememberMe", checked === true, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  })
-                }
+                onCheckedChange={(checked) => {
+                  const val = checked === true
+                  setValue("rememberMe", val, { shouldDirty: true, shouldValidate: true })
+                  localStorage.setItem(storageKeys.rememberMe, String(val))
+                }}
               />
               <Label htmlFor="rememberMe" className="text-xs font-bold text-slate-600 cursor-pointer">
                 Ghi nhớ tài khoản này trên thiết bị

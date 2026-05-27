@@ -10,6 +10,7 @@ import { ForbiddenPage } from "@/pages/public/ForbiddenPage"
 import { NotFoundPage } from "@/pages/public/NotFoundPage"
 import { PlaceholderPage } from "@/pages/public/PlaceholderPage"
 import { LandingPage } from "@/pages/public/LandingPage"
+import { CafeFullPageChatPage } from "@/pages/public/CafeFullPageChatPage"
 import { LoginPage } from "@/pages/auth/LoginPage"
 import { RegisterPage } from "@/pages/auth/RegisterPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
@@ -84,6 +85,7 @@ export const router = createBrowserRouter([
           { index: true, element: <LandingPage /> },
           { path: routePaths.cafes, element: <ExplorePage /> },
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
+          { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
           { path: routePaths.bookingDetail, element: <CustomerBookingDetailPage /> },
