@@ -5,6 +5,7 @@ import { AppLogo } from "@/shared/components/AppLogo"
 const footerLinks = [
   { label: "Điều khoản", to: "#" },
   { label: "Bảo mật", to: "#" },
+  { label: "Đối tác liên kết", to: routePaths.partnerLanding },
   { label: "Liên hệ", to: "#" },
   { label: "Hướng dẫn", to: routePaths.cafes },
 ]

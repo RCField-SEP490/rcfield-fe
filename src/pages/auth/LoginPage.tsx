@@ -69,8 +69,9 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isGoogleReady, setIsGoogleReady] = useState(false)
   const [taglineIndex, setTaglineIndex] = useState(0)
-  const googleButtonRef = useRef<HTMLDivElement | null>(null)
+  const googleButtonRef = useRef<HTMLDivElement>(null)
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
 
   // Auto rotate the taglines on the left panel
@@ -149,12 +150,11 @@ export function LoginPage() {
   )
 
   useEffect(() => {
-    if (!env.googleClientId || !googleButtonRef.current) return
+    if (!env.googleClientId) return
 
-    const renderGoogleButton = () => {
-      if (!window.google || !googleButtonRef.current || !env.googleClientId) return
+    const initializeGoogleIdentity = () => {
+      if (!window.google || !env.googleClientId) return
 
-      googleButtonRef.current.innerHTML = ""
       window.google.accounts.id.initialize({
         client_id: env.googleClientId,
         callback: (response) => {
@@ -165,15 +165,21 @@ export function LoginPage() {
           }
         },
       })
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "outline",
-        size: "large",
-        type: "standard",
-        shape: "rectangular",
-        text: "continue_with",
-        logo_alignment: "left",
-        width: Math.min(384, Math.floor(googleButtonRef.current.getBoundingClientRect().width || 384)),
-      })
+
+      if (googleButtonRef.current) {
+        googleButtonRef.current.innerHTML = ""
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: "outline",
+          size: "large",
+          type: "standard",
+          shape: "rectangular",
+          text: "continue_with",
+          logo_alignment: "center",
+          width: 400,
+        })
+      }
+
+      setIsGoogleReady(true)
     }
 
     const existingScript = document.querySelector<HTMLScriptElement>(
@@ -181,20 +187,20 @@ export function LoginPage() {
     )
 
     if (window.google) {
-      renderGoogleButton()
+      initializeGoogleIdentity()
       return
     }
 
     if (existingScript) {
-      existingScript.addEventListener("load", renderGoogleButton)
-      return () => existingScript.removeEventListener("load", renderGoogleButton)
+      existingScript.addEventListener("load", initializeGoogleIdentity)
+      return () => existingScript.removeEventListener("load", initializeGoogleIdentity)
     }
 
     const script = document.createElement("script")
     script.src = "https://accounts.google.com/gsi/client"
     script.async = true
     script.defer = true
-    script.onload = renderGoogleButton
+    script.onload = initializeGoogleIdentity
     script.onerror = () => {
       toast.error("KhÃ´ng táº£i Ä‘Æ°á»£c Google Sign-In.")
     }
@@ -235,6 +241,15 @@ export function LoginPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleGoogleSignInClick = () => {
+    if (!window.google || !isGoogleReady) {
+      toast.info("Google Sign-In đang tải. Vui lòng thử lại sau giây lát.")
+      return
+    }
+
+    window.google.accounts.id.prompt()
   }
 
   const ActiveIcon = rotatingTaglines[taglineIndex].icon
@@ -400,7 +415,7 @@ export function LoginPage() {
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold h-11 rounded-xl shadow-md flex items-center justify-center gap-2 group transition-all"
+              className="group w-full h-11 rounded-xl bg-slate-950 text-white font-bold shadow-[0_10px_24px_rgba(15,23,42,0.18)] flex items-center justify-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-[0_16px_34px_rgba(15,23,42,0.24),0_0_0_3px_rgba(249,115,22,0.10)] focus-visible:ring-3 focus-visible:ring-orange-500/20 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isLoading ? (
                 <>
@@ -427,28 +442,47 @@ export function LoginPage() {
 
           {/* Google Sign-in */}
           {env.googleClientId ? (
-            <div className="relative flex min-h-11 w-full justify-center">
-              <div ref={googleButtonRef} className={`flex w-full justify-center ${isGoogleLoading ? "pointer-events-none opacity-60" : ""}`} />
-              {isGoogleLoading && (
-                <span className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin" />
-              )}
+            <div className="group/google relative h-11 overflow-hidden rounded-xl">
+              <div
+                ref={googleButtonRef}
+                className={`absolute inset-0 z-10 flex items-center justify-center overflow-hidden rounded-xl opacity-[0.01] ${isGoogleReady && !isGoogleLoading ? "" : "pointer-events-none"}`}
+                aria-hidden="true"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isGoogleLoading}
+                onClick={handleGoogleSignInClick}
+                className="pointer-events-none group w-full h-11 rounded-xl border-slate-200 bg-white px-3.5 text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-400 hover:bg-orange-50/25 hover:shadow-[0_16px_34px_rgba(15,23,42,0.16),0_0_0_3px_rgba(249,115,22,0.10)] group-hover/google:-translate-y-0.5 group-hover/google:border-orange-400 group-hover/google:bg-orange-50/25 group-hover/google:shadow-[0_16px_34px_rgba(15,23,42,0.16),0_0_0_3px_rgba(249,115,22,0.10)] focus-visible:ring-3 focus-visible:ring-orange-500/20 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
+                aria-label="ÄÄƒng nháº­p báº±ng Google"
+              >
+                {isGoogleLoading ? (
+                  <span className="h-4 w-4 shrink-0 rounded-full border-2 border-slate-300 border-t-slate-700 animate-spin" />
+                ) : (
+                  <svg className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+                  </svg>
+                )}
+              </Button>
             </div>
           ) : (
           <Button 
             variant="outline" 
-            className="w-full border-slate-200 hover:bg-slate-50 font-bold h-11 rounded-xl text-slate-700 flex items-center justify-center gap-2.5"
+            className="group w-full h-11 rounded-xl border-slate-200 bg-white px-3.5 text-slate-800 shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-400 hover:bg-orange-50/25 hover:shadow-[0_16px_34px_rgba(15,23,42,0.16),0_0_0_3px_rgba(249,115,22,0.10)]"
+            aria-label="Đăng nhập bằng Google"
             onClick={() => {
               toast.info("Đăng nhập bằng tài khoản Google đang được phát triển.")
             }}
           >
-            {/* Simple colored SVG Google Logo */}
-            <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="none">
+            <svg className="h-5 w-5 shrink-0 transition-transform duration-300 group-hover:scale-110" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
             </svg>
-            Google
           </Button>
           )}
 

@@ -55,6 +55,10 @@ export const routePaths = {
   adminPaymentRequests: "/admin/payment-requests",
   adminSubscriptionPlans: "/admin/subscription-plans",
   providerRegister: "/auth/register-provider",
+  pendingReview: "/pending-review",
+  rejected: "/rejected",
+  suspended: "/suspended",
+  partnerLanding: "/partner",
   cafeChat: "/cafes/:cafeSlug/chat",
   forbidden: "/forbidden",
 } as const

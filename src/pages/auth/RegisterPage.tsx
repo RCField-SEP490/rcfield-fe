@@ -351,7 +351,7 @@ export function RegisterPage() {
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-slate-950 hover:bg-slate-900 text-white font-bold h-11 rounded-xl shadow-md flex items-center justify-center gap-2 group transition-all pt-1"
+              className="group w-full h-11 rounded-xl bg-slate-950 text-white font-bold shadow-[0_10px_24px_rgba(15,23,42,0.18)] flex items-center justify-center gap-2 pt-1 transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-[0_16px_34px_rgba(15,23,42,0.24),0_0_0_3px_rgba(249,115,22,0.10)] focus-visible:ring-3 focus-visible:ring-orange-500/20 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isLoading ? (
                 <>
@@ -379,7 +379,7 @@ export function RegisterPage() {
           {/* Go to Login */}
           <Button 
             variant="outline" 
-            className="w-full border-slate-200 hover:bg-slate-50 font-bold h-11 rounded-xl text-slate-700"
+            className="group w-full h-11 rounded-xl border-slate-200 bg-white px-3.5 text-slate-700 font-bold shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-400 hover:bg-orange-50/25 hover:text-slate-800 hover:shadow-[0_16px_34px_rgba(15,23,42,0.16),0_0_0_3px_rgba(249,115,22,0.10)] focus-visible:ring-3 focus-visible:ring-orange-500/20"
             onClick={() => navigate("/auth/login")}
           >
             Quay lại Đăng nhập

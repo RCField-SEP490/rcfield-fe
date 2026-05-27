@@ -18,6 +18,7 @@ import {
 
 const navItems = [
   { label: "Khám phá", to: routePaths.cafes },
+  { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
   { label: "Đơn đặt", to: routePaths.customerBookings },
   { label: "Khách hàng", to: routePaths.customerProfile },
   { label: "Cơ sở", to: routePaths.providerCafes },
@@ -33,7 +34,23 @@ const customerMenuItems = [
 
 export function PublicHeader() {
   const [isOpen, setIsOpen] = useState(false)
-  const { isAuthenticated, user, clearAuthenticated } = useAuthStore()
+  const { isAuthenticated, user, role, clearAuthenticated } = useAuthStore()
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.to === routePaths.partnerLanding) {
+      return !isAuthenticated || role === "provider"
+    }
+    if (item.to === routePaths.customerBookings || item.to === routePaths.customerProfile) {
+      return isAuthenticated && role === "customer"
+    }
+    if (item.to === routePaths.providerCafes) {
+      return isAuthenticated && role === "provider"
+    }
+    if (item.to === routePaths.adminDashboard) {
+      return isAuthenticated && role === "admin"
+    }
+    return true
+  })
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -42,7 +59,7 @@ export function PublicHeader() {
           <AppLogo />
 
           <nav className="hidden items-center gap-0.5 lg:flex">
-            {navItems.map((item) => (
+            {filteredNavItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -88,7 +105,7 @@ export function PublicHeader() {
         {isOpen && (
           <div className="animate-in slide-in-from-top-2 border-t border-slate-200/60 px-1 pb-4 pt-3 duration-200">
             <nav className="flex flex-col gap-0.5">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <NavLink
                   key={item.to}
                   to={item.to}

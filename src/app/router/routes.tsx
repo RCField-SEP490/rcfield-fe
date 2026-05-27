@@ -57,11 +57,22 @@ import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
 import { FacebookOAuthCallbackPage } from "@/pages/FacebookOAuthCallbackPage"
+import { ProviderStatusGuard } from "@/shared/components/ProviderStatusGuard"
+import { PartnerLandingPage } from "@/pages/public/PartnerLandingPage"
+import { PendingReviewPage } from "@/pages/auth/PendingReviewPage"
+import { RejectedPage } from "@/pages/auth/RejectedPage"
+import { SuspendedPage } from "@/pages/auth/SuspendedPage"
 import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
 
 const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (
   <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>
+)
+
+const providerGuardRoute = (element: ReactNode) => (
+  <RoleGuard allowedRoles={["provider"]}>
+    <ProviderStatusGuard>{element}</ProviderStatusGuard>
+  </RoleGuard>
 )
 
 export const router = createBrowserRouter([
@@ -79,6 +90,7 @@ export const router = createBrowserRouter([
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
           { path: routePaths.bookingDetail, element: <CustomerBookingDetailPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
+          { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
         ],
       },
       {
@@ -128,20 +140,20 @@ export const router = createBrowserRouter([
           { path: routePaths.staffSessionDetail, element: guardRoute(<PlaceholderPage title="Session detail" />, ["staff"]) },
           { path: routePaths.staffInspection, element: guardRoute(<PlaceholderPage title="Inspection" />, ["staff"]) },
           { path: routePaths.staffFnbOrders, element: guardRoute(<PlaceholderPage title="FnB orders" />, ["staff"]) },
-          { path: routePaths.providerDashboard, element: guardRoute(<ProviderDashboardPage />, ["provider"]) },
-          { path: routePaths.providerCafes, element: guardRoute(<ProviderCafesPage />, ["provider"]) },
-          { path: routePaths.providerCafeDetail, element: guardRoute(<ProviderCafeDetailPage />, ["provider"]) },
-          { path: routePaths.providerVehicles, element: guardRoute(<ProviderVehiclesPage />, ["provider"]) },
-          { path: routePaths.providerBookings, element: guardRoute(<ProviderBookingsPage />, ["provider"]) },
-          { path: routePaths.providerSessions, element: guardRoute(<ProviderSessionsPage />, ["provider"]) },
-          { path: routePaths.providerMenu, element: guardRoute(<ProviderMenuPage />, ["provider"]) },
-          { path: routePaths.providerPackages, element: guardRoute(<ProviderPackagesPage />, ["provider"]) },
-          { path: routePaths.providerSubscriptions, element: guardRoute(<ProviderSubscriptionsPage />, ["provider"]) },
-          { path: routePaths.providerPromotions, element: guardRoute(<ProviderPromotionsPage />, ["provider"]) },
-          { path: routePaths.providerStaff, element: guardRoute(<ProviderStaffPage />, ["provider"]) },
-          { path: routePaths.providerRevenue, element: guardRoute(<ProviderRevenuePage />, ["provider"]) },
-          { path: routePaths.providerChannels, element: guardRoute(<ChannelSettingsPage />, ["provider"]) },
-          { path: routePaths.facebookOAuthCallback, element: guardRoute(<FacebookOAuthCallbackPage />, ["provider"]) },
+          { path: routePaths.providerDashboard, element: providerGuardRoute(<ProviderDashboardPage />) },
+          { path: routePaths.providerCafes, element: providerGuardRoute(<ProviderCafesPage />) },
+          { path: routePaths.providerCafeDetail, element: providerGuardRoute(<ProviderCafeDetailPage />) },
+          { path: routePaths.providerVehicles, element: providerGuardRoute(<ProviderVehiclesPage />) },
+          { path: routePaths.providerBookings, element: providerGuardRoute(<ProviderBookingsPage />) },
+          { path: routePaths.providerSessions, element: providerGuardRoute(<ProviderSessionsPage />) },
+          { path: routePaths.providerMenu, element: providerGuardRoute(<ProviderMenuPage />) },
+          { path: routePaths.providerPackages, element: providerGuardRoute(<ProviderPackagesPage />) },
+          { path: routePaths.providerSubscriptions, element: providerGuardRoute(<ProviderSubscriptionsPage />) },
+          { path: routePaths.providerPromotions, element: providerGuardRoute(<ProviderPromotionsPage />) },
+          { path: routePaths.providerStaff, element: providerGuardRoute(<ProviderStaffPage />) },
+          { path: routePaths.providerRevenue, element: providerGuardRoute(<ProviderRevenuePage />) },
+          { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
+          { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },
           { path: routePaths.adminDashboard, element: guardRoute(<AdminDashboardPage />, ["admin"]) },
           { path: routePaths.adminUsers, element: guardRoute(<AdminUsersPage />, ["admin"]) },
           { path: routePaths.adminCafes, element: guardRoute(<AdminCafesPage />, ["admin"]) },
@@ -156,6 +168,36 @@ export const router = createBrowserRouter([
           { path: routePaths.adminPaymentRequests, element: guardRoute(<AdminPaymentRequestsPage />, ["admin"]) },
           { path: routePaths.adminSubscriptionPlans, element: guardRoute(<AdminSubscriptionPlansPage />, ["admin"]) },
         ],
+      },
+      {
+        path: routePaths.pendingReview,
+        element: (
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={["provider"]}>
+              <PendingReviewPage />
+            </RoleGuard>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: routePaths.rejected,
+        element: (
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={["provider"]}>
+              <RejectedPage />
+            </RoleGuard>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: routePaths.suspended,
+        element: (
+          <ProtectedRoute>
+            <RoleGuard allowedRoles={["provider"]}>
+              <SuspendedPage />
+            </RoleGuard>
+          </ProtectedRoute>
+        ),
       },
       { path: routePaths.forbidden, element: <ForbiddenPage /> },
       { path: "*", element: <NotFoundPage /> },
