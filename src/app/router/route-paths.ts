@@ -39,6 +39,7 @@ export const routePaths = {
   providerPromotions: "/provider/promotions",
   providerStaff: "/provider/staff",
   providerRevenue: "/provider/revenue",
+  providerConfiguration: "/provider/configuration",
   adminDashboard: "/admin/dashboard",
   adminUsers: "/admin/users",
   adminCafes: "/admin/cafes",

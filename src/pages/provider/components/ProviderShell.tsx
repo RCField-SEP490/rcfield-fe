@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router"
+import { Children, isValidElement } from "react"
 import type { ReactNode } from "react"
 import {
   BadgePercent,
@@ -14,6 +15,7 @@ import {
   Package,
   PlayCircle,
   Plus,
+  Settings,
   ShieldCheck,
   Users,
 } from "lucide-react"
@@ -26,6 +28,7 @@ import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
+import { ProviderHeader, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 
 const providerNav = [
   { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.providerDashboard },
@@ -39,6 +42,7 @@ const providerNav = [
   { label: "Hội viên", icon: ShieldCheck, to: routePaths.providerSubscriptions },
   { label: "Ưu đãi", icon: BadgePercent, to: routePaths.providerPromotions },
   { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
+  { label: "Cấu hình", icon: Settings, to: routePaths.providerConfiguration },
 ]
 
 export function ProviderShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
@@ -67,6 +71,14 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     toast.success("Đã đăng xuất khỏi khu vực nhà cung cấp.")
     navigate(routePaths.login, { replace: true })
   }
+
+  const childList = Children.toArray(children)
+  const headerChildren = childList.filter(
+    (child) => isValidElement(child) && (child.type === ProviderHeader || child.type === ProviderPageHeader)
+  )
+  const contentChildren = childList.filter(
+    (child) => !(isValidElement(child) && (child.type === ProviderHeader || child.type === ProviderPageHeader))
+  )
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#fcf8f8] text-[#1c1b1b]">
@@ -125,7 +137,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
       </header>
 
       <main className="h-full w-full flex-1 overflow-y-auto bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
-        <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{children}</div>
+        {headerChildren}
+        <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{contentChildren}</div>
       </main>
     </div>
   )

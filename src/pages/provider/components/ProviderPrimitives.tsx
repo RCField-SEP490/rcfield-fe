@@ -2,6 +2,7 @@ import { Link } from "react-router"
 import type { ReactNode } from "react"
 import { ArrowRight, CalendarClock, Download, Search, TrendingDown, TrendingUp } from "lucide-react"
 
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import type { ProviderTone } from "@/pages/provider/data"
 import { branchDetailPath, branches } from "@/pages/provider/data"
 import { cn } from "@/shared/lib/utils"
@@ -20,12 +21,11 @@ export function ProviderHeader({
   actionIcon?: ReactNode
 }) {
   return (
-    <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-      <div>
-        <h2 className="text-4xl font-bold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-5xl">{title}</h2>
-        <p className="mt-2 text-base font-medium text-[#444748]">{description}</p>
-      </div>
-      <div className="flex flex-wrap gap-3">
+    <ProviderPageHeader
+      title={title}
+      description={description}
+      actions={
+        <>
         <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
           <CalendarClock className="size-5" />
           Tháng này
@@ -34,10 +34,49 @@ export function ProviderHeader({
           {actionIcon}
           {actionLabel}
         </Button>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }
+ProviderHeader.displayName = "ProviderHeader"
+
+export function ProviderPageHeader({
+  title,
+  description,
+  actions,
+  flush: _flush = false,
+}: {
+  title: string
+  description: string
+  actions?: ReactNode
+  flush?: boolean
+}) {
+  return (
+    <header
+      className={cn(
+        "sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8] bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:flex-row md:items-center md:justify-between md:px-6"
+      )}
+    >
+      <div className="min-w-0">
+        <h2 className="text-[32px] font-bold leading-tight tracking-tight text-[#1c1b1b]">{title}</h2>
+        <p className="mt-1 text-sm font-medium text-[#444748]">{description}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3 md:justify-end">
+        {actions}
+        <NotificationBell />
+        <div className="size-10 shrink-0 overflow-hidden rounded-full border border-[#c4c7c8] bg-white">
+          <img
+            alt="Avatar"
+            className="h-full w-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9tptYWoLiFpiMQwQxABxTxNfHVkdFj8DLprZIx96_JpdoFqW-LfmzW0yrXvERuk4Bc0JSiStL-IAdqDFnASgvEZM3MNDRNoD_Xx8DC-albyTmvrJCFM67T8C629f0yFQp_e6Drwvt3XPxHv3xl2hUeMEECllu33L1YoGB6xxbAD-IxiTsP0lylibWcy-VD8eIUqheIU8nCJYDIrtCepHsMhCl8xzQb5tNkRrQIRjh_q1-wqh6z0gEe-UQ2cCpuk"
+          />
+        </div>
+      </div>
+    </header>
+  )
+}
+ProviderPageHeader.displayName = "ProviderPageHeader"
 
 export function MetricCard({ label, value, helper, icon, tone }: { label: string; value: string; helper: string; icon: ReactNode; tone: ProviderTone }) {
   return (

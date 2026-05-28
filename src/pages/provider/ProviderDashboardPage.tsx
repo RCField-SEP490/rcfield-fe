@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 
 import { routePaths } from "@/app/router/route-paths"
-import { BranchList, MetricCard, Panel, PanelTitle, RevenueBars, tonePill } from "@/pages/provider/components/ProviderPrimitives"
+import { BranchList, MetricCard, Panel, PanelTitle, ProviderPageHeader, RevenueBars, tonePill } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import type { ProviderTone } from "@/pages/provider/data"
 import { cn } from "@/shared/lib/utils"
@@ -428,12 +428,11 @@ function OnboardingChecklist({
 
 function ProviderHeaderBlock({ onResetOnboarding }: { onResetOnboarding: () => void }) {
   return (
-    <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-      <div>
-        <h2 className="text-4xl font-bold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-5xl">Tổng quan hệ thống</h2>
-        <p className="mt-2 text-base font-medium text-[#444748]">Dữ liệu cập nhật hôm nay, 24 Thg 10 2024</p>
-      </div>
-      <div className="flex gap-3 flex-wrap">
+    <ProviderPageHeader
+      title="Tổng quan hệ thống"
+      description="Dữ liệu cập nhật hôm nay, 24 Thg 10 2024"
+      actions={
+        <>
         <Button 
           variant="outline" 
           onClick={onResetOnboarding}
@@ -448,8 +447,9 @@ function ProviderHeaderBlock({ onResetOnboarding }: { onResetOnboarding: () => v
           <Download className="size-5" />
           Xuất báo cáo
         </Button>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }
 

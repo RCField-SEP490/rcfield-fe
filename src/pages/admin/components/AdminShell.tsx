@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router"
 import type { ReactNode, ElementType } from "react"
 import { useState } from "react"
 import {
-  Award,
   BookOpen,
   Building2,
   CircleHelp,
@@ -12,7 +11,6 @@ import {
   Menu,
   MessageCircle,
   Package,
-  Scale,
   Settings2,
   Share2,
   Users,
