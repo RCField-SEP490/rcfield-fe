@@ -32,6 +32,7 @@ export const routePaths = {
   providerCafeDetail: "/provider/cafes/:cafeId",
   providerVehicles: "/provider/vehicles",
   providerBookings: "/provider/bookings",
+  providerSchedule: "/provider/schedule",
   providerSessions: "/provider/sessions",
   providerMenu: "/provider/menu",
   providerPackages: "/provider/packages",
