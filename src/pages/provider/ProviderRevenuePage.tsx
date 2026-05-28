@@ -1,5 +1,6 @@
-import { Bell, Car, Download, Filter, Landmark, Wallet, MapPinned } from "lucide-react"
+import { Car, Download, Filter, Landmark, Wallet, MapPinned } from "lucide-react"
 
+import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Button } from "@/shared/ui/button"
 
@@ -23,24 +24,7 @@ const transactions = [
 export function ProviderRevenuePage() {
   return (
     <ProviderShell contentClassName="mx-0 max-w-none px-0 py-0 md:px-0">
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-[#c4c7c8] bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6">
-        <div>
-          <h2 className="text-[32px] font-bold leading-tight tracking-tight text-[#1c1b1b]">Doanh thu & Rút tiền</h2>
-          <p className="mt-1 text-sm font-medium text-[#444748]">Quản lý dòng tiền và các khoản thanh toán.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="rounded-full text-[#444748] hover:bg-[#f1edec]" aria-label="Thông báo">
-            <Bell className="size-5" />
-          </Button>
-          <div className="size-10 overflow-hidden rounded-full border border-[#c4c7c8] bg-white">
-            <img
-              alt="Avatar"
-              className="h-full w-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9tptYWoLiFpiMQwQxABxTxNfHVkdFj8DLprZIx96_JpdoFqW-LfmzW0yrXvERuk4Bc0JSiStL-IAdqDFnASgvEZM3MNDRNoD_Xx8DC-albyTmvrJCFM67T8C629f0yFQp_e6Drwvt3XPxHv3xl2hUeMEECllu33L1YoGB6xxbAD-IxiTsP0lylibWcy-VD8eIUqheIU8nCJYDIrtCepHsMhCl8xzQb5tNkRrQIRjh_q1-wqh6z0gEe-UQ2cCpuk"
-            />
-          </div>
-        </div>
-      </header>
+      <ProviderPageHeader title="Doanh thu & Rút tiền" description="Quản lý dòng tiền và các khoản thanh toán." flush />
 
       <div className="mx-auto flex max-w-7xl flex-col gap-16 px-4 py-16 md:px-6">
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">

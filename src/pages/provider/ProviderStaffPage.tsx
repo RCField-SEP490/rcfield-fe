@@ -1,5 +1,6 @@
 import { Mail, MapPin, MoreHorizontal, Phone, Search, Settings, UserPlus } from "lucide-react"
 
+import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -50,22 +51,22 @@ const staffCards = [
 export function ProviderStaffPage() {
   return (
     <ProviderShell contentClassName="max-w-7xl">
-      <header className="mb-16 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h2 className="text-[32px] font-semibold leading-tight tracking-tight text-[#1c1b1b]">Quản lý nhân sự</h2>
-          <p className="mt-2 text-lg leading-relaxed text-[#444748]">Danh sách nhân viên, vai trò và trạng thái hoạt động.</p>
-        </div>
-        <div className="flex w-full items-center gap-3 md:w-auto">
-          <Button variant="outline" className="h-10 flex-1 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] hover:bg-[#f6f3f2] md:flex-none">
-            <Settings className="size-[18px]" />
-            Edit Permissions
-          </Button>
-          <Button className="h-10 flex-1 gap-2 rounded-lg bg-[#1c1b1b] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#fcf8f8] hover:bg-[#313030] md:flex-none">
-            <UserPlus className="size-[18px]" />
-            Invite New Staff
-          </Button>
-        </div>
-      </header>
+      <ProviderPageHeader
+        title="Quản lý nhân sự"
+        description="Danh sách nhân viên, vai trò và trạng thái hoạt động."
+        actions={
+          <>
+            <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] hover:bg-[#f6f3f2]">
+              <Settings className="size-[18px]" />
+              Edit Permissions
+            </Button>
+            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#fcf8f8] hover:bg-[#313030]">
+              <UserPlus className="size-[18px]" />
+              Invite New Staff
+            </Button>
+          </>
+        }
+      />
 
       <section className="mb-4 flex flex-col gap-2 rounded-lg border border-[#c4c7c8] bg-[#fcf8f8] p-2 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02)] md:flex-row">
         <div className="relative flex flex-grow items-center">

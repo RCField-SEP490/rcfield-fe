@@ -4,6 +4,8 @@ import { CheckCircle2, Unplug, Wifi } from "lucide-react"
 import { toast } from "sonner"
 import { channelApi } from "@/features/channels/api/channel.api"
 import { FacebookConnectButton } from "@/features/channels/components/FacebookConnectButton"
+import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
+import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 
 const DEMO_CAFE_ID = "00000000-0000-0000-0000-000000000001"
 
@@ -31,15 +33,10 @@ export function ChannelSettingsPage() {
   })
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Kênh Messenger</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Kết nối Facebook Page để AI tự động trả lời tin nhắn từ khách hàng.
-        </p>
-      </div>
+    <ProviderShell>
+      <ProviderPageHeader title="Kênh Messenger" description="Kết nối Facebook Page để AI tự động trả lời tin nhắn từ khách hàng." />
 
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
+      <div className="mx-auto max-w-2xl rounded-xl border bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-full bg-[#1877F2]/10">
             <svg className="size-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
@@ -111,6 +108,6 @@ export function ChannelSettingsPage() {
           )}
         </div>
       </div>
-    </div>
+    </ProviderShell>
   )
 }

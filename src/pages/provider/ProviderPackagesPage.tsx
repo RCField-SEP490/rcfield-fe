@@ -1,5 +1,6 @@
-import { Check, ChevronRight, Download, Edit, Plus, Search, Trash2, TrendingUp } from "lucide-react"
+import { Check, Download, Edit, Plus, Search, Trash2, TrendingUp } from "lucide-react"
 
+import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -50,37 +51,22 @@ const servicePackages = [
 export function ProviderPackagesPage() {
   return (
     <ProviderShell contentClassName="max-w-7xl py-8 md:py-8">
-      <header className="flex flex-col justify-between gap-4 border-b border-[#c4c7c8] pb-6 pt-4 md:flex-row md:items-center md:pt-0">
-        <div>
-          <nav aria-label="Breadcrumb" className="mb-2 flex items-center text-sm font-mono text-[#747878]">
-            <ol className="flex items-center gap-2">
-              <li>
-                <a className="transition-colors hover:text-[#5d5f5f]" href="#">
-                  Cài đặt
-                </a>
-              </li>
-              <li>
-                <ChevronRight className="size-4" />
-              </li>
-              <li aria-current="page" className="font-semibold text-[#1c1b1b]">
-                Quản lý Gói dịch vụ
-              </li>
-            </ol>
-          </nav>
-          <h2 className="text-[32px] font-semibold leading-tight text-[#1c1b1b]">Quản lý Gói & Bảng giá</h2>
-          <p className="mt-1 max-w-2xl text-base text-[#444748]">Cấu hình các gói dịch vụ thuê sân, thiết lập giá cả và các tiện ích đi kèm cho khách hàng.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 gap-2 rounded border-[#c4c7c8] bg-[#fcf8f8] px-4 text-sm font-semibold text-[#1c1b1b] shadow-sm hover:bg-[#e5e2e1]">
-            <Download className="size-[18px]" />
-            Xuất báo cáo
-          </Button>
-          <Button className="h-10 gap-2 rounded bg-[#1c1b1b] px-5 text-sm font-semibold text-white shadow-sm hover:bg-[#313030]">
-            <Plus className="size-[18px]" />
-            Tạo Gói Mới
-          </Button>
-        </div>
-      </header>
+      <ProviderPageHeader
+        title="Quản lý Gói & Bảng giá"
+        description="Cấu hình các gói dịch vụ thuê sân, thiết lập giá cả và các tiện ích đi kèm cho khách hàng."
+        actions={
+          <>
+            <Button variant="outline" className="h-10 gap-2 rounded border-[#c4c7c8] bg-[#fcf8f8] px-4 text-sm font-semibold text-[#1c1b1b] shadow-sm hover:bg-[#e5e2e1]">
+              <Download className="size-[18px]" />
+              Xuất báo cáo
+            </Button>
+            <Button className="h-10 gap-2 rounded bg-[#1c1b1b] px-5 text-sm font-semibold text-white shadow-sm hover:bg-[#313030]">
+              <Plus className="size-[18px]" />
+              Tạo Gói Mới
+            </Button>
+          </>
+        }
+      />
 
       <section className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
         <StatCard label="TỔNG SỐ GÓI">

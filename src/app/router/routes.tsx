@@ -55,6 +55,7 @@ import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscription
 import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
+import { ProviderConfigurationPage } from "@/pages/provider/ProviderConfigurationPage"
 import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
 import { FacebookOAuthCallbackPage } from "@/pages/FacebookOAuthCallbackPage"
 import { ProviderStatusGuard } from "@/shared/components/ProviderStatusGuard"
@@ -152,6 +153,7 @@ export const router = createBrowserRouter([
           { path: routePaths.providerPromotions, element: providerGuardRoute(<ProviderPromotionsPage />) },
           { path: routePaths.providerStaff, element: providerGuardRoute(<ProviderStaffPage />) },
           { path: routePaths.providerRevenue, element: providerGuardRoute(<ProviderRevenuePage />) },
+          { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
           { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },
           { path: routePaths.adminDashboard, element: guardRoute(<AdminDashboardPage />, ["admin"]) },
