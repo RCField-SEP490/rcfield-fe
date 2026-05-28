@@ -26,14 +26,14 @@ export function ProviderHeader({
       description={description}
       actions={
         <>
-        <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-          <CalendarClock className="size-5" />
-          Tháng này
-        </Button>
-        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-          {actionIcon}
-          {actionLabel}
-        </Button>
+          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+            <CalendarClock className="size-5" />
+            Tháng này
+          </Button>
+          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+            {actionIcon}
+            {actionLabel}
+          </Button>
         </>
       }
     />

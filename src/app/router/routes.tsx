@@ -47,6 +47,7 @@ import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
 import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
+import { ProviderVehicleDetailPage } from "@/pages/provider/ProviderVehicleDetailPage"
 import { ProviderBookingsPage } from "@/pages/provider/ProviderBookingsPage"
 import { ProviderSchedulePage } from "@/pages/provider/ProviderSchedulePage"
 import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
@@ -146,6 +147,7 @@ export const router = createBrowserRouter([
           { path: routePaths.providerCafes, element: providerGuardRoute(<ProviderCafesPage />) },
           { path: routePaths.providerCafeDetail, element: providerGuardRoute(<ProviderCafeDetailPage />) },
           { path: routePaths.providerVehicles, element: providerGuardRoute(<ProviderVehiclesPage />) },
+          { path: routePaths.providerVehicleDetail, element: providerGuardRoute(<ProviderVehicleDetailPage />) },
           { path: routePaths.providerBookings, element: providerGuardRoute(<ProviderBookingsPage />) },
           { path: routePaths.providerSchedule, element: providerGuardRoute(<ProviderSchedulePage />) },
           { path: routePaths.providerSessions, element: providerGuardRoute(<ProviderSessionsPage />) },
