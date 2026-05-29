@@ -4,8 +4,11 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
 
 export function ProviderStatusGuard({ children }: { children: React.ReactNode }) {
+  const impersonation = useAuthStore((state) => state.impersonation)
   const user = useAuthStore((state) => state.user)
   const role = useAuthStore((state) => state.role)
+
+  if (impersonation) return <>{children}</>
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [loading, setLoading] = useState(true)

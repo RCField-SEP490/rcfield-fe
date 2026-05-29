@@ -8,6 +8,8 @@ import type {
   PaymentRequestStatus,
   ProviderStatus,
   SubscriptionPlan,
+  CafeListItem,
+  ImpersonateResponse,
 } from "../types"
 
 interface PaginatedResponse<T> {
@@ -120,6 +122,16 @@ export const subscriptionApi = {
 
   getProviderMe: async (): Promise<{ success: boolean; data: ProviderDetail }> => {
     const res = await api.get<{ success: boolean; data: ProviderDetail }>("/v1/provider/me")
+    return res.data
+  },
+
+  getProviderCafes: async (id: string): Promise<CafeListItem[]> => {
+    const res = await api.get<{ data: CafeListItem[] }>(`/v1/admin/providers/${id}/cafes`)
+    return res.data.data
+  },
+
+  impersonateProvider: async (id: string): Promise<ImpersonateResponse> => {
+    const res = await api.post<ImpersonateResponse>(`/v1/admin/providers/${id}/impersonate`)
     return res.data
   },
 }

@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle, XCircle, ShieldOff, ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
@@ -28,6 +29,7 @@ const STATUS_COLORS: Record<ProviderStatus, string> = {
 }
 
 export function AdminProvidersPage() {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<ProviderStatus | "ALL">("ALL")
@@ -129,7 +131,7 @@ export function AdminProvidersPage() {
                   </tr>
                 ) : (
                   providers.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={p.id} className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => navigate(`/admin/providers/${p.id}`)}>
                       <td className="px-4 py-3 font-semibold text-slate-800">{p.business_name}</td>
                       <td className="px-4 py-3 text-slate-500">{p.email}</td>
                       <td className="px-4 py-3">
@@ -147,7 +149,7 @@ export function AdminProvidersPage() {
                       <td className="px-4 py-3 text-slate-400 text-xs">
                         {new Date(p.created_at).toLocaleDateString("vi-VN")}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5 justify-end">
                           {p.registration_status === "PENDING" && (
                             <>
