@@ -1,13 +1,26 @@
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import type { ReactNode } from "react"
-import { ArrowRight, CalendarClock, Download, Search, TrendingDown, TrendingUp } from "lucide-react"
+import { ArrowRight, CalendarClock, Download, LogOut, Search, TrendingDown, TrendingUp, UserRound } from "lucide-react"
 
+import { routePaths } from "@/app/router/route-paths"
+import { logoutSession } from "@/features/auth/api/auth.api"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import type { ProviderTone } from "@/pages/provider/data"
 import { branchDetailPath, branches } from "@/pages/provider/data"
+import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
 
 export function ProviderHeader({
   title,
@@ -26,14 +39,14 @@ export function ProviderHeader({
       description={description}
       actions={
         <>
-        <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-          <CalendarClock className="size-5" />
-          Tháng này
-        </Button>
-        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-          {actionIcon}
-          {actionLabel}
-        </Button>
+          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+            <CalendarClock className="size-5" />
+            Tháng này
+          </Button>
+          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+            {actionIcon}
+            {actionLabel}
+          </Button>
         </>
       }
     />
@@ -65,18 +78,91 @@ export function ProviderPageHeader({
       <div className="flex flex-wrap items-center gap-3 md:justify-end">
         {actions}
         <NotificationBell />
-        <div className="size-10 shrink-0 overflow-hidden rounded-full border border-[#c4c7c8] bg-white">
-          <img
-            alt="Avatar"
-            className="h-full w-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuC9tptYWoLiFpiMQwQxABxTxNfHVkdFj8DLprZIx96_JpdoFqW-LfmzW0yrXvERuk4Bc0JSiStL-IAdqDFnASgvEZM3MNDRNoD_Xx8DC-albyTmvrJCFM67T8C629f0yFQp_e6Drwvt3XPxHv3xl2hUeMEECllu33L1YoGB6xxbAD-IxiTsP0lylibWcy-VD8eIUqheIU8nCJYDIrtCepHsMhCl8xzQb5tNkRrQIRjh_q1-wqh6z0gEe-UQ2cCpuk"
-          />
-        </div>
+        <ProviderAccountMenu />
       </div>
     </header>
   )
 }
 ProviderPageHeader.displayName = "ProviderPageHeader"
+
+function ProviderAccountMenu() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+
+  const displayName = user?.fullName ?? "Provider"
+  const email = user?.email ?? "provider@rcfield.vn"
+
+  const handleLogout = async () => {
+    const storedAuth = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
+
+    if (storedAuth) {
+      try {
+        const auth = JSON.parse(storedAuth) as { accessToken?: string; refreshToken?: string }
+
+        if (auth.accessToken && auth.refreshToken) {
+          await logoutSession(auth.accessToken, auth.refreshToken)
+        }
+      } catch {
+        // Local logout still clears the app when the server session is already gone.
+      }
+    }
+
+    clearAuthenticated()
+    localStorage.removeItem(storageKeys.auth)
+    sessionStorage.removeItem(storageKeys.auth)
+    navigate(routePaths.login, { replace: true })
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="flex items-center gap-2 rounded-xl border border-orange-200 bg-white/90 py-1.5 pl-2 pr-3 shadow-sm transition hover:bg-white">
+          <Avatar>
+            <AvatarImage src={user?.avatarUrl} />
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
+          <span className="hidden max-w-32 truncate text-sm font-bold text-orange-900 xl:block">{displayName}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 rounded-xl p-2">
+        <DropdownMenuLabel className="px-2 py-2">
+          <div className="flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-950">{displayName}</p>
+              <p className="truncate text-xs text-slate-500">{email}</p>
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-2">
+          <Link to={routePaths.profile}>
+            <UserRound className="h-4 w-4" />
+            Hồ sơ cá nhân
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" className="cursor-pointer rounded-lg px-2 py-2" onClick={handleLogout}>
+          <LogOut className="h-4 w-4" />
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(-2)
+    .toUpperCase()
+}
 
 export function MetricCard({ label, value, helper, icon, tone }: { label: string; value: string; helper: string; icon: ReactNode; tone: ProviderTone }) {
   return (

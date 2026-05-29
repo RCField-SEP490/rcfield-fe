@@ -15,6 +15,7 @@ import { LoginPage } from "@/pages/auth/LoginPage"
 import { RegisterPage } from "@/pages/auth/RegisterPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
+import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
 import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
@@ -48,7 +49,9 @@ import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
 import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
+import { ProviderVehicleDetailPage } from "@/pages/provider/ProviderVehicleDetailPage"
 import { ProviderBookingsPage } from "@/pages/provider/ProviderBookingsPage"
+import { ProviderSchedulePage } from "@/pages/provider/ProviderSchedulePage"
 import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
 import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
 import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
@@ -106,6 +109,14 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        path: routePaths.profile,
+        element: (
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         element: (
           <ProtectedRoute>
             <RoleGuard allowedRoles={["customer"]}>
@@ -146,7 +157,9 @@ export const router = createBrowserRouter([
           { path: routePaths.providerCafes, element: providerGuardRoute(<ProviderCafesPage />) },
           { path: routePaths.providerCafeDetail, element: providerGuardRoute(<ProviderCafeDetailPage />) },
           { path: routePaths.providerVehicles, element: providerGuardRoute(<ProviderVehiclesPage />) },
+          { path: routePaths.providerVehicleDetail, element: providerGuardRoute(<ProviderVehicleDetailPage />) },
           { path: routePaths.providerBookings, element: providerGuardRoute(<ProviderBookingsPage />) },
+          { path: routePaths.providerSchedule, element: providerGuardRoute(<ProviderSchedulePage />) },
           { path: routePaths.providerSessions, element: providerGuardRoute(<ProviderSessionsPage />) },
           { path: routePaths.providerMenu, element: providerGuardRoute(<ProviderMenuPage />) },
           { path: routePaths.providerPackages, element: providerGuardRoute(<ProviderPackagesPage />) },

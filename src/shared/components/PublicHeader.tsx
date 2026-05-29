@@ -20,13 +20,13 @@ const navItems = [
   { label: "Khám phá", to: routePaths.cafes },
   { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
   { label: "Đơn đặt", to: routePaths.customerBookings },
-  { label: "Khách hàng", to: routePaths.customerProfile },
+  { label: "Khách hàng", to: routePaths.profile },
   { label: "Cơ sở", to: routePaths.providerCafes },
   { label: "Quản trị", to: routePaths.adminDashboard },
 ]
 
 const customerMenuItems = [
-  { label: "Hồ sơ cá nhân", to: routePaths.customerProfile, icon: UserRound },
+  { label: "Hồ sơ cá nhân", to: routePaths.profile, icon: UserRound },
   { label: "Lịch đặt sân", to: routePaths.customerBookings, icon: CalendarCheck },
   { label: "Xe cá nhân", to: routePaths.customerVehicles, icon: Car },
   { label: "Gói hội viên", to: routePaths.customerPackages, icon: Package },
@@ -40,7 +40,7 @@ export function PublicHeader() {
     if (item.to === routePaths.partnerLanding) {
       return !isAuthenticated || role === "provider"
     }
-    if (item.to === routePaths.customerBookings || item.to === routePaths.customerProfile) {
+    if (item.to === routePaths.customerBookings || item.to === routePaths.profile) {
       return isAuthenticated && role === "customer"
     }
     if (item.to === routePaths.providerCafes) {
@@ -136,7 +136,7 @@ export function PublicHeader() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <Button asChild variant="outline" className="rounded-xl text-xs font-semibold">
-                    <NavLink to={routePaths.customerProfile} onClick={() => setIsOpen(false)}>Hồ sơ</NavLink>
+                    <NavLink to={routePaths.profile} onClick={() => setIsOpen(false)}>Hồ sơ</NavLink>
                   </Button>
                   <Button asChild variant="outline" className="rounded-xl text-xs font-semibold">
                     <NavLink to={routePaths.customerBookings} onClick={() => setIsOpen(false)}>Lịch đặt</NavLink>

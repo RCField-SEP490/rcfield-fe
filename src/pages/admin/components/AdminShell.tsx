@@ -13,6 +13,7 @@ import {
   Package,
   Settings2,
   Share2,
+  UserRound,
   Users,
   X,
   Zap,
@@ -144,6 +145,10 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
         </nav>
 
         <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
+          <Link to={routePaths.profile} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]">
+            <UserRound className="size-5 text-[#747878]" />
+            Hồ sơ cá nhân
+          </Link>
           <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b] text-left">
             <CircleHelp className="size-5 text-[#747878]" />
             Hướng dẫn sử dụng
@@ -213,6 +218,10 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
             </nav>
 
             <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
+              <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2]">
+                <UserRound className="size-5" />
+                Hồ sơ cá nhân
+              </Link>
               <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 text-left">
                 <LogOut className="size-5" />
                 Đăng xuất
