@@ -1,11 +1,16 @@
 import { CalendarCheck, CreditCard, Medal, ShieldCheck } from "lucide-react"
 import { demoCustomerProfile } from "@/features/customer-booking/data/customer-booking-demo"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 
 export function ProfileSidebar() {
+  const user = useAuthStore((state) => state.user)
   const progress = Math.round((demoCustomerProfile.points / (demoCustomerProfile.points + demoCustomerProfile.pointsToNextTier)) * 100)
+  const fullName = user?.fullName ?? demoCustomerProfile.fullName
+  const email = user?.email ?? demoCustomerProfile.email
+  const avatarUrl = user?.avatarUrl ?? demoCustomerProfile.avatarUrl
 
   return (
     <div className="space-y-4">
@@ -13,15 +18,15 @@ export function ProfileSidebar() {
         <CardContent className="p-6 text-center">
           <div className="relative mx-auto h-24 w-24">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={demoCustomerProfile.avatarUrl} />
-              <AvatarFallback>NA</AvatarFallback>
+              <AvatarImage src={avatarUrl} />
+              <AvatarFallback>{getInitials(fullName)}</AvatarFallback>
             </Avatar>
             <Button size="icon-sm" variant="secondary" className="absolute bottom-0 right-0 rounded-full shadow">
               <ShieldCheck className="h-3.5 w-3.5" />
             </Button>
           </div>
-          <h2 className="mt-4 text-2xl font-semibold">{demoCustomerProfile.fullName}</h2>
-          <p className="text-sm text-muted-foreground">{demoCustomerProfile.email}</p>
+          <h2 className="mt-4 text-2xl font-semibold">{fullName}</h2>
+          <p className="text-sm text-muted-foreground">{email}</p>
           <div className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 text-sm">
             <div>
               <p className="text-muted-foreground">Ngày tham gia</p>
@@ -70,4 +75,13 @@ export function ProfileSidebar() {
       </div>
     </div>
   )
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(-2)
+    .toUpperCase()
 }

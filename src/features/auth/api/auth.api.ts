@@ -39,6 +39,9 @@ export type RegisterRequest = {
 export type AuthUser = {
   id: string
   email: string
+  fullName: string
+  phone?: string
+  avatarUrl?: string
   role: UserRole
   registrationStatus?: string
 }
@@ -57,9 +60,51 @@ type BackendLoginResponse = {
     user: {
       id: string
       email: string
+      fullName?: string
+      full_name?: string
+      phone?: string | null
+      avatarUrl?: string | null
+      avatar_url?: string | null
       role: BackendRole
       registration_status?: string
     }
+  }
+}
+
+export type BackendUserProfile = {
+  id: string
+  email: string
+  fullName: string
+  phone: string | null
+  avatarUrl: string | null
+  role: BackendRole
+}
+
+type BackendProfileResponse = {
+  success: boolean
+  data: BackendUserProfile
+}
+
+function mapBackendUser(user: BackendLoginResponse["data"]["user"], jwtUser: ReturnType<typeof getAuthFromJwt>): AuthUser {
+  return {
+    id: jwtUser.id || user.id,
+    email: jwtUser.email || user.email,
+    fullName: user.fullName ?? user.full_name ?? jwtUser.email ?? user.email,
+    phone: user.phone ?? undefined,
+    avatarUrl: user.avatarUrl ?? user.avatar_url ?? undefined,
+    role: jwtUser.role,
+    registrationStatus: user.registration_status,
+  }
+}
+
+function mapProfile(user: BackendUserProfile): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    phone: user.phone ?? undefined,
+    avatarUrl: user.avatarUrl ?? undefined,
+    role: user.role.toLowerCase() as UserRole,
   }
 }
 
@@ -71,12 +116,7 @@ export async function loginWithPassword(payload: LoginRequest): Promise<LoginRes
   return {
     accessToken: access_token,
     refreshToken: refresh_token,
-    user: {
-      id: jwtUser.id || user.id,
-      email: jwtUser.email || user.email,
-      role: jwtUser.role,
-      registrationStatus: user.registration_status,
-    },
+    user: mapBackendUser(user, jwtUser),
   }
 }
 
@@ -90,12 +130,7 @@ export async function loginWithGoogle(payload: GoogleLoginRequest): Promise<Logi
   return {
     accessToken: access_token,
     refreshToken: refresh_token,
-    user: {
-      id: jwtUser.id || user.id,
-      email: jwtUser.email || user.email,
-      role: jwtUser.role,
-      registrationStatus: user.registration_status,
-    },
+    user: mapBackendUser(user, jwtUser),
   }
 }
 
@@ -113,13 +148,26 @@ export async function registerWithPassword(payload: RegisterRequest): Promise<Lo
   return {
     accessToken: access_token,
     refreshToken: refresh_token,
-    user: {
-      id: jwtUser.id || user.id,
-      email: jwtUser.email || user.email,
-      role: jwtUser.role,
-      registrationStatus: user.registration_status,
-    },
+    user: mapBackendUser(user, jwtUser),
   }
+}
+
+export async function getMe(): Promise<AuthUser> {
+  const response = await api.get<BackendProfileResponse>("/v1/auth/me")
+  return mapProfile(response.data.data)
+}
+
+export async function updateMe(payload: {
+  fullName?: string
+  phone?: string | null
+  avatarUrl?: string | null
+}): Promise<AuthUser> {
+  const response = await api.patch<BackendProfileResponse>("/v1/auth/me", {
+    full_name: payload.fullName,
+    phone: payload.phone,
+    avatar_url: payload.avatarUrl,
+  })
+  return mapProfile(response.data.data)
 }
 
 export async function requestPasswordReset(payload: ForgotPasswordRequest): Promise<void> {

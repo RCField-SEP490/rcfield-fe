@@ -15,12 +15,25 @@ function AuthInitializer() {
       sessionStorage.getItem(storageKeys.auth)
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as { user?: { id: string; email: string; role: UserRole } }
+        const parsed = JSON.parse(raw) as {
+          user?: {
+            id: string
+            email: string
+            fullName?: string
+            phone?: string | null
+            avatarUrl?: string | null
+            role: UserRole
+            registrationStatus?: string
+          }
+        }
         if (parsed.user?.role) {
           setAuthenticated(parsed.user.role, {
             id: parsed.user.id,
-            fullName: parsed.user.email,
+            fullName: parsed.user.fullName ?? parsed.user.email,
             email: parsed.user.email,
+            phone: parsed.user.phone ?? undefined,
+            avatarUrl: parsed.user.avatarUrl ?? undefined,
+            registrationStatus: parsed.user.registrationStatus,
           })
         }
       } catch {
