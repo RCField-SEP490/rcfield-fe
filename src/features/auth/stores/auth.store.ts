@@ -6,6 +6,7 @@ export type AuthUser = {
   id: string
   fullName: string
   email: string
+  role?: UserRole
   phone?: string
   avatarUrl?: string
   registrationStatus?: string
@@ -17,6 +18,7 @@ type AuthState = {
   role: UserRole | null
   user: AuthUser | null
   setAuthenticated: (role: UserRole, user?: AuthUser) => void
+  setUser: (user: AuthUser) => void
   clearAuthenticated: () => void
   setInitialized: () => void
 }
@@ -27,6 +29,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   role: null,
   user: null,
   setAuthenticated: (role, user) => set({ isAuthenticated: true, role, user }),
+  setUser: (user) => set((state) => ({ user, role: user.role ?? state.role })),
   clearAuthenticated: () =>
     set((state) => {
       if (state.user?.email) {

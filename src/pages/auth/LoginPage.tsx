@@ -96,8 +96,11 @@ export function LoginPage() {
     (auth: LoginResponse, remember: boolean) => {
       setAuthenticated(auth.user.role, {
         id: auth.user.id,
-        fullName: auth.user.email,
+        fullName: auth.user.fullName,
         email: auth.user.email,
+        phone: auth.user.phone ?? undefined,
+        avatarUrl: auth.user.avatarUrl ?? undefined,
+        registrationStatus: auth.user.registrationStatus,
       })
 
       const authPayload = JSON.stringify({

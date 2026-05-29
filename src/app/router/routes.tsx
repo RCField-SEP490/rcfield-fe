@@ -15,6 +15,7 @@ import { LoginPage } from "@/pages/auth/LoginPage"
 import { RegisterPage } from "@/pages/auth/RegisterPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
+import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
 import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
@@ -105,6 +106,14 @@ export const router = createBrowserRouter([
           { path: routePaths.forgotPassword, element: <ForgotPasswordPage /> },
           { path: routePaths.resetPassword, element: <ResetPasswordPage /> },
         ],
+      },
+      {
+        path: routePaths.profile,
+        element: (
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        ),
       },
       {
         element: (
