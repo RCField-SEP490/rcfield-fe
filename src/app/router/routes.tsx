@@ -41,6 +41,7 @@ import { AdminSystemChatPage } from "@/pages/admin/AdminSystemChatPage"
 import { AdminKnowledgeBasePage } from "@/pages/admin/AdminKnowledgeBasePage"
 import { AdminChannelSettingsPage } from "@/pages/admin/AdminChannelSettingsPage"
 import { AdminProvidersPage } from "@/pages/admin/AdminProvidersPage"
+import { AdminProviderDetailPage } from "@/pages/admin/AdminProviderDetailPage"
 import { AdminPaymentRequestsPage } from "@/pages/admin/AdminPaymentRequestsPage"
 import { AdminSubscriptionPlansPage } from "@/pages/admin/AdminSubscriptionPlansPage"
 import { ProviderRegisterPage } from "@/pages/auth/ProviderRegisterPage"
@@ -180,6 +181,7 @@ export const router = createBrowserRouter([
           { path: routePaths.adminKnowledgeBase, element: guardRoute(<AdminKnowledgeBasePage />, ["admin"]) },
           { path: routePaths.adminChannels, element: guardRoute(<AdminChannelSettingsPage />, ["admin"]) },
           { path: routePaths.adminProviders, element: guardRoute(<AdminProvidersPage />, ["admin"]) },
+          { path: routePaths.adminProviderDetail, element: guardRoute(<AdminProviderDetailPage />, ["admin"]) },
           { path: routePaths.adminPaymentRequests, element: guardRoute(<AdminPaymentRequestsPage />, ["admin"]) },
           { path: routePaths.adminSubscriptionPlans, element: guardRoute(<AdminSubscriptionPlansPage />, ["admin"]) },
         ],

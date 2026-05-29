@@ -66,6 +66,22 @@ export interface ProviderDetail extends ProviderListItem {
   channel_limit: number | null
 }
 
+export interface CafeListItem {
+  id: string
+  name: string
+  address: string
+  status: string
+}
+
+export interface ImpersonateResponse {
+  token: string
+  expires_in: number
+  provider: {
+    id: string
+    business_name: string
+  }
+}
+
 export interface AdminPaymentRequestItem {
   id: string
   provider_id: string

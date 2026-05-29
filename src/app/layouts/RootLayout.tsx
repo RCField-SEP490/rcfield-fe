@@ -2,12 +2,14 @@ import { useEffect } from "react"
 import { Outlet } from "react-router"
 import { Toaster } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
+import type { ImpersonationState } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
 import type { UserRole } from "@/shared/types/common"
 
 function AuthInitializer() {
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const setInitialized = useAuthStore((state) => state.setInitialized)
+  const startImpersonation = useAuthStore((state) => state.startImpersonation)
 
   useEffect(() => {
     const raw =
@@ -40,8 +42,22 @@ function AuthInitializer() {
         // malformed storage — ignore
       }
     }
+
+    // Restore impersonation state if present
+    const impersonationRaw = localStorage.getItem(storageKeys.impersonation)
+    if (impersonationRaw) {
+      try {
+        const imp = JSON.parse(impersonationRaw) as ImpersonationState
+        if (imp.providerUserId && imp.providerName) {
+          startImpersonation(imp)
+        }
+      } catch {
+        localStorage.removeItem(storageKeys.impersonation)
+      }
+    }
+
     setInitialized()
-  }, [setAuthenticated, setInitialized])
+  }, [setAuthenticated, setInitialized, startImpersonation])
 
   return null
 }

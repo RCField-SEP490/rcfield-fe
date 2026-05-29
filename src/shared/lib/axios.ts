@@ -33,6 +33,16 @@ api.interceptors.response.use(
     const code = error?.response?.data?.code
 
     if (status === 401 || code === "TOKEN_INVALID" || code === "TOKEN_EXPIRED") {
+      const adminRaw = localStorage.getItem(storageKeys.adminAuth)
+      if (adminRaw) {
+        // Graceful exit from impersonation — restore admin session and reload
+        localStorage.setItem(storageKeys.auth, adminRaw)
+        localStorage.removeItem(storageKeys.adminAuth)
+        localStorage.removeItem(storageKeys.impersonation)
+        toast.error("Phiên hỗ trợ đã hết hạn", { description: "Đã khôi phục phiên quản trị viên." })
+        window.location.href = "/admin/providers"
+        return Promise.reject(error)
+      }
       useAuthStore.getState().clearAuthenticated()
       localStorage.removeItem(storageKeys.auth)
       sessionStorage.removeItem(storageKeys.auth)

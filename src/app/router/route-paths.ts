@@ -56,6 +56,7 @@ export const routePaths = {
   facebookOAuthCallback: "/provider/channels/facebook/callback",
   adminChannels: "/admin/channels",
   adminProviders: "/admin/providers",
+  adminProviderDetail: "/admin/providers/:providerId",
   adminPaymentRequests: "/admin/payment-requests",
   adminSubscriptionPlans: "/admin/subscription-plans",
   providerRegister: "/auth/register-provider",

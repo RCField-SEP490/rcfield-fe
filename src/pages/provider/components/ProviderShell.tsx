@@ -33,6 +33,7 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import { ProviderHeader, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
+import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner"
 
 type NavItem = { label: string; icon: ElementType; to: string }
 type NavGroup = { heading: string; items: NavItem[] }
@@ -107,8 +108,23 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
     return () => cancelAnimationFrame(frame)
   }, [location.pathname, mobileMenuOpen])
+  
+  // IMPERSONATION CANNOT DELETE
+  const impersonation = useAuthStore((state) => state.impersonation)
 
   const handleLogout = async () => {
+    // When impersonating, the logout button exits the impersonation session instead
+    if (impersonation) {
+      const adminRaw = localStorage.getItem(storageKeys.adminAuth)
+      if (adminRaw) {
+        localStorage.setItem(storageKeys.auth, adminRaw)
+        localStorage.removeItem(storageKeys.adminAuth)
+      }
+      localStorage.removeItem(storageKeys.impersonation)
+      window.location.href = `/admin/providers/${impersonation.providerUserId}`
+      return
+    }
+
     const storedAuth = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
 
     if (storedAuth) {
@@ -275,6 +291,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
       )}
 
       <main className="h-full w-full flex-1 overflow-y-auto bg-[#fff7ed] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
+      <main className="h-full w-full flex-1 overflow-y-auto bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
+        <ImpersonationBanner />
         {headerChildren}
         <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{contentChildren}</div>
       </main>
