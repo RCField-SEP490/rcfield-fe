@@ -193,3 +193,81 @@
     @apply font-sans;
   }
 }
+
+@layer components {
+  .provider-orange-theme {
+    color: #7c2d12;
+    --provider-orange-50: #fff7ed;
+    --provider-orange-100: #ffedd5;
+    --provider-orange-200: #fed7aa;
+    --provider-orange-600: #ea580c;
+    --provider-orange-700: #c2410c;
+    --provider-orange-800: #9a3412;
+    --provider-orange-900: #7c2d12;
+    --provider-orange-950: #431407;
+  }
+
+  .provider-orange-theme .text-\[\#1c1b1b\],
+  .provider-orange-theme .text-\[\#444748\],
+  .provider-orange-theme .text-\[\#5d5f5f\],
+  .provider-orange-theme .text-\[\#63646c\],
+  .provider-orange-theme h1,
+  .provider-orange-theme h2,
+  .provider-orange-theme h3,
+  .provider-orange-theme h4 {
+    color: var(--provider-orange-900) !important;
+  }
+
+  .provider-orange-theme .text-\[\#747878\],
+  .provider-orange-theme .placeholder\:text-\[\#747878\]::placeholder,
+  .provider-orange-theme .placeholder\:text-\[\#444748\]::placeholder {
+    color: color-mix(in srgb, var(--provider-orange-800) 70%, white) !important;
+  }
+
+  .provider-orange-theme .bg-\[\#1c1b1b\],
+  .provider-orange-theme .peer-checked\:bg-\[\#1c1b1b\]:is(:where(.peer):checked ~ *) {
+    background-color: var(--provider-orange-600) !important;
+  }
+
+  .provider-orange-theme .hover\:bg-\[\#313030\]:hover {
+    background-color: var(--provider-orange-700) !important;
+  }
+
+  .provider-orange-theme .hover\:text-\[\#1c1b1b\]:hover {
+    color: white !important;
+  }
+
+  .provider-orange-theme .bg-\[\#fcf8f8\],
+  .provider-orange-theme .bg-\[\#f6f3f2\],
+  .provider-orange-theme .bg-\[\#f1edec\],
+  .provider-orange-theme .bg-\[\#ebe7e7\],
+  .provider-orange-theme .bg-\[\#e5e2e1\],
+  .provider-orange-theme .bg-\[\#e2e1eb\] {
+    background-color: var(--provider-orange-50) !important;
+  }
+
+  .provider-orange-theme .border-\[\#c4c7c8\],
+  .provider-orange-theme .border-\[\#e5e2e1\],
+  .provider-orange-theme .border-\[\#747878\] {
+    border-color: var(--provider-orange-200) !important;
+  }
+
+  .provider-orange-theme .focus\:border-\[\#5d5f5f\]:focus,
+  .provider-orange-theme .focus\:ring-\[\#5d5f5f\]:focus,
+  .provider-orange-theme .focus\:ring-\[\#747878\]:focus {
+    border-color: var(--provider-orange-600) !important;
+    --tw-ring-color: color-mix(in srgb, var(--provider-orange-600) 35%, transparent) !important;
+  }
+
+  .provider-orange-theme .hover\:bg-\[\#e5e2e1\]:hover,
+  .provider-orange-theme .hover\:bg-\[\#f1edec\]:hover,
+  .provider-orange-theme .hover\:bg-\[\#f6f3f2\]:hover,
+  .provider-orange-theme .hover\:bg-\[\#ebe7e7\]:hover {
+    background-color: var(--provider-orange-100) !important;
+  }
+
+  .provider-orange-theme .hover\:border-\[\#5d5f5f\]:hover,
+  .provider-orange-theme .hover\:border-\[\#747878\]:hover {
+    border-color: var(--provider-orange-600) !important;
+  }
+}
