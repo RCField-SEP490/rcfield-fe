@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { mapCafeToExploreCafe } from "@/features/cafes/lib/cafe.mappers"
+import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
 import { CafeDetailContent } from "./components/CafeDetailContent"
@@ -38,6 +39,15 @@ export function CafeDetailPage() {
   const { data: cafeImages = [] } = useQuery({
     queryKey: cafeQueryKeys.images(resolvedCafe?.id),
     queryFn: () => cafeApi.listCafeImages(resolvedCafe!.id),
+    enabled: !!resolvedCafe?.id,
+  })
+  const {
+    data: cafeMenu,
+    isLoading: menuLoading,
+    isError: menuError,
+  } = useQuery({
+    queryKey: menuQueryKeys.list(resolvedCafe?.id, { page: 1, limit: 100, available: true }),
+    queryFn: () => menuApi.listMenuItems(resolvedCafe!.id, { page: 1, limit: 100, available: true }),
     enabled: !!resolvedCafe?.id,
   })
 
@@ -127,6 +137,7 @@ export function CafeDetailPage() {
                 setSelectedDate={setSelectedDate}
                 selectedSlotId={selectedSlotId}
                 setSelectedSlotId={setSelectedSlotId}
+                menuItems={cafeMenu?.data ?? []}
               />
             </div>
             <CafeVehiclesSection
@@ -135,6 +146,9 @@ export function CafeDetailPage() {
               onSelectVehicle={setSelectedVehicleId}
             />
             <CafeFnbSection
+              menuItems={cafeMenu?.data ?? []}
+              isLoading={menuLoading}
+              isError={menuError}
               fnbQuantities={fnbQuantities}
               onChangeFnb={setFnbQuantities}
             />
@@ -152,6 +166,7 @@ export function CafeDetailPage() {
               setSelectedDate={setSelectedDate}
               selectedSlotId={selectedSlotId}
               setSelectedSlotId={setSelectedSlotId}
+              menuItems={cafeMenu?.data ?? []}
             />
           </aside>
         </div>

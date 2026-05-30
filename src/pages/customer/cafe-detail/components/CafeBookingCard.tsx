@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import { CalendarDays, Clock3, PackageCheck, Repeat2, ShoppingBag, CarFront } from "lucide-react"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import { bookingCatalog } from "@/features/booking/data/booking-options"
+import type { MenuItem } from "@/features/menu/types"
 import type { Cafe } from "@/shared/data/explore-data"
 import { formatCurrency } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
@@ -12,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { buildCafeBookingPath } from "../cafe-detail-utils"
 import { buildDailySlots, DailySlotGrid } from "./DailySlotGrid"
-import { fnbMenuItems } from "@/features/customer-booking/data/customer-booking-demo"
 
 type PlanSummary = {
   label: string
@@ -43,6 +43,7 @@ type CafeBookingCardProps = {
   setSelectedDate: (date: string) => void
   selectedSlotId: string
   setSelectedSlotId: (slot: string) => void
+  menuItems: MenuItem[]
 }
 
 export function CafeBookingCard({
@@ -55,6 +56,7 @@ export function CafeBookingCard({
   setSelectedDate,
   selectedSlotId,
   setSelectedSlotId,
+  menuItems,
 }: CafeBookingCardProps) {
   const slots = useMemo(() => buildDailySlots(), [])
   const defaultSlot = slots.find((slot) => slot.status === "available")?.id ?? slots[0]?.id ?? "09:00"
@@ -69,8 +71,8 @@ export function CafeBookingCard({
   const vehiclePrice = selectedVehicle ? selectedVehicle.pricePerHour : 0
 
   const fnbTotal = Object.entries(fnbQuantities).reduce((sum, [id, qty]) => {
-    const item = fnbMenuItems.find((f) => f.id === id)
-    return sum + (item ? item.price * qty : 0)
+    const item = menuItems.find((menuItem) => menuItem.id === id)
+    return sum + (item ? Number(item.price) * qty : 0)
   }, 0)
 
   const fnbCount = Object.values(fnbQuantities).reduce((sum, qty) => sum + qty, 0)
