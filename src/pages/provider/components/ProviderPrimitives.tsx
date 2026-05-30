@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router"
 import type { ReactNode } from "react"
-import { ArrowRight, CalendarClock, Download, LogOut, Search, TrendingDown, TrendingUp, UserRound } from "lucide-react"
+import { ArrowRight, CalendarClock, Download, LogOut, Pencil, Power, Search, TrendingDown, TrendingUp, UserRound } from "lucide-react"
 
 import { routePaths } from "@/app/router/route-paths"
 import { logoutSession } from "@/features/auth/api/auth.api"
@@ -27,11 +27,13 @@ export function ProviderHeader({
   description,
   actionLabel,
   actionIcon = <Download className="size-5" />,
+  onAction,
 }: {
   title: string
   description: string
   actionLabel: string
   actionIcon?: ReactNode
+  onAction?: () => void
 }) {
   return (
     <ProviderPageHeader
@@ -43,7 +45,7 @@ export function ProviderHeader({
             <CalendarClock className="size-5" />
             Tháng này
           </Button>
-          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+          <Button type="button" onClick={onAction} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
             {actionIcon}
             {actionLabel}
           </Button>
@@ -241,7 +243,17 @@ export function RevenueBars() {
   )
 }
 
-export function BranchList({ compact = false, cafes = [] }: { compact?: boolean; cafes?: BackendCafe[] }) {
+export function BranchList({
+  compact = false,
+  cafes = [],
+  onEdit,
+  onToggleStatus,
+}: {
+  compact?: boolean
+  cafes?: BackendCafe[]
+  onEdit?: (cafe: BackendCafe) => void
+  onToggleStatus?: (cafe: BackendCafe) => void
+}) {
   if (cafes.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5 text-sm font-medium text-[#444748]">
@@ -267,12 +279,26 @@ export function BranchList({ compact = false, cafes = [] }: { compact?: boolean;
             {!compact ? <InlineMetric label="Đội xe" value="--" align="right" /> : null}
           </div>
           {!compact ? (
-            <Button asChild variant="ghost" className="mt-3 h-9 px-0 text-sm font-semibold text-[#1c1b1b] hover:bg-transparent">
-              <Link to={`/provider/cafes/${cafe.id}`}>
-                Xem chi tiết
-                <ArrowRight className="ml-1 size-4" />
-              </Link>
-            </Button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button asChild variant="ghost" className="h-9 px-0 pr-2 text-sm font-semibold text-[#1c1b1b] hover:bg-transparent">
+                <Link to={`/provider/cafes/${cafe.id}`}>
+                  Xem chi tiết
+                  <ArrowRight className="ml-1 size-4" />
+                </Link>
+              </Button>
+              {onEdit ? (
+                <Button type="button" variant="outline" onClick={() => onEdit(cafe)} className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] px-3 text-xs font-semibold">
+                  <Pencil className="size-3.5" />
+                  Sửa
+                </Button>
+              ) : null}
+              {onToggleStatus ? (
+                <Button type="button" variant="outline" onClick={() => onToggleStatus(cafe)} className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] px-3 text-xs font-semibold">
+                  <Power className="size-3.5" />
+                  {cafe.status === "SUSPENDED" ? "Kích hoạt" : "Tạm ngưng"}
+                </Button>
+              ) : null}
+            </div>
           ) : null}
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e5e2e1]">
             <div className="h-full rounded-full bg-[#1c1b1b]" style={{ width: "0%" }} />

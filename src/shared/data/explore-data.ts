@@ -17,16 +17,24 @@ export interface Vehicle {
 
 export interface Cafe {
   id: string
+  providerId?: string
   name: string
   slug: string
   rating: number
   reviewsCount: number
+  phone?: string | null
+  status?: "PENDING" | "ACTIVE" | "SUSPENDED"
   address: string
   district: string
   city: string
   image: string
   images?: string[]
   priceRange: string
+  slotDurationMinutes?: number
+  slotFeeRate?: number
+  maxConcurrentBookings?: number
+  minBookingNoticeMinutes?: number
+  byocCapacity?: number
   trackTypes: string[]
   features: string[]
   description: string

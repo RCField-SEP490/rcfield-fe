@@ -41,9 +41,10 @@ export function CafeDetailPage() {
     enabled: !!resolvedCafe?.id,
   })
 
+  const sourceCafe = cafeDetail ?? resolvedCafe
   const cafe = useMemo(
-    () => (cafeDetail ? mapCafeToExploreCafe(cafeDetail, cafeImages) : undefined),
-    [cafeDetail, cafeImages],
+    () => (sourceCafe ? mapCafeToExploreCafe(sourceCafe, cafeImages) : undefined),
+    [sourceCafe, cafeImages],
   )
 
   // Hoisted Booking Selections
@@ -68,11 +69,13 @@ export function CafeDetailPage() {
     )
   }
 
-  if (listError || detailError) {
+  if (listError || (detailError && !resolvedCafe)) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-slate-950">Không tải được dữ liệu cơ sở</h1>
-        <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+        <p className="mt-2 text-sm text-slate-500">
+          Vui lòng kiểm tra BE tại <span className="font-mono">localhost:3000</span> hoặc thử tải lại.
+        </p>
         <Button
           type="button"
           onClick={() => {

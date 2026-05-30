@@ -53,6 +53,25 @@ export type CafeListParams = {
   status?: CafeStatus
 }
 
+export type CafeUpsertBody = {
+  name: string
+  description?: string | null
+  phone?: string | null
+  cover_image_url?: string | null
+  address: string
+  district: string
+  city: string
+  latitude?: number | null
+  longitude?: number | null
+  operating_hours: CafeOperatingHours
+  track_types: TrackType[]
+  slot_duration_minutes: number
+  slot_fee_rate: number
+  max_concurrent_bookings: number
+  min_booking_notice_minutes: number
+  byoc_capacity: number
+}
+
 export type CafeListMeta = {
   total: number
   page: number
