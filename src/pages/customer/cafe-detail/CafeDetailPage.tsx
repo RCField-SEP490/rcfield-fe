@@ -1,18 +1,50 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { mapCafeToExploreCafe } from "@/features/cafes/lib/cafe.mappers"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
 import { CafeDetailContent } from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
-import { getCafeBySlug } from "./cafe-detail-utils"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 
 export function CafeDetailPage() {
   const { cafeSlug } = useParams()
-  const cafe = getCafeBySlug(cafeSlug)
+  const {
+    data: cafeList,
+    isLoading: listLoading,
+    isError: listError,
+    refetch: refetchList,
+  } = useQuery({
+    queryKey: cafeQueryKeys.list({ page: 1, limit: 100 }),
+    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100 }),
+  })
+
+  const resolvedCafe = cafeList?.data.find((item) => item.slug === cafeSlug)
+  const {
+    data: cafeDetail,
+    isLoading: detailLoading,
+    isError: detailError,
+    refetch: refetchDetail,
+  } = useQuery({
+    queryKey: cafeQueryKeys.detail(resolvedCafe?.id),
+    queryFn: () => cafeApi.getCafe(resolvedCafe!.id),
+    enabled: !!resolvedCafe?.id,
+  })
+  const { data: cafeImages = [] } = useQuery({
+    queryKey: cafeQueryKeys.images(resolvedCafe?.id),
+    queryFn: () => cafeApi.listCafeImages(resolvedCafe!.id),
+    enabled: !!resolvedCafe?.id,
+  })
+
+  const cafe = useMemo(
+    () => (cafeDetail ? mapCafeToExploreCafe(cafeDetail, cafeImages) : undefined),
+    [cafeDetail, cafeImages],
+  )
 
   // Hoisted Booking Selections
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
@@ -21,7 +53,41 @@ export function CafeDetailPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
   const [selectedSlotId, setSelectedSlotId] = useState("")
 
-  if (!cafe) {
+  if (listLoading || detailLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-6">
+        <div className="mb-4 h-4 w-72 animate-pulse rounded bg-slate-100" />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-5">
+            <div className="h-[360px] animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />
+          </div>
+          <div className="hidden h-[420px] animate-pulse rounded-2xl bg-slate-100 lg:block" />
+        </div>
+      </div>
+    )
+  }
+
+  if (listError || detailError) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-20 text-center">
+        <h1 className="text-2xl font-bold text-slate-950">Không tải được dữ liệu cơ sở</h1>
+        <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+        <Button
+          type="button"
+          onClick={() => {
+            if (listError) void refetchList()
+            if (detailError) void refetchDetail()
+          }}
+          className="mt-4 bg-slate-950 font-semibold text-white hover:bg-orange-600"
+        >
+          Tải lại
+        </Button>
+      </div>
+    )
+  }
+
+  if (!resolvedCafe || !cafe) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
         <h1 className="text-2xl font-bold text-slate-950">Không tìm thấy cơ sở</h1>

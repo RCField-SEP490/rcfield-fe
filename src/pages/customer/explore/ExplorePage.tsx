@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { getCafes } from "@/features/explore/api/explore.api"
 import type { Cafe } from "@/shared/data/explore-data"
@@ -13,19 +14,13 @@ import { useExploreFilters } from "./useExploreFilters"
 export function ExplorePage() {
   const navigate = useNavigate()
   const filters = useExploreFilters()
-  const [cafes, setCafes] = useState<Cafe[]>([])
   const [quickViewCafe, setQuickViewCafe] = useState<Cafe | null>(null)
   const [showMobileMap, setShowMobileMap] = useState(false)
 
-  useEffect(() => {
-    let mounted = true
-    getCafes(filters.params).then((items) => {
-      if (mounted) setCafes(items)
-    })
-    return () => {
-      mounted = false
-    }
-  }, [filters.params])
+  const { data: cafes = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ["explore", "cafes", filters.params],
+    queryFn: () => getCafes(filters.params),
+  })
 
   const filteredCafes = useMemo(() => filterCafes(cafes, filters.params), [cafes, filters.params])
 
@@ -84,7 +79,17 @@ export function ExplorePage() {
               <ExploreMapPanel cafes={filteredCafes} active onClose={() => setShowMobileMap(false)} onSelectCafe={setQuickViewCafe} />
             </div>
           )}
-          {filteredCafes.length === 0 ? (
+          {isLoading ? (
+            <ExploreLoadingState />
+          ) : isError ? (
+            <div className="rounded-xl border bg-card p-12 text-center shadow-sm">
+              <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+              <button type="button" onClick={() => void refetch()} className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+                Tải lại
+              </button>
+            </div>
+          ) : filteredCafes.length === 0 ? (
             <div className="rounded-xl border bg-card p-12 text-center shadow-sm">
               <h3 className="text-lg font-semibold">Không tìm thấy kết quả</h3>
               <p className="mt-2 text-sm text-muted-foreground">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
@@ -104,6 +109,28 @@ export function ExplorePage() {
       </div>
 
       <CafeQuickViewDialog cafe={quickViewCafe} onClose={() => setQuickViewCafe(null)} onBookNow={handleBookNow} />
+    </div>
+  )
+}
+
+function ExploreLoadingState() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="grid gap-4 rounded-xl border bg-card p-3 shadow-sm sm:grid-cols-[220px_1fr] lg:grid-cols-[230px_1fr_160px]">
+          <div className="h-44 animate-pulse rounded-lg bg-muted sm:h-full" />
+          <div className="space-y-3 py-2">
+            <div className="h-5 w-2/3 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-full animate-pulse rounded bg-muted" />
+            <div className="h-4 w-5/6 animate-pulse rounded bg-muted" />
+            <div className="flex gap-2">
+              <div className="h-6 w-20 animate-pulse rounded bg-muted" />
+              <div className="h-6 w-24 animate-pulse rounded bg-muted" />
+            </div>
+          </div>
+          <div className="h-28 animate-pulse rounded-lg bg-muted lg:h-full" />
+        </div>
+      ))}
     </div>
   )
 }

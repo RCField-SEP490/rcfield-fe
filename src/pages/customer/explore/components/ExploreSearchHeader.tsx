@@ -16,10 +16,9 @@ const cityOptions = [
 
 const trackOptions = [
   { value: "all", label: "Mọi loại sân" },
-  { value: "Drift", label: "Drift" },
-  { value: "Offroad", label: "Offroad" },
-  { value: "Touring", label: "Touring" },
-  { value: "Mini-Z", label: "Mini-Z" },
+  { value: "DRIFT", label: "Drift" },
+  { value: "OBSTACLE", label: "Obstacle" },
+  { value: "HILL_CLIMB", label: "Hill climb" },
 ]
 
 const priceOptions = [

@@ -141,6 +141,7 @@ export function AdminTable({ columns, rows }: { columns: string[]; rows: Array<A
 
 export function CafeStatusBadge({ status }: { status: string }) {
   const cnMap = {
+    ACTIVE: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50",
     APPROVED: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50",
     PENDING: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50",
     REJECTED: "border-red-200 bg-red-50 text-red-700 hover:bg-red-50",
@@ -149,7 +150,7 @@ export function CafeStatusBadge({ status }: { status: string }) {
 
   return (
     <Badge className={cn("border font-bold shadow-none rounded-md px-2 py-0.5", cnMap[status as keyof typeof cnMap] || "border-gray-200 bg-gray-50 text-gray-700")}>
-      {status === "APPROVED" && "Hoạt động"}
+      {(status === "APPROVED" || status === "ACTIVE") && "Hoạt động"}
       {status === "PENDING" && "Chờ duyệt"}
       {status === "REJECTED" && "Từ chối"}
       {status === "SUSPENDED" && "Tạm ngưng"}

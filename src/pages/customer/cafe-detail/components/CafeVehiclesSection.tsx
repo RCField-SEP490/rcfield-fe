@@ -22,6 +22,11 @@ export function CafeVehiclesSection({ cafe, selectedVehicleId, onSelectVehicle }
         </p>
       </div>
 
+      {cafe.availableVehicles.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-white p-5 text-sm font-medium text-slate-500">
+          Cơ sở này chưa công khai dữ liệu xe thuê.
+        </div>
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {cafe.availableVehicles.map((vehicle) => {
           const isSelected = vehicle.id === selectedVehicleId
@@ -89,6 +94,7 @@ export function CafeVehiclesSection({ cafe, selectedVehicleId, onSelectVehicle }
           )
         })}
       </div>
+      )}
     </section>
   )
 }

@@ -1,24 +1,21 @@
-import { useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { CarFront, Clock3, Heart, Images, MapPin, Share2, Star, WalletCards } from "lucide-react"
 import type { Cafe } from "@/shared/data/explore-data"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 
-const fallbackImages = [
-  "https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&q=80&w=1000",
-  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&q=80&w=1000",
-  "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=1000",
-  "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&q=80&w=1000",
-]
-
 export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
   const images = useMemo(
-    () => dedupeImages([cafe.image, ...(cafe.images ?? []), ...cafe.availableVehicles.map((vehicle) => vehicle.image), ...fallbackImages]),
+    () => dedupeImages([cafe.image, ...(cafe.images ?? []), ...cafe.availableVehicles.map((vehicle) => vehicle.image)]),
     [cafe],
   )
   const [activeImage, setActiveImage] = useState(images[0] ?? cafe.image)
   const galleryTiles = buildGalleryTiles(images, activeImage)
+
+  useEffect(() => {
+    setActiveImage(images[0] ?? cafe.image)
+  }, [cafe.image, images])
 
   return (
     <section className="space-y-4">
@@ -99,7 +96,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
 
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <QuickFact icon={WalletCards} label="Giá tham khảo" value={cafe.priceRange} />
-        <QuickFact icon={Clock3} label="Slot tiêu chuẩn" value="24 slot/ngày · 60 phút" />
+        <QuickFact icon={Clock3} label="Slot tiêu chuẩn" value="60 phút/slot" />
         <QuickFact icon={CarFront} label="Xe thuê" value={`${cafe.availableVehicles.length} mẫu sẵn sàng`} />
         <QuickFact icon={Star} label="Đánh giá" value={`${cafe.rating}/5 · ${cafe.reviewsCount} lượt`} />
       </div>

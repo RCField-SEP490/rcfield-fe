@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/shared/ui/card"
 export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQuickView: (cafe: Cafe) => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
   const cheapest = cafe.availableVehicles.length > 0 ? Math.min(...cafe.availableVehicles.map((v) => v.pricePerHour)) : 0
   const availCount = cafe.availableVehicles.filter((v) => v.status === "available").length
+  const priceLabel = cheapest > 0 ? formatCurrency(cheapest) : cafe.priceRange
 
   return (
     <Card className="overflow-hidden rounded-xl shadow-sm transition hover:border-primary/30 hover:shadow-md">
@@ -40,8 +41,8 @@ export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQ
         <div className="flex flex-row items-center justify-between gap-3 border-t pt-3 sm:col-span-2 lg:col-span-1 lg:flex-col lg:items-end lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
           <div className="text-left lg:text-right">
             <p className="text-xs text-muted-foreground">Từ</p>
-            <p className="text-xl font-semibold text-foreground">{formatCurrency(cheapest)}</p>
-            <p className="text-xs text-muted-foreground">/giờ</p>
+            <p className="text-xl font-semibold text-foreground">{priceLabel}</p>
+            <p className="text-xs text-muted-foreground">{cheapest > 0 ? "/giờ" : ""}</p>
           </div>
           <div className="flex gap-2 lg:w-full lg:flex-col">
             <Button type="button" variant="outline" onClick={() => onQuickView(cafe)} className="lg:w-full">Xem nhanh</Button>
