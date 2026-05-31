@@ -1,23 +1,20 @@
 import { Coffee, Plus, Minus } from "lucide-react"
-import { fnbMenuItems } from "@/features/customer-booking/data/customer-booking-demo"
+import type { MenuItem } from "@/features/menu/types"
 import { formatCurrency } from "@/shared/lib/format"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 import { cn } from "@/shared/lib/utils"
 
-const categoryCopy = {
-  drink: "Đồ uống",
-  snack: "Ăn nhẹ",
-  meal: "Combo",
-}
-
 type CafeFnbSectionProps = {
+  menuItems: MenuItem[]
+  isLoading?: boolean
+  isError?: boolean
   fnbQuantities: Record<string, number>
   onChangeFnb: (quantities: Record<string, number>) => void
 }
 
-export function CafeFnbSection({ fnbQuantities, onChangeFnb }: CafeFnbSectionProps) {
+export function CafeFnbSection({ menuItems, isLoading = false, isError = false, fnbQuantities, onChangeFnb }: CafeFnbSectionProps) {
   const handleIncrement = (id: string) => {
     const current = fnbQuantities[id] ?? 0
     onChangeFnb({
@@ -54,10 +51,26 @@ export function CafeFnbSection({ fnbQuantities, onChangeFnb }: CafeFnbSectionPro
         </Badge>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {fnbMenuItems.map((item) => {
+      {isLoading ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-64 animate-pulse rounded-xl bg-slate-100" />
+          ))}
+        </div>
+      ) : isError ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-500">
+          Không tải được menu đồ ăn từ API.
+        </div>
+      ) : menuItems.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-500">
+          Cơ sở này chưa mở bán đồ ăn hoặc thức uống.
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {menuItems.map((item) => {
           const quantity = fnbQuantities[item.id] ?? 0
           const hasSelected = quantity > 0
+          const categoryLabel = item.category ?? "Menu"
 
           return (
             <Card 
@@ -68,7 +81,13 @@ export function CafeFnbSection({ fnbQuantities, onChangeFnb }: CafeFnbSectionPro
               )}
             >
               <div className="aspect-[5/3] overflow-hidden bg-slate-100 relative">
-                <img src={item.image} alt={item.name} className="h-full w-full object-cover object-center" />
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover object-center" />
+                ) : (
+                  <div className="grid h-full place-items-center bg-slate-100 text-slate-400">
+                    <Coffee className="h-8 w-8" />
+                  </div>
+                )}
                 {hasSelected && (
                   <div className="absolute top-2 left-2 bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
                     Đã chọn {quantity}
@@ -81,7 +100,7 @@ export function CafeFnbSection({ fnbQuantities, onChangeFnb }: CafeFnbSectionPro
                     <h3 className="truncate text-sm font-bold text-slate-950">{item.name}</h3>
                     <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
                       <Coffee className="h-3.5 w-3.5" />
-                      {categoryCopy[item.category]}
+                      {categoryLabel}
                     </p>
                   </div>
                   <Badge variant={item.isAvailable ? "secondary" : "outline"} className="shrink-0 rounded-full text-[10px]">
@@ -90,7 +109,7 @@ export function CafeFnbSection({ fnbQuantities, onChangeFnb }: CafeFnbSectionPro
                 </div>
 
                 <div className="mt-auto flex items-center justify-between gap-3 border-t pt-3">
-                  <p className="text-sm font-bold text-slate-950">{formatCurrency(item.price)}</p>
+                  <p className="text-sm font-bold text-slate-950">{formatCurrency(Number(item.price))}</p>
                   
                   {hasSelected ? (
                     <div className="flex items-center gap-1.5 bg-slate-50 p-0.5 rounded-lg border border-slate-200 shadow-inner">
@@ -134,7 +153,8 @@ export function CafeFnbSection({ fnbQuantities, onChangeFnb }: CafeFnbSectionPro
             </Card>
           )
         })}
-      </div>
+        </div>
+      )}
     </section>
   )
 }

@@ -1,21 +1,320 @@
-import { ProviderSimpleResourcePage } from "@/pages/provider/components/ProviderSimpleResourcePage"
+import { useEffect, useMemo, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Coffee, Layers3, Pencil, Plus, Power, RefreshCw, Trash2, Utensils } from "lucide-react"
+import { toast } from "sonner"
+
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import type { BackendCafe } from "@/features/cafes/types"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
+import type { MenuItem, MenuListParams, MenuUpsertBody } from "@/features/menu/types"
+import { MetricCard, Panel, PanelTitle, ProviderHeader, ProviderTable, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
+import { ProviderMenuItemFormDialog } from "@/pages/provider/components/ProviderMenuItemFormDialog"
+import { ProviderShell } from "@/pages/provider/components/ProviderShell"
+import { Button } from "@/shared/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
+
+const availabilityOptions = [
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "true", label: "Đang bán" },
+  { value: "false", label: "Tạm ẩn" },
+] as const
 
 export function ProviderMenuPage() {
-  return (
-    <ProviderSimpleResourcePage
-      title="Quản lý menu đồ uống"
-      description="Bật/tắt món, kiểm soát tồn kho và gợi ý combo cho khách đặt lịch."
-      metrics={[
-        ["Món đang bán", "42", "8 combo active"],
-        ["Doanh thu F&B", "12.4M ₫", "+9.1% tháng này"],
-        ["Hết hàng", "3", "Cần nhập lại"],
-      ]}
-      columns={["Món", "Giá", "Cơ sở", "Tồn kho", "Ghi chú"]}
-      rows={[
-        ["Cold Brew Nitro", "55.000 ₫", "RC Quận 7", "Còn hàng", "Bán chạy"],
-        ["Combo Race Night", "120.000 ₫", "Toàn chuỗi", "Còn hàng", "Gợi ý đặt lịch"],
-        ["Matcha Latte", "49.000 ₫", "RC Thảo Điền", "Sắp hết", "12 ly"],
-      ]}
-    />
+  const queryClient = useQueryClient()
+  const providerId = useAuthStore((state) => state.user?.id)
+  const [selectedCafeId, setSelectedCafeId] = useState<string>("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [selectedAvailability, setSelectedAvailability] = useState<(typeof availabilityOptions)[number]["value"]>("all")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+
+  const cafesQuery = useQuery({
+    queryKey: cafeQueryKeys.list({ page: 1, limit: 100 }),
+    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100 }),
+  })
+
+  const cafes = (cafesQuery.data?.data ?? []).filter((cafe) => !providerId || cafe.providerId === providerId)
+  const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId) ?? null
+
+  useEffect(() => {
+    if (!selectedCafeId && cafes.length > 0) {
+      setSelectedCafeId(cafes[0].id)
+    }
+  }, [cafes, selectedCafeId])
+
+  const menuParams: MenuListParams = useMemo(
+    () => ({
+      page: 1,
+      limit: 100,
+      category: selectedCategory === "all" ? undefined : selectedCategory,
+      available: selectedAvailability === "all" ? undefined : selectedAvailability === "true",
+    }),
+    [selectedAvailability, selectedCategory],
   )
+
+  const menuQuery = useQuery({
+    queryKey: menuQueryKeys.list(selectedCafeId, menuParams),
+    queryFn: () => menuApi.listMenuItems(selectedCafeId, menuParams),
+    enabled: !!selectedCafeId,
+  })
+
+  const menuItems = menuQuery.data?.data ?? []
+  const categoryOptions = useMemo(() => {
+    const categories = new Set<string>()
+    for (const item of menuItems) {
+      if (item.category) categories.add(item.category)
+    }
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, "vi"))
+  }, [menuItems])
+
+  const availableCount = menuItems.filter((item) => item.isAvailable).length
+  const categoryCount = categoryOptions.length
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ cafeId, item, values }: { cafeId: string; item: MenuItem | null; values: MenuUpsertBody }) => {
+      debugProviderMenu("save start", { mode: item ? "update" : "create", cafeId, itemId: item?.id })
+      return item ? menuApi.updateMenuItem(cafeId, item.id, values) : menuApi.createMenuItem(cafeId, values)
+    },
+    onSuccess: async (savedItem) => {
+      await invalidateMenu(queryClient, savedItem.cafeId)
+      toast.success(editingItem ? "Đã cập nhật món" : "Đã tạo món", { description: savedItem.name })
+      setDialogOpen(false)
+      setEditingItem(null)
+    },
+    onError: (error) => {
+      debugProviderMenu("save failed", error)
+      toast.error("Không thể lưu món", { description: "Vui lòng kiểm tra dữ liệu hoặc quyền quản lý cơ sở." })
+    },
+  })
+
+  const toggleMutation = useMutation({
+    mutationFn: (item: MenuItem) => {
+      debugProviderMenu("toggle availability", { cafeId: item.cafeId, itemId: item.id, next: !item.isAvailable })
+      return menuApi.updateMenuItem(item.cafeId, item.id, { is_available: !item.isAvailable })
+    },
+    onSuccess: async (savedItem) => {
+      await invalidateMenu(queryClient, savedItem.cafeId)
+      toast.success(savedItem.isAvailable ? "Đã bật bán món" : "Đã tạm ẩn món", { description: savedItem.name })
+    },
+    onError: (error) => {
+      debugProviderMenu("toggle failed", error)
+      toast.error("Không thể cập nhật trạng thái món")
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (item: MenuItem) => {
+      debugProviderMenu("delete item", { cafeId: item.cafeId, itemId: item.id })
+      await menuApi.deleteMenuItem(item.cafeId, item.id)
+      return item
+    },
+    onSuccess: async (deletedItem) => {
+      await invalidateMenu(queryClient, deletedItem.cafeId)
+      toast.success("Đã xóa món", { description: deletedItem.name })
+    },
+    onError: (error) => {
+      debugProviderMenu("delete failed", error)
+      toast.error("Không thể xóa món")
+    },
+  })
+
+  const handleOpenCreate = () => {
+    setEditingItem(null)
+    setDialogOpen(true)
+  }
+
+  const handleOpenEdit = (item: MenuItem) => {
+    setEditingItem(item)
+    setDialogOpen(true)
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderHeader
+        title="Quản lý menu đồ ăn"
+        description="Tạo, sửa, bật/tắt và xóa mềm món ăn/uống theo từng cơ sở provider."
+        actionLabel="Thêm món"
+        actionIcon={<Plus className="size-5" />}
+        onAction={selectedCafeId ? handleOpenCreate : undefined}
+      />
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard label="Tổng món" value={`${menuItems.length}`} helper={selectedCafe?.name ?? "Chọn cơ sở"} icon={<Utensils />} tone="neutral" />
+        <MetricCard label="Đang bán" value={`${availableCount}`} helper={`${menuItems.length - availableCount} món tạm ẩn`} icon={<Coffee />} tone="success" />
+        <MetricCard label="Category" value={`${categoryCount}`} helper="Theo dữ liệu backend" icon={<Layers3 />} tone="info" />
+      </section>
+
+      <Panel className="mt-4">
+        <PanelTitle
+          title="Danh sách món"
+          subtitle={selectedCafe ? `Cơ sở: ${selectedCafe.name}` : "Chọn một cơ sở để quản lý menu"}
+          action={
+            <Button type="button" variant="outline" size="icon-sm" onClick={() => void menuQuery.refetch()} disabled={!selectedCafeId || menuQuery.isFetching} className="rounded-lg">
+              <RefreshCw className="size-4" />
+            </Button>
+          }
+        />
+
+        <div className="mb-5 grid gap-3 lg:grid-cols-3">
+          <Select value={selectedCafeId} onValueChange={setSelectedCafeId} disabled={cafesQuery.isLoading || cafes.length === 0}>
+            <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
+              <SelectValue placeholder="Chọn cơ sở" />
+            </SelectTrigger>
+            <SelectContent>
+              {cafes.map((cafe) => (
+                <SelectItem key={cafe.id} value={cafe.id}>
+                  {cafe.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả category</SelectItem>
+              {categoryOptions.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedAvailability} onValueChange={(value) => setSelectedAvailability(value as typeof selectedAvailability)}>
+            <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availabilityOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {cafesQuery.isLoading || menuQuery.isLoading ? (
+          <MenuSkeleton />
+        ) : cafesQuery.isError || menuQuery.isError ? (
+          <RetryState onRetry={() => void Promise.all([cafesQuery.refetch(), menuQuery.refetch()])} />
+        ) : cafes.length === 0 ? (
+          <EmptyState message="Provider chưa có cơ sở nào để quản lý menu." />
+        ) : menuItems.length === 0 ? (
+          <EmptyState message="Chưa có món nào theo bộ lọc hiện tại." />
+        ) : (
+          <ProviderTable
+            columns={["Món", "Category", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
+            rows={menuItems.map((item) => [
+              <MenuNameCell key={`${item.id}-name`} item={item} />,
+              item.category ?? "--",
+              formatMoney(item.price),
+              selectedCafe ? formatCafeName(selectedCafe) : "--",
+              <StatusBadge key={`${item.id}-status`} status={item.isAvailable ? "Đang bán" : "Tạm ẩn"} />,
+              <div key={`${item.id}-actions`} className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="icon-sm" onClick={() => handleOpenEdit(item)} className="rounded-lg border-[#c4c7c8]">
+                  <Pencil className="size-4" />
+                </Button>
+                <Button type="button" variant="outline" size="icon-sm" onClick={() => toggleMutation.mutate(item)} className="rounded-lg border-[#c4c7c8]">
+                  <Power className="size-4" />
+                </Button>
+                <Button type="button" variant="outline" size="icon-sm" onClick={() => deleteMutation.mutate(item)} className="rounded-lg border-red-200 text-red-600 hover:bg-red-50">
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>,
+            ])}
+          />
+        )}
+      </Panel>
+
+      <ProviderMenuItemFormDialog
+        open={dialogOpen}
+        item={editingItem}
+        isPending={saveMutation.isPending}
+        onOpenChange={(open) => {
+          setDialogOpen(open)
+          if (!open) setEditingItem(null)
+        }}
+        onSubmit={async (values) => {
+          if (!selectedCafeId) {
+            toast.error("Vui lòng chọn cơ sở trước khi lưu món")
+            return
+          }
+          await saveMutation.mutateAsync({ cafeId: selectedCafeId, item: editingItem, values })
+        }}
+      />
+    </ProviderShell>
+  )
+}
+
+function MenuNameCell({ item }: { item: MenuItem }) {
+  return (
+    <div className="flex min-w-64 items-center gap-3">
+      {item.imageUrl ? (
+        <img src={item.imageUrl} alt="" className="size-12 rounded-md object-cover" />
+      ) : (
+        <div className="grid size-12 place-items-center rounded-md bg-[#f6f3f2] text-[#747878]">
+          <Utensils className="size-5" />
+        </div>
+      )}
+      <div className="min-w-0">
+        <div className="truncate font-semibold text-[#1c1b1b]">{item.name}</div>
+        <div className="truncate text-xs font-medium text-[#747878]">{item.description ?? "Chưa có mô tả"}</div>
+      </div>
+    </div>
+  )
+}
+
+function MenuSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="h-16 animate-pulse rounded-lg bg-[#f6f3f2]" />
+      ))}
+    </div>
+  )
+}
+
+function RetryState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5">
+      <p className="text-sm font-semibold text-[#1c1b1b]">Không tải được dữ liệu menu.</p>
+      <Button type="button" variant="outline" onClick={onRetry} className="mt-3 rounded-lg border-[#c4c7c8]">
+        Tải lại
+      </Button>
+    </div>
+  )
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5 text-sm font-medium text-[#444748]">
+      {message}
+    </div>
+  )
+}
+
+function formatCafeName(cafe: BackendCafe) {
+  return `${cafe.name} · ${cafe.district}`
+}
+
+function formatMoney(value: MenuItem["price"]) {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue)) return "--"
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(numberValue)
+}
+
+function debugProviderMenu(message: string, details?: unknown) {
+  if (import.meta.env.DEV) {
+    console.debug(`[ProviderMenuPage] ${message}`, details ?? "")
+  }
+}
+
+async function invalidateMenu(queryClient: ReturnType<typeof useQueryClient>, cafeId: string) {
+  await queryClient.invalidateQueries({ queryKey: menuQueryKeys.list(cafeId) })
+  await queryClient.invalidateQueries({ queryKey: menuQueryKeys.all })
 }

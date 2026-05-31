@@ -5,9 +5,9 @@ import { ArrowRight, CalendarClock, Download, LogOut, Search, TrendingDown, Tren
 import { routePaths } from "@/app/router/route-paths"
 import { logoutSession } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
+import type { BackendCafe } from "@/features/cafes/types"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import type { ProviderTone } from "@/pages/provider/data"
-import { branchDetailPath, branches } from "@/pages/provider/data"
 import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
@@ -27,11 +27,13 @@ export function ProviderHeader({
   description,
   actionLabel,
   actionIcon = <Download className="size-5" />,
+  onAction,
 }: {
   title: string
   description: string
   actionLabel: string
   actionIcon?: ReactNode
+  onAction?: () => void
 }) {
   return (
     <ProviderPageHeader
@@ -43,7 +45,7 @@ export function ProviderHeader({
             <CalendarClock className="size-5" />
             Tháng này
           </Button>
-          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+          <Button type="button" onClick={onAction} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
             {actionIcon}
             {actionLabel}
           </Button>
@@ -241,38 +243,79 @@ export function RevenueBars() {
   )
 }
 
-export function BranchList({ compact = false }: { compact?: boolean }) {
+export function BranchList({
+  compact = false,
+  cafes = [],
+}: {
+  compact?: boolean
+  cafes?: BackendCafe[]
+}) {
+  if (cafes.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5 text-sm font-medium text-[#444748]">
+        Chưa có cơ sở nào từ dữ liệu hiện tại.
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3">
-      {branches.map((branch) => (
-        <div key={branch.name} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
+      {cafes.map((cafe) => {
+        const content = (
+          <>
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-[#1c1b1b]">{branch.name}</div>
-              <div className="mt-1 text-xs font-medium text-[#444748]">{branch.area}</div>
+              <div className="font-semibold text-[#1c1b1b]">{cafe.name}</div>
+              <div className="mt-1 text-xs font-medium text-[#444748]">{cafe.district}, {cafe.city}</div>
             </div>
-            <StatusBadge status={branch.status} />
+            <StatusBadge status={formatCafeStatus(cafe.status)} />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <InlineMetric label="Doanh thu" value={branch.revenue} />
-            <InlineMetric label="Lấp đầy" value={`${branch.occupancy}%`} align="right" />
-            {!compact ? <InlineMetric label="Đội xe" value={`${branch.vehicles} xe`} align="right" /> : null}
+            <InlineMetric label="Phí slot" value={formatSlotFee(cafe.slotFeeRate)} />
+            <InlineMetric label="Lấp đầy" value="--" align="right" />
+            {!compact ? <InlineMetric label="Đội xe" value="--" align="right" /> : null}
           </div>
           {!compact ? (
-            <Button asChild variant="ghost" className="mt-3 h-9 px-0 text-sm font-semibold text-[#1c1b1b] hover:bg-transparent">
-              <Link to={branchDetailPath(branch.name)}>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex h-9 items-center text-sm font-semibold text-[#1c1b1b]">
                 Xem chi tiết
-                <ArrowRight className="ml-1 size-4" />
-              </Link>
-            </Button>
+                <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
+            </div>
           ) : null}
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e5e2e1]">
-            <div className="h-full rounded-full bg-[#1c1b1b]" style={{ width: `${branch.occupancy}%` }} />
+            <div className="h-full rounded-full bg-[#1c1b1b]" style={{ width: "0%" }} />
           </div>
-        </div>
-      ))}
+          </>
+        )
+
+        return compact ? (
+          <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
+            {content}
+          </div>
+        ) : (
+          <Link
+            key={cafe.id}
+            to={`/provider/cafes/${cafe.id}`}
+            aria-label={`Xem chi tiết ${cafe.name}`}
+            className="group block rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1c1b1b]"
+          >
+            {content}
+          </Link>
+        )
+      })}
     </div>
   )
+}
+
+function formatCafeStatus(status: BackendCafe["status"]) {
+  return status === "ACTIVE" ? "Hoạt động" : status === "PENDING" ? "Chờ duyệt" : "Tạm ngưng"
+}
+
+function formatSlotFee(value: BackendCafe["slotFeeRate"]) {
+  const numberValue = Number(value)
+  if (!Number.isFinite(numberValue) || numberValue <= 0) return "--"
+  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(numberValue)
 }
 
 export function ProviderTable({ columns, rows }: { columns: string[]; rows: Array<Array<ReactNode>> }) {
