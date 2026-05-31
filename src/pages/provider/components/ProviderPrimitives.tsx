@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router"
 import type { ReactNode } from "react"
-import { ArrowRight, CalendarClock, Download, LogOut, Pencil, Power, Search, TrendingDown, TrendingUp, UserRound } from "lucide-react"
+import { ArrowRight, CalendarClock, Download, LogOut, Search, TrendingDown, TrendingUp, UserRound } from "lucide-react"
 
 import { routePaths } from "@/app/router/route-paths"
 import { logoutSession } from "@/features/auth/api/auth.api"
@@ -246,13 +246,9 @@ export function RevenueBars() {
 export function BranchList({
   compact = false,
   cafes = [],
-  onEdit,
-  onToggleStatus,
 }: {
   compact?: boolean
   cafes?: BackendCafe[]
-  onEdit?: (cafe: BackendCafe) => void
-  onToggleStatus?: (cafe: BackendCafe) => void
 }) {
   if (cafes.length === 0) {
     return (
@@ -264,8 +260,9 @@ export function BranchList({
 
   return (
     <div className="space-y-3">
-      {cafes.map((cafe) => (
-        <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
+      {cafes.map((cafe) => {
+        const content = (
+          <>
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <div className="font-semibold text-[#1c1b1b]">{cafe.name}</div>
@@ -280,31 +277,33 @@ export function BranchList({
           </div>
           {!compact ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button asChild variant="ghost" className="h-9 px-0 pr-2 text-sm font-semibold text-[#1c1b1b] hover:bg-transparent">
-                <Link to={`/provider/cafes/${cafe.id}`}>
-                  Xem chi tiết
-                  <ArrowRight className="ml-1 size-4" />
-                </Link>
-              </Button>
-              {onEdit ? (
-                <Button type="button" variant="outline" onClick={() => onEdit(cafe)} className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] px-3 text-xs font-semibold">
-                  <Pencil className="size-3.5" />
-                  Sửa
-                </Button>
-              ) : null}
-              {onToggleStatus ? (
-                <Button type="button" variant="outline" onClick={() => onToggleStatus(cafe)} className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] px-3 text-xs font-semibold">
-                  <Power className="size-3.5" />
-                  {cafe.status === "SUSPENDED" ? "Kích hoạt" : "Tạm ngưng"}
-                </Button>
-              ) : null}
+              <span className="inline-flex h-9 items-center text-sm font-semibold text-[#1c1b1b]">
+                Xem chi tiết
+                <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-0.5" />
+              </span>
             </div>
           ) : null}
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e5e2e1]">
             <div className="h-full rounded-full bg-[#1c1b1b]" style={{ width: "0%" }} />
           </div>
-        </div>
-      ))}
+          </>
+        )
+
+        return compact ? (
+          <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
+            {content}
+          </div>
+        ) : (
+          <Link
+            key={cafe.id}
+            to={`/provider/cafes/${cafe.id}`}
+            aria-label={`Xem chi tiết ${cafe.name}`}
+            className="group block rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1c1b1b]"
+          >
+            {content}
+          </Link>
+        )
+      })}
     </div>
   )
 }

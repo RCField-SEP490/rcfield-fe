@@ -47,6 +47,7 @@ export type CafeImage = {
 export type CafeListParams = {
   page?: number
   limit?: number
+  scope?: "managed"
   district?: string
   city?: string
   track_type?: TrackType

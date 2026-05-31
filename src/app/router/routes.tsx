@@ -47,6 +47,7 @@ import { AdminSubscriptionPlansPage } from "@/pages/admin/AdminSubscriptionPlans
 import { ProviderRegisterPage } from "@/pages/auth/ProviderRegisterPage"
 import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
+import { ProviderCafeCreatePage } from "@/pages/provider/ProviderCafeCreatePage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
 import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
 import { ProviderVehicleDetailPage } from "@/pages/provider/ProviderVehicleDetailPage"
@@ -155,6 +156,7 @@ export const router = createBrowserRouter([
           { path: routePaths.staffFnbOrders, element: guardRoute(<PlaceholderPage title="FnB orders" />, ["staff"]) },
           { path: routePaths.providerDashboard, element: providerGuardRoute(<ProviderDashboardPage />) },
           { path: routePaths.providerCafes, element: providerGuardRoute(<ProviderCafesPage />) },
+          { path: routePaths.providerCafeCreate, element: providerGuardRoute(<ProviderCafeCreatePage />) },
           { path: routePaths.providerCafeDetail, element: providerGuardRoute(<ProviderCafeDetailPage />) },
           { path: routePaths.providerVehicles, element: providerGuardRoute(<ProviderVehiclesPage />) },
           { path: routePaths.providerVehicleDetail, element: providerGuardRoute(<ProviderVehicleDetailPage />) },

@@ -30,6 +30,7 @@ export const routePaths = {
   staffFnbOrders: "/staff/fnb-orders",
   providerDashboard: "/provider/dashboard",
   providerCafes: "/provider/cafes",
+  providerCafeCreate: "/provider/cafes/new",
   providerCafeDetail: "/provider/cafes/:cafeId",
   providerVehicles: "/provider/vehicles",
   providerVehicleDetail: "/provider/vehicles/:vehicleId",
