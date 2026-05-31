@@ -91,12 +91,20 @@ export function ProviderPromotionsPage() {
   const [copyLoading, setCopyLoading] = useState(false)
   const [copying, setCopying] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Promotion | null>(null)
-  const [deleting] = useState(false)
+  const [selectedPromotionIds, setSelectedPromotionIds] = useState<string[]>([])
+  const [deleteMode, setDeleteMode] = useState<"single" | "selected" | "all" | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
   const copySourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
   const copySourceCafe = cafes.find((cafe) => cafe.id === copySourceCafeId)
   const copyPromotion = copySourcePromotions.find((promotion) => promotion.id === copyPromotionId)
+  const selectedPromotions = promotions.filter((promotion) => selectedPromotionIds.includes(promotion.id))
+  const allPromotionsSelected = promotions.length > 0 && selectedPromotionIds.length === promotions.length
+  const existingPromotionCodes = useMemo(
+    () => new Set(promotions.map((promotion) => promotion.code.toUpperCase())),
+    [promotions]
+  )
 
   const stats = useMemo(() => {
     const now = Date.now()
@@ -165,6 +173,9 @@ export function ProviderPromotionsPage() {
     setCopySourceCafeId("")
     setCopySourcePromotions([])
     setCopyPromotionId("")
+    setSelectedPromotionIds([])
+    setDeleteTarget(null)
+    setDeleteMode(null)
   }, [selectedCafeId])
 
   useEffect(() => {
@@ -236,6 +247,33 @@ export function ProviderPromotionsPage() {
     setCopySourceCafeId((current) => current || copySourceCafes[0]?.id || "")
   }
 
+  const togglePromotionSelection = (promotionId: string) => {
+    setSelectedPromotionIds((ids) =>
+      ids.includes(promotionId) ? ids.filter((id) => id !== promotionId) : [...ids, promotionId]
+    )
+  }
+
+  const toggleAllPromotions = () => {
+    setSelectedPromotionIds(allPromotionsSelected ? [] : promotions.map((promotion) => promotion.id))
+  }
+
+  const openSingleDelete = (promotion: Promotion) => {
+    setDeleteTarget(promotion)
+    setDeleteMode("single")
+  }
+
+  const openSelectedDelete = () => {
+    if (selectedPromotionIds.length === 0) return
+    setDeleteTarget(null)
+    setDeleteMode("selected")
+  }
+
+  const openDeleteAll = () => {
+    if (promotions.length === 0) return
+    setDeleteTarget(null)
+    setDeleteMode("all")
+  }
+
   const savePromotion = async () => {
     if (!selectedCafeId) return
     const validationMessage = getPromotionFormError(form)
@@ -293,8 +331,48 @@ export function ProviderPromotionsPage() {
     }
   }
 
+  const deletePromotions = async (ids: string[]) => {
+    if (!selectedCafeId) return
+    const uniqueIds = Array.from(new Set(ids))
+    if (uniqueIds.length === 0) return
+
+    try {
+      setDeleting(true)
+      await Promise.all(uniqueIds.map((id) => promotionApi.remove(selectedCafeId, id)))
+      setPromotions((items) => items.filter((item) => !uniqueIds.includes(item.id)))
+      setSelectedPromotionIds((items) => items.filter((id) => !uniqueIds.includes(id)))
+      toast.success(uniqueIds.length === 1 ? "Đã xóa ưu đãi" : `Đã xóa ${uniqueIds.length} mã ưu đãi`)
+      setDeleteTarget(null)
+      setDeleteMode(null)
+    } catch (error) {
+      toast.error("Không xóa được ưu đãi", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const confirmDelete = () => {
+    if (deleteMode === "single" && deleteTarget) {
+      void deletePromotions([deleteTarget.id])
+      return
+    }
+    if (deleteMode === "selected") {
+      void deletePromotions(selectedPromotionIds)
+      return
+    }
+    if (deleteMode === "all") {
+      void deletePromotions(promotions.map((promotion) => promotion.id))
+    }
+  }
+
   const copyPromotionToSelectedCafe = async () => {
     if (!selectedCafeId || !copyPromotion) return
+    if (existingPromotionCodes.has(copyPromotion.code.toUpperCase())) {
+      toast.error("Mã ưu đãi này đã có ở chi nhánh đang chọn")
+      return
+    }
 
     try {
       setCopying(true)
@@ -396,6 +474,7 @@ export function ProviderPromotionsPage() {
               sourceCafeId={copySourceCafeId}
               sourceCafe={copySourceCafe}
               promotions={copySourcePromotions}
+              existingCodes={existingPromotionCodes}
               selectedPromotionId={copyPromotionId}
               loading={copyLoading}
               copying={copying}
@@ -443,13 +522,36 @@ export function ProviderPromotionsPage() {
               </div>
             ) : (
               <div className="grid gap-3">
+                <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
+                    <input
+                      type="checkbox"
+                      checked={allPromotionsSelected}
+                      onChange={toggleAllPromotions}
+                      className="size-4 rounded border-[#c4c7c8] accent-orange-600"
+                    />
+                    Chọn tất cả ({selectedPromotionIds.length}/{promotions.length})
+                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50">
+                      <Trash2 className="mr-2 size-4" />
+                      Xóa đã chọn
+                    </Button>
+                    <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50">
+                      <Trash2 className="mr-2 size-4" />
+                      Xóa hết
+                    </Button>
+                  </div>
+                </div>
                 {promotions.map((promotion) => (
                   <PromotionRow
                     key={promotion.id}
                     promotion={promotion}
+                    selected={selectedPromotionIds.includes(promotion.id)}
+                    onSelect={() => togglePromotionSelection(promotion.id)}
                     onEdit={() => startEdit(promotion)}
                     onToggle={() => void toggleActive(promotion)}
-                    onDelete={() => setDeleteTarget(promotion)}
+                    onDelete={() => openSingleDelete(promotion)}
                   />
                 ))}
               </div>
@@ -459,13 +561,29 @@ export function ProviderPromotionsPage() {
       </section>
 
       <DeleteConfirmationModal
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) void deletePromotion(deleteTarget)
+        isOpen={!!deleteMode}
+        onClose={() => {
+          if (deleting) return
+          setDeleteTarget(null)
+          setDeleteMode(null)
         }}
+        onConfirm={confirmDelete}
         offerData={
-          deleteTarget
+          deleteMode === "selected"
+            ? {
+                code: `Xóa ${selectedPromotions.length} mã đã chọn`,
+                description: `Các mã này sẽ bị xóa khỏi ${selectedCafe?.name ?? "chi nhánh đang chọn"}.`,
+                details: "Kiểm tra lại danh sách trước khi xác nhận.",
+                items: selectedPromotions.map((promotion) => promotionToDeleteItem(promotion)),
+              }
+            : deleteMode === "all"
+              ? {
+                  code: `Xóa tất cả ${promotions.length} mã`,
+                  description: `Toàn bộ mã ưu đãi của ${selectedCafe?.name ?? "chi nhánh đang chọn"} sẽ bị xóa.`,
+                  details: "Thao tác này áp dụng cho toàn bộ danh sách hiện tại.",
+                  items: promotions.map((promotion) => promotionToDeleteItem(promotion)),
+                }
+              : deleteTarget
             ? {
                 code: deleteTarget.code,
                 status: getPromotionStatus(deleteTarget).label,
@@ -649,6 +767,7 @@ function CopyPromotionPanel({
   sourceCafeId,
   sourceCafe,
   promotions,
+  existingCodes,
   selectedPromotionId,
   loading,
   copying,
@@ -662,6 +781,7 @@ function CopyPromotionPanel({
   sourceCafeId: string
   sourceCafe?: ProviderCafe
   promotions: Promotion[]
+  existingCodes: Set<string>
   selectedPromotionId: string
   loading: boolean
   copying: boolean
@@ -671,6 +791,7 @@ function CopyPromotionPanel({
   onCopy: () => void
 }) {
   const selectedPromotion = promotions.find((promotion) => promotion.id === selectedPromotionId)
+  const selectedPromotionExists = selectedPromotion ? existingCodes.has(selectedPromotion.code.toUpperCase()) : false
 
   return (
     <Panel className="border-orange-200">
@@ -709,11 +830,14 @@ function CopyPromotionPanel({
             {loading ? <option>Đang tải mã ưu đãi...</option> : null}
             {!loading && promotions.length === 0 ? <option>Chi nhánh này chưa có mã</option> : null}
             {!loading
-              ? promotions.map((promotion) => (
-                  <option key={promotion.id} value={promotion.id}>
-                    {promotion.code} - {formatDiscount(promotion)}
+              ? promotions.map((promotion) => {
+                  const exists = existingCodes.has(promotion.code.toUpperCase())
+                  return (
+                  <option key={promotion.id} value={promotion.id} disabled={exists}>
+                    {promotion.code} - {formatDiscount(promotion)}{exists ? " (đã có)" : ""}
                   </option>
-                ))
+                  )
+                })
               : null}
           </select>
         </Field>
@@ -738,12 +862,17 @@ function CopyPromotionPanel({
           <p className="mt-3 text-xs font-bold uppercase text-[#747878]">
             {formatDiscount(selectedPromotion)} · {applicableLabel(selectedPromotion.applicableTo)}
           </p>
+          {selectedPromotionExists ? (
+            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+              Mã này đã có ở chi nhánh đích, vui lòng chọn mã khác.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
       <div className="mt-6 flex justify-end gap-3 border-t border-[#e5e2e1] pt-5">
         <Button variant="outline" onClick={onCancel} className="rounded-lg bg-white">Hủy</Button>
-        <Button disabled={copying || !selectedPromotionId || !targetCafe} onClick={onCopy} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+        <Button disabled={copying || !selectedPromotionId || !targetCafe || selectedPromotionExists} onClick={onCopy} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
           <Copy className="mr-2 size-4" />
           {copying ? "Đang thêm..." : "Thêm vào chi nhánh"}
         </Button>
@@ -763,11 +892,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function PromotionRow({
   promotion,
+  selected,
+  onSelect,
   onEdit,
   onToggle,
   onDelete,
 }: {
   promotion: Promotion
+  selected: boolean
+  onSelect: () => void
   onEdit: () => void
   onToggle: () => void
   onDelete: () => void
@@ -775,7 +908,18 @@ function PromotionRow({
   const status = getPromotionStatus(promotion)
 
   return (
-    <article className="grid gap-4 rounded-lg border border-[#e5e2e1] bg-white p-4 transition hover:bg-[#fcf8f8] lg:grid-cols-[1.2fr_1fr_1fr_auto] lg:items-center">
+    <article className={cn(
+      "grid gap-4 rounded-lg border bg-white p-4 transition hover:bg-[#fcf8f8] lg:grid-cols-[auto_1.2fr_1fr_1fr_auto] lg:items-center",
+      selected ? "border-orange-300 bg-orange-50/60" : "border-[#e5e2e1]"
+    )}>
+      <label className="flex items-center gap-2 self-start lg:self-center" aria-label={`Chọn mã ${promotion.code}`}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onSelect}
+          className="size-4 rounded border-[#c4c7c8] accent-orange-600"
+        />
+      </label>
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-[#f6f3f2] px-2.5 py-1 font-mono text-sm font-extrabold text-[#1c1b1b]">
@@ -845,6 +989,17 @@ function promotionToPayload(promotion: Promotion): PromotionPayload {
     starts_at: promotion.startsAt,
     expires_at: promotion.expiresAt,
     is_active: promotion.isActive,
+  }
+}
+
+function promotionToDeleteItem(promotion: Promotion) {
+  return {
+    id: promotion.id,
+    code: promotion.code,
+    status: getPromotionStatus(promotion).label,
+    statusClassName: getPromotionStatus(promotion).className,
+    description: promotion.description || "Chưa có mô tả",
+    details: `${formatDiscount(promotion)} · Đã dùng ${promotion.usesCount}/${promotion.maxUses ?? "∞"}`,
   }
 }
 

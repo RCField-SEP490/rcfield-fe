@@ -5,6 +5,7 @@ import { cn } from "@/shared/lib/utils"
 
 export function DeleteConfirmationModal({ isOpen, onClose, onConfirm, offerData }) {
   if (!isOpen || !offerData) return null
+  const items = Array.isArray(offerData.items) ? offerData.items : []
 
   const handleConfirm = () => {
     onConfirm()
@@ -41,23 +42,47 @@ export function DeleteConfirmationModal({ isOpen, onClose, onConfirm, offerData 
         </div>
 
         <div className="px-5 py-5">
-          <div className="rounded-xl border border-red-100 bg-red-50/70 p-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-md bg-white px-2.5 py-1 font-mono text-sm font-extrabold text-[#1c1b1b] shadow-sm">
-                {offerData.code}
-              </span>
-              {offerData.status ? (
-                <span className={cn("rounded-full border px-2.5 py-1 text-xs font-bold", offerData.statusClassName)}>
-                  {offerData.status}
-                </span>
-              ) : null}
-            </div>
-            {offerData.description ? (
-              <p className="mt-3 text-sm font-semibold leading-6 text-[#444748]">{offerData.description}</p>
-            ) : null}
-            {offerData.details ? (
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#747878]">{offerData.details}</p>
-            ) : null}
+          <div className="max-h-72 overflow-y-auto rounded-xl border border-red-100 bg-red-50/70 p-4">
+            {items.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm font-extrabold text-[#1c1b1b]">{offerData.code}</p>
+                {items.map((item) => (
+                  <div key={item.id ?? item.code} className="rounded-lg border border-red-100 bg-white p-3 shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-[#f6f3f2] px-2.5 py-1 font-mono text-sm font-extrabold text-[#1c1b1b]">
+                        {item.code}
+                      </span>
+                      {item.status ? (
+                        <span className={cn("rounded-full border px-2.5 py-1 text-xs font-bold", item.statusClassName)}>
+                          {item.status}
+                        </span>
+                      ) : null}
+                    </div>
+                    {item.description ? <p className="mt-2 text-sm font-semibold text-[#444748]">{item.description}</p> : null}
+                    {item.details ? <p className="mt-2 text-xs font-bold uppercase tracking-wide text-[#747878]">{item.details}</p> : null}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-white px-2.5 py-1 font-mono text-sm font-extrabold text-[#1c1b1b] shadow-sm">
+                    {offerData.code}
+                  </span>
+                  {offerData.status ? (
+                    <span className={cn("rounded-full border px-2.5 py-1 text-xs font-bold", offerData.statusClassName)}>
+                      {offerData.status}
+                    </span>
+                  ) : null}
+                </div>
+                {offerData.description ? (
+                  <p className="mt-3 text-sm font-semibold leading-6 text-[#444748]">{offerData.description}</p>
+                ) : null}
+                {offerData.details ? (
+                  <p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#747878]">{offerData.details}</p>
+                ) : null}
+              </>
+            )}
           </div>
         </div>
 
