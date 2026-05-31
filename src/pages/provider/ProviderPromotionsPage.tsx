@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import {
+  AlertTriangle,
   BadgePercent,
   Building2,
   CalendarClock,
@@ -21,10 +22,22 @@ import {
   type PromotionPayload,
   type ProviderCafe,
 } from "@/features/promotions/api/promotion.api"
+import { DeleteConfirmationModal } from "@/pages/provider/components/DeleteConfirmationModal"
 import { MetricCard, Panel, PanelTitle, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { cn } from "@/shared/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -77,6 +90,8 @@ export function ProviderPromotionsPage() {
   const [copyPromotionId, setCopyPromotionId] = useState("")
   const [copyLoading, setCopyLoading] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Promotion | null>(null)
+  const [deleting] = useState(false)
 
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
   const copySourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
@@ -266,12 +281,11 @@ export function ProviderPromotionsPage() {
 
   const deletePromotion = async (promotion: Promotion) => {
     if (!selectedCafeId) return
-    if (!window.confirm(`Xóa ưu đãi ${promotion.code}?`)) return
-
     try {
       await promotionApi.remove(selectedCafeId, promotion.id)
       setPromotions((items) => items.filter((item) => item.id !== promotion.id))
       toast.success("Đã xóa ưu đãi")
+      setDeleteTarget(null)
     } catch (error) {
       toast.error("Không xóa được ưu đãi", {
         description: getErrorMessage(error),
@@ -400,15 +414,15 @@ export function ProviderPromotionsPage() {
               title={selectedCafe ? `Danh sách ưu đãi - ${selectedCafe.name}` : "Danh sách ưu đãi"}
               subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
               action={
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 rounded-lg bg-white">
+                <div className="flex flex-nowrap items-center gap-2">
+                  <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white">
                     <Copy className="mr-2 size-4" />
                     Thêm từ chi nhánh
                   </Button>
-                <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 rounded-lg bg-white">
-                  <Plus className="mr-2 size-4" />
-                  Thêm mã
-                </Button>
+                  <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white">
+                    <Plus className="mr-2 size-4" />
+                    Thêm mã
+                  </Button>
                 </div>
               }
             />
@@ -435,7 +449,7 @@ export function ProviderPromotionsPage() {
                     promotion={promotion}
                     onEdit={() => startEdit(promotion)}
                     onToggle={() => void toggleActive(promotion)}
-                    onDelete={() => void deletePromotion(promotion)}
+                    onDelete={() => setDeleteTarget(promotion)}
                   />
                 ))}
               </div>
@@ -443,6 +457,80 @@ export function ProviderPromotionsPage() {
           </Panel>
         </div>
       </section>
+
+      <DeleteConfirmationModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) void deletePromotion(deleteTarget)
+        }}
+        offerData={
+          deleteTarget
+            ? {
+                code: deleteTarget.code,
+                status: getPromotionStatus(deleteTarget).label,
+                statusClassName: getPromotionStatus(deleteTarget).className,
+                description: deleteTarget.description || "Chưa có mô tả",
+                details: `${formatDiscount(deleteTarget)} · Đã dùng ${deleteTarget.usesCount}/${deleteTarget.maxUses ?? "∞"}`,
+              }
+            : null
+        }
+      />
+
+      <AlertDialog open={false} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent className="max-w-md rounded-xl border border-[#e5e2e1] bg-white p-0 text-[#1c1b1b]">
+          <div className="p-5">
+            <AlertDialogHeader className="place-items-start text-left">
+              <AlertDialogMedia className="mb-3 rounded-lg bg-red-50 text-red-600">
+                <AlertTriangle className="size-6" />
+              </AlertDialogMedia>
+              <AlertDialogTitle className="text-xl font-extrabold">
+                Xóa mã ưu đãi?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="mt-2 text-sm font-medium leading-6 text-[#5d5f5f]">
+                Mã này sẽ bị xóa khỏi chi nhánh đang chọn. Nếu mã đã phát sinh lượt dùng, hệ thống sẽ không cho xóa và bạn nên tắt hoạt động để giữ lịch sử.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            {deleteTarget ? (
+              <div className="mt-5 rounded-lg border border-red-100 bg-red-50/60 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-white px-2.5 py-1 font-mono text-sm font-extrabold text-[#1c1b1b]">
+                    {deleteTarget.code}
+                  </span>
+                  <Badge className={cn("border font-bold", getPromotionStatus(deleteTarget).className)}>
+                    {getPromotionStatus(deleteTarget).label}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-sm font-semibold text-[#444748]">
+                  {deleteTarget.description || "Chưa có mô tả"}
+                </p>
+                <p className="mt-2 text-xs font-bold uppercase text-[#747878]">
+                  {formatDiscount(deleteTarget)} · Đã dùng {deleteTarget.usesCount}/{deleteTarget.maxUses ?? "∞"}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <AlertDialogFooter className="m-0 rounded-b-xl border-t border-[#e5e2e1] bg-[#fcf8f8] px-5 py-4">
+            <AlertDialogCancel disabled={deleting} className="rounded-lg bg-white">
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault()
+                if (deleteTarget) void deletePromotion(deleteTarget)
+              }}
+              className="rounded-lg"
+            >
+              <Trash2 className="mr-2 size-4" />
+              {deleting ? "Đang xóa..." : "Xóa ưu đãi"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ProviderShell>
   )
 }

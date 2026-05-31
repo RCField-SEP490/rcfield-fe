@@ -191,11 +191,11 @@ export function Panel({ children, className }: { children: ReactNode; className?
 export function PanelTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
     <div className="mb-6 flex items-start justify-between gap-4">
-      <div>
+      <div className="min-w-0 flex-1">
         <h3 className="text-2xl font-semibold leading-tight tracking-tight text-[#1c1b1b]">{title}</h3>
         {subtitle ? <p className="mt-1 text-sm font-medium text-[#444748]">{subtitle}</p> : null}
       </div>
-      {action ? <span className="text-[#5d5f5f]">{action}</span> : null}
+      {action ? <span className="shrink-0 text-[#5d5f5f]">{action}</span> : null}
     </div>
   )
 }
