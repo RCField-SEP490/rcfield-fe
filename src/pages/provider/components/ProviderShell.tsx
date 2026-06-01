@@ -16,10 +16,10 @@ import {
   Menu,
   Package,
   PlayCircle,
-  Plus,
   Settings,
   ShieldCheck,
   Share2,
+  UserRound,
   Users,
   X,
 } from "lucide-react"
@@ -157,18 +157,15 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   return (
     <div className="provider-orange-theme flex min-h-screen bg-[#fcf8f8] text-[#1c1b1b]">
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-orange-200 bg-white p-4 shadow-sm md:flex">
-        <Link to={routePaths.providerDashboard} className="mb-8 px-4">
-          <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
+        <Link to={routePaths.providerDashboard} className="mb-8 flex items-center gap-2.5 px-2">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
             <Building2 className="size-4" />
           </div>
-          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-orange-900">RCField Provider</h1>
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-orange-700/70">Hệ thống quản lý chuỗi</p>
+          <div className="min-w-0">
+            <h1 className="whitespace-nowrap text-xl font-bold leading-tight tracking-tight text-[#1c1b1b]">RCField Provider</h1>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#747878]">Hệ thống quản lý chuỗi</p>
+          </div>
         </Link>
-
-        <Button className="mb-8 h-12 w-full gap-2 rounded-lg bg-orange-600 text-white shadow-sm hover:bg-orange-700">
-          <Plus className="size-5" />
-          Tạo đơn mới
-        </Button>
 
         <nav
           ref={desktopNavRef}
@@ -208,6 +205,10 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         </nav>
 
         <div className="mt-3 flex flex-col gap-1 border-t border-orange-100 pt-3">
+          <Link to={routePaths.profile} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50 hover:text-orange-800">
+            <UserRound className="size-5" />
+            Hồ sơ cá nhân
+          </Link>
           <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50 hover:text-orange-800">
             <CircleHelp className="size-5" />
             Trợ giúp
@@ -281,6 +282,14 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             </nav>
 
             <div className="mt-3 flex flex-col gap-1 border-t border-orange-100 pt-3">
+              <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50">
+                <UserRound className="size-5" />
+                Hồ sơ cá nhân
+              </Link>
+              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50">
+                <CircleHelp className="size-5" />
+                Trợ giúp
+              </button>
               <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-red-600 hover:bg-red-50">
                 <LogOut className="size-5" />
                 Đăng xuất
