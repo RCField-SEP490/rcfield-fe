@@ -155,7 +155,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   )
 
   return (
-    <div className="provider-orange-theme flex h-screen overflow-hidden bg-[#fcf8f8] text-[#1c1b1b]">
+    <div className="provider-orange-theme flex min-h-screen bg-[#fcf8f8] text-[#1c1b1b]">
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-orange-200 bg-white p-4 shadow-sm md:flex">
         <Link to={routePaths.providerDashboard} className="mb-8 px-4">
           <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
@@ -290,7 +290,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         </div>
       )}
 
-      <main className="h-full w-full flex-1 overflow-y-auto bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
+      <main className="w-full flex-1 bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
         <ImpersonationBanner />
         {headerChildren}
         <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{contentChildren}</div>
