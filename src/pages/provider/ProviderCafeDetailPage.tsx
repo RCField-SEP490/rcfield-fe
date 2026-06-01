@@ -155,12 +155,12 @@ export function ProviderCafeDetailPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4">
           <div className="flex items-center gap-3">
-            <StatusBadge status={formatCafeStatus(cafe.status)} />
             {cafe.status === "PENDING" ? (
               <span className="text-xs font-semibold text-amber-700">Cơ sở đang chờ admin duyệt — chưa thể thay đổi trạng thái</span>
             ) : (
               <span className="text-sm font-medium text-[#444748]">Trạng thái vận hành hiện tại</span>
             )}
+            <StatusBadge status={formatCafeStatus(cafe.status)} />
           </div>
           <StatusConfirmAction
             cafe={cafe}
