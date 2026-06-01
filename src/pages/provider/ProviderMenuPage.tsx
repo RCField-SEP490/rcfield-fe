@@ -8,7 +8,7 @@ import type { BackendCafe } from "@/features/cafes/types"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import type { MenuItem, MenuListParams, MenuUpsertBody } from "@/features/menu/types"
-import { MetricCard, Panel, PanelTitle, ProviderHeader, ProviderTable, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
+import { MetricCard, Panel, PanelTitle, ProviderPageHeader, ProviderTable, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderMenuItemFormDialog } from "@/pages/provider/components/ProviderMenuItemFormDialog"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Button } from "@/shared/ui/button"
@@ -131,12 +131,9 @@ export function ProviderMenuPage() {
 
   return (
     <ProviderShell>
-      <ProviderHeader
+      <ProviderPageHeader
         title="Quản lý menu đồ ăn"
         description="Tạo, sửa, bật/tắt và xóa mềm món ăn/uống theo từng cơ sở provider."
-        actionLabel="Thêm món"
-        actionIcon={<Plus className="size-5" />}
-        onAction={selectedCafeId ? handleOpenCreate : undefined}
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -150,9 +147,15 @@ export function ProviderMenuPage() {
           title="Danh sách món"
           subtitle={selectedCafe ? `Cơ sở: ${selectedCafe.name}` : "Chọn một cơ sở để quản lý menu"}
           action={
-            <Button type="button" variant="outline" size="icon-sm" onClick={() => void menuQuery.refetch()} disabled={!selectedCafeId || menuQuery.isFetching} className="rounded-lg">
-              <RefreshCw className="size-4" />
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button type="button" variant="outline" size="icon-sm" onClick={() => void menuQuery.refetch()} disabled={!selectedCafeId || menuQuery.isFetching} className="rounded-lg">
+                <RefreshCw className="size-4" />
+              </Button>
+              <Button type="button" onClick={handleOpenCreate} disabled={!selectedCafeId} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+                <Plus className="size-4" />
+                Thêm món
+              </Button>
+            </div>
           }
         />
 

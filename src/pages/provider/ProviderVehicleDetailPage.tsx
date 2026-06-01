@@ -44,32 +44,32 @@ export function ProviderVehicleDetailPage() {
       <ProviderPageHeader
         title={`${vehicle.name} ${vehicle.id}`}
         description={`Last synced: 2 minutes ago - ID: VHC-8921-XMX - ${vehicle.branch}`}
-        actions={
-          <>
-            <Button asChild variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-              <Link to={routePaths.providerVehicles}>
-                <ArrowLeft className="size-4" />
-                Về đội xe
-              </Link>
-            </Button>
-            <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-              <Ban className="size-4" />
-              Ngưng hoạt động
-            </Button>
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-              <Wrench className="size-4" />
-              Lên lịch bảo trì
-            </Button>
-          </>
-        }
       />
 
-      <div className="mb-6 flex items-center gap-3">
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-          <span className="size-2 rounded-full bg-emerald-500" />
-          Operational
-        </span>
-        <span className="font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">{vehicle.tier}</span>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+            <span className="size-2 rounded-full bg-emerald-500" />
+            Operational
+          </span>
+          <span className="font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">{vehicle.tier}</span>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <Button asChild variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+            <Link to={routePaths.providerVehicles}>
+              <ArrowLeft className="size-4" />
+              Về đội xe
+            </Link>
+          </Button>
+          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+            <Ban className="size-4" />
+            Ngưng hoạt động
+          </Button>
+          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+            <Wrench className="size-4" />
+            Lên lịch bảo trì
+          </Button>
+        </div>
       </div>
 
       <section className="grid grid-cols-1 gap-4 md:grid-cols-12">

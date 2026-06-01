@@ -62,18 +62,6 @@ export function ProviderSchedulePage() {
       <ProviderPageHeader
         title="Quản lý ca làm việc"
         description="Phân công nhân sự theo tuần, theo vị trí vận hành và theo tình trạng thiếu người."
-        actions={
-          <>
-            <div className="flex rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] p-1">
-              <button className="rounded bg-white px-4 py-1.5 text-sm font-medium text-[#1c1b1b] shadow-sm">Tuần</button>
-              <button className="rounded px-4 py-1.5 text-sm font-medium text-[#444748] transition-colors hover:bg-[#e5e2e1]">Ngày</button>
-            </div>
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-              <Plus className="size-4" />
-              Phân công
-            </Button>
-          </>
-        }
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-4 text-sm font-medium text-[#444748]">
@@ -83,7 +71,7 @@ export function ProviderSchedulePage() {
 
       <div className="grid min-h-[720px] grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <section className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-[#c4c7c8] bg-white shadow-sm">
-          <div className="flex shrink-0 items-center justify-between border-b border-[#c4c7c8] bg-[#f6f3f2] p-4">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[#c4c7c8] bg-[#f6f3f2] p-4">
             <div className="flex items-center gap-3">
               <IconButton ariaLabel="Tuần trước">
                 <ChevronLeft className="size-5" />
@@ -93,9 +81,19 @@ export function ProviderSchedulePage() {
                 <ChevronRight className="size-5" />
               </IconButton>
             </div>
-            <Button variant="outline" className="h-9 rounded-lg border-[#c4c7c8] bg-white text-sm text-[#1c1b1b] hover:bg-[#ebe7e7]">
-              Hôm nay
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <div className="flex rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] p-1">
+                <button className="rounded bg-white px-4 py-1.5 text-sm font-medium text-[#1c1b1b] shadow-sm">Tuần</button>
+                <button className="rounded px-4 py-1.5 text-sm font-medium text-[#444748] transition-colors hover:bg-[#e5e2e1]">Ngày</button>
+              </div>
+              <Button variant="outline" className="h-9 rounded-lg border-[#c4c7c8] bg-white text-sm text-[#1c1b1b] hover:bg-[#ebe7e7]">
+                Hôm nay
+              </Button>
+              <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+                <Plus className="size-4" />
+                Phân công
+              </Button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-auto">

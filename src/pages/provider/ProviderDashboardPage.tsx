@@ -121,6 +121,23 @@ export function ProviderDashboardPage() {
     <ProviderShell>
       <ProviderHeaderBlock onResetOnboarding={handleResetOnboarding} />
 
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <Button
+          variant="outline"
+          onClick={handleResetOnboarding}
+          className="h-10 gap-2 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 hover:text-orange-800"
+        >
+          Xem Hướng Dẫn Setup
+        </Button>
+        <Button variant="outline" className="h-10 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+          Tháng này
+        </Button>
+        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+          <Download className="size-5" />
+          Xuất báo cáo
+        </Button>
+      </div>
+
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="Tổng doanh thu" value="124.5M ₫" helper="+12.5% so với tuần trước" icon={<BarChart3 />} tone="success" />
         <MetricCard label="Tổng lượt đặt" value="842" helper="+8.2% so với tuần trước" icon={<ClipboardList />} tone="success" />
@@ -427,28 +444,12 @@ function OnboardingChecklist({
 }
 
 function ProviderHeaderBlock({ onResetOnboarding }: { onResetOnboarding: () => void }) {
+  void onResetOnboarding
+
   return (
     <ProviderPageHeader
       title="Tổng quan hệ thống"
       description="Dữ liệu cập nhật hôm nay, 24 Thg 10 2024"
-      actions={
-        <>
-        <Button 
-          variant="outline" 
-          onClick={onResetOnboarding}
-          className="h-10 gap-2 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 hover:text-orange-800"
-        >
-          Xem Hướng Dẫn Setup
-        </Button>
-        <Button variant="outline" className="h-10 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-          Tháng này
-        </Button>
-        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-          <Download className="size-5" />
-          Xuất báo cáo
-        </Button>
-        </>
-      }
     />
   )
 }

@@ -54,18 +54,6 @@ export function ProviderStaffPage() {
       <ProviderPageHeader
         title="Quản lý nhân sự"
         description="Danh sách nhân viên, vai trò và trạng thái hoạt động."
-        actions={
-          <>
-            <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] hover:bg-[#f6f3f2]">
-              <Settings className="size-[18px]" />
-              Edit Permissions
-            </Button>
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#fcf8f8] hover:bg-[#313030]">
-              <UserPlus className="size-[18px]" />
-              Invite New Staff
-            </Button>
-          </>
-        }
       />
 
       <section className="mb-4 flex flex-col gap-2 rounded-lg border border-[#c4c7c8] bg-[#fcf8f8] p-2 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.02)] md:flex-row">
@@ -90,6 +78,14 @@ export function ProviderStaffPage() {
             <option>Hanoi Main</option>
             <option>HCM Central</option>
           </select>
+          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] hover:bg-[#f6f3f2]">
+            <Settings className="size-[18px]" />
+            Edit Permissions
+          </Button>
+          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#fcf8f8] hover:bg-[#313030]">
+            <UserPlus className="size-[18px]" />
+            Invite New Staff
+          </Button>
         </div>
       </section>
 
