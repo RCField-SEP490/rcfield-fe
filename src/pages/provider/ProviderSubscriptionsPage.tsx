@@ -5,6 +5,7 @@ import { SubscriptionStatusCard } from "@/features/subscriptions/components/Subs
 import { UsageQuotaBars } from "@/features/subscriptions/components/UsageQuotaBars"
 import { PaymentRequestForm } from "@/features/subscriptions/components/PaymentRequestForm"
 import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { Badge } from "@/shared/ui/badge"
 import type { PaymentRequestStatus } from "@/features/subscriptions/types"
 
@@ -31,9 +32,15 @@ export function ProviderSubscriptionsPage() {
     queryFn: () => subscriptionApi.listMyPaymentRequests(),
   })
 
+  const { data: cafeData } = useQuery({
+    queryKey: cafeQueryKeys.list({ limit: 1, scope: "managed" }),
+    queryFn: () => cafeApi.listCafes({ limit: 1, scope: "managed" }),
+  })
+
   const subscription = subData?.data ?? null
   const requests = prData?.data ?? []
   const hasPending = requests.some((r) => r.status === "PENDING")
+  const branchCount = cafeData?.meta.total ?? 0
 
   return (
     <ProviderShell>
@@ -45,7 +52,7 @@ export function ProviderSubscriptionsPage() {
         ) : (
           <>
             <SubscriptionStatusCard subscription={subscription} />
-            <UsageQuotaBars subscription={subscription} />
+            <UsageQuotaBars subscription={subscription} branchCount={branchCount} />
           </>
         )}
 

@@ -47,7 +47,7 @@ const providerNavGroups: NavGroup[] = [
     ],
   },
   {
-    heading: "Vận hành chi nhánh",
+    heading: "Vận hành",
     items: [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Quản lý xe", icon: Car, to: routePaths.providerVehicles },
@@ -62,13 +62,13 @@ const providerNavGroups: NavGroup[] = [
     items: [
       { label: "Menu F&B", icon: Coffee, to: routePaths.providerMenu },
       { label: "Gói & Giá", icon: Package, to: routePaths.providerPackages },
-      { label: "Hội viên", icon: ShieldCheck, to: routePaths.providerSubscriptions },
       { label: "Ưu đãi", icon: BadgePercent, to: routePaths.providerPromotions },
     ],
   },
   {
     heading: "Hệ thống",
     items: [
+      { label: "Gói đăng ký", icon: ShieldCheck, to: routePaths.providerSubscriptions },
       { label: "Kênh Messenger", icon: Share2, to: routePaths.providerChannels },
       { label: "Cấu hình", icon: Settings, to: routePaths.providerConfiguration },
     ],
