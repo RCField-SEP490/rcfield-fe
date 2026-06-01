@@ -156,7 +156,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
   return (
     <div className="provider-orange-theme flex min-h-screen bg-[#fcf8f8] text-[#1c1b1b]">
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-orange-200 bg-white p-4 shadow-sm md:flex">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-[#e5e2e1] bg-white p-4 shadow-sm md:flex">
         <Link to={routePaths.providerDashboard} className="mb-8 flex items-center gap-2.5 px-2">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
             <Building2 className="size-4" />
@@ -174,7 +174,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         >
           {providerNavGroups.map((group) => (
             <div key={group.heading}>
-              <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-orange-700/45">
+              <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
                 {group.heading}
               </p>
               <div className="flex flex-col gap-0.5">
@@ -191,10 +191,10 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                         "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
                         active
                           ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                          : "text-orange-950/75 hover:bg-orange-50 hover:text-orange-800"
+                          : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
                       )}
                     >
-                      <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-orange-700/55")} />
+                      <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
                       {item.label}
                     </Link>
                   )
@@ -204,27 +204,27 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
           ))}
         </nav>
 
-        <div className="mt-3 flex flex-col gap-1 border-t border-orange-100 pt-3">
-          <Link to={routePaths.profile} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50 hover:text-orange-800">
-            <UserRound className="size-5" />
+        <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
+          <Link to={routePaths.profile} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
+            <UserRound className="size-5 text-[#747878]" />
             Hồ sơ cá nhân
           </Link>
-          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50 hover:text-orange-800">
-            <CircleHelp className="size-5" />
+          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
+            <CircleHelp className="size-5 text-[#747878]" />
             Trợ giúp
           </button>
-          <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-red-50 hover:text-red-700">
-            <LogOut className="size-5" />
+          <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
+            <LogOut className="size-5 text-[#747878]" />
             Đăng xuất
           </button>
         </div>
       </aside>
 
       <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-orange-200 bg-white px-4 shadow-sm md:hidden">
-        <div className="text-2xl font-extrabold leading-tight tracking-tight text-orange-900">RCField</div>
+        <div className="text-2xl font-extrabold leading-tight tracking-tight text-[#1c1b1b]">RCField</div>
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <Button variant="ghost" size="icon" aria-label="Mở menu" className="text-orange-700 hover:bg-orange-50" onClick={() => setMobileMenuOpen(true)}>
+          <Button variant="ghost" size="icon" aria-label="Mở menu" className="text-[#444748] hover:bg-[rgb(246,243,242)]" onClick={() => setMobileMenuOpen(true)}>
             <Menu className="size-5" />
           </Button>
         </div>
@@ -235,8 +235,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
           <div className="relative flex w-full max-w-xs flex-col bg-white p-4 shadow-xl">
             <div className="mb-8 flex items-center justify-between px-2">
-              <span className="text-lg font-extrabold text-orange-900">Menu Provider</span>
-              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)} className="text-orange-700 hover:bg-orange-50">
+              <span className="text-lg font-extrabold text-[#1c1b1b]">Menu Provider</span>
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)} className="text-[#444748] hover:bg-[rgb(246,243,242)]">
                 <X className="size-5" />
               </Button>
             </div>
@@ -248,7 +248,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             >
               {providerNavGroups.map((group) => (
                 <div key={group.heading}>
-                  <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-orange-700/45">
+                  <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
                     {group.heading}
                   </p>
                   <div className="flex flex-col gap-0.5">
@@ -268,10 +268,10 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                             "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
                             active
                               ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                              : "text-orange-950/75 hover:bg-orange-50"
+                              : "text-[#444748] hover:bg-[rgb(246,243,242)]"
                           )}
                         >
-                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-orange-700/55")} />
+                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
                           {item.label}
                         </Link>
                       )
@@ -281,17 +281,17 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               ))}
             </nav>
 
-            <div className="mt-3 flex flex-col gap-1 border-t border-orange-100 pt-3">
-              <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50">
-                <UserRound className="size-5" />
+            <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
+              <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">
+                <UserRound className="size-5 text-[#747878]" />
                 Hồ sơ cá nhân
               </Link>
-              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-orange-950/75 hover:bg-orange-50">
-                <CircleHelp className="size-5" />
+              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">
+                <CircleHelp className="size-5 text-[#747878]" />
                 Trợ giúp
               </button>
-              <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-red-600 hover:bg-red-50">
-                <LogOut className="size-5" />
+              <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
+                <LogOut className="size-5 text-[#747878]" />
                 Đăng xuất
               </button>
             </div>
