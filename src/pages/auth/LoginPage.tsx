@@ -428,7 +428,6 @@ export function LoginPage() {
               ) : (
                 <>
                   Đăng Nhập
-                  <Zap className="h-4 w-4 text-orange-400 group-hover:scale-110 transition-transform fill-current" />
                 </>
               )}
             </Button>

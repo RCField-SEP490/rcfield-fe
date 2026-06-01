@@ -87,3 +87,41 @@ export type ApiEnvelope<T> = {
 export type CafeListResponse = ApiEnvelope<BackendCafe[]> & {
   meta: CafeListMeta
 }
+
+export type WidgetPosition = "BOTTOM_RIGHT" | "BOTTOM_LEFT"
+
+export type KbDocumentStatus = "PENDING" | "INDEXED" | "FAILED"
+export type KbContentType = "POLICY" | "FAQ" | "ANNOUNCEMENT" | "CUSTOM"
+
+export type KbDocument = {
+  id: string
+  title: string
+  original_filename: string
+  content_type: KbContentType
+  status: KbDocumentStatus
+  chunk_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type CafeWidgetConfig = {
+  greetingMessage: string
+  welcomeMessage: string
+  position: WidgetPosition
+  primaryColor: string
+  avatarUrl: string | null
+  quickReplies: string[]
+  systemPrompt: string | null
+  isEnabled: boolean
+}
+
+export type WidgetConfigBody = {
+  greeting_message?: string
+  welcome_message?: string
+  position?: WidgetPosition
+  primary_color?: string
+  avatar_url?: string | null
+  quick_replies?: string[]
+  system_prompt?: string | null
+  is_enabled?: boolean
+}

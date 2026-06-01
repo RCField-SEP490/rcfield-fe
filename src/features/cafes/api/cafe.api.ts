@@ -1,5 +1,5 @@
 import { api } from "@/shared/lib/axios"
-import type { BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope } from "../types"
+import type { BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType } from "../types"
 
 function debugCafeApi(message: string, details?: unknown) {
   if (import.meta.env.DEV) {
@@ -12,6 +12,8 @@ export const cafeQueryKeys = {
   list: (params?: CafeListParams) => [...cafeQueryKeys.all, "list", params ?? {}] as const,
   detail: (id?: string) => [...cafeQueryKeys.all, "detail", id] as const,
   images: (cafeId?: string) => [...cafeQueryKeys.all, "images", cafeId] as const,
+  widgetConfig: (cafeId?: string) => [...cafeQueryKeys.all, "widget-config", cafeId] as const,
+  kbDocuments: (cafeId?: string) => [...cafeQueryKeys.all, "kb-documents", cafeId] as const,
 }
 
 export const cafeApi = {
@@ -69,5 +71,35 @@ export const cafeApi = {
   deleteCafeImage: async (imageId: string): Promise<void> => {
     debugCafeApi("DELETE /v1/cafe-images/:id", { imageId })
     await api.delete(`/v1/cafe-images/${imageId}`)
+  },
+
+  getWidgetConfig: async (cafeId: string): Promise<CafeWidgetConfig> => {
+    const res = await api.get<ApiEnvelope<CafeWidgetConfig>>(`/v1/cafes/${cafeId}/widget-config`)
+    return res.data.data
+  },
+
+  updateWidgetConfig: async (cafeId: string, body: WidgetConfigBody): Promise<CafeWidgetConfig> => {
+    const res = await api.put<ApiEnvelope<CafeWidgetConfig>>(`/v1/cafes/${cafeId}/widget-config`, body)
+    return res.data.data
+  },
+
+  listKbDocuments: async (cafeId: string): Promise<KbDocument[]> => {
+    const res = await api.get<{ data: KbDocument[]; total: number }>(`/v1/cafes/${cafeId}/kb/documents`)
+    return res.data.data
+  },
+
+  uploadKbDocument: async (cafeId: string, file: File, title: string, contentType: KbContentType): Promise<KbDocument> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("title", title)
+    formData.append("content_type", contentType)
+    const res = await api.post<KbDocument>(`/v1/cafes/${cafeId}/kb/documents`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    return res.data
+  },
+
+  deleteKbDocument: async (cafeId: string, documentId: string): Promise<void> => {
+    await api.delete(`/v1/cafes/${cafeId}/kb/documents/${documentId}`)
   },
 }

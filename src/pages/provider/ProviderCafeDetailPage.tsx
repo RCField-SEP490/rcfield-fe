@@ -1,5 +1,6 @@
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, BarChart3, Car, CheckCircle2, Power, ShieldAlert, TrendingUp } from "lucide-react"
+import { ArrowLeft, BarChart3, Bot, Car, CheckCircle2, Power, ShieldAlert, TrendingUp } from "lucide-react"
 import { useNavigate, useParams } from "react-router"
 import { toast } from "sonner"
 
@@ -7,6 +8,8 @@ import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe, CafeImage, CafeStatus, CafeUpsertBody } from "@/features/cafes/types"
 import { ProviderCafeForm } from "@/pages/provider/components/ProviderCafeForm"
+import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
+import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
 import { MetricCard, ProviderPageHeader, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import {
@@ -80,6 +83,8 @@ export function ProviderCafeDetailPage() {
       toast.error("Không thể xóa ảnh cơ sở")
     },
   })
+
+  const [tab, setTab] = useState<"info" | "widget">("info")
 
   if (isLoading) {
     return (
@@ -165,17 +170,58 @@ export function ProviderCafeDetailPage() {
           />
         </div>
 
-        <ProviderCafeForm
-          cafe={cafe}
-          isPending={saveMutation.isPending}
-          submitLabel="Lưu thay đổi"
-          onSubmit={async (values, files, coverFile) => {
-            await saveMutation.mutateAsync({ values, files, coverFile })
-          }}
-          onDeleteImage={async (image) => {
-            await deleteImageMutation.mutateAsync(image)
-          }}
-        />
+        <div>
+          <div className="flex border-b border-[#e5e2e1]">
+            <button
+              type="button"
+              onClick={() => setTab("info")}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                tab === "info"
+                  ? "border-orange-600 text-orange-600"
+                  : "border-transparent text-[#747878]"
+              }`}
+            >
+              Thông tin cơ sở
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("widget")}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                tab === "widget"
+                  ? "border-orange-600 text-orange-600"
+                  : "border-transparent text-[#747878]"
+              }`}
+            >
+              Widget Chat
+            </button>
+          </div>
+
+          <div className="mt-4">
+            {tab === "info" && (
+              <ProviderCafeForm
+                cafe={cafe}
+                isPending={saveMutation.isPending}
+                submitLabel="Lưu thay đổi"
+                onSubmit={async (values, files, coverFile) => {
+                  await saveMutation.mutateAsync({ values, files, coverFile })
+                }}
+                onDeleteImage={async (image) => {
+                  await deleteImageMutation.mutateAsync(image)
+                }}
+              />
+            )}
+            {tab === "widget" && (
+              <div className="space-y-4">
+                <section className="rounded-xl border border-[#c4c7c8] bg-white">
+                  <WidgetConfigForm cafeId={cafe.id} />
+                </section>
+                <section className="rounded-xl border border-[#c4c7c8] bg-white">
+                  <KbDocumentsSection cafeId={cafe.id} />
+                </section>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </ProviderShell>
   )
