@@ -51,7 +51,7 @@ export function ExplorePage() {
         onClear={filters.clearFilters}
       />
 
-      <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 md:px-6 lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_320px]">
+      <div className="mx-auto grid w-full gap-5 px-4 py-5 md:px-6 lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_320px]">
         <aside className="hidden lg:block">
           <div className="sticky top-20">
             <ExploreFiltersSidebar
