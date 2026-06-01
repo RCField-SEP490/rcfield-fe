@@ -59,7 +59,7 @@ ProviderHeader.displayName = "ProviderHeader"
 export function ProviderPageHeader({
   title,
   description,
-  actions,
+  actions: _actions,
   flush: _flush = false,
 }: {
   title: string
@@ -70,17 +70,18 @@ export function ProviderPageHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8] bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:flex-row md:items-center md:justify-between md:px-6"
+        "sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8] bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6"
       )}
     >
-      <div className="min-w-0">
-        <h2 className="text-[32px] font-bold leading-tight tracking-tight text-[#1c1b1b]">{title}</h2>
-        <p className="mt-1 text-sm font-medium text-[#444748]">{description}</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 md:justify-end">
-        {actions}
-        <NotificationBell />
-        <ProviderAccountMenu />
+      <div className="flex w-full items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-[32px] font-bold leading-tight tracking-tight text-[#1c1b1b]">{title}</h2>
+          <p className="mt-1 text-sm font-medium text-[#444748]">{description}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <NotificationBell />
+          <ProviderAccountMenu />
+        </div>
       </div>
     </header>
   )

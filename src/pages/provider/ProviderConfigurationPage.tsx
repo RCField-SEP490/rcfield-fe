@@ -24,19 +24,18 @@ export function ProviderConfigurationPage() {
       <ProviderPageHeader
         title="Cấu hình cơ sở"
         description="Quản lý thông tin vận hành, vị trí, quy tắc đặt lịch và khung giờ hoạt động của cơ sở."
-        actions={
-          <>
-            <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-              <Trash2 className="size-4" />
-              Hủy thay đổi
-            </Button>
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-              <Save className="size-4" />
-              Lưu cấu hình
-            </Button>
-          </>
-        }
       />
+
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
+        <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+          <Trash2 className="size-4" />
+          Hủy thay đổi
+        </Button>
+        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+          <Save className="size-4" />
+          Lưu cấu hình
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
         <div className="space-y-4 lg:col-span-7">

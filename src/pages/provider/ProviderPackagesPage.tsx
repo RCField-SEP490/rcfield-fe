@@ -54,18 +54,6 @@ export function ProviderPackagesPage() {
       <ProviderPageHeader
         title="Quản lý Gói & Bảng giá"
         description="Cấu hình các gói dịch vụ thuê sân, thiết lập giá cả và các tiện ích đi kèm cho khách hàng."
-        actions={
-          <>
-            <Button variant="outline" className="h-10 gap-2 rounded border-[#c4c7c8] bg-[#fcf8f8] px-4 text-sm font-semibold text-[#1c1b1b] shadow-sm hover:bg-[#e5e2e1]">
-              <Download className="size-[18px]" />
-              Xuất báo cáo
-            </Button>
-            <Button className="h-10 gap-2 rounded bg-[#1c1b1b] px-5 text-sm font-semibold text-white shadow-sm hover:bg-[#313030]">
-              <Plus className="size-[18px]" />
-              Tạo Gói Mới
-            </Button>
-          </>
-        }
       />
 
       <section className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
@@ -95,13 +83,23 @@ export function ProviderPackagesPage() {
       <section className="mt-16 flex flex-col overflow-hidden rounded-xl border border-[#c4c7c8] bg-[#fcf8f8] shadow-sm">
         <div className="flex flex-col justify-between gap-4 border-b border-[#c4c7c8] bg-white p-6 md:flex-row md:items-center">
           <h3 className="text-lg font-semibold text-[#1c1b1b]">Danh sách Gói dịch vụ</h3>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[#c4c7c8]" />
-            <input
-              className="w-full rounded border border-[#c4c7c8] bg-[#f1edec] py-2 pl-10 pr-4 text-sm transition-all focus:border-[#5d5f5f] focus:outline-none focus:ring-1 focus:ring-[#5d5f5f] md:w-64"
-              placeholder="Tìm kiếm gói..."
-              type="text"
-            />
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[#c4c7c8]" />
+              <input
+                className="w-full rounded border border-[#c4c7c8] bg-[#f1edec] py-2 pl-10 pr-4 text-sm transition-all focus:border-[#5d5f5f] focus:outline-none focus:ring-1 focus:ring-[#5d5f5f] md:w-64"
+                placeholder="Tìm kiếm gói..."
+                type="text"
+              />
+            </div>
+            <Button variant="outline" className="h-10 gap-2 rounded border-[#c4c7c8] bg-[#fcf8f8] px-4 text-sm font-semibold text-[#1c1b1b] shadow-sm hover:bg-[#e5e2e1]">
+              <Download className="size-[18px]" />
+              Xuất báo cáo
+            </Button>
+            <Button className="h-10 gap-2 rounded bg-[#1c1b1b] px-5 text-sm font-semibold text-white shadow-sm hover:bg-[#313030]">
+              <Plus className="size-[18px]" />
+              Tạo Gói Mới
+            </Button>
           </div>
         </div>
 

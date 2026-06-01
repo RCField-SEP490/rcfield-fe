@@ -395,18 +395,6 @@ export function ProviderPromotionsPage() {
       <ProviderPageHeader
         title="Ưu đãi theo chi nhánh"
         description="Chọn một chi nhánh bạn sở hữu để tạo, chỉnh sửa và theo dõi mã ưu đãi riêng cho chi nhánh đó."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-10 gap-2 rounded-lg bg-white">
-              <Copy className="size-4" />
-              Thêm từ chi nhánh
-            </Button>
-          <Button disabled={!selectedCafeId} onClick={startCreate} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-            <Plus className="size-5" />
-            Tạo ưu đãi
-          </Button>
-          </div>
-        }
       />
 
       <section className="grid gap-4 lg:grid-cols-[360px_1fr]">

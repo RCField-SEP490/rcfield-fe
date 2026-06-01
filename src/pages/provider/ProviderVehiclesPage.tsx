@@ -94,18 +94,6 @@ export function ProviderVehiclesPage() {
       <ProviderPageHeader
         title="Giám sát đội xe"
         description="Theo dõi sức khỏe, chu kỳ pin và nhiệt độ thời gian thực."
-        actions={
-          <>
-            <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f1edec]">
-              <Download className="size-4" />
-              Xuất báo cáo
-            </Button>
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-              <Plus className="size-4" />
-              Thêm xe
-            </Button>
-          </>
-        }
       />
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -117,7 +105,19 @@ export function ProviderVehiclesPage() {
 
       <div className="mt-16 grid grid-cols-1 gap-4 lg:grid-cols-12">
         <section className="flex flex-col gap-4 lg:col-span-8">
-          <h3 className="text-2xl font-semibold leading-tight text-[#1c1b1b]">Chi tiết trạng thái</h3>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-2xl font-semibold leading-tight text-[#1c1b1b]">Chi tiết trạng thái</h3>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f1edec]">
+                <Download className="size-4" />
+                Xuất báo cáo
+              </Button>
+              <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+                <Plus className="size-4" />
+                Thêm xe
+              </Button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {fleetHealth.map((item) => (
               <FleetHealthCard key={item.vehicleId} item={item} />
