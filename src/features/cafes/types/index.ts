@@ -48,6 +48,7 @@ export type CafeListParams = {
   page?: number
   limit?: number
   scope?: "managed"
+  slug?: string
   district?: string
   city?: string
   track_type?: TrackType
@@ -105,6 +106,8 @@ export type KbDocument = {
 }
 
 export type CafeWidgetConfig = {
+  cafeId: string
+  cafeSlug: string
   greetingMessage: string
   welcomeMessage: string
   position: WidgetPosition
@@ -113,6 +116,7 @@ export type CafeWidgetConfig = {
   quickReplies: string[]
   systemPrompt: string | null
   isEnabled: boolean
+  fullPageEnabled: boolean
 }
 
 export type WidgetConfigBody = {
@@ -124,4 +128,5 @@ export type WidgetConfigBody = {
   quick_replies?: string[]
   system_prompt?: string | null
   is_enabled?: boolean
+  full_page_enabled?: boolean
 }

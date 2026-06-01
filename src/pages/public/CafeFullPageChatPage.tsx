@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { useParams, Link } from "react-router"
 import { motion } from "framer-motion"
 import { Bot, Send, RotateCcw, ChevronLeft, Zap } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useSystemChat } from "@/features/chat/hooks/useSystemChat"
 import { Button } from "@/shared/ui/button"
 import { Textarea } from "@/shared/ui/textarea"
@@ -31,7 +33,14 @@ export function CafeFullPageChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const { messages, isLoading, config, configLoading, isError, sendMessage, reset } = useSystemChat()
+  const { data: cafeList } = useQuery({
+    queryKey: cafeQueryKeys.list({ slug: cafeSlug, limit: 1 }),
+    queryFn: () => cafeApi.listCafes({ slug: cafeSlug, limit: 1 }),
+    enabled: !!cafeSlug,
+  })
+  const cafeId = cafeList?.data[0]?.id
+
+  const { messages, isLoading, config, configLoading, isError, sendMessage, reset } = useSystemChat(cafeId)
 
   const primaryColor = config?.primaryColor ?? "#EA580C"
   const unavailable = !configLoading && (isError || !config?.isEnabled || !config?.fullPageEnabled)

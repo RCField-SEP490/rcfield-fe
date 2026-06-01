@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { cafeApi } from '@/features/cafes/api/cafe.api'
+import type { CafeWidgetConfig } from '@/features/cafes/types'
 import { getSystemWidgetConfig, streamChat } from '../api'
-import type { ChatMessage, HistoryMessage } from '../types'
+import type { ChatMessage, HistoryMessage, SystemWidgetConfig } from '../types'
 
 function genId() {
   return Math.random().toString(36).slice(2, 10)
@@ -11,17 +13,56 @@ function makeGreeting(greetingMessage: string, quickReplies: string[]): ChatMess
   return { id: genId(), role: 'bot', content: greetingMessage, quickReplies }
 }
 
-export function useSystemChat() {
+function toChatConfig(cfg: CafeWidgetConfig): SystemWidgetConfig {
+  return {
+    cafeId: cfg.cafeId,
+    cafeSlug: cfg.cafeSlug,
+    greetingMessage: cfg.greetingMessage,
+    position: cfg.position,
+    primaryColor: cfg.primaryColor,
+    quickReplies: cfg.quickReplies,
+    systemPrompt: cfg.systemPrompt,
+    isEnabled: cfg.isEnabled,
+    fullPageEnabled: cfg.fullPageEnabled,
+  }
+}
+
+export function useSystemChat(cafeId?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const abortRef = useRef(false)
   const initializedRef = useRef(false)
+  const prevCafeIdRef = useRef<string | undefined>(cafeId)
 
-  const { data: config, isLoading: configLoading, isError } = useQuery({
-    queryKey: ['system-widget-config'],
-    queryFn: getSystemWidgetConfig,
+  // Reset chat state when cafeId changes so the correct greeting is loaded
+  if (prevCafeIdRef.current !== cafeId) {
+    prevCafeIdRef.current = cafeId
+    initializedRef.current = false
+    abortRef.current = true
+  }
+
+  // Per-cafe config — enabled only when cafeId is provided
+  const { data: cafeConfigData, isLoading: cafeConfigLoading, isError: cafeConfigError } = useQuery({
+    queryKey: ['cafe-widget-config', cafeId],
+    queryFn: () => cafeApi.getWidgetConfig(cafeId!),
+    enabled: !!cafeId,
     staleTime: Infinity,
     retry: 1,
   })
+
+  // System config — enabled only when no cafeId
+  const { data: systemConfigData, isLoading: systemConfigLoading, isError: systemConfigError } = useQuery({
+    queryKey: ['system-widget-config'],
+    queryFn: getSystemWidgetConfig,
+    enabled: !cafeId,
+    staleTime: Infinity,
+    retry: 1,
+  })
+
+  const config: SystemWidgetConfig | undefined = cafeId
+    ? cafeConfigData ? toChatConfig(cafeConfigData) : undefined
+    : systemConfigData
+  const configLoading = cafeId ? cafeConfigLoading : systemConfigLoading
+  const isError = cafeId ? cafeConfigError : systemConfigError
 
   // Derive isLoading from messages — true only while a bot message is still streaming
   // This guarantees input unlocks the instant isStreaming=false, independent of React batching

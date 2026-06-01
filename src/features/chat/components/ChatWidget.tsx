@@ -49,13 +49,13 @@ function TypingDots() {
   )
 }
 
-export function ChatWidget() {
+export function ChatWidget({ cafeId }: { cafeId?: string } = {}) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const { messages, isLoading, config, configLoading, isError, sendMessage, reset } = useSystemChat()
+  const { messages, isLoading, config, configLoading, isError, sendMessage, reset } = useSystemChat(cafeId)
 
   const primaryColor = config?.primaryColor ?? '#EA580C'
 
@@ -89,6 +89,8 @@ export function ChatWidget() {
   }
 
   const unavailable = !configLoading && (isError || !config?.isEnabled)
+
+  if (configLoading || unavailable) return null
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">

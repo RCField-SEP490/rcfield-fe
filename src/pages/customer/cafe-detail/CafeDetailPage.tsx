@@ -5,6 +5,7 @@ import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { mapCafeToExploreCafe } from "@/features/cafes/lib/cafe.mappers"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
+import { ChatWidget } from "@/features/chat/components/ChatWidget"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
 import { CafeDetailContent } from "./components/CafeDetailContent"
@@ -171,6 +172,8 @@ export function CafeDetailPage() {
           </aside>
         </div>
       </main>
+
+      <ChatWidget cafeId={resolvedCafe.id} />
     </div>
   )
 }

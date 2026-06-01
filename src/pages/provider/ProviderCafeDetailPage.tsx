@@ -130,7 +130,7 @@ export function ProviderCafeDetailPage() {
     <ProviderShell>
       <ProviderPageHeader
         title={cafe.name}
-        description={`${cafe.district}, ${cafe.city}. Xem và cập nhật dữ liệu cơ sở trên một trang.`}
+        description={`${cafe.district}, ${cafe.city}`}
         actions={
           <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
             <ArrowLeft className="size-5" />
