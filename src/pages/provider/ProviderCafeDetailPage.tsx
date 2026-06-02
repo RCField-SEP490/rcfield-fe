@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, BarChart3, Car, CheckCircle2, Power, ShieldAlert, TrendingUp } from "lucide-react"
+import { ArrowLeft, BarChart3, Car, CheckCircle2, ExternalLink, Power, ShieldAlert, TrendingUp } from "lucide-react"
 import { useNavigate, useParams } from "react-router"
 import { toast } from "sonner"
 
@@ -134,10 +134,19 @@ export function ProviderCafeDetailPage() {
       />
 
       <div className="space-y-4 p-4 md:p-6">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
             <ArrowLeft className="size-5" />
             Danh sách
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(routePaths.providerCafePreview.replace(":cafeId", cafe.id))}
+            className="h-10 gap-2 rounded-lg border-[#c4c7c8] font-bold text-[#1c1b1b] hover:bg-[#f6f3f2]"
+          >
+            <ExternalLink className="size-4" />
+            Xem trước
           </Button>
         </div>
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">

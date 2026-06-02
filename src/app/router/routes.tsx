@@ -51,6 +51,7 @@ import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
 import { ProviderCafeCreatePage } from "@/pages/provider/ProviderCafeCreatePage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
+import { ProviderCafePreviewPage } from "@/pages/provider/ProviderCafePreviewPage"
 import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
 import { ProviderVehicleCatalogFormPage } from "@/pages/provider/ProviderVehicleCatalogFormPage"
 import { ProviderVehicleCatalogDetailPage } from "@/pages/provider/ProviderVehicleCatalogDetailPage"
@@ -168,6 +169,7 @@ export const router = createBrowserRouter([
           { path: routePaths.providerCafes, element: providerGuardRoute(<ProviderCafesPage />) },
           { path: routePaths.providerCafeCreate, element: providerGuardRoute(<ProviderCafeCreatePage />) },
           { path: routePaths.providerCafeDetail, element: providerGuardRoute(<ProviderCafeDetailPage />) },
+          { path: routePaths.providerCafePreview, element: providerGuardRoute(<ProviderCafePreviewPage />) },
           { path: routePaths.providerVehicles, element: providerGuardRoute(<ProviderVehiclesPage />) },
           { path: routePaths.providerVehicleUnitCreateWithoutCatalog, element: providerGuardRoute(<ProviderVehicleUnitFormPage />) },
           { path: routePaths.providerVehicleCatalogs, element: <Navigate replace to="/provider/vehicles?tab=catalogs" /> },

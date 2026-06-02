@@ -32,6 +32,7 @@ export const routePaths = {
   providerCafes: "/provider/cafes",
   providerCafeCreate: "/provider/cafes/new",
   providerCafeDetail: "/provider/cafes/:cafeId",
+  providerCafePreview: "/provider/cafes/:cafeId/preview",
   providerVehicles: "/provider/vehicles",
   providerVehicleUnitCreateWithoutCatalog: "/provider/vehicles/new",
   providerVehicleCatalogs: "/provider/vehicle-catalogs",
