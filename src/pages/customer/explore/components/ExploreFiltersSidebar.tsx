@@ -1,4 +1,7 @@
 import { CalendarDays, RotateCcw, SlidersHorizontal } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
+import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
@@ -29,18 +32,13 @@ const filterGroups = {
     { value: "Đà Nẵng", label: "Đà Nẵng" },
     { value: "Hải Phòng", label: "Hải Phòng" },
   ],
-  trackType: [
-    { value: "all", label: "Mọi loại sân" },
-    { value: "DRIFT", label: "Drift" },
-    { value: "OBSTACLE", label: "Obstacle" },
-    { value: "HILL_CLIMB", label: "Hill climb" },
-  ],
   priceRange: [
     { value: "all", label: "Mọi mức giá" },
     { value: "under100", label: "Dưới 100k/slot" },
     { value: "100to200", label: "100k – 200k/slot" },
     { value: "over200", label: "Trên 200k/slot" },
   ],
+
   feature: [
     { value: "all", label: "Tất cả tiện ích" },
     { value: "Serious Inspection", label: "Kiểm xe" },
@@ -59,6 +57,18 @@ const filterGroups = {
 }
 
 export function ExploreFiltersSidebar(props: ExploreFiltersSidebarProps) {
+  const { data: trackTypes = [] } = useQuery({
+    queryKey: trackTypeQueryKeys.all,
+    queryFn: () => trackTypeApi.listAll(),
+  })
+
+  const trackOptions = useMemo(() => {
+    return [
+      { value: "all", label: "Mọi loại sân" },
+      ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
+    ]
+  }, [trackTypes])
+
   return (
     <Card className="rounded-xl shadow-sm">
       <CardHeader className="pb-3">
@@ -75,7 +85,7 @@ export function ExploreFiltersSidebar(props: ExploreFiltersSidebarProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <FilterSelect label="Thành phố" value={props.city} onChange={props.onCityChange} options={filterGroups.city} />
-        <FilterSelect label="Loại sân" value={props.trackType} onChange={props.onTrackTypeChange} options={filterGroups.trackType} />
+        <FilterSelect label="Loại sân" value={props.trackType} onChange={props.onTrackTypeChange} options={trackOptions} />
         <FilterSelect label="Mức giá" value={props.priceRange} onChange={props.onPriceRangeChange} options={filterGroups.priceRange} />
         <FilterSelect label="Tiện ích" value={props.feature} onChange={props.onFeatureChange} options={filterGroups.feature} />
         <FilterSelect label="Loại xe" value={props.vehicleType} onChange={props.onVehicleTypeChange} options={filterGroups.vehicleType} />

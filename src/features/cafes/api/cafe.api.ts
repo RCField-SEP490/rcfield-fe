@@ -1,5 +1,5 @@
 import { api } from "@/shared/lib/axios"
-import type { AmenityCatalogItem, BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType } from "../types"
+import type { AmenityCatalogItem, BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType, TrackType } from "../types"
 
 function debugCafeApi(message: string, details?: unknown) {
   if (import.meta.env.DEV) {
@@ -143,3 +143,42 @@ export const adminAmenityApi = {
 export const adminAmenityQueryKeys = {
   all: ["admin-amenities"] as const,
 }
+
+export const trackTypeApi = {
+  listAll: async (): Promise<TrackType[]> => {
+    const res = await api.get<TrackType[]>("/v1/track-types")
+    return res.data
+  },
+}
+
+export const trackTypeQueryKeys = {
+  all: ["track-types"] as const,
+}
+
+type TrackTypeBody = {
+  code: string
+  name: string
+  description?: string | null
+  sort_order: number
+  is_active: boolean
+}
+
+export const adminTrackTypeApi = {
+  listAll: async (): Promise<TrackType[]> => {
+    const res = await api.get<TrackType[]>("/v1/admin/track-types")
+    return res.data
+  },
+  create: async (body: TrackTypeBody): Promise<TrackType> => {
+    const res = await api.post<TrackType>("/v1/admin/track-types", body)
+    return res.data
+  },
+  update: async (id: string, body: Partial<TrackTypeBody>): Promise<TrackType> => {
+    const res = await api.patch<TrackType>(`/v1/admin/track-types/${id}`, body)
+    return res.data
+  },
+}
+
+export const adminTrackTypeQueryKeys = {
+  all: ["admin-track-types"] as const,
+}
+

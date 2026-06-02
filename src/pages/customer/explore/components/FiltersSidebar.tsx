@@ -1,11 +1,13 @@
 import { Calendar, X } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
+import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { Button } from "@/shared/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
 import { Calendar as CalendarUI } from "@/shared/ui/calendar"
 import {
   CITY_OPTIONS,
-  TRACK_TYPE_OPTIONS,
   PRICE_RANGE_OPTIONS,
   FEATURE_OPTIONS
 } from "../constants"
@@ -39,6 +41,18 @@ export function FiltersSidebar({
   handleClearFilters,
   activeFilterCount
 }: FiltersSidebarProps) {
+  const { data: trackTypes = [] } = useQuery({
+    queryKey: trackTypeQueryKeys.all,
+    queryFn: () => trackTypeApi.listAll(),
+  })
+
+  const trackOptions = useMemo(() => {
+    return [
+      { value: "all", label: "Tất cả thể loại" },
+      ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
+    ]
+  }, [trackTypes])
+
   return (
     <div className="space-y-6">
       {/* Thành Phố */}
@@ -66,7 +80,7 @@ export function FiltersSidebar({
             <SelectValue placeholder="Tất cả thể loại" />
           </SelectTrigger>
           <SelectContent className="bg-white border-slate-200">
-            {TRACK_TYPE_OPTIONS.map((opt) => (
+            {trackOptions.map((opt) => (
               <SelectItem key={opt.value} value={opt.value} className="text-xs font-semibold">
                 {opt.label}
               </SelectItem>

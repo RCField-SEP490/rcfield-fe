@@ -46,6 +46,7 @@ import { AdminProviderDetailPage } from "@/pages/admin/AdminProviderDetailPage"
 import { AdminPaymentRequestsPage } from "@/pages/admin/AdminPaymentRequestsPage"
 import { AdminSubscriptionPlansPage } from "@/pages/admin/AdminSubscriptionPlansPage"
 import { AdminAmenitiesPage } from "@/pages/admin/AdminAmenitiesPage"
+import { AdminTrackTypesPage } from "@/pages/admin/AdminTrackTypesPage"
 import { ProviderRegisterPage } from "@/pages/auth/ProviderRegisterPage"
 import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
@@ -208,6 +209,7 @@ export const router = createBrowserRouter([
           { path: routePaths.adminPaymentRequests, element: guardRoute(<AdminPaymentRequestsPage />, ["admin"]) },
           { path: routePaths.adminSubscriptionPlans, element: guardRoute(<AdminSubscriptionPlansPage />, ["admin"]) },
           { path: routePaths.adminAmenities, element: guardRoute(<AdminAmenitiesPage />, ["admin"]) },
+          { path: routePaths.adminTrackTypes, element: guardRoute(<AdminTrackTypesPage />, ["admin"]) },
         ],
       },
       {

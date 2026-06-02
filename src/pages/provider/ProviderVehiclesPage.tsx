@@ -151,12 +151,6 @@ export function ProviderVehiclesPage() {
     }).format(value)
   }
 
-  const trackLabels: Record<string, string> = {
-    DRIFT: "Đường drift (Drift)",
-    OBSTACLE: "Đường chướng ngại vật (Obstacle)",
-    HILL_CLIMB: "Đường leo dốc (Hill Climb)",
-  }
-
   return (
     <ProviderShell>
       <ProviderPageHeader
@@ -576,7 +570,7 @@ export function ProviderVehiclesPage() {
                       <div className="flex items-center gap-1 text-xs font-semibold text-[#747878] mb-4">
                         <Compass className="size-3.5" />
                         <span className="truncate">
-                          {(catalog.compatibleTrackTypes || []).map((t) => trackLabels[t] || t).join(", ")}
+                          {(catalog.compatibleTrackTypes || []).map((t) => typeof t === "string" ? t : t.name).join(", ")}
                         </span>
                       </div>
 
@@ -796,13 +790,6 @@ function FleetHealthCard({
     },
   }[catalog?.tier || "STANDARD"]
 
-  // Track Type Labels mapping
-  const trackLabels: Record<string, string> = {
-    DRIFT: "Drift",
-    OBSTACLE: "Chướng ngại",
-    HILL_CLIMB: "Leo dốc",
-  }
-
   // Resolve Image Url (with fallbacks so it is never blank!)
   const imageUrl = sanitizeImageUrl(unit.distinctive_image_url) 
     || sanitizeImageUrl(catalog?.coverImageUrl) 
@@ -872,8 +859,8 @@ function FleetHealthCard({
         <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider mr-1">Đường chạy:</span>
           {catalog.compatibleTrackTypes.map((t) => (
-            <span key={t} className="rounded bg-zinc-100 px-2 py-0.5 text-[9px] font-bold text-zinc-600">
-              {trackLabels[t] || t}
+            <span key={typeof t === "string" ? t : t.id} className="rounded bg-zinc-100 px-2 py-0.5 text-[9px] font-bold text-zinc-600">
+              {typeof t === "string" ? t : t.name}
             </span>
           ))}
         </div>

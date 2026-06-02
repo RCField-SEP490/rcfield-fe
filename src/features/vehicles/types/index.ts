@@ -13,7 +13,7 @@ export const VehicleStatus = {
 } as const
 export type VehicleStatus = typeof VehicleStatus[keyof typeof VehicleStatus]
 
-export type TrackType = "DRIFT" | "OBSTACLE" | "HILL_CLIMB"
+import type { TrackType } from "@/features/cafes/types"
 
 export interface CatalogImage {
   id: string
@@ -61,7 +61,7 @@ export interface CreateVehicleCatalogDto {
   securityDeposit: number
   damageMultiplier: number
   tier: VehicleTier
-  compatibleTrackTypes: TrackType[]
+  compatibleTrackTypes: string[]
   images: { url: string; isCover: boolean }[]
 }
 
