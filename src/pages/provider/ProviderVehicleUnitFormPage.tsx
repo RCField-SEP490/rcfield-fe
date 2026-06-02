@@ -111,7 +111,7 @@ export function ProviderVehicleUnitFormPage() {
         description="Gán một xe thực tế vào danh mục mẫu xe."
       />
 
-      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
+      <div className="w-full space-y-6 p-4 md:p-6">
         <div className="flex items-center justify-start">
           <Button
             type="button"

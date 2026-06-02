@@ -183,7 +183,7 @@ export function ProviderVehicleDetailPage() {
         description="Xem thông tin chi tiết và cập nhật các thông số bảo trì, vận hành của xe."
       />
 
-      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
+      <div className="w-full space-y-6 p-4 md:p-6">
         <div className="flex items-center justify-start">
           <Button
             type="button"

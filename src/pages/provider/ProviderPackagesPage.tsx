@@ -50,7 +50,7 @@ const servicePackages = [
 
 export function ProviderPackagesPage() {
   return (
-    <ProviderShell contentClassName="max-w-7xl py-8 md:py-8">
+    <ProviderShell contentClassName="py-8 md:py-8">
       <ProviderPageHeader
         title="Quản lý Gói & Bảng giá"
         description="Cấu hình các gói dịch vụ thuê sân, thiết lập giá cả và các tiện ích đi kèm cho khách hàng."

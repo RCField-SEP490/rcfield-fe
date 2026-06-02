@@ -62,7 +62,7 @@ export function ProviderCafePreviewPage() {
     return (
       <div className="min-h-screen bg-white">
         <PreviewBanner onBack={() => navigate(-1)} cafeName="..." />
-        <div className="mx-auto max-w-[1440px] px-4 py-6 md:px-6">
+        <div className="w-full px-4 py-6 md:px-6 2xl:px-8">
           <div className="h-[360px] animate-pulse rounded-2xl bg-slate-100" />
         </div>
       </div>
@@ -85,7 +85,7 @@ export function ProviderCafePreviewPage() {
     <div className="min-h-screen bg-white pb-10">
       <PreviewBanner onBack={() => navigate(-1)} cafeName={cafe.name} />
 
-      <div className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-400 md:px-6">
+      <div className="flex w-full items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-400 md:px-6 2xl:px-8">
         <span>Cơ sở</span>
         <span>/</span>
         <span>{cafe.city}</span>
@@ -93,7 +93,7 @@ export function ProviderCafePreviewPage() {
         <span className="text-slate-600">{cafe.name}</span>
       </div>
 
-      <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6">
+      <main className="w-full px-4 md:px-6 2xl:px-8">
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-8">
             <CafeDetailHero cafe={cafe} />

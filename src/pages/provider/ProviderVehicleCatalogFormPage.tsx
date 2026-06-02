@@ -242,7 +242,7 @@ export function ProviderVehicleCatalogFormPage() {
         description={isEdit ? "Cập nhật thông số và hình ảnh của danh mục xe." : "Tạo cấu hình danh mục phương tiện mới."}
       />
 
-      <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div className="w-full space-y-6 p-4 md:p-6">
         {/* Back Button */}
         <div>
           <Link

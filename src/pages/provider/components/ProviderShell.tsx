@@ -319,7 +319,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
       <main className="w-full flex-1 bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
         <ImpersonationBanner />
         {headerChildren}
-        <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{contentChildren}</div>
+        <div className={cn("w-full min-w-0 px-4 py-6 md:px-6 md:py-8 2xl:px-8", contentClassName)}>{contentChildren}</div>
       </main>
     </div>
   )
