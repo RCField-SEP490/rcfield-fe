@@ -1,7 +1,4 @@
-import { CalendarDays, Map, RotateCcw, Search, X } from "lucide-react"
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import { Badge } from "@/shared/ui/badge"
+import { CalendarDays, RotateCcw, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import type { ExploreFiltersSidebarProps } from "./ExploreFiltersSidebar"
 

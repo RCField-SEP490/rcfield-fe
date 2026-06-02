@@ -1,15 +1,14 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { useParams, Link } from "react-router"
+import { useParams } from "react-router"
 import { motion } from "framer-motion"
-import { Bot, Send, RotateCcw, ChevronLeft, Zap } from "lucide-react"
+import { Bot, Send, RotateCcw, Zap } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useSystemChat } from "@/features/chat/hooks/useSystemChat"
 import { Button } from "@/shared/ui/button"
 import { Textarea } from "@/shared/ui/textarea"
-import { routePaths } from "@/app/router/route-paths"
 
 function TypingDots({ color }: { color: string }) {
   return (

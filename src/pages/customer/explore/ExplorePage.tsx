@@ -22,7 +22,7 @@ export function ExplorePage() {
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [searchOnMove, setSearchOnMove] = useState(true)
   const listRef = useRef<HTMLDivElement>(null)
-  const boundsTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     clearTimeout(boundsTimerRef.current)

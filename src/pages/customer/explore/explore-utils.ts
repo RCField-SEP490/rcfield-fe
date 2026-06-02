@@ -6,7 +6,7 @@ export type VehicleWithCafe = Vehicle & { cafe: Cafe }
 export type UserLocation = { lat: number; lng: number }
 export type MapBounds = { north: number; south: number; east: number; west: number }
 
-export function cafeInBounds(cafe: { latitude: number | null; longitude: number | null }, bounds: MapBounds): boolean {
+export function cafeInBounds(cafe: { latitude?: number | null; longitude?: number | null }, bounds: MapBounds): boolean {
   if (!cafe.latitude || !cafe.longitude) return false
   return (
     cafe.latitude <= bounds.north &&
