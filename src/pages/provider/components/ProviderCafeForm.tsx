@@ -6,7 +6,7 @@ import { LocationPickerDialog } from "@/shared/components/LocationPickerDialog"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe, CafeImage, CafeOperatingHour, CafeOperatingHours, CafeUpsertBody, TrackType } from "@/features/cafes/types"
-import { cn } from "@/shared/lib/utils"
+import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Input } from "@/shared/ui/input"
@@ -111,7 +111,7 @@ export function ProviderCafeForm({
 
   const coverPreview = useMemo(() => {
     if (coverFile) return URL.createObjectURL(coverFile)
-    return values.cover_image_url ?? null
+    return sanitizeImageUrl(values.cover_image_url) ?? null
   }, [coverFile, values.cover_image_url])
 
   const { data: images = [], isLoading: loadingImages } = useQuery({
@@ -247,7 +247,7 @@ export function ProviderCafeForm({
                   setField("district", "")
                   setProvinceCode(province?.code ?? null)
                 }}
-                className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm font-medium text-[#1c1b1b] outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 disabled:opacity-50"
+                className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm font-semibold text-[#1c1b1b] outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 disabled:opacity-50"
                 disabled={loadingProvinces}
               >
                 <option value="">— Chọn tỉnh/thành —</option>
@@ -271,7 +271,7 @@ export function ProviderCafeForm({
                 value={values.district}
                 onChange={(e) => setField("district", e.target.value)}
                 disabled={!provinceCode || loadingWards}
-                className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm font-medium text-[#1c1b1b] outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 disabled:opacity-50"
+                className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm font-semibold text-[#1c1b1b] outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 disabled:opacity-50"
               >
                 <option value="">— Chọn phường/xã —</option>
                 {/* Preserve existing value if not in list (old data) */}
@@ -300,7 +300,7 @@ export function ProviderCafeForm({
           <div className="rounded-lg border border-[#e5e2e1] p-3">
             <div className="mb-2 text-sm font-bold text-[#1c1b1b]">Vị trí địa lý</div>
             <div className="flex items-center gap-3">
-              <div className="flex-1 rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] px-3 py-2 text-sm font-medium text-[#444748]">
+              <div className="flex-1 rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] px-3 py-2 text-sm font-semibold text-[#444748]">
                 {values.latitude != null && values.longitude != null
                   ? `${Number(values.latitude).toFixed(7)}, ${Number(values.longitude).toFixed(7)}`
                   : <span className="text-[#747878]">Chưa chọn vị trí</span>}
@@ -308,7 +308,7 @@ export function ProviderCafeForm({
               <Button
                 type="button"
                 variant="outline"
-                className="h-9 gap-2 rounded-lg border-[#c4c7c8] text-sm"
+                className="h-9 gap-2 rounded-lg border-[#c4c7c8] text-sm font-bold"
                 onClick={() => setMapOpen(true)}
               >
                 <MapPin className="size-4 text-orange-600" />
@@ -425,7 +425,7 @@ export function ProviderCafeForm({
                 ) : (
                   images.map((image) => (
                     <div key={image.id} className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-white p-2">
-                      <img src={image.url} alt="" className="size-12 rounded-md object-cover" />
+                      <img src={sanitizeImageUrl(image.url)!} alt="" className="size-12 rounded-md object-cover" />
                       <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{image.url}</span>
                       {onDeleteImage ? (
                         <Button type="button" variant="ghost" size="icon-sm" onClick={() => void onDeleteImage(image)} className="text-red-600 hover:bg-red-50 hover:text-red-700">
@@ -445,11 +445,11 @@ export function ProviderCafeForm({
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-[#e5e2e1] px-5 py-4">
         {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending} className="font-bold">
             Hủy
           </Button>
         ) : null}
-        <Button type="submit" disabled={isPending || values.track_types.length === 0 || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030]">
+        <Button type="submit" disabled={isPending || values.track_types.length === 0 || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           {isPending ? "Đang lưu..." : submitLabel ?? (cafe ? "Lưu thay đổi" : "Tạo cơ sở")}
         </Button>
       </div>
@@ -471,10 +471,10 @@ function OperatingHoursField({
   return (
     <div className="overflow-hidden rounded-lg border border-[#e5e2e1]">
       <div className="grid grid-cols-[100px_1fr_1fr_40px] gap-0 border-b border-[#e5e2e1] bg-[#f6f3f2] px-3 py-2">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-[#747878]">Ngày</span>
-        <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-[#747878]">Mở cửa</span>
-        <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-[#747878]">Đóng cửa</span>
-        <span className="font-mono text-[10px] font-medium uppercase tracking-widest text-[#747878]">Nghỉ</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Ngày</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Mở cửa</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Đóng cửa</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Nghỉ</span>
       </div>
       {dayKeys.map((day) => {
         const h = value[day] ?? { open: "09:00", close: "22:00", is_closed: false }

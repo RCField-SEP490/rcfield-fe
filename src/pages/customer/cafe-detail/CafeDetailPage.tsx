@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import { mapCafeToExploreCafe } from "@/features/cafes/lib/cafe.mappers"
+import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
+import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { ChatWidget } from "@/features/chat/components/ChatWidget"
 import { Button } from "@/shared/ui/button"
@@ -51,12 +52,21 @@ export function CafeDetailPage() {
     queryFn: () => menuApi.listMenuItems(resolvedCafe!.id, { page: 1, limit: 100, available: true }),
     enabled: !!resolvedCafe?.id,
   })
+  const { data: catalogs = [] } = useQuery({
+    queryKey: ["cafe-catalogs", resolvedCafe?.id],
+    queryFn: () => vehicleApi.listCatalogs(resolvedCafe!.id),
+    enabled: !!resolvedCafe?.id,
+  })
 
   const sourceCafe = cafeDetail ?? resolvedCafe
-  const cafe = useMemo(
-    () => (sourceCafe ? mapCafeToExploreCafe(sourceCafe, cafeImages) : undefined),
-    [sourceCafe, cafeImages],
-  )
+  const cafe = useMemo(() => {
+    if (!sourceCafe) return undefined
+    const mapped = mapCafeToExploreCafe(sourceCafe, cafeImages)
+    if (catalogs && catalogs.length > 0) {
+      mapped.availableVehicles = catalogs.map(mapCatalogToExploreVehicle)
+    }
+    return mapped
+  }, [sourceCafe, cafeImages, catalogs])
 
   // Hoisted Booking Selections
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)

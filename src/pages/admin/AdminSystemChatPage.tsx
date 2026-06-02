@@ -308,17 +308,19 @@ export function AdminSystemChatPage() {
       <AdminHeader
         title="Chat Widget Trang chủ"
         description="Cấu hình AI chat widget hiển thị trên trang landing page của RCField."
-        actions={
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="h-10 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg shadow-none flex items-center gap-1.5"
-          >
-            <Save className="size-4" />
-            {saving ? "Đang lưu..." : "Lưu thay đổi"}
-          </Button>
-        }
       />
+
+      {/* Controls Block */}
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-4 rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="h-10 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg shadow-none flex items-center gap-1.5"
+        >
+          <Save className="size-4" />
+          {saving ? "Đang lưu..." : "Lưu thay đổi"}
+        </Button>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         {/* Config panels */}

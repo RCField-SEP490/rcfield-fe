@@ -110,12 +110,12 @@ export function ProviderCafeDetailPage() {
         />
         <div className="p-6">
           <div className="mb-4 flex justify-end">
-            <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+            <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
               <ArrowLeft className="size-5" />
               Danh sách cơ sở
             </Button>
           </div>
-          <Button type="button" variant="outline" onClick={() => void refetch()}>
+          <Button type="button" variant="outline" onClick={() => void refetch()} className="h-10 px-4 rounded-lg border-[#c4c7c8] font-bold">
             Tải lại dữ liệu cơ sở
           </Button>
         </div>
@@ -135,7 +135,7 @@ export function ProviderCafeDetailPage() {
 
       <div className="space-y-4 p-4 md:p-6">
         <div className="flex justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+          <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
             <ArrowLeft className="size-5" />
             Danh sách
           </Button>
@@ -156,9 +156,9 @@ export function ProviderCafeDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4">
           <div className="flex items-center gap-3">
             {cafe.status === "PENDING" ? (
-              <span className="text-xs font-semibold text-amber-700">Cơ sở đang chờ admin duyệt — chưa thể thay đổi trạng thái</span>
+              <span className="text-xs font-bold text-amber-700">Cơ sở đang chờ admin duyệt — chưa thể thay đổi trạng thái</span>
             ) : (
-              <span className="text-sm font-medium text-[#444748]">Trạng thái vận hành hiện tại</span>
+              <span className="text-sm font-bold text-[#1c1b1b]">Trạng thái vận hành hiện tại</span>
             )}
             <StatusBadge status={formatCafeStatus(cafe.status)} />
           </div>
@@ -175,7 +175,7 @@ export function ProviderCafeDetailPage() {
             <button
               type="button"
               onClick={() => setTab("info")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
                 tab === "info"
                   ? "border-orange-600 text-orange-600"
                   : "border-transparent text-[#747878]"
@@ -186,7 +186,7 @@ export function ProviderCafeDetailPage() {
             <button
               type="button"
               onClick={() => setTab("widget")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
                 tab === "widget"
                   ? "border-orange-600 text-orange-600"
                   : "border-transparent text-[#747878]"
@@ -251,7 +251,7 @@ function StatusConfirmAction({
           type="button"
           variant={isReactivating ? "outline" : "destructive"}
           disabled={disabled}
-          className="h-9 gap-2 rounded-lg border-[#c4c7c8] text-sm"
+          className="h-9 gap-2 rounded-lg border-[#c4c7c8] text-sm font-bold"
         >
           <Power className="size-4" />
           {cafe.status === "PENDING" ? "Chờ admin duyệt" : label}
@@ -268,8 +268,8 @@ function StatusConfirmAction({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Hủy</AlertDialogCancel>
-          <AlertDialogAction variant={isReactivating ? "default" : "destructive"} onClick={onConfirm}>
+          <AlertDialogCancel className="font-bold">Hủy</AlertDialogCancel>
+          <AlertDialogAction variant={isReactivating ? "default" : "destructive"} onClick={onConfirm} className="font-bold">
             Xác nhận
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -64,7 +64,7 @@ export function ProviderSchedulePage() {
         description="Phân công nhân sự theo tuần, theo vị trí vận hành và theo tình trạng thiếu người."
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-4 text-sm font-medium text-[#444748]">
+      <div className="mb-4 flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-wider text-[#747878]">
         <LegendDot className="border-[#c4c7c8] bg-[#e5e2e1]" label="Đủ nhân sự" />
         <LegendDot className="border-[#ba1a1a] bg-[#ffdad6]" label="Thiếu nhân sự" />
       </div>
@@ -76,20 +76,20 @@ export function ProviderSchedulePage() {
               <IconButton ariaLabel="Tuần trước">
                 <ChevronLeft className="size-5" />
               </IconButton>
-              <h3 className="text-lg font-semibold text-[#1c1b1b]">Tháng 10, 23 - 29, 2023</h3>
+              <h3 className="text-lg font-bold text-[#1c1b1b]">Tháng 10, 23 - 29, 2023</h3>
               <IconButton ariaLabel="Tuần sau">
                 <ChevronRight className="size-5" />
               </IconButton>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
               <div className="flex rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] p-1">
-                <button className="rounded bg-white px-4 py-1.5 text-sm font-medium text-[#1c1b1b] shadow-sm">Tuần</button>
-                <button className="rounded px-4 py-1.5 text-sm font-medium text-[#444748] transition-colors hover:bg-[#e5e2e1]">Ngày</button>
+                <button className="rounded bg-white px-4 py-1.5 text-sm font-bold text-[#1c1b1b] shadow-sm">Tuần</button>
+                <button className="rounded px-4 py-1.5 text-sm font-bold text-[#444748] transition-colors hover:bg-[#e5e2e1]">Ngày</button>
               </div>
-              <Button variant="outline" className="h-9 rounded-lg border-[#c4c7c8] bg-white text-sm text-[#1c1b1b] hover:bg-[#ebe7e7]">
+              <Button variant="outline" className="h-9 rounded-lg border-[#c4c7c8] bg-white text-sm font-bold text-[#1c1b1b] hover:bg-[#ebe7e7]">
                 Hôm nay
               </Button>
-              <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+              <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
                 <Plus className="size-4" />
                 Phân công
               </Button>
@@ -99,11 +99,11 @@ export function ProviderSchedulePage() {
           <div className="flex-1 overflow-auto">
             <div className="min-w-[900px]">
               <div className="sticky top-0 z-10 grid grid-cols-[100px_repeat(7,minmax(120px,1fr))] border-b border-[#c4c7c8] bg-[#fcf8f8]">
-                <div className="flex items-end justify-end border-r border-[#c4c7c8] bg-[#f6f3f2] p-3 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">Vị trí</div>
+                <div className="flex items-end justify-end border-r border-[#c4c7c8] bg-[#f6f3f2] p-3 font-mono text-xs font-bold uppercase tracking-[0.05em] text-[#747878]">Vị trí</div>
                 {weekDays.map((day) => (
                   <div key={day.label} className={cn("border-r border-[#c4c7c8] p-3 text-center last:border-r-0", day.active && "bg-[#ebe7e7]")}>
-                    <div className={cn("font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]", day.active && "text-[#5d5f5f]")}>{day.label}</div>
-                    <div className={cn("mt-1 font-semibold text-[#1c1b1b]", day.active && "text-[#5d5f5f]")}>{day.date}</div>
+                    <div className={cn("font-mono text-xs font-bold uppercase tracking-[0.05em] text-[#747878]", day.active && "text-[#5d5f5f]")}>{day.label}</div>
+                    <div className={cn("mt-1 font-bold text-[#1c1b1b]", day.active && "text-[#5d5f5f]")}>{day.date}</div>
                   </div>
                 ))}
               </div>
@@ -111,13 +111,13 @@ export function ProviderSchedulePage() {
               {scheduleRows.map((row) => (
                 <div key={row.position} className="grid min-h-[132px] grid-cols-[100px_repeat(7,minmax(120px,1fr))] border-b border-[#c4c7c8] last:border-b-0">
                   <div className="flex items-center justify-center border-r border-[#c4c7c8] bg-[#f6f3f2] p-3">
-                    <span className="-rotate-90 whitespace-nowrap text-center font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">{row.position}</span>
+                    <span className="-rotate-90 whitespace-nowrap text-center font-mono text-xs font-bold uppercase tracking-[0.05em] text-[#747878]">{row.position}</span>
                   </div>
                   {row.days.map((items, dayIndex) => (
                     <div key={`${row.position}-${dayIndex}`} className={cn("flex flex-col gap-2 border-r border-[#c4c7c8] p-2 last:border-r-0", dayIndex === 1 && "bg-[#ebe7e7]")}>
                       {items.map((item, index) =>
                         "missing" in item ? (
-                          <button key={`${item.missing}-${index}`} className="flex min-h-12 items-center justify-center rounded border border-dashed border-[#ba1a1a]/60 bg-[#ffdad6] p-2 text-xs font-semibold text-[#ba1a1a] transition-colors hover:bg-[#ffdad6]/80">
+                          <button key={`${item.missing}-${index}`} className="flex min-h-12 items-center justify-center rounded border border-dashed border-[#ba1a1a]/60 bg-[#ffdad6] p-2 text-xs font-bold text-[#ba1a1a] transition-colors hover:bg-[#ffdad6]/80">
                             + {item.missing}
                           </button>
                         ) : (
@@ -134,13 +134,13 @@ export function ProviderSchedulePage() {
 
         <aside className="flex min-h-[520px] flex-col overflow-hidden rounded-xl border border-[#c4c7c8] bg-white shadow-sm">
           <div className="shrink-0 border-b border-[#c4c7c8] p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[#1c1b1b]">
+            <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-[#1c1b1b]">
               <Users className="size-5 text-[#5d5f5f]" />
               Nhân sự khả dụng
             </h3>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[#747878]" />
-              <input className="w-full rounded-lg border border-[#c4c7c8] bg-[#fcf8f8] py-2 pl-10 pr-3 text-sm font-medium outline-none transition-shadow focus:border-[#5d5f5f] focus:ring-1 focus:ring-[#5d5f5f]" placeholder="Tìm kiếm..." />
+              <input className="w-full rounded-lg border border-[#c4c7c8] bg-[#fcf8f8] py-2 pl-10 pr-3 text-sm font-semibold outline-none transition-shadow focus:border-[#5d5f5f] focus:ring-1 focus:ring-[#5d5f5f]" placeholder="Tìm kiếm..." />
             </div>
           </div>
 
@@ -149,8 +149,8 @@ export function ProviderSchedulePage() {
               <div key={item.name} className={cn("group flex cursor-grab items-center gap-3 rounded-lg border border-[#c4c7c8] bg-[#fcf8f8] p-3 transition-all hover:border-[#5d5f5f] hover:shadow-sm", item.disabled && "cursor-not-allowed opacity-60")}>
                 <Avatar initials={item.initials} />
                 <div className="min-w-0 flex-1">
-                  <h4 className="truncate text-sm font-semibold text-[#1c1b1b]">{item.name}</h4>
-                  <p className="truncate text-xs font-medium text-[#444748]">
+                  <h4 className="truncate text-sm font-bold text-[#1c1b1b]">{item.name}</h4>
+                  <p className="truncate text-xs font-semibold text-[#444748]">
                     {item.role} - {item.hours}
                   </p>
                 </div>

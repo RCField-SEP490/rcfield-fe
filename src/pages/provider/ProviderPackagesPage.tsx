@@ -59,15 +59,15 @@ export function ProviderPackagesPage() {
       <section className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-6">
         <StatCard label="TỔNG SỐ GÓI">
           <div className="flex items-end gap-3">
-            <span className="text-[40px] font-semibold leading-none text-[#1c1b1b]">4</span>
-            <span className="mb-1 text-sm font-medium text-[#c4c7c8]">Đang hoạt động</span>
+            <span className="text-[40px] font-extrabold leading-none text-[#1c1b1b]">4</span>
+            <span className="mb-1 text-sm font-bold text-[#747878]">Đang hoạt động</span>
           </div>
         </StatCard>
         <StatCard label="GÓI PHỔ BIẾN NHẤT">
           <div className="flex flex-col gap-1">
-            <span className="mt-2 text-2xl font-semibold leading-none text-[#1c1b1b]">Gói Pro (2 Giờ)</span>
-            <span className="mb-1 flex items-center text-sm font-medium text-[#5d5f5f]">
-              <TrendingUp className="mr-1 size-4" />
+            <span className="mt-2 text-2xl font-extrabold leading-none text-[#1c1b1b]">Gói Pro (2 Giờ)</span>
+            <span className="mb-1 flex items-center text-sm font-bold text-[#5d5f5f]">
+              <TrendingUp className="mr-1 size-4 animate-pulse" />
               Chiếm 65% lượt đặt
             </span>
           </div>
@@ -75,14 +75,14 @@ export function ProviderPackagesPage() {
         <StatCard label="TRẠNG THÁI HỆ THỐNG">
           <div className="mt-4 flex items-center gap-3">
             <div className="size-3 animate-pulse rounded-full bg-[#10b981]" />
-            <span className="text-base font-medium text-[#1c1b1b]">Bảng giá đang đồng bộ</span>
+            <span className="text-base font-bold text-[#1c1b1b]">Bảng giá đang đồng bộ</span>
           </div>
         </StatCard>
       </section>
 
-      <section className="mt-16 flex flex-col overflow-hidden rounded-xl border border-[#c4c7c8] bg-[#fcf8f8] shadow-sm">
-        <div className="flex flex-col justify-between gap-4 border-b border-[#c4c7c8] bg-white p-6 md:flex-row md:items-center">
-          <h3 className="text-lg font-semibold text-[#1c1b1b]">Danh sách Gói dịch vụ</h3>
+      <section className="mt-16 flex flex-col overflow-hidden rounded-xl border border-[#c4c7c8] bg-white shadow-sm">
+        <div className="flex flex-col justify-between gap-4 border-b border-[#e5e2e1] bg-white p-6 md:flex-row md:items-center">
+          <h3 className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">Danh sách Gói dịch vụ</h3>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 size-5 -translate-y-1/2 text-[#c4c7c8]" />
@@ -92,11 +92,11 @@ export function ProviderPackagesPage() {
                 type="text"
               />
             </div>
-            <Button variant="outline" className="h-10 gap-2 rounded border-[#c4c7c8] bg-[#fcf8f8] px-4 text-sm font-semibold text-[#1c1b1b] shadow-sm hover:bg-[#e5e2e1]">
+            <Button variant="outline" className="h-10 gap-2 rounded border-[#c4c7c8] bg-[#fcf8f8] px-4 text-sm font-bold text-[#1c1b1b] shadow-sm hover:bg-[#e5e2e1]">
               <Download className="size-[18px]" />
               Xuất báo cáo
             </Button>
-            <Button className="h-10 gap-2 rounded bg-[#1c1b1b] px-5 text-sm font-semibold text-white shadow-sm hover:bg-[#313030]">
+            <Button className="h-10 gap-2 rounded bg-[#1c1b1b] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#313030]">
               <Plus className="size-[18px]" />
               Tạo Gói Mới
             </Button>
@@ -106,31 +106,31 @@ export function ProviderPackagesPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-[#c4c7c8] bg-[#f6f3f2]">
+              <tr className="border-b border-[#e5e2e1] bg-[#fcf8f8]/60">
                 {["TÊN GÓI", "THỜI LƯỢNG", "ĐƠN GIÁ", "TIỆN ÍCH BAO GỒM", "TRẠNG THÁI", "THAO TÁC"].map((heading, index) => (
-                  <th key={heading} className={cn("px-6 py-4 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#444748]", index === 3 && "min-w-[250px]", index === 4 && "text-center", index === 5 && "text-right")}>
+                  <th key={heading} className={cn("px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#747878]", index === 3 && "min-w-[250px]", index === 4 && "text-center", index === 5 && "text-right")}>
                     {heading}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#c4c7c8] text-sm text-[#1c1b1b]">
+            <tbody className="divide-y divide-[#e5e2e1] text-sm text-[#1c1b1b]">
               {servicePackages.map((item) => (
-                <tr key={item.code} className={cn("group transition-colors hover:bg-white", !item.active && "opacity-60")}>
+                <tr key={item.code} className={cn("group transition-colors hover:bg-[#fcf8f8]", !item.active && "opacity-60")}>
                   <td className="px-6 py-4 align-top">
-                    <div className="mb-1 flex items-center gap-2 text-base font-semibold">
+                    <div className="mb-1 flex items-center gap-2 text-base font-extrabold">
                       {item.name}
-                      {item.popular ? <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-bold uppercase text-[#92400e]">Phổ biến</span> : null}
+                      {item.popular ? <span className="rounded-full bg-[#fef3c7] px-2 py-0.5 text-[10px] font-extrabold uppercase text-[#92400e]">Phổ biến</span> : null}
                     </div>
-                    <span className="inline-block text-xs text-[#747878]">Mã: {item.code}</span>
+                    <span className="inline-block text-xs font-bold text-[#747878]">Mã: {item.code}</span>
                   </td>
-                  <td className="px-6 py-4 align-top font-medium">{item.duration}</td>
+                  <td className="px-6 py-4 align-top font-bold">{item.duration}</td>
                   <td className="px-6 py-4 align-top">
-                    <div className="text-base font-semibold">{item.price}</div>
-                    <span className="text-xs text-[#747878]">{item.unit}</span>
+                    <div className="text-base font-extrabold">{item.price}</div>
+                    <span className="text-xs font-semibold text-[#747878]">{item.unit}</span>
                   </td>
                   <td className="px-6 py-4 align-top">
-                    <ul className="flex flex-col gap-1 text-sm text-[#444748]">
+                    <ul className="flex flex-col gap-1 text-sm font-semibold text-[#5d5f5f]">
                       {item.benefits.map((benefit) => (
                         <li key={benefit} className="flex items-start">
                           <Check className={cn("mr-1 mt-0.5 size-4 shrink-0", item.active ? "text-[#10b981]" : "text-[#747878]")} />
@@ -156,12 +156,12 @@ export function ProviderPackagesPage() {
           </table>
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#c4c7c8] bg-white p-4">
-          <span className="text-sm font-medium text-[#444748]">Hiển thị 1 - 4 của 4 gói</span>
+        <div className="flex items-center justify-between border-t border-[#e5e2e1] bg-white p-4">
+          <span className="text-sm font-bold text-[#5d5f5f]">Hiển thị 1 - 4 của 4 gói</span>
           <div className="flex gap-1">
-            <button className="cursor-not-allowed rounded border border-[#c4c7c8] px-3 py-1 text-sm text-[#747878] opacity-50">Trước</button>
-            <button className="rounded border border-[#c4c7c8] bg-[#1c1b1b] px-3 py-1 text-sm font-medium text-white">1</button>
-            <button className="cursor-not-allowed rounded border border-[#c4c7c8] px-3 py-1 text-sm text-[#747878] opacity-50">Sau</button>
+            <button className="cursor-not-allowed rounded border border-[#c4c7c8] px-3 py-1 text-sm font-bold text-[#747878] opacity-50">Trước</button>
+            <button className="rounded border border-[#c4c7c8] bg-[#1c1b1b] px-3 py-1 text-sm font-bold text-white">1</button>
+            <button className="cursor-not-allowed rounded border border-[#c4c7c8] px-3 py-1 text-sm font-bold text-[#747878] opacity-50">Sau</button>
           </div>
         </div>
       </section>
@@ -174,7 +174,7 @@ function StatCard({ label, children }: { label: string; children: React.ReactNod
     <div className="group relative overflow-hidden rounded-xl border border-[#c4c7c8] bg-[#fcf8f8] p-6 shadow-sm">
       <div className="absolute -right-4 -top-4 size-24 rounded-bl-full bg-[#ebe7e7] opacity-50 transition-transform group-hover:scale-110" />
       <div className="relative z-10">
-        <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#444748]">{label}</p>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</p>
         {children}
       </div>
     </div>

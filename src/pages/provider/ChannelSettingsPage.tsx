@@ -36,7 +36,7 @@ export function ChannelSettingsPage() {
     <ProviderShell>
       <ProviderPageHeader title="Kênh Messenger" description="Kết nối Facebook Page để AI tự động trả lời tin nhắn từ khách hàng." />
 
-      <div className="mx-auto max-w-2xl rounded-xl border bg-white p-6 shadow-sm">
+      <div className="mx-auto max-w-2xl rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-full bg-[#1877F2]/10">
             <svg className="size-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">
@@ -44,8 +44,8 @@ export function ChannelSettingsPage() {
             </svg>
           </div>
           <div>
-            <p className="font-medium">Facebook Messenger</p>
-            <p className="text-sm text-gray-500">Nhắn tin qua Facebook Page</p>
+            <p className="font-bold text-[#1c1b1b]">Facebook Messenger</p>
+            <p className="text-sm text-[#444748] font-semibold">Nhắn tin qua Facebook Page</p>
           </div>
         </div>
 
@@ -54,34 +54,34 @@ export function ChannelSettingsPage() {
             <div className="h-10 w-40 animate-pulse rounded-lg bg-gray-100" />
           ) : status?.connected ? (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-green-600">
+              <div className="flex items-center gap-2 text-sm font-bold text-green-600">
                 <CheckCircle2 className="size-4" />
                 <span>
-                  Đã kết nối: <strong>{status.pageName}</strong>
+                  Đã kết nối: <strong className="font-bold">{status.pageName}</strong>
                 </span>
               </div>
               {status.connectedAt && (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs font-semibold text-[#747878]">
                   Kết nối lúc {new Date(status.connectedAt).toLocaleString("vi-VN")}
                 </p>
               )}
 
               {confirmDisconnect ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-red-600">
+                  <p className="text-sm font-bold text-red-600">
                     Xác nhận ngắt kết nối? AI sẽ ngừng trả lời tin nhắn từ Page này ngay lập tức.
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => disconnectMutation.mutate()}
                       disabled={disconnectMutation.isPending}
-                      className="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700 disabled:opacity-60"
+                      className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-60"
                     >
                       {disconnectMutation.isPending ? "Đang xử lý..." : "Xác nhận ngắt kết nối"}
                     </button>
                     <button
                       onClick={() => setConfirmDisconnect(false)}
-                      className="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
+                      className="rounded-lg border border-[#c4c7c8] px-3 py-1.5 text-sm font-bold text-[#1c1b1b] hover:bg-[#e5e2e1] bg-[#fcf8f8]"
                     >
                       Huỷ
                     </button>
@@ -90,7 +90,7 @@ export function ChannelSettingsPage() {
               ) : (
                 <button
                   onClick={() => setConfirmDisconnect(true)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                  className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-bold text-red-600 hover:bg-red-50"
                 >
                   <Unplug className="size-4" />
                   Ngắt kết nối
@@ -99,7 +99,7 @@ export function ChannelSettingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#747878]">
                 <Wifi className="size-4" />
                 <span>Chưa kết nối</span>
               </div>

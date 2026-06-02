@@ -125,14 +125,14 @@ export function ProviderDashboardPage() {
         <Button
           variant="outline"
           onClick={handleResetOnboarding}
-          className="h-10 gap-2 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 hover:text-orange-800"
+          className="h-10 gap-2 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 hover:text-orange-800 font-bold"
         >
           Xem Hướng Dẫn Setup
         </Button>
-        <Button variant="outline" className="h-10 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+        <Button variant="outline" className="h-10 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
           Tháng này
         </Button>
-        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           <Download className="size-5" />
           Xuất báo cáo
         </Button>
@@ -160,7 +160,7 @@ export function ProviderDashboardPage() {
       <Panel className="mt-4">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <PanelTitle title="Tình trạng đội xe toàn hệ thống" subtitle="Tổng cộng 120 xe đang quản lý" />
-          <Button asChild variant="outline" className="h-10 w-fit gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+          <Button asChild variant="outline" className="h-10 w-fit gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
             <Link to={routePaths.providerVehicles}>
               Quản lý chi tiết
               <ArrowRight className="size-4" />
@@ -251,14 +251,14 @@ function OnboardingChecklist({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className={cn(
-                  "text-lg font-bold text-slate-900",
-                  steps.branchesCreated && "line-through text-slate-500"
+                  "text-base font-extrabold text-[#1c1b1b]",
+                  steps.branchesCreated && "line-through text-slate-500/60"
                 )}>
                   Tạo chi nhánh đầu tiên
                 </h3>
                 <Building2 className="size-4.5 text-slate-400" />
               </div>
-              <p className="text-slate-500 text-sm mt-1 max-w-2xl">
+              <p className="text-[#444748] text-xs font-semibold mt-1 max-w-2xl">
                 Cấu hình thông tin cơ sở RC Cafe của bạn để khách hàng có thể đặt lịch chơi và thuê xe.
               </p>
             </div>
@@ -312,14 +312,14 @@ function OnboardingChecklist({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className={cn(
-                  "text-lg font-bold text-slate-900",
-                  steps.vehiclesAdded && "line-through text-slate-500"
+                  "text-base font-extrabold text-[#1c1b1b]",
+                  steps.vehiclesAdded && "line-through text-slate-500/60"
                 )}>
                   Thêm xe vào fleet (đội xe)
                 </h3>
                 <Car className="size-4.5 text-slate-400" />
               </div>
-              <p className="text-slate-500 text-sm mt-1 max-w-2xl">
+              <p className="text-[#444748] text-xs font-semibold mt-1 max-w-2xl">
                 Khai báo danh mục xe RC cho thuê có sẵn tại cơ sở để khách hàng chọn khi làm booking.
               </p>
             </div>
@@ -373,14 +373,14 @@ function OnboardingChecklist({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className={cn(
-                  "text-lg font-bold text-slate-900",
-                  steps.operationalHoursSet && "line-through text-slate-500"
+                  "text-base font-extrabold text-[#1c1b1b]",
+                  steps.operationalHoursSet && "line-through text-slate-500/60"
                 )}>
                   Cài đặt giờ hoạt động
                 </h3>
                 <Clock className="size-4.5 text-slate-400" />
               </div>
-              <p className="text-slate-500 text-sm mt-1 max-w-2xl">
+              <p className="text-[#444748] text-xs font-semibold mt-1 max-w-2xl">
                 Cài đặt khung giờ làm việc mở cửa và đóng cửa hàng ngày tại cơ sở của bạn.
               </p>
             </div>
@@ -459,10 +459,10 @@ function FleetStatus({ label, value, icon, tone, note }: { label: string; value:
     <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
       <div className="mb-4 flex items-center gap-3">
         <div className={cn("flex size-9 items-center justify-center rounded-full [&_svg]:size-5", tonePill(tone))}>{icon}</div>
-        <span className="text-sm font-semibold text-[#1c1b1b]">{label}</span>
+        <span className="text-sm font-bold text-[#1c1b1b]">{label}</span>
       </div>
-      <div className="text-3xl font-semibold tracking-tight text-[#1c1b1b]">{value}</div>
-      {note ? <div className="mt-2 text-xs font-semibold text-red-600">{note}</div> : null}
+      <div className="text-2xl font-extrabold tracking-tight text-[#1c1b1b]">{value}</div>
+      {note ? <div className="mt-2 text-xs font-bold text-red-600">{note}</div> : null}
     </div>
   )
 }

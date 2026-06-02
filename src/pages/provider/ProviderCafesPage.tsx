@@ -38,11 +38,11 @@ export function ProviderCafesPage() {
           subtitle="Sắp xếp theo doanh thu tháng hiện tại"
           action={
             <div className="flex flex-wrap items-center justify-end gap-3">
-              <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+              <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
                 <CalendarClock className="size-5" />
                 Tháng này
               </Button>
-              <Button type="button" onClick={() => navigate(routePaths.providerCafeCreate)} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+              <Button type="button" onClick={() => navigate(routePaths.providerCafeCreate)} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
                 <Plus className="size-5" />
                 Thêm cơ sở
               </Button>
@@ -56,7 +56,7 @@ export function ProviderCafesPage() {
             ))}
           </div>
         ) : isError ? (
-          <button type="button" onClick={() => void refetch()} className="rounded-lg border border-[#c4c7c8] px-4 py-2 text-sm font-semibold text-[#1c1b1b]">
+          <button type="button" onClick={() => void refetch()} className="rounded-lg border border-[#c4c7c8] bg-[#f1edec] hover:bg-[#e5e2e1] px-4 py-2 text-sm font-bold text-[#1c1b1b]">
             Tải lại danh sách cơ sở
           </button>
         ) : (

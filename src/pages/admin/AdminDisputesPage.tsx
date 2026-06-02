@@ -201,7 +201,7 @@ export function AdminDisputesPage() {
 
       {/* Side-by-side Inspection Arbitration Dialog */}
       <Dialog open={activeDispute !== null} onOpenChange={(open) => !open && setActiveDispute(null)}>
-        <DialogContent className="max-w-5xl bg-white border border-[#e5e2e1] rounded-xl font-sans max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl sm:max-w-5xl bg-white border border-[#e5e2e1] rounded-xl font-sans max-h-[90vh] overflow-y-auto">
           <DialogHeader className="border-b border-[#e5e2e1] pb-4">
             <DialogTitle className="text-xl font-extrabold text-[#1c1b1b] flex items-center gap-2">
               <Scale className="size-5 text-orange-600" />

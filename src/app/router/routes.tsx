@@ -50,7 +50,10 @@ import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
 import { ProviderCafeCreatePage } from "@/pages/provider/ProviderCafeCreatePage"
 import { ProviderCafeDetailPage } from "@/pages/provider/ProviderCafeDetailPage"
 import { ProviderVehiclesPage } from "@/pages/provider/ProviderVehiclesPage"
+import { ProviderVehicleCatalogFormPage } from "@/pages/provider/ProviderVehicleCatalogFormPage"
+import { ProviderVehicleCatalogDetailPage } from "@/pages/provider/ProviderVehicleCatalogDetailPage"
 import { ProviderVehicleDetailPage } from "@/pages/provider/ProviderVehicleDetailPage"
+import { ProviderVehicleUnitFormPage } from "@/pages/provider/ProviderVehicleUnitFormPage"
 import { ProviderBookingsPage } from "@/pages/provider/ProviderBookingsPage"
 import { ProviderSchedulePage } from "@/pages/provider/ProviderSchedulePage"
 import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
@@ -159,6 +162,12 @@ export const router = createBrowserRouter([
           { path: routePaths.providerCafeCreate, element: providerGuardRoute(<ProviderCafeCreatePage />) },
           { path: routePaths.providerCafeDetail, element: providerGuardRoute(<ProviderCafeDetailPage />) },
           { path: routePaths.providerVehicles, element: providerGuardRoute(<ProviderVehiclesPage />) },
+          { path: routePaths.providerVehicleUnitCreateWithoutCatalog, element: providerGuardRoute(<ProviderVehicleUnitFormPage />) },
+          { path: routePaths.providerVehicleCatalogs, element: <Navigate replace to="/provider/vehicles?tab=catalogs" /> },
+          { path: routePaths.providerVehicleCatalogCreate, element: providerGuardRoute(<ProviderVehicleCatalogFormPage />) },
+          { path: routePaths.providerVehicleCatalogEdit, element: providerGuardRoute(<ProviderVehicleCatalogFormPage />) },
+          { path: routePaths.providerVehicleCatalogDetail, element: providerGuardRoute(<ProviderVehicleCatalogDetailPage />) },
+          { path: routePaths.providerVehicleUnitCreate, element: providerGuardRoute(<ProviderVehicleUnitFormPage />) },
           { path: routePaths.providerVehicleDetail, element: providerGuardRoute(<ProviderVehicleDetailPage />) },
           { path: routePaths.providerBookings, element: providerGuardRoute(<ProviderBookingsPage />) },
           { path: routePaths.providerSchedule, element: providerGuardRoute(<ProviderSchedulePage />) },

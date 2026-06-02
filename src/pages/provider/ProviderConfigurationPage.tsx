@@ -27,11 +27,11 @@ export function ProviderConfigurationPage() {
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-end gap-3">
-        <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+        <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
           <Trash2 className="size-4" />
           Hủy thay đổi
         </Button>
-        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+        <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           <Save className="size-4" />
           Lưu cấu hình
         </Button>
@@ -82,7 +82,7 @@ export function ProviderConfigurationPage() {
                 </Field>
               </div>
 
-              <div className="flex h-48 items-center justify-center rounded-lg border border-[#c4c7c8] bg-[#ebe7e7] text-sm font-medium text-[#444748]">
+              <div className="flex h-48 items-center justify-center rounded-lg border border-[#c4c7c8] bg-[#ebe7e7] text-sm font-semibold text-[#444748]">
                 <MapPinned className="mr-2 size-5" />
                 Bản đồ xem trước
               </div>
@@ -95,8 +95,8 @@ export function ProviderConfigurationPage() {
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-4 rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] p-4">
                 <div>
-                  <div className="text-base font-semibold text-[#1c1b1b]">Tự động duyệt đặt lịch</div>
-                  <div className="mt-1 text-xs font-medium text-[#444748]">Tự nhận các lượt đặt phù hợp với lịch vận hành</div>
+                  <div className="text-base font-bold text-[#1c1b1b]">Tự động duyệt đặt lịch</div>
+                  <div className="mt-1 text-xs font-semibold text-[#5d5f5f]">Tự nhận các lượt đặt phù hợp với lịch vận hành</div>
                 </div>
                 <label className="relative inline-flex cursor-pointer items-center">
                   <input className="peer sr-only" defaultChecked type="checkbox" />
@@ -134,7 +134,7 @@ export function ProviderConfigurationPage() {
             <div className="space-y-4">
               {operatingHours.map((item) => (
                 <div key={item.day} className="flex items-center gap-4 border-b border-[#e5e2e1] py-2 last:border-b-0">
-                  <div className="w-24 shrink-0 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b]">{item.day}</div>
+                  <div className="w-24 shrink-0 font-mono text-xs font-bold uppercase tracking-[0.05em] text-[#1c1b1b]">{item.day}</div>
                   {item.closed ? (
                     <select className={cn(inputClassName, "py-2 text-sm")}>
                       <option>Đóng cửa</option>
@@ -154,10 +154,10 @@ export function ProviderConfigurationPage() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 flex gap-3 border-t border-[#c4c7c8] bg-[#fcf8f8] p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:hidden">
-        <Button variant="outline" className="h-11 flex-1 rounded-lg border-[#c4c7c8] bg-[#e5e2e1] text-[#1c1b1b]">
+        <Button variant="outline" className="h-11 flex-1 rounded-lg border-[#c4c7c8] bg-[#e5e2e1] text-[#1c1b1b] font-bold">
           Hủy
         </Button>
-        <Button className="h-11 flex-1 rounded-lg bg-[#1c1b1b] text-white">Lưu</Button>
+        <Button className="h-11 flex-1 rounded-lg bg-[#1c1b1b] text-white font-bold">Lưu</Button>
       </div>
     </ProviderShell>
   )
@@ -168,7 +168,7 @@ function FormPanel({ icon, title, children }: { icon: ReactNode; title: string; 
     <section className="rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm md:p-8">
       <div className="mb-6 flex items-center gap-3 border-b border-[#c4c7c8] pb-4">
         <span className="text-[#5d5f5f] [&_svg]:size-6">{icon}</span>
-        <h3 className="text-[26px] font-semibold leading-tight text-[#1c1b1b]">{title}</h3>
+        <h3 className="text-lg font-bold leading-tight text-[#1c1b1b]">{title}</h3>
       </div>
       {children}
     </section>
@@ -178,7 +178,7 @@ function FormPanel({ icon, title, children }: { icon: ReactNode; title: string; 
 function Field({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
   return (
     <label className={cn("block", className)}>
-      <span className="mb-2 block font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#444748]">{label}</span>
+      <span className="mb-2 block font-mono text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</span>
       {children}
     </label>
   )
@@ -197,4 +197,4 @@ function TimeSelect({ value }: { value?: string }) {
 }
 
 const inputClassName =
-  "w-full rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] px-4 py-3 text-base font-medium text-[#1c1b1b] transition-colors placeholder:text-[#747878] focus:border-[#5d5f5f] focus:outline-none focus:ring-1 focus:ring-[#5d5f5f]"
+  "w-full rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] px-4 py-3 text-base font-semibold text-[#1c1b1b] transition-colors placeholder:text-[#747878] focus:border-[#5d5f5f] focus:outline-none focus:ring-1 focus:ring-[#5d5f5f]"
