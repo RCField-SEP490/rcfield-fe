@@ -48,7 +48,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
       </div>
 
       <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-        <div className="grid gap-2 p-2 md:h-[340px] md:grid-cols-[1.35fr_0.9fr]">
+        <div className="grid gap-2 p-2 md:h-[340px] md:grid-cols-[1.35fr_0.9fr] overflow-hidden">
           <GalleryButton
             image={activeImage}
             label={`${cafe.name} ảnh chính`}
