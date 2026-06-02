@@ -66,6 +66,7 @@ export const routePaths = {
   adminProviderDetail: "/admin/providers/:providerId",
   adminPaymentRequests: "/admin/payment-requests",
   adminSubscriptionPlans: "/admin/subscription-plans",
+  adminAmenities: "/admin/amenities",
   providerRegister: "/auth/register-provider",
   pendingReview: "/pending-review",
   rejected: "/rejected",

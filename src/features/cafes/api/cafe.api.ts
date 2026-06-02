@@ -1,5 +1,5 @@
 import { api } from "@/shared/lib/axios"
-import type { BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType } from "../types"
+import type { AmenityCatalogItem, BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType } from "../types"
 
 function debugCafeApi(message: string, details?: unknown) {
   if (import.meta.env.DEV) {
@@ -102,4 +102,44 @@ export const cafeApi = {
   deleteKbDocument: async (cafeId: string, documentId: string): Promise<void> => {
     await api.delete(`/v1/cafes/${cafeId}/kb/documents/${documentId}`)
   },
+}
+
+export const amenityApi = {
+  listAll: async (): Promise<AmenityCatalogItem[]> => {
+    const res = await api.get<AmenityCatalogItem[]>("/v1/amenities")
+    return res.data
+  },
+}
+
+export const amenityQueryKeys = {
+  all: ["amenities"] as const,
+}
+
+type AmenityBody = {
+  title: string
+  description?: string | null
+  icon: string
+  sort_order: number
+}
+
+export const adminAmenityApi = {
+  listAll: async (): Promise<AmenityCatalogItem[]> => {
+    const res = await api.get<AmenityCatalogItem[]>("/v1/admin/amenities")
+    return res.data
+  },
+  create: async (body: AmenityBody): Promise<AmenityCatalogItem> => {
+    const res = await api.post<AmenityCatalogItem>("/v1/admin/amenities", body)
+    return res.data
+  },
+  update: async (id: string, body: Partial<AmenityBody>): Promise<AmenityCatalogItem> => {
+    const res = await api.patch<AmenityCatalogItem>(`/v1/admin/amenities/${id}`, body)
+    return res.data
+  },
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/v1/admin/amenities/${id}`)
+  },
+}
+
+export const adminAmenityQueryKeys = {
+  all: ["admin-amenities"] as const,
 }

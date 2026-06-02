@@ -1,7 +1,7 @@
 import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { CreditCard } from "lucide-react"
 
@@ -9,12 +9,6 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { subscriptionApi } from "../api/subscription.api"
-
-const PLANS = [
-  { id: "__starter__", name: "STARTER", label: "Starter — 299,000₫/tháng", price: 299000 },
-  { id: "__growth__", name: "GROWTH", label: "Growth — 699,000₫/tháng", price: 699000 },
-  { id: "__pro__", name: "PRO", label: "Pro — 1,499,000₫/tháng", price: 1499000 },
-]
 
 const schema = z.object({
   plan_id: z.string().min(1, "Chọn gói"),
@@ -32,6 +26,10 @@ interface Props {
 
 export function PaymentRequestForm({ hasPendingRequest, onSuccess }: Props) {
   const qc = useQueryClient()
+  const { data: plans = [] } = useQuery({
+    queryKey: ["subscription-plans"],
+    queryFn: () => subscriptionApi.listSubscriptionPlans(),
+  })
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
   })
@@ -82,7 +80,11 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess }: Props) {
             className="w-full h-9 rounded-lg border border-slate-200 px-3 text-sm bg-white"
           >
             <option value="">-- Chọn gói --</option>
-            {PLANS.map((p) => <option key={p.name} value={p.name}>{p.label}</option>)}
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {p.pricePerMonth.toLocaleString("vi-VN")}₫/tháng
+              </option>
+            ))}
           </select>
           {errors.plan_id && <p className="text-[11px] text-red-500 font-bold">{errors.plan_id.message}</p>}
         </div>

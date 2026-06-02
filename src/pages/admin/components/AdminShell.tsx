@@ -44,6 +44,7 @@ const adminNavGroups: NavGroup[] = [
       { label: "Quản lý Provider", icon: Users, to: routePaths.adminProviders },
       { label: "Yêu cầu thanh toán", icon: CreditCard, to: routePaths.adminPaymentRequests },
       { label: "Cấu hình gói", icon: Package, to: routePaths.adminSubscriptionPlans },
+      { label: "Tiện ích cơ sở", icon: Settings2, to: routePaths.adminAmenities },
       { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
     ],
   },

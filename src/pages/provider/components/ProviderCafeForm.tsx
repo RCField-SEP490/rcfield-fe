@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
-import { ImageIcon, ImagePlus, Info, Loader2, MapPin, Trash2 } from "lucide-react"
+import { ImageIcon, ImagePlus, Info, Loader2, MapPin, Plus, Trash2, X } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 
 import { LocationPickerDialog } from "@/shared/components/LocationPickerDialog"
 
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { amenityApi, amenityQueryKeys, cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe, CafeImage, CafeOperatingHour, CafeOperatingHours, CafeUpsertBody, TrackType } from "@/features/cafes/types"
 import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -79,6 +79,8 @@ const defaultValues: ProviderCafeFormValues = {
   max_concurrent_bookings: 6,
   min_booking_notice_minutes: 30,
   byoc_capacity: 3,
+  amenity_ids: [],
+  rules: [],
 }
 
 export function ProviderCafeForm({
@@ -120,6 +122,12 @@ export function ProviderCafeForm({
     enabled: !!cafe?.id,
   })
 
+  const { data: amenityCatalog = [] } = useQuery({
+    queryKey: amenityQueryKeys.all,
+    queryFn: amenityApi.listAll,
+    staleTime: Infinity,
+  })
+
   useEffect(() => {
     if (!cafe) {
       setValues(defaultValues)
@@ -155,6 +163,8 @@ export function ProviderCafeForm({
       max_concurrent_bookings: cafe.maxConcurrentBookings,
       min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
       byoc_capacity: cafe.byocCapacity,
+      amenity_ids: cafe.amenityIds ?? [],
+      rules: cafe.rules ?? [],
     }
 
     setValues(nextValues)
@@ -189,7 +199,7 @@ export function ProviderCafeForm({
       }
       return a !== b
     })
-  }, [values, snap, files])
+  }, [values, snap, files, coverFile])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -217,6 +227,28 @@ export function ProviderCafeForm({
         : current.track_types.filter((item) => item !== trackType)
       return { ...current, track_types: next.length > 0 ? next : current.track_types }
     })
+  }
+
+  const toggleAmenity = (id: string, checked: boolean) => {
+    setValues((current) => {
+      const next = checked
+        ? Array.from(new Set([...(current.amenity_ids ?? []), id]))
+        : (current.amenity_ids ?? []).filter((item) => item !== id)
+      return { ...current, amenity_ids: next }
+    })
+  }
+
+  const [newRule, setNewRule] = useState("")
+
+  const addRule = () => {
+    const trimmed = newRule.trim()
+    if (!trimmed) return
+    setValues((current) => ({ ...current, rules: [...(current.rules ?? []), trimmed] }))
+    setNewRule("")
+  }
+
+  const removeRule = (index: number) => {
+    setValues((current) => ({ ...current, rules: (current.rules ?? []).filter((_, i) => i !== index) }))
   }
 
   return (
@@ -350,6 +382,59 @@ export function ProviderCafeForm({
                   {option.label}
                 </Label>
               ))}
+            </div>
+          </div>
+
+          {amenityCatalog.length > 0 && (
+            <div className="rounded-lg border border-[#e5e2e1] p-3">
+              <div className="mb-3">
+                <FieldLabel tooltip="Trang thiết bị và tiện ích cơ sở hỗ trợ. Admin cấu hình danh sách — bạn chọn những gì cơ sở này có">Trang thiết bị & Tiện ích</FieldLabel>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {amenityCatalog.map((item) => (
+                  <Label key={item.id} className="rounded-lg border border-[#e5e2e1] px-3 py-2 cursor-pointer hover:bg-[#f6f3f2]">
+                    <Checkbox
+                      checked={(values.amenity_ids ?? []).includes(item.id)}
+                      onCheckedChange={(checked) => toggleAmenity(item.id, checked === true)}
+                    />
+                    <span className="font-semibold">{item.title}</span>
+                    {item.description && (
+                      <span className="ml-1 text-[#747878] text-xs font-normal">— {item.description}</span>
+                    )}
+                  </Label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg border border-[#e5e2e1] p-3">
+            <div className="mb-3">
+              <FieldLabel tooltip="Nội quy cơ sở hiển thị cho khách trước khi đặt lịch. Mỗi dòng là một quy định riêng">Quy định cơ sở</FieldLabel>
+            </div>
+            <div className="space-y-2">
+              {(values.rules ?? []).map((rule, index) => (
+                <div key={index} className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-3 py-2">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#e5e2e1] text-[10px] font-bold text-[#444748]">{index + 1}</span>
+                  <span className="flex-1 text-sm text-[#1c1b1b]">{rule}</span>
+                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeRule(index)} className="text-red-500 hover:bg-red-50 hover:text-red-700">
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <Input
+                  value={newRule}
+                  onChange={(e) => setNewRule(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRule() } }}
+                  placeholder="Thêm quy định mới..."
+                  className="rounded-lg border-[#c4c7c8] text-sm"
+                  maxLength={500}
+                />
+                <Button type="button" variant="outline" onClick={addRule} disabled={!newRule.trim()} className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] font-bold text-sm">
+                  <Plus className="size-4" />
+                  Thêm
+                </Button>
+              </div>
             </div>
           </div>
 

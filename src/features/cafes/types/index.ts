@@ -10,6 +10,14 @@ export type CafeOperatingHour = {
 
 export type CafeOperatingHours = Record<string, CafeOperatingHour>
 
+export type AmenityCatalogItem = {
+  id: string
+  title: string
+  description: string | null
+  icon: string
+  sortOrder: number
+}
+
 export type BackendCafe = {
   id: string
   providerId: string
@@ -31,6 +39,9 @@ export type BackendCafe = {
   maxConcurrentBookings: number
   minBookingNoticeMinutes: number
   byocCapacity: number
+  amenityIds: string[]
+  rules: string[]
+  amenities?: AmenityCatalogItem[]
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -72,6 +83,8 @@ export type CafeUpsertBody = {
   max_concurrent_bookings: number
   min_booking_notice_minutes: number
   byoc_capacity: number
+  amenity_ids?: string[]
+  rules?: string[]
 }
 
 export type CafeListMeta = {

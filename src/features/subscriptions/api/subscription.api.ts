@@ -103,7 +103,7 @@ export const subscriptionApi = {
   },
 
   listSubscriptionPlans: async (): Promise<SubscriptionPlan[]> => {
-    const res = await api.get<SubscriptionPlan[]>("/v1/admin/subscription-plans")
+    const res = await api.get<SubscriptionPlan[]>("/v1/subscription-plans")
     return res.data
   },
 

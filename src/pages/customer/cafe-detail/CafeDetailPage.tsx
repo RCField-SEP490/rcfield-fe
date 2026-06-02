@@ -163,7 +163,11 @@ export function CafeDetailPage() {
               fnbQuantities={fnbQuantities}
               onChangeFnb={setFnbQuantities}
             />
-            <CafeDetailContent description={cafe.description} />
+            <CafeDetailContent
+              description={cafe.description}
+              amenities={cafeDetail?.amenities}
+              rules={cafeDetail?.rules}
+            />
           </div>
 
           <aside className="hidden lg:sticky lg:top-20 lg:block">
