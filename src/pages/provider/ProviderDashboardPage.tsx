@@ -190,7 +190,7 @@ function OnboardingChecklist({
   const progressPercent = Math.round((completedCount / 3) * 100)
   
   return (
-    <div className="max-w-4xl mx-auto space-y-6 py-2">
+    <div className="w-full space-y-6 py-2">
       
       {/* Celebration & Welcome Banner */}
       <div className="relative overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/70 via-white to-orange-50/20 p-8 shadow-sm">

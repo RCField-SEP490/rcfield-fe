@@ -63,7 +63,7 @@ import { ProviderSessionsPage } from "@/pages/provider/ProviderSessionsPage"
 import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
 import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
-import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
+import { ProviderPromotionCopyPage, ProviderPromotionCreatePage, ProviderPromotionEditPage, ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { ProviderConfigurationPage } from "@/pages/provider/ProviderConfigurationPage"
@@ -185,6 +185,9 @@ export const router = createBrowserRouter([
           { path: routePaths.providerPackages, element: providerGuardRoute(<ProviderPackagesPage />) },
           { path: routePaths.providerSubscriptions, element: providerGuardRoute(<ProviderSubscriptionsPage />) },
           { path: routePaths.providerPromotions, element: providerGuardRoute(<ProviderPromotionsPage />) },
+          { path: routePaths.providerPromotionCreate, element: providerGuardRoute(<ProviderPromotionCreatePage />) },
+          { path: routePaths.providerPromotionCopy, element: providerGuardRoute(<ProviderPromotionCopyPage />) },
+          { path: routePaths.providerPromotionEdit, element: providerGuardRoute(<ProviderPromotionEditPage />) },
           { path: routePaths.providerStaff, element: providerGuardRoute(<ProviderStaffPage />) },
           { path: routePaths.providerRevenue, element: providerGuardRoute(<ProviderRevenuePage />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },

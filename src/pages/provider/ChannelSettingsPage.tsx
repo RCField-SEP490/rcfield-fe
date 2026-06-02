@@ -36,7 +36,7 @@ export function ChannelSettingsPage() {
     <ProviderShell>
       <ProviderPageHeader title="Kênh Messenger" description="Kết nối Facebook Page để AI tự động trả lời tin nhắn từ khách hàng." />
 
-      <div className="mx-auto max-w-2xl rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
+      <div className="w-full rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-full bg-[#1877F2]/10">
             <svg className="size-5 text-[#1877F2]" fill="currentColor" viewBox="0 0 24 24">

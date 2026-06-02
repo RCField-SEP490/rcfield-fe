@@ -197,6 +197,7 @@ img.leaflet-tile-loaded {
   }
   html {
     @apply font-sans;
+    scrollbar-gutter: stable;
   }
 }
 

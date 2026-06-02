@@ -50,7 +50,7 @@ const staffCards = [
 
 export function ProviderStaffPage() {
   return (
-    <ProviderShell contentClassName="max-w-7xl">
+    <ProviderShell>
       <ProviderPageHeader
         title="Quản lý nhân sự"
         description="Danh sách nhân viên, vai trò và trạng thái hoạt động."

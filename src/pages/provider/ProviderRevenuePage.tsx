@@ -26,7 +26,7 @@ export function ProviderRevenuePage() {
     <ProviderShell contentClassName="mx-0 max-w-none px-0 py-0 md:px-0">
       <ProviderPageHeader title="Doanh thu & Rút tiền" description="Quản lý dòng tiền và các khoản thanh toán." flush />
 
-      <div className="mx-auto flex max-w-7xl flex-col gap-16 px-4 py-16 md:px-6">
+      <div className="flex w-full flex-col gap-16 px-4 py-16 md:px-6 2xl:px-8">
         <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div className="relative col-span-1 flex min-h-72 flex-col justify-between overflow-hidden rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm md:col-span-2">
             <Wallet className="absolute right-4 top-4 size-28 text-[#1c1b1b]/10" />

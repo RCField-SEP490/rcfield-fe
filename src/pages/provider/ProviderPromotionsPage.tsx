@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
+  ArrowLeft,
   BadgePercent,
   Building2,
   CalendarClock,
@@ -12,8 +13,10 @@ import {
   Trash2,
   X,
 } from "lucide-react"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
+import { routePaths } from "@/app/router/route-paths"
 import {
   promotionApi,
   type DiscountType,
@@ -23,7 +26,7 @@ import {
   type ProviderCafe,
 } from "@/features/promotions/api/promotion.api"
 import { DeleteConfirmationModal } from "@/pages/provider/components/DeleteConfirmationModal"
-import { MetricCard, Panel, PanelTitle, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
+import { MetricCard, Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { cn } from "@/shared/lib/utils"
@@ -76,20 +79,13 @@ const defaultForm: PromotionFormState = {
 }
 
 export function ProviderPromotionsPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedCafeId = searchParams.get("cafeId") ?? ""
   const [cafes, setCafes] = useState<ProviderCafe[]>([])
   const [selectedCafeId, setSelectedCafeId] = useState("")
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [editing, setEditing] = useState<Promotion | null>(null)
-  const [formOpen, setFormOpen] = useState(false)
-  const [form, setForm] = useState<PromotionFormState>(defaultForm)
-  const [copyOpen, setCopyOpen] = useState(false)
-  const [copySourceCafeId, setCopySourceCafeId] = useState("")
-  const [copySourcePromotions, setCopySourcePromotions] = useState<Promotion[]>([])
-  const [copyPromotionId, setCopyPromotionId] = useState("")
-  const [copyLoading, setCopyLoading] = useState(false)
-  const [copying, setCopying] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Promotion | null>(null)
   const [selectedPromotionIds, setSelectedPromotionIds] = useState<string[]>([])
   const [deleteMode, setDeleteMode] = useState<"single" | "selected" | "all" | null>(null)
@@ -97,14 +93,8 @@ export function ProviderPromotionsPage() {
 
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
   const copySourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
-  const copySourceCafe = cafes.find((cafe) => cafe.id === copySourceCafeId)
-  const copyPromotion = copySourcePromotions.find((promotion) => promotion.id === copyPromotionId)
   const selectedPromotions = promotions.filter((promotion) => selectedPromotionIds.includes(promotion.id))
   const allPromotionsSelected = promotions.length > 0 && selectedPromotionIds.length === promotions.length
-  const existingPromotionCodes = useMemo(
-    () => new Set(promotions.map((promotion) => promotion.code.toUpperCase())),
-    [promotions]
-  )
 
   const stats = useMemo(() => {
     const now = Date.now()
@@ -128,7 +118,11 @@ export function ProviderPromotionsPage() {
         const data = await promotionApi.listProviderCafes()
         if (!mounted) return
         setCafes(data)
-        setSelectedCafeId((current) => current || data[0]?.id || "")
+        setSelectedCafeId((current) => {
+          if (current) return current
+          if (requestedCafeId && data.some((cafe) => cafe.id === requestedCafeId)) return requestedCafeId
+          return data[0]?.id || ""
+        })
       } catch {
         toast.error("Không tải được danh sách chi nhánh")
       } finally {
@@ -140,7 +134,7 @@ export function ProviderPromotionsPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [requestedCafeId])
 
   useEffect(() => {
     if (!selectedCafeId) {
@@ -169,82 +163,21 @@ export function ProviderPromotionsPage() {
   }, [selectedCafeId])
 
   useEffect(() => {
-    setCopyOpen(false)
-    setCopySourceCafeId("")
-    setCopySourcePromotions([])
-    setCopyPromotionId("")
     setSelectedPromotionIds([])
     setDeleteTarget(null)
     setDeleteMode(null)
   }, [selectedCafeId])
 
-  useEffect(() => {
-    if (!copyOpen || !copySourceCafeId) {
-      setCopySourcePromotions([])
-      setCopyPromotionId("")
-      return
-    }
-
-    let mounted = true
-
-    async function loadSourcePromotions() {
-      try {
-        setCopyLoading(true)
-        const data = await promotionApi.listByCafe(copySourceCafeId)
-        if (!mounted) return
-        setCopySourcePromotions(data)
-        setCopyPromotionId((current) => current || data[0]?.id || "")
-      } catch {
-        toast.error("Không tải được mã ưu đãi của chi nhánh nguồn")
-      } finally {
-        if (mounted) setCopyLoading(false)
-      }
-    }
-
-    void loadSourcePromotions()
-    return () => {
-      mounted = false
-    }
-  }, [copyOpen, copySourceCafeId])
-
-  const resetForm = () => {
-    setEditing(null)
-    setForm(defaultForm)
-    setFormOpen(false)
-  }
-
   const startCreate = () => {
-    setEditing(null)
-    setForm(defaultForm)
-    setFormOpen(true)
-    setCopyOpen(false)
+    navigate(`${routePaths.providerPromotionCreate}?cafeId=${selectedCafeId}`)
   }
 
   const startEdit = (promotion: Promotion) => {
-    setEditing(promotion)
-    setForm({
-      code: promotion.code,
-      description: promotion.description ?? "",
-      discountType: promotion.discountType,
-      discountValue: numberInputValue(promotion.discountValue),
-      maxDiscountAmount: numberInputValue(promotion.maxDiscountAmount),
-      minOrderAmount: numberInputValue(promotion.minOrderAmount),
-      maxUses: promotion.maxUses?.toString() ?? "",
-      maxUsesPerUser: promotion.maxUsesPerUser.toString(),
-      applicableTo: promotion.applicableTo,
-      startsAt: toDatetimeLocal(new Date(promotion.startsAt)),
-      expiresAt: promotion.expiresAt ? toDatetimeLocal(new Date(promotion.expiresAt)) : "",
-      isActive: promotion.isActive,
-    })
-    setFormOpen(true)
-    setCopyOpen(false)
+    navigate(`${routePaths.providerPromotionEdit.replace(":promotionId", promotion.id)}?cafeId=${selectedCafeId}`)
   }
 
   const startCopy = () => {
-    setEditing(null)
-    setFormOpen(false)
-    setCopyOpen(true)
-    setCopySourceCafeId((current) => current || copySourceCafes[0]?.id || "")
+    navigate(`${routePaths.providerPromotionCopy}?cafeId=${selectedCafeId}`)
   }
 
   const togglePromotionSelection = (promotionId: string) => {
@@ -272,33 +205,6 @@ export function ProviderPromotionsPage() {
     if (promotions.length === 0) return
     setDeleteTarget(null)
     setDeleteMode("all")
-  }
-
-  const savePromotion = async () => {
-    if (!selectedCafeId) return
-    const validationMessage = getPromotionFormError(form)
-    if (validationMessage) {
-      toast.error(validationMessage)
-      return
-    }
-
-    try {
-      setSaving(true)
-      const payload = toPayload(form)
-      const saved = editing
-        ? await promotionApi.update(selectedCafeId, editing.id, payload)
-        : await promotionApi.create(selectedCafeId, payload)
-
-      setPromotions((items) => editing ? items.map((item) => item.id === saved.id ? saved : item) : [saved, ...items])
-      toast.success(editing ? "Đã cập nhật ưu đãi" : "Đã tạo ưu đãi")
-      resetForm()
-    } catch (error) {
-      toast.error("Không lưu được ưu đãi", {
-        description: getErrorMessage(error),
-      })
-    } finally {
-      setSaving(false)
-    }
   }
 
   const toggleActive = async (promotion: Promotion) => {
@@ -367,29 +273,6 @@ export function ProviderPromotionsPage() {
     }
   }
 
-  const copyPromotionToSelectedCafe = async () => {
-    if (!selectedCafeId || !copyPromotion) return
-    if (existingPromotionCodes.has(copyPromotion.code.toUpperCase())) {
-      toast.error("Mã ưu đãi này đã có ở chi nhánh đang chọn")
-      return
-    }
-
-    try {
-      setCopying(true)
-      const saved = await promotionApi.create(selectedCafeId, promotionToPayload(copyPromotion))
-      setPromotions((items) => [saved, ...items])
-      toast.success(`Đã thêm mã ${saved.code} vào ${selectedCafe?.name ?? "chi nhánh đang chọn"}`)
-      setCopyOpen(false)
-      setCopyPromotionId("")
-    } catch (error) {
-      toast.error("Không sao chép được mã ưu đãi", {
-        description: getErrorMessage(error),
-      })
-    } finally {
-      setCopying(false)
-    }
-  }
-
   return (
     <ProviderShell>
       <ProviderPageHeader
@@ -397,155 +280,107 @@ export function ProviderPromotionsPage() {
         description="Chọn một chi nhánh bạn sở hữu để tạo, chỉnh sửa và theo dõi mã ưu đãi riêng cho chi nhánh đó."
       />
 
-      <section className="grid gap-4 lg:grid-cols-[360px_1fr]">
-        <Panel className="lg:sticky lg:top-28 lg:self-start">
-          <PanelTitle title="Chi nhánh áp dụng" subtitle="Ưu đãi chỉ hiển thị và được cấu hình trong phạm vi chi nhánh đang chọn." />
+      <section className="space-y-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <MetricCard label="Đang hoạt động" value={String(stats.active)} helper="Theo chi nhánh đang chọn" icon={<BadgePercent />} tone="success" />
+          <MetricCard label="Sắp hết hạn" value={String(stats.expiringSoon)} helper="Trong 7 ngày tới" icon={<CalendarClock />} tone={stats.expiringSoon ? "warning" : "neutral"} />
+          <MetricCard label="Lượt dùng" value={String(stats.uses)} helper="Tổng lượt dùng mã" icon={<Building2 />} tone="info" />
+        </section>
+
+        <Panel>
           <div className="space-y-3">
-            {cafes.map((cafe) => (
-              <button
-                key={cafe.id}
-                type="button"
-                onClick={() => {
-                  setSelectedCafeId(cafe.id)
-                  resetForm()
-                }}
-                className={cn(
-                  "w-full rounded-lg border p-4 text-left transition",
-                  selectedCafeId === cafe.id
-                    ? "border-orange-200 bg-orange-50 shadow-sm"
-                    : "border-[#e5e2e1] bg-white hover:bg-[#f6f3f2]"
-                )}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</p>
-                    <p className="mt-1 text-xs font-medium text-[#747878]">
-                      {cafe.district}, {cafe.city}
-                    </p>
-                  </div>
-                  <StatusBadge status={cafe.status} />
-                </div>
-                <p className="mt-3 line-clamp-2 text-xs font-medium text-[#444748]">{cafe.address}</p>
-              </button>
-            ))}
+            <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">
+              Chi nhánh áp dụng
+            </Label>
+            <select
+              value={selectedCafeId}
+              onChange={(event) => {
+                const nextCafeId = event.target.value
+                setSelectedCafeId(nextCafeId)
+                setSearchParams(nextCafeId ? { cafeId: nextCafeId } : {})
+              }}
+              disabled={loading || cafes.length === 0}
+              className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold disabled:bg-[#f6f3f2]"
+            >
+              {cafes.length === 0 ? <option>Chưa có chi nhánh</option> : null}
+              {cafes.map((cafe) => (
+                <option key={cafe.id} value={cafe.id}>
+                  {cafe.name} - {cafe.district}, {cafe.city}
+                </option>
+              ))}
+            </select>
           </div>
-          {!loading && cafes.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#f6f3f2] p-5 text-sm font-medium text-[#747878]">
-              Bạn chưa có chi nhánh nào để cấu hình ưu đãi.
-            </div>
-          ) : null}
         </Panel>
 
-        <div className="space-y-4">
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <MetricCard label="Đang hoạt động" value={String(stats.active)} helper="Theo chi nhánh đang chọn" icon={<BadgePercent />} tone="success" />
-            <MetricCard label="Sắp hết hạn" value={String(stats.expiringSoon)} helper="Trong 7 ngày tới" icon={<CalendarClock />} tone={stats.expiringSoon ? "warning" : "neutral"} />
-            <MetricCard label="Lượt dùng" value={String(stats.uses)} helper="Tổng lượt dùng mã" icon={<Building2 />} tone="info" />
-          </section>
-
-          {formOpen ? (
-            <PromotionForm
-              cafe={selectedCafe}
-              form={form}
-              editing={editing}
-              saving={saving}
-              onChange={setForm}
-              onCancel={resetForm}
-              onSave={() => void savePromotion()}
-            />
-          ) : null}
-
-          {copyOpen ? (
-            <CopyPromotionPanel
-              targetCafe={selectedCafe}
-              sourceCafes={copySourceCafes}
-              sourceCafeId={copySourceCafeId}
-              sourceCafe={copySourceCafe}
-              promotions={copySourcePromotions}
-              existingCodes={existingPromotionCodes}
-              selectedPromotionId={copyPromotionId}
-              loading={copyLoading}
-              copying={copying}
-              onSourceCafeChange={(value) => {
-                setCopySourceCafeId(value)
-                setCopyPromotionId("")
-              }}
-              onPromotionChange={setCopyPromotionId}
-              onCancel={() => setCopyOpen(false)}
-              onCopy={() => void copyPromotionToSelectedCafe()}
-            />
-          ) : null}
-
-          <Panel>
-            <PanelTitle
-              title={selectedCafe ? `Danh sách ưu đãi - ${selectedCafe.name}` : "Danh sách ưu đãi"}
-              subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
-              action={
-                <div className="flex flex-nowrap items-center gap-2">
-                  <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                    <Copy className="mr-2 size-4" />
-                    Thêm từ chi nhánh
-                  </Button>
-                  <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                    <Plus className="mr-2 size-4" />
-                    Thêm mã
-                  </Button>
-                </div>
-              }
-            />
-
-            {loading ? (
-              <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
-                Đang tải dữ liệu ưu đãi...
-              </div>
-            ) : promotions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
-                <BadgePercent className="mx-auto size-10 text-[#747878]" />
-                <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chi nhánh này chưa có ưu đãi</h3>
-                <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo mã đầu tiên để khách hàng áp dụng khi đặt sân hoặc thuê xe.</p>
-                <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+        <Panel>
+          <PanelTitle
+            title={selectedCafe ? `Danh sách ưu đãi - ${selectedCafe.name}` : "Danh sách ưu đãi"}
+            subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
+            action={
+              <div className="flex flex-nowrap items-center gap-2">
+                <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
+                  <Copy className="mr-2 size-4" />
+                  Thêm từ chi nhánh
+                </Button>
+                <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
                   <Plus className="mr-2 size-4" />
-                  Tạo ưu đãi
+                  Thêm mã
                 </Button>
               </div>
-            ) : (
-              <div className="grid gap-3">
-                <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
-                    <input
-                      type="checkbox"
-                      checked={allPromotionsSelected}
-                      onChange={toggleAllPromotions}
-                      className="size-4 rounded border-[#c4c7c8] accent-orange-600"
-                    />
-                    Chọn tất cả ({selectedPromotionIds.length}/{promotions.length})
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
-                      <Trash2 className="mr-2 size-4" />
-                      Xóa đã chọn
-                    </Button>
-                    <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
-                      <Trash2 className="mr-2 size-4" />
-                      Xóa hết
-                    </Button>
-                  </div>
-                </div>
-                {promotions.map((promotion) => (
-                  <PromotionRow
-                    key={promotion.id}
-                    promotion={promotion}
-                    selected={selectedPromotionIds.includes(promotion.id)}
-                    onSelect={() => togglePromotionSelection(promotion.id)}
-                    onEdit={() => startEdit(promotion)}
-                    onToggle={() => void toggleActive(promotion)}
-                    onDelete={() => openSingleDelete(promotion)}
+            }
+          />
+
+          {loading ? (
+            <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
+              Đang tải dữ liệu ưu đãi...
+            </div>
+          ) : promotions.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
+              <BadgePercent className="mx-auto size-10 text-[#747878]" />
+              <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chi nhánh này chưa có ưu đãi</h3>
+              <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo mã đầu tiên để khách hàng áp dụng khi đặt sân hoặc thuê xe.</p>
+              <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+                <Plus className="mr-2 size-4" />
+                Tạo ưu đãi
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
+                  <input
+                    type="checkbox"
+                    checked={allPromotionsSelected}
+                    onChange={toggleAllPromotions}
+                    className="size-4 rounded border-[#c4c7c8] accent-orange-600"
                   />
-                ))}
+                  Chọn tất cả ({selectedPromotionIds.length}/{promotions.length})
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
+                    <Trash2 className="mr-2 size-4" />
+                    Xóa đã chọn
+                  </Button>
+                  <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
+                    <Trash2 className="mr-2 size-4" />
+                    Xóa hết
+                  </Button>
+                </div>
               </div>
-            )}
-          </Panel>
-        </div>
+              {promotions.map((promotion) => (
+                <PromotionRow
+                  key={promotion.id}
+                  promotion={promotion}
+                  selected={selectedPromotionIds.includes(promotion.id)}
+                  onSelect={() => togglePromotionSelection(promotion.id)}
+                  onEdit={() => startEdit(promotion)}
+                  onToggle={() => void toggleActive(promotion)}
+                  onDelete={() => openSingleDelete(promotion)}
+                />
+              ))}
+            </div>
+          )}
+        </Panel>
       </section>
 
       <DeleteConfirmationModal
@@ -637,6 +472,456 @@ export function ProviderPromotionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </ProviderShell>
+  )
+}
+
+export function ProviderPromotionCreatePage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedCafeId = searchParams.get("cafeId") ?? ""
+  const [cafes, setCafes] = useState<ProviderCafe[]>([])
+  const [selectedCafeId, setSelectedCafeId] = useState("")
+  const [form, setForm] = useState<PromotionFormState>(defaultForm)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCafes() {
+      try {
+        setLoading(true)
+        const data = await promotionApi.listProviderCafes()
+        if (!mounted) return
+        setCafes(data)
+        setSelectedCafeId((current) => {
+          if (current) return current
+          if (requestedCafeId && data.some((cafe) => cafe.id === requestedCafeId)) return requestedCafeId
+          return data[0]?.id || ""
+        })
+      } catch {
+        toast.error("Không tải được danh sách chi nhánh")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    void loadCafes()
+    return () => {
+      mounted = false
+    }
+  }, [requestedCafeId])
+
+  const goBack = () => {
+    navigate(buildPromotionsPath(selectedCafeId || requestedCafeId))
+  }
+
+  const savePromotion = async () => {
+    if (!selectedCafeId) return
+    const validationMessage = getPromotionFormError(form)
+    if (validationMessage) {
+      toast.error(validationMessage)
+      return
+    }
+
+    try {
+      setSaving(true)
+      const saved = await promotionApi.create(selectedCafeId, toPayload(form))
+      toast.success("Đã tạo ưu đãi", { description: saved.code })
+      navigate(buildPromotionsPath(selectedCafeId))
+    } catch (error) {
+      toast.error("Không lưu được ưu đãi", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title="Thêm mã ưu đãi"
+        description="Tạo mã ưu đãi mới cho một chi nhánh provider."
+      />
+
+      <div className="space-y-4">
+        <div className="flex justify-start">
+          <Button type="button" variant="outline" onClick={goBack} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
+            <ArrowLeft className="size-5" />
+            Danh sách ưu đãi
+          </Button>
+        </div>
+
+        <Panel>
+          <div className="space-y-3">
+            <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">
+              Chi nhánh áp dụng
+            </Label>
+            <select
+              value={selectedCafeId}
+              onChange={(event) => {
+                const nextCafeId = event.target.value
+                setSelectedCafeId(nextCafeId)
+                setSearchParams(nextCafeId ? { cafeId: nextCafeId } : {})
+              }}
+              disabled={loading || cafes.length === 0}
+              className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold disabled:bg-[#f6f3f2]"
+            >
+              {cafes.length === 0 ? <option>Chưa có chi nhánh</option> : null}
+              {cafes.map((cafe) => (
+                <option key={cafe.id} value={cafe.id}>
+                  {cafe.name} - {cafe.district}, {cafe.city}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Panel>
+
+        <PromotionForm
+          cafe={selectedCafe}
+          form={form}
+          editing={null}
+          saving={saving}
+          onChange={setForm}
+          onCancel={goBack}
+          onSave={() => void savePromotion()}
+        />
+      </div>
+    </ProviderShell>
+  )
+}
+
+export function ProviderPromotionEditPage() {
+  const navigate = useNavigate()
+  const { promotionId = "" } = useParams()
+  const [searchParams] = useSearchParams()
+  const requestedCafeId = searchParams.get("cafeId") ?? ""
+  const [cafes, setCafes] = useState<ProviderCafe[]>([])
+  const [selectedCafeId, setSelectedCafeId] = useState("")
+  const [editing, setEditing] = useState<Promotion | null>(null)
+  const [form, setForm] = useState<PromotionFormState>(defaultForm)
+  const [loadingPromotion, setLoadingPromotion] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCafes() {
+      try {
+        const data = await promotionApi.listProviderCafes()
+        if (!mounted) return
+        setCafes(data)
+        setSelectedCafeId((current) => {
+          if (current) return current
+          if (requestedCafeId && data.some((cafe) => cafe.id === requestedCafeId)) return requestedCafeId
+          return data[0]?.id || ""
+        })
+      } catch {
+        toast.error("Không tải được danh sách chi nhánh")
+      }
+    }
+
+    void loadCafes()
+    return () => {
+      mounted = false
+    }
+  }, [requestedCafeId])
+
+  useEffect(() => {
+    if (!selectedCafeId || !promotionId) {
+      setEditing(null)
+      return
+    }
+
+    let mounted = true
+
+    async function loadPromotion() {
+      try {
+        setLoadingPromotion(true)
+        const data = await promotionApi.listByCafe(selectedCafeId)
+        if (!mounted) return
+        const promotion = data.find((item) => item.id === promotionId) ?? null
+        setEditing(promotion)
+        if (promotion) {
+          setForm(promotionToForm(promotion))
+        } else {
+          toast.error("Không tìm thấy mã ưu đãi trong chi nhánh này")
+        }
+      } catch {
+        toast.error("Không tải được mã ưu đãi")
+      } finally {
+        if (mounted) setLoadingPromotion(false)
+      }
+    }
+
+    void loadPromotion()
+    return () => {
+      mounted = false
+    }
+  }, [promotionId, selectedCafeId])
+
+  const goBack = () => {
+    navigate(buildPromotionsPath(selectedCafeId || requestedCafeId))
+  }
+
+  const savePromotion = async () => {
+    if (!selectedCafeId || !editing) return
+    const validationMessage = getPromotionFormError(form)
+    if (validationMessage) {
+      toast.error(validationMessage)
+      return
+    }
+
+    try {
+      setSaving(true)
+      const saved = await promotionApi.update(selectedCafeId, editing.id, toPayload(form))
+      toast.success("Đã cập nhật ưu đãi", { description: saved.code })
+      navigate(buildPromotionsPath(selectedCafeId))
+    } catch (error) {
+      toast.error("Không lưu được ưu đãi", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title={editing ? `Chỉnh sửa ${editing.code}` : "Chỉnh sửa ưu đãi"}
+        description="Cập nhật thông tin mã ưu đãi của chi nhánh đang chọn."
+      />
+
+      <div className="space-y-4">
+        <div className="flex justify-start">
+          <Button type="button" variant="outline" onClick={goBack} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
+            <ArrowLeft className="size-5" />
+            Danh sách ưu đãi
+          </Button>
+        </div>
+
+        {loadingPromotion ? (
+          <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
+            Đang tải dữ liệu ưu đãi...
+          </div>
+        ) : editing ? (
+          <PromotionForm
+            cafe={selectedCafe}
+            form={form}
+            editing={editing}
+            saving={saving}
+            onChange={setForm}
+            onCancel={goBack}
+            onSave={() => void savePromotion()}
+          />
+        ) : (
+          <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
+            <BadgePercent className="mx-auto size-10 text-[#747878]" />
+            <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Không tìm thấy ưu đãi</h3>
+            <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Vui lòng quay lại danh sách và chọn mã khác.</p>
+          </div>
+        )}
+      </div>
+    </ProviderShell>
+  )
+}
+
+export function ProviderPromotionCopyPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedCafeId = searchParams.get("cafeId") ?? ""
+  const [cafes, setCafes] = useState<ProviderCafe[]>([])
+  const [targetCafeId, setTargetCafeId] = useState("")
+  const [targetPromotions, setTargetPromotions] = useState<Promotion[]>([])
+  const [sourceCafeId, setSourceCafeId] = useState("")
+  const [sourcePromotions, setSourcePromotions] = useState<Promotion[]>([])
+  const [selectedPromotionId, setSelectedPromotionId] = useState("")
+  const [loadingCafes, setLoadingCafes] = useState(true)
+  const [loadingSourcePromotions, setLoadingSourcePromotions] = useState(false)
+  const [copying, setCopying] = useState(false)
+
+  const targetCafe = cafes.find((cafe) => cafe.id === targetCafeId)
+  const sourceCafes = cafes.filter((cafe) => cafe.id !== targetCafeId)
+  const sourceCafe = cafes.find((cafe) => cafe.id === sourceCafeId)
+  const selectedPromotion = sourcePromotions.find((promotion) => promotion.id === selectedPromotionId)
+  const existingCodes = useMemo(
+    () => new Set(targetPromotions.map((promotion) => promotion.code.toUpperCase())),
+    [targetPromotions]
+  )
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCafes() {
+      try {
+        setLoadingCafes(true)
+        const data = await promotionApi.listProviderCafes()
+        if (!mounted) return
+        const nextTargetCafeId =
+          requestedCafeId && data.some((cafe) => cafe.id === requestedCafeId)
+            ? requestedCafeId
+            : data[0]?.id || ""
+        setCafes(data)
+        setTargetCafeId((current) => current || nextTargetCafeId)
+        setSourceCafeId((current) => current || data.find((cafe) => cafe.id !== nextTargetCafeId)?.id || "")
+      } catch {
+        toast.error("Không tải được danh sách chi nhánh")
+      } finally {
+        if (mounted) setLoadingCafes(false)
+      }
+    }
+
+    void loadCafes()
+    return () => {
+      mounted = false
+    }
+  }, [requestedCafeId])
+
+  useEffect(() => {
+    if (!targetCafeId) {
+      setTargetPromotions([])
+      return
+    }
+
+    let mounted = true
+
+    async function loadTargetPromotions() {
+      try {
+        const data = await promotionApi.listByCafe(targetCafeId)
+        if (mounted) setTargetPromotions(data)
+      } catch {
+        toast.error("Không tải được ưu đãi của chi nhánh đích")
+      }
+    }
+
+    void loadTargetPromotions()
+    return () => {
+      mounted = false
+    }
+  }, [targetCafeId])
+
+  useEffect(() => {
+    if (!sourceCafeId) {
+      setSourcePromotions([])
+      setSelectedPromotionId("")
+      return
+    }
+
+    let mounted = true
+
+    async function loadSourcePromotions() {
+      try {
+        setLoadingSourcePromotions(true)
+        const data = await promotionApi.listByCafe(sourceCafeId)
+        if (!mounted) return
+        setSourcePromotions(data)
+        setSelectedPromotionId((current) => current || data[0]?.id || "")
+      } catch {
+        toast.error("Không tải được mã ưu đãi của chi nhánh nguồn")
+      } finally {
+        if (mounted) setLoadingSourcePromotions(false)
+      }
+    }
+
+    void loadSourcePromotions()
+    return () => {
+      mounted = false
+    }
+  }, [sourceCafeId])
+
+  const goBack = () => {
+    navigate(buildPromotionsPath(targetCafeId || requestedCafeId))
+  }
+
+  const copyPromotionToTargetCafe = async () => {
+    if (!targetCafeId || !selectedPromotion) return
+    if (existingCodes.has(selectedPromotion.code.toUpperCase())) {
+      toast.error("Mã ưu đãi này đã có ở chi nhánh đang chọn")
+      return
+    }
+
+    try {
+      setCopying(true)
+      const saved = await promotionApi.create(targetCafeId, promotionToPayload(selectedPromotion))
+      toast.success(`Đã thêm mã ${saved.code} vào ${targetCafe?.name ?? "chi nhánh đang chọn"}`)
+      navigate(buildPromotionsPath(targetCafeId))
+    } catch (error) {
+      toast.error("Không sao chép được mã ưu đãi", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setCopying(false)
+    }
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title="Thêm mã từ chi nhánh"
+        description="Sao chép một mã ưu đãi đã có từ chi nhánh khác sang chi nhánh đang chọn."
+      />
+
+      <div className="space-y-4">
+        <div className="flex justify-start">
+          <Button type="button" variant="outline" onClick={goBack} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
+            <ArrowLeft className="size-5" />
+            Danh sách ưu đãi
+          </Button>
+        </div>
+
+        <Panel>
+          <div className="space-y-3">
+            <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">
+              Chi nhánh áp dụng
+            </Label>
+            <select
+              value={targetCafeId}
+              onChange={(event) => {
+                const nextCafeId = event.target.value
+                setTargetCafeId(nextCafeId)
+                setSourceCafeId(cafes.find((cafe) => cafe.id !== nextCafeId)?.id || "")
+                setSelectedPromotionId("")
+                setSearchParams(nextCafeId ? { cafeId: nextCafeId } : {})
+              }}
+              disabled={loadingCafes || cafes.length === 0}
+              className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold disabled:bg-[#f6f3f2]"
+            >
+              {cafes.length === 0 ? <option>Chưa có chi nhánh</option> : null}
+              {cafes.map((cafe) => (
+                <option key={cafe.id} value={cafe.id}>
+                  {cafe.name} - {cafe.district}, {cafe.city}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Panel>
+
+        <CopyPromotionPanel
+          targetCafe={targetCafe}
+          sourceCafes={sourceCafes}
+          sourceCafeId={sourceCafeId}
+          sourceCafe={sourceCafe}
+          promotions={sourcePromotions}
+          existingCodes={existingCodes}
+          selectedPromotionId={selectedPromotionId}
+          loading={loadingSourcePromotions}
+          copying={copying}
+          onSourceCafeChange={(value) => {
+            setSourceCafeId(value)
+            setSelectedPromotionId("")
+          }}
+          onPromotionChange={setSelectedPromotionId}
+          onCancel={goBack}
+          onCopy={() => void copyPromotionToTargetCafe()}
+        />
+      </div>
     </ProviderShell>
   )
 }
@@ -980,6 +1265,23 @@ function promotionToPayload(promotion: Promotion): PromotionPayload {
   }
 }
 
+function promotionToForm(promotion: Promotion): PromotionFormState {
+  return {
+    code: promotion.code,
+    description: promotion.description ?? "",
+    discountType: promotion.discountType,
+    discountValue: numberInputValue(promotion.discountValue),
+    maxDiscountAmount: numberInputValue(promotion.maxDiscountAmount),
+    minOrderAmount: numberInputValue(promotion.minOrderAmount),
+    maxUses: promotion.maxUses?.toString() ?? "",
+    maxUsesPerUser: promotion.maxUsesPerUser.toString(),
+    applicableTo: promotion.applicableTo,
+    startsAt: toDatetimeLocal(new Date(promotion.startsAt)),
+    expiresAt: promotion.expiresAt ? toDatetimeLocal(new Date(promotion.expiresAt)) : "",
+    isActive: promotion.isActive,
+  }
+}
+
 function promotionToDeleteItem(promotion: Promotion) {
   return {
     id: promotion.id,
@@ -1070,4 +1372,8 @@ function getErrorMessage(error: unknown) {
     return response?.data?.message
   }
   return undefined
+}
+
+function buildPromotionsPath(cafeId?: string) {
+  return cafeId ? `${routePaths.providerPromotions}?cafeId=${encodeURIComponent(cafeId)}` : routePaths.providerPromotions
 }
