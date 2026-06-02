@@ -30,6 +30,7 @@ export function mapCafeToExploreCafe(cafe: BackendCafe, images: CafeImage[] = []
     minBookingNoticeMinutes: cafe.minBookingNoticeMinutes,
     byocCapacity: cafe.byocCapacity,
     trackTypes: cafe.trackTypes.map(formatTrackType),
+    trackTypeIds: cafe.trackTypes.map((t) => t.id),
     features: [],
     description: cafe.description ?? "Cơ sở chưa cập nhật mô tả.",
     coordinates: buildMapCoordinates(cafe.latitude, cafe.longitude),
@@ -57,12 +58,18 @@ export function toCafeListParams(params: {
   }
 }
 
-export function formatTrackType(trackType: TrackType) {
-  return trackType
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
+export function formatTrackType(trackType: TrackType | string) {
+  if (trackType && typeof trackType === "object" && "name" in trackType) {
+    return trackType.name
+  }
+  if (typeof trackType === "string") {
+    return trackType
+      .toLowerCase()
+      .split("_")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ")
+  }
+  return ""
 }
 
 export function getCafeImageUrls(cafe: BackendCafe, images: CafeImage[] = []) {
@@ -95,13 +102,9 @@ function buildMapCoordinates(latitude: BackendCafe["latitude"], longitude: Backe
   }
 }
 
-function mapTrackTypeParam(trackType?: string): TrackType | undefined {
+function mapTrackTypeParam(trackType?: string): string | undefined {
   if (!isActiveFilter(trackType)) return undefined
-  const normalized = trackType!.toUpperCase().replace(/[\s-]+/g, "_")
-  if (normalized === "DRIFT") return "DRIFT"
-  if (normalized === "OBSTACLE" || normalized === "OFFROAD") return "OBSTACLE"
-  if (normalized === "HILL_CLIMB" || normalized === "TOURING" || normalized === "MINI_Z") return "HILL_CLIMB"
-  return undefined
+  return trackType
 }
 
 function isActiveFilter(value?: string | null) {

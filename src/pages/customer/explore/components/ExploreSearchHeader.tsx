@@ -1,4 +1,7 @@
 import { CalendarDays, RotateCcw, X } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
+import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import type { ExploreFiltersSidebarProps } from "./ExploreFiltersSidebar"
 
@@ -16,12 +19,7 @@ const CITY_OPTIONS = [
   { value: "Đà Nẵng", label: "Đà Nẵng" },
   { value: "Hải Phòng", label: "Hải Phòng" },
 ]
-const TRACK_OPTIONS = [
-  { value: "all", label: "Loại sân" },
-  { value: "DRIFT", label: "Drift" },
-  { value: "OBSTACLE", label: "Obstacle" },
-  { value: "HILL_CLIMB", label: "Hill climb" },
-]
+
 const PRICE_OPTIONS = [
   { value: "all", label: "Mức giá" },
   { value: "under100", label: "Dưới 100k" },
@@ -51,6 +49,18 @@ export function ExploreSearchHeader({
   onShowMap,
   ...filters
 }: ExploreSearchHeaderProps) {
+  const { data: trackTypes = [] } = useQuery({
+    queryKey: trackTypeQueryKeys.all,
+    queryFn: () => trackTypeApi.listAll(),
+  })
+
+  const trackOptions = useMemo(() => {
+    return [
+      { value: "all", label: "Loại sân" },
+      ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
+    ]
+  }, [trackTypes])
+
   return (
     <section className="shrink-0 border-b bg-white shadow-sm">
       <div className="mx-auto w-full max-w-[1600px] px-4 py-3 md:px-6">
@@ -105,7 +115,7 @@ export function ExploreSearchHeader({
           <FilterChip
             value={filters.trackType}
             onChange={filters.onTrackTypeChange}
-            options={TRACK_OPTIONS}
+            options={trackOptions}
             placeholder="Loại sân"
           />
           <FilterChip

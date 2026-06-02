@@ -1,5 +1,8 @@
 import { Filter, RotateCcw } from "lucide-react"
-import { FEATURE_OPTIONS, PRICE_RANGE_OPTIONS, TRACK_TYPE_OPTIONS, CITY_OPTIONS } from "../constants"
+import { useQuery } from "@tanstack/react-query"
+import { useMemo } from "react"
+import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { FEATURE_OPTIONS, PRICE_RANGE_OPTIONS, CITY_OPTIONS } from "../constants"
 import { Button } from "@/shared/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 
@@ -29,6 +32,18 @@ const vehicleTypeOptions = [
 ]
 
 export function ExploreFiltersPanel(props: ExploreFiltersPanelProps) {
+  const { data: trackTypes = [] } = useQuery({
+    queryKey: trackTypeQueryKeys.all,
+    queryFn: () => trackTypeApi.listAll(),
+  })
+
+  const trackOptions = useMemo(() => {
+    return [
+      { value: "all", label: "Tất cả thể loại" },
+      ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
+    ]
+  }, [trackTypes])
+
   return (
     <aside className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -39,7 +54,7 @@ export function ExploreFiltersPanel(props: ExploreFiltersPanelProps) {
       </div>
 
       <FilterSelect label="Thành phố" value={props.city} onChange={props.onCityChange} options={CITY_OPTIONS} />
-      <FilterSelect label="Loại đường đua" value={props.trackType} onChange={props.onTrackTypeChange} options={TRACK_TYPE_OPTIONS} />
+      <FilterSelect label="Loại đường đua" value={props.trackType} onChange={props.onTrackTypeChange} options={trackOptions} />
       <FilterSelect label="Khung giá thuê" value={props.priceRange} onChange={props.onPriceRangeChange} options={PRICE_RANGE_OPTIONS} />
       <FilterSelect label="Tiện ích" value={props.feature} onChange={props.onFeatureChange} options={FEATURE_OPTIONS} />
       <FilterSelect label="Loại xe" value={props.vehicleType} onChange={props.onVehicleTypeChange} options={vehicleTypeOptions} />

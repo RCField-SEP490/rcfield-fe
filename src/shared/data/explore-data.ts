@@ -36,6 +36,7 @@ export interface Cafe {
   minBookingNoticeMinutes?: number
   byocCapacity?: number
   trackTypes: string[]
+  trackTypeIds?: string[]
   features: string[]
   description: string
   coordinates: { x: number; y: number }
