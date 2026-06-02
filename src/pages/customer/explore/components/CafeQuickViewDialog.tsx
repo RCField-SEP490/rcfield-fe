@@ -27,7 +27,7 @@ export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe |
 
   return (
     <Dialog open={!!displayCafe} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90svh] max-w-3xl overflow-hidden border border-slate-200 bg-white p-0">
+      <DialogContent className="max-h-[90svh] max-w-3xl sm:max-w-3xl overflow-hidden border border-slate-200 bg-white p-0">
         {displayCafe && (
           <>
             <DialogHeader className="sr-only">

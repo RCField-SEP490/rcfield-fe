@@ -482,11 +482,11 @@ export function ProviderPromotionsPage() {
               subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
               action={
                 <div className="flex flex-nowrap items-center gap-2">
-                  <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white">
+                  <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
                     <Copy className="mr-2 size-4" />
                     Thêm từ chi nhánh
                   </Button>
-                  <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white">
+                  <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
                     <Plus className="mr-2 size-4" />
                     Thêm mã
                   </Button>
@@ -502,8 +502,8 @@ export function ProviderPromotionsPage() {
               <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
                 <BadgePercent className="mx-auto size-10 text-[#747878]" />
                 <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chi nhánh này chưa có ưu đãi</h3>
-                <p className="mt-2 text-sm font-medium text-[#747878]">Tạo mã đầu tiên để khách hàng áp dụng khi đặt sân hoặc thuê xe.</p>
-                <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+                <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo mã đầu tiên để khách hàng áp dụng khi đặt sân hoặc thuê xe.</p>
+                <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
                   <Plus className="mr-2 size-4" />
                   Tạo ưu đãi
                 </Button>
@@ -521,11 +521,11 @@ export function ProviderPromotionsPage() {
                     Chọn tất cả ({selectedPromotionIds.length}/{promotions.length})
                   </label>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50">
+                    <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
                       <Trash2 className="mr-2 size-4" />
                       Xóa đã chọn
                     </Button>
-                    <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50">
+                    <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
                       <Trash2 className="mr-2 size-4" />
                       Xóa hết
                     </Button>
@@ -691,14 +691,14 @@ function PromotionForm({
           <Input value={form.code} onChange={(event) => setField("code", event.target.value.toUpperCase())} placeholder="EX: DRIFTNIGHT20" className="h-11 rounded-lg bg-white font-mono font-bold" />
         </Field>
         <Field label="Phạm vi áp dụng">
-          <select value={form.applicableTo} onChange={(event) => setField("applicableTo", event.target.value as PromoApplicableTo)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-semibold">
+          <select value={form.applicableTo} onChange={(event) => setField("applicableTo", event.target.value as PromoApplicableTo)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold">
             <option value="ALL">Tất cả booking</option>
             <option value="RENTAL">Thuê xe</option>
             <option value="BYOC">Mang xe cá nhân</option>
           </select>
         </Field>
         <Field label="Loại giảm giá">
-          <select value={form.discountType} onChange={(event) => setField("discountType", event.target.value as DiscountType)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-semibold">
+          <select value={form.discountType} onChange={(event) => setField("discountType", event.target.value as DiscountType)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold">
             <option value="PERCENT">Phần trăm</option>
             <option value="FIXED">Số tiền cố định</option>
           </select>
@@ -732,15 +732,15 @@ function PromotionForm({
         <div className="flex items-center justify-between rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-4 py-3 md:col-span-2">
           <div>
             <p className="text-sm font-bold text-[#1c1b1b]">Đang hoạt động</p>
-            <p className="text-xs font-medium text-[#747878]">Tắt để giữ mã nhưng không cho khách sử dụng.</p>
+            <p className="text-xs font-semibold text-[#747878]">Tắt để giữ mã nhưng không cho khách sử dụng.</p>
           </div>
           <Switch checked={form.isActive} onCheckedChange={(checked) => setField("isActive", checked)} />
         </div>
       </div>
 
       <div className="mt-6 flex justify-end gap-3 border-t border-[#e5e2e1] pt-5">
-        <Button variant="outline" onClick={onCancel} className="rounded-lg bg-white">Hủy</Button>
-        <Button disabled={saving} onClick={onSave} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+        <Button variant="outline" onClick={onCancel} className="rounded-lg bg-white font-bold">Hủy</Button>
+        <Button disabled={saving} onClick={onSave} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           <Save className="mr-2 size-4" />
           {saving ? "Đang lưu..." : editing ? "Lưu thay đổi" : "Lưu ưu đãi"}
         </Button>
@@ -798,7 +798,7 @@ function CopyPromotionPanel({
           <select
             value={sourceCafeId}
             onChange={(event) => onSourceCafeChange(event.target.value)}
-            className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-semibold"
+            className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold"
           >
             {sourceCafes.map((cafe) => (
               <option key={cafe.id} value={cafe.id}>
@@ -813,7 +813,7 @@ function CopyPromotionPanel({
             value={selectedPromotionId}
             onChange={(event) => onPromotionChange(event.target.value)}
             disabled={loading || promotions.length === 0}
-            className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-semibold disabled:bg-[#f6f3f2]"
+            className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold disabled:bg-[#f6f3f2]"
           >
             {loading ? <option>Đang tải mã ưu đãi...</option> : null}
             {!loading && promotions.length === 0 ? <option>Chi nhánh này chưa có mã</option> : null}
@@ -841,17 +841,17 @@ function CopyPromotionPanel({
               {getPromotionStatus(selectedPromotion).label}
             </Badge>
           </div>
-          <p className="mt-2 text-sm font-semibold text-[#444748]">
+          <p className="mt-2 text-sm font-bold text-[#1c1b1b]">
             {sourceCafe?.name} {"->"} {targetCafe?.name}
           </p>
-          <p className="mt-1 text-sm font-medium text-[#747878]">
+          <p className="mt-1 text-sm font-semibold text-[#5d5f5f]">
             {selectedPromotion.description || "Chưa có mô tả"}
           </p>
           <p className="mt-3 text-xs font-bold uppercase text-[#747878]">
             {formatDiscount(selectedPromotion)} · {applicableLabel(selectedPromotion.applicableTo)}
           </p>
           {selectedPromotionExists ? (
-            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
               Mã này đã có ở chi nhánh đích, vui lòng chọn mã khác.
             </p>
           ) : null}
@@ -859,8 +859,8 @@ function CopyPromotionPanel({
       ) : null}
 
       <div className="mt-6 flex justify-end gap-3 border-t border-[#e5e2e1] pt-5">
-        <Button variant="outline" onClick={onCancel} className="rounded-lg bg-white">Hủy</Button>
-        <Button disabled={copying || !selectedPromotionId || !targetCafe || selectedPromotionExists} onClick={onCopy} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+        <Button variant="outline" onClick={onCancel} className="rounded-lg bg-white font-bold">Hủy</Button>
+        <Button disabled={copying || !selectedPromotionId || !targetCafe || selectedPromotionExists} onClick={onCopy} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           <Copy className="mr-2 size-4" />
           {copying ? "Đang thêm..." : "Thêm vào chi nhánh"}
         </Button>
@@ -915,21 +915,21 @@ function PromotionRow({
           </span>
           <Badge className={cn("border font-bold", status.className)}>{status.label}</Badge>
         </div>
-        <p className="mt-2 line-clamp-2 text-sm font-medium text-[#444748]">
+        <p className="mt-2 line-clamp-2 text-xs font-semibold text-[#5d5f5f]">
           {promotion.description || "Chưa có mô tả"}
         </p>
       </div>
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-[#747878]">Giá trị</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Giá trị</p>
         <p className="mt-1 text-sm font-extrabold text-[#1c1b1b]">{formatDiscount(promotion)}</p>
-        <p className="mt-1 text-xs font-medium text-[#747878]">{applicableLabel(promotion.applicableTo)}</p>
+        <p className="mt-1 text-xs font-bold text-[#747878]">{applicableLabel(promotion.applicableTo)}</p>
       </div>
       <div>
-        <p className="font-mono text-[10px] uppercase tracking-wider text-[#747878]">Lượt dùng</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Lượt dùng</p>
         <p className="mt-1 text-sm font-extrabold text-[#1c1b1b]">
           {promotion.usesCount}/{promotion.maxUses ?? "∞"}
         </p>
-        <p className="mt-1 text-xs font-medium text-[#747878]">Mỗi khách: {promotion.maxUsesPerUser}</p>
+        <p className="mt-1 text-xs font-bold text-[#747878]">Mỗi khách: {promotion.maxUsesPerUser}</p>
       </div>
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" size="icon" onClick={onEdit} className="rounded-lg bg-white">
@@ -1041,7 +1041,7 @@ function getPromotionStatus(promotion: Promotion) {
   if (new Date(promotion.startsAt).getTime() > Date.now()) return { label: "Sắp chạy", className: "border-blue-200 bg-blue-50 text-blue-700" }
   if (promotion.expiresAt && new Date(promotion.expiresAt).getTime() < Date.now()) return { label: "Hết hạn", className: "border-red-200 bg-red-50 text-red-700" }
   if (promotion.maxUses !== null && promotion.usesCount >= promotion.maxUses) return { label: "Hết lượt", className: "border-amber-200 bg-amber-50 text-amber-700" }
-  return { label: "Active", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
+  return { label: "Đang chạy", className: "border-emerald-200 bg-emerald-50 text-emerald-700" }
 }
 
 function formatDiscount(promotion: Promotion) {

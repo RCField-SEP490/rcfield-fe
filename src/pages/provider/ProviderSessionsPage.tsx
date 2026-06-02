@@ -20,7 +20,7 @@ export function ProviderSessionsPage() {
           title="Live board phiên chạy"
           subtitle="Check-in, gia hạn, checkout và đối soát theo từng session."
           action={
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
               <PlayCircle className="size-4" />
               Mở live board
             </Button>

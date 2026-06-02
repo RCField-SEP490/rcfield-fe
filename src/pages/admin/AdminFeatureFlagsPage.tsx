@@ -57,16 +57,18 @@ export function AdminFeatureFlagsPage() {
       <AdminHeader
         title="Cấu hình Hệ thống"
         description="Quản trị các tính năng nền tảng. Điều chỉnh giữa trạng thái Sẵn sàng (READY), Chạy giả lập (MOCK) hoặc Tắt tính năng (DISABLED)."
-        actions={
-          <Button
-            onClick={handleSaveAll}
-            className="h-10 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg shadow-none flex items-center gap-1.5"
-          >
-            <Save className="size-4" />
-            Lưu thay đổi
-          </Button>
-        }
       />
+
+      {/* Controls Block */}
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-4 rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
+        <Button
+          onClick={handleSaveAll}
+          className="h-10 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg shadow-none flex items-center gap-1.5"
+        >
+          <Save className="size-4" />
+          Lưu thay đổi
+        </Button>
+      </div>
 
       {/* Overview stats panel */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

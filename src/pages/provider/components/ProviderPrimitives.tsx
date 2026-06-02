@@ -41,11 +41,11 @@ export function ProviderHeader({
       description={description}
       actions={
         <>
-          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
             <CalendarClock className="size-5" />
             Tháng này
           </Button>
-          <Button type="button" onClick={onAction} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+          <Button type="button" onClick={onAction} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
             {actionIcon}
             {actionLabel}
           </Button>
@@ -59,7 +59,7 @@ ProviderHeader.displayName = "ProviderHeader"
 export function ProviderPageHeader({
   title,
   description,
-  actions: _actions,
+  actions,
   flush: _flush = false,
 }: {
   title: string
@@ -73,14 +73,21 @@ export function ProviderPageHeader({
         "sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8] bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6"
       )}
     >
-      <div className="flex w-full items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-[32px] font-bold leading-tight tracking-tight text-[#1c1b1b]">{title}</h2>
-          <p className="mt-1 text-sm font-medium text-[#444748]">{description}</p>
+      <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl">{title}</h2>
+          <p className="mt-2 text-sm font-semibold text-[#444748]">{description}</p>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <NotificationBell />
-          <ProviderAccountMenu />
+        <div className="flex flex-wrap items-center gap-3">
+          {actions ? (
+            <div className="flex flex-wrap items-center gap-3 sm:mr-3">
+              {actions}
+            </div>
+          ) : null}
+          <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+            <NotificationBell />
+            <ProviderAccountMenu />
+          </div>
         </div>
       </div>
     </header>
@@ -169,14 +176,14 @@ function getInitials(name: string) {
 
 export function MetricCard({ label, value, helper, icon, tone }: { label: string; value: string; helper: string; icon: ReactNode; tone: ProviderTone }) {
   return (
-    <article className="flex min-h-44 flex-col justify-between rounded-xl border border-[#c4c7c8] bg-white p-6">
+    <article className="flex min-h-44 flex-col justify-between rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
       <div className="mb-4 flex items-start justify-between gap-4">
-        <span className="font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">{label}</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</span>
         <span className="text-[#5d5f5f] [&_svg]:size-6">{icon}</span>
       </div>
       <div>
-        <div className="text-3xl font-semibold leading-tight tracking-tight text-[#1c1b1b]">{value}</div>
-        <div className={cn("mt-3 flex items-center gap-1.5 text-sm font-medium", toneText(tone))}>
+        <div className="text-2xl font-extrabold leading-tight tracking-tight text-[#1c1b1b]">{value}</div>
+        <div className={cn("mt-3 flex items-center gap-1.5 text-xs font-bold", toneText(tone))}>
           {tone === "danger" ? <TrendingDown className="size-4" /> : <TrendingUp className="size-4" />}
           <span>{helper}</span>
         </div>
@@ -186,15 +193,15 @@ export function MetricCard({ label, value, helper, icon, tone }: { label: string
 }
 
 export function Panel({ children, className }: { children: ReactNode; className?: string }) {
-  return <section className={cn("rounded-xl border border-[#c4c7c8] bg-white p-6", className)}>{children}</section>
+  return <section className={cn("rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm", className)}>{children}</section>
 }
 
 export function PanelTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
     <div className="mb-6 flex items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
-        <h3 className="text-2xl font-semibold leading-tight tracking-tight text-[#1c1b1b]">{title}</h3>
-        {subtitle ? <p className="mt-1 text-sm font-medium text-[#444748]">{subtitle}</p> : null}
+        <h3 className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">{title}</h3>
+        {subtitle ? <p className="mt-1 text-xs font-semibold text-[#5d5f5f]">{subtitle}</p> : null}
       </div>
       {action ? <span className="shrink-0 text-[#5d5f5f]">{action}</span> : null}
     </div>
@@ -266,8 +273,8 @@ export function BranchList({
           <>
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <div className="font-semibold text-[#1c1b1b]">{cafe.name}</div>
-              <div className="mt-1 text-xs font-medium text-[#444748]">{cafe.district}, {cafe.city}</div>
+              <div className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</div>
+              <div className="mt-1 text-xs font-semibold text-[#5d5f5f]">{cafe.district}, {cafe.city}</div>
             </div>
             <StatusBadge status={formatCafeStatus(cafe.status)} />
           </div>
@@ -278,7 +285,7 @@ export function BranchList({
           </div>
           {!compact ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex h-9 items-center text-sm font-semibold text-[#1c1b1b]">
+              <span className="inline-flex h-9 items-center text-sm font-bold text-[#1c1b1b]">
                 Xem chi tiết
                 <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-0.5" />
               </span>
@@ -326,7 +333,7 @@ export function ProviderTable({ columns, rows }: { columns: string[]; rows: Arra
         <thead>
           <tr>
             {columns.map((column) => (
-              <th key={column} className="border-b border-[#c4c7c8] px-3 py-3 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">
+              <th key={column} className="border-b border-[#e5e2e1] px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#747878] bg-[#fcf8f8]/60">
                 {column}
               </th>
             ))}
@@ -336,7 +343,7 @@ export function ProviderTable({ columns, rows }: { columns: string[]; rows: Arra
           {rows.map((row, index) => (
             <tr key={index} className="hover:bg-[#fcf8f8]">
               {row.map((cell, cellIndex) => (
-                <td key={cellIndex} className="border-b border-[#e5e2e1] px-3 py-3 font-medium text-[#1c1b1b]">
+                <td key={cellIndex} className="border-b border-[#e5e2e1] px-4 py-3.5 text-sm font-bold text-[#1c1b1b]">
                   {cell}
                 </td>
               ))}
@@ -351,8 +358,8 @@ export function ProviderTable({ columns, rows }: { columns: string[]; rows: Arra
 export function InlineMetric({ label, value, align }: { label: string; value: string; align?: "right" }) {
   return (
     <div className={cn(align === "right" && "text-right")}>
-      <div className="mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-[#747878]">{label}</div>
-      <div className="font-semibold text-[#1c1b1b]">{value}</div>
+      <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#747878]">{label}</div>
+      <div className="font-bold text-[#1c1b1b]">{value}</div>
     </div>
   )
 }
@@ -366,12 +373,12 @@ export function StatusBadge({ status }: { status: string }) {
         ? "danger"
         : "success"
 
-  return <Badge className={cn("border font-medium", badgeTone(tone))}>{status}</Badge>
+  return <Badge className={cn("border font-bold", badgeTone(tone))}>{status}</Badge>
 }
 
 export function StateBadge({ state }: { state: string }) {
   const tone: ProviderTone = state === "PENDING" || state === "EXTENDING" ? "warning" : state === "CHECKING_OUT" ? "info" : "success"
-  return <Badge className={cn("border font-medium", badgeTone(tone))}>{state}</Badge>
+  return <Badge className={cn("border font-bold", badgeTone(tone))}>{state}</Badge>
 }
 
 export function toneText(tone: ProviderTone) {

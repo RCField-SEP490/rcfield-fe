@@ -205,7 +205,7 @@ export function AdminCafesPage() {
       </AdminPanel>
 
       <Dialog open={selectedCafe !== null} onOpenChange={(open) => !open && setSelectedCafe(null)}>
-        <DialogContent className="max-w-md rounded-xl border border-[#e5e2e1] bg-white font-sans">
+        <DialogContent className="max-w-md sm:max-w-md rounded-xl border border-[#e5e2e1] bg-white font-sans">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-extrabold text-[#1c1b1b]">
               {actionType === "APPROVE" && "Xác nhận duyệt cơ sở"}

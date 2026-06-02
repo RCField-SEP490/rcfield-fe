@@ -151,7 +151,7 @@ export function ProviderMenuPage() {
               <Button type="button" variant="outline" size="icon-sm" onClick={() => void menuQuery.refetch()} disabled={!selectedCafeId || menuQuery.isFetching} className="rounded-lg">
                 <RefreshCw className="size-4" />
               </Button>
-              <Button type="button" onClick={handleOpenCreate} disabled={!selectedCafeId} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+              <Button type="button" onClick={handleOpenCreate} disabled={!selectedCafeId} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
                 <Plus className="size-4" />
                 Thêm món
               </Button>
@@ -265,8 +265,8 @@ function MenuNameCell({ item }: { item: MenuItem }) {
         </div>
       )}
       <div className="min-w-0">
-        <div className="truncate font-semibold text-[#1c1b1b]">{item.name}</div>
-        <div className="truncate text-xs font-medium text-[#747878]">{item.description ?? "Chưa có mô tả"}</div>
+        <div className="truncate font-bold text-[#1c1b1b]">{item.name}</div>
+        <div className="truncate text-xs font-semibold text-[#5d5f5f]">{item.description ?? "Chưa có mô tả"}</div>
       </div>
     </div>
   )
@@ -285,8 +285,8 @@ function MenuSkeleton() {
 function RetryState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5">
-      <p className="text-sm font-semibold text-[#1c1b1b]">Không tải được dữ liệu menu.</p>
-      <Button type="button" variant="outline" onClick={onRetry} className="mt-3 rounded-lg border-[#c4c7c8]">
+      <p className="text-sm font-bold text-[#1c1b1b]">Không tải được dữ liệu menu.</p>
+      <Button type="button" variant="outline" onClick={onRetry} className="mt-3 rounded-lg border-[#c4c7c8] font-bold">
         Tải lại
       </Button>
     </div>
@@ -295,7 +295,7 @@ function RetryState({ onRetry }: { onRetry: () => void }) {
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5 text-sm font-medium text-[#444748]">
+    <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5 text-sm font-semibold text-[#5d5f5f]">
       {message}
     </div>
   )

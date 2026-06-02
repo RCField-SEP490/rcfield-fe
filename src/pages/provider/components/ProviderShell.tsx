@@ -50,7 +50,7 @@ const providerNavGroups: NavGroup[] = [
     heading: "Vận hành",
     items: [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
-      { label: "Quản lý xe", icon: Car, to: routePaths.providerVehicles },
+      { label: "Quản lý đội xe", icon: Car, to: routePaths.providerVehicles },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
       { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
@@ -205,8 +205,16 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         </nav>
 
         <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
-          <Link to={routePaths.profile} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
-            <UserRound className="size-5 text-[#747878]" />
+          <Link
+            to={routePaths.profile}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
+              location.pathname === routePaths.profile
+                ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
+            )}
+          >
+            <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
             Hồ sơ cá nhân
           </Link>
           <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
@@ -282,8 +290,17 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             </nav>
 
             <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
-              <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">
-                <UserRound className="size-5 text-[#747878]" />
+              <Link
+                to={routePaths.profile}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
+                  location.pathname === routePaths.profile
+                    ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                    : "text-[#444748] hover:bg-[rgb(246,243,242)]"
+                )}
+              >
+                <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
                 Hồ sơ cá nhân
               </Link>
               <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">

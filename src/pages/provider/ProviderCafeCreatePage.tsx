@@ -43,7 +43,7 @@ export function ProviderCafeCreatePage() {
       />
       <div className="p-4 md:p-6">
         <div className="mb-4 flex justify-end">
-          <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1]">
+          <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
             <ArrowLeft className="size-5" />
             Danh sách cơ sở
           </Button>

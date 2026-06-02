@@ -237,7 +237,7 @@ export function AdminUsersPage() {
 
       {/* Adjust Trust Score Dialog */}
       <Dialog open={selectedUser !== null} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-md bg-white border border-[#e5e2e1] rounded-xl font-sans">
+        <DialogContent className="max-w-md sm:max-w-md bg-white border border-[#e5e2e1] rounded-xl font-sans">
           <DialogHeader>
             <DialogTitle className="text-lg font-extrabold text-[#1c1b1b] flex items-center gap-2">
               <Award className="size-5 text-orange-600" />
@@ -325,7 +325,7 @@ export function AdminUsersPage() {
 
       {/* Trust Score History View for User */}
       <Dialog open={historyUser !== null} onOpenChange={(open) => !open && setHistoryUser(open ? historyUser : null)}>
-        <DialogContent className="max-w-xl bg-white border border-[#e5e2e1] rounded-xl font-sans max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-xl sm:max-w-xl bg-white border border-[#e5e2e1] rounded-xl font-sans max-h-[80vh] overflow-y-auto">
           <DialogHeader className="border-b border-[#e5e2e1] pb-3">
             <DialogTitle className="text-lg font-extrabold text-[#1c1b1b] flex items-center gap-2">
               <Award className="size-5 text-orange-600" />

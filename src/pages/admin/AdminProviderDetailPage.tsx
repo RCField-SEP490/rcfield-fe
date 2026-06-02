@@ -158,70 +158,70 @@ export function AdminProviderDetailPage() {
 
   return (
     <AdminShell>
-      <div className="mb-6 flex items-center gap-3">
+      <AdminHeader
+        title={detail.business_name}
+        description={`Provider ID: ${detail.id}`}
+      />
+
+      {/* Controls Block */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800"
         >
-          <ArrowLeft className="size-4" /> Quay lại
+          <ArrowLeft className="size-4" /> Quay lại danh sách
         </button>
-      </div>
 
-      <AdminHeader
-        title={detail.business_name}
-        description={`Provider ID: ${detail.id}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {status === "ACTIVE" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {status === "ACTIVE" && (
+            <Button
+              className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={handleImpersonate}
+              disabled={impersonating}
+            >
+              <Eye className="size-4" />
+              {impersonating ? "Đang vào..." : "Truy cập với tư cách Provider"}
+            </Button>
+          )}
+          {status === "PENDING" && (
+            <>
               <Button
-                className="gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
-                onClick={handleImpersonate}
-                disabled={impersonating}
+                className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending}
               >
-                <Eye className="size-4" />
-                {impersonating ? "Đang vào..." : "Truy cập với tư cách Provider"}
+                <CheckCircle className="size-4" /> Duyệt
               </Button>
-            )}
-            {status === "PENDING" && (
-              <>
-                <Button
-                  className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => approveMutation.mutate()}
-                  disabled={approveMutation.isPending}
-                >
-                  <CheckCircle className="size-4" /> Duyệt
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="gap-1"
-                  onClick={() => { setRejectOpen(true); setReason("") }}
-                >
-                  <XCircle className="size-4" /> Từ chối
-                </Button>
-              </>
-            )}
-            {status === "ACTIVE" && (
               <Button
-                variant="outline"
-                className="gap-1 text-orange-600 border-orange-200 hover:bg-orange-50"
-                onClick={() => { setSuspendOpen(true); setReason("") }}
+                variant="destructive"
+                className="gap-1"
+                onClick={() => { setRejectOpen(true); setReason("") }}
               >
-                <ShieldOff className="size-4" /> Tạm khóa
+                <XCircle className="size-4" /> Từ chối
               </Button>
-            )}
-            {status === "SUSPENDED" && (
-              <Button
-                variant="outline"
-                className="gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-                onClick={() => unsuspendMutation.mutate()}
-                disabled={unsuspendMutation.isPending}
-              >
-                <ShieldCheck className="size-4" /> Mở khóa
-              </Button>
-            )}
-          </div>
-        }
-      />
+            </>
+          )}
+          {status === "ACTIVE" && (
+            <Button
+              variant="outline"
+              className="gap-1 text-orange-600 border-orange-200 hover:bg-orange-50 animate-none font-bold"
+              onClick={() => { setSuspendOpen(true); setReason("") }}
+            >
+              <ShieldOff className="size-4" /> Tạm khóa
+            </Button>
+          )}
+          {status === "SUSPENDED" && (
+            <Button
+              variant="outline"
+              className="gap-1 text-emerald-600 border-emerald-200 hover:bg-emerald-50 font-bold"
+              onClick={() => unsuspendMutation.mutate()}
+              disabled={unsuspendMutation.isPending}
+            >
+              <ShieldCheck className="size-4" /> Mở khóa
+            </Button>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Account Info */}

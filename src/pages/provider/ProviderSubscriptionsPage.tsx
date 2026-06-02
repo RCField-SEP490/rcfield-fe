@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { SubscriptionStatusCard } from "@/features/subscriptions/components/SubscriptionStatusCard"
@@ -10,15 +10,15 @@ import { Badge } from "@/shared/ui/badge"
 import type { PaymentRequestStatus } from "@/features/subscriptions/types"
 
 const PR_STATUS_LABELS: Record<PaymentRequestStatus, string> = {
-  PENDING: "Chá» xÃ¡c nháº­n",
-  CONFIRMED: "ÄÃ£ xÃ¡c nháº­n",
-  REJECTED: "Bá»‹ tá»« chá»‘i",
+  PENDING: "Chờ xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  REJECTED: "Bị từ chối",
 }
 
 const PR_STATUS_COLORS: Record<PaymentRequestStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  CONFIRMED: "bg-emerald-100 text-emerald-800",
-  REJECTED: "bg-red-100 text-red-800",
+  PENDING: "bg-amber-100 text-amber-800 border-amber-200",
+  CONFIRMED: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  REJECTED: "bg-red-100 text-red-800 border-red-200",
 }
 
 export function ProviderSubscriptionsPage() {
@@ -48,7 +48,7 @@ export function ProviderSubscriptionsPage() {
       <div className="space-y-6">
 
         {isLoading ? (
-          <div className="py-12 text-center text-sm text-slate-400">Äang táº£i...</div>
+          <div className="py-12 text-center text-sm font-semibold text-[#747878]">Đang tải...</div>
         ) : (
           <>
             <SubscriptionStatusCard subscription={subscription} />
@@ -59,34 +59,34 @@ export function ProviderSubscriptionsPage() {
         <PaymentRequestForm hasPendingRequest={hasPending} />
 
         {requests.length > 0 && (
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-700">Lá»‹ch sá»­ yÃªu cáº§u thanh toÃ¡n</h3>
+          <div className="rounded-xl border border-[#e5e2e1] bg-white overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#e5e2e1] bg-[#fcf8f8]">
+              <h3 className="text-base font-bold text-[#1c1b1b]">Lịch sử yêu cầu thanh toán</h3>
             </div>
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wide">
+              <thead className="bg-[#fcf8f8]/60 text-xs font-bold text-[#747878] uppercase tracking-wider border-b border-[#e5e2e1]">
                 <tr>
-                  <th className="px-4 py-2.5 text-left">GÃ³i</th>
-                  <th className="px-4 py-2.5 text-left">Sá»‘ tiá»n</th>
-                  <th className="px-4 py-2.5 text-left">NgÃ y CK</th>
-                  <th className="px-4 py-2.5 text-left">Tráº¡ng thÃ¡i</th>
-                  <th className="px-4 py-2.5 text-left">Ghi chÃº Admin</th>
+                  <th className="px-4 py-3 text-left">Gói</th>
+                  <th className="px-4 py-3 text-left">Số tiền</th>
+                  <th className="px-4 py-3 text-left">Ngày CK</th>
+                  <th className="px-4 py-3 text-left">Trạng thái</th>
+                  <th className="px-4 py-3 text-left">Ghi chú Admin</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#e5e2e1]">
                 {requests.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-semibold">{r.planId}</td>
-                    <td className="px-4 py-3">{r.transferAmount.toLocaleString("vi-VN")}â‚«</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">
+                  <tr key={r.id} className="hover:bg-[#fcf8f8] transition-colors">
+                    <td className="px-4 py-3 font-bold text-[#1c1b1b]">{r.planId}</td>
+                    <td className="px-4 py-3 font-bold text-[#1c1b1b]">{r.transferAmount.toLocaleString("vi-VN")} đ</td>
+                    <td className="px-4 py-3 text-[#5d5f5f] text-xs font-semibold">
                       {new Date(r.transferDate).toLocaleDateString("vi-VN")}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge className={`text-[11px] font-bold ${PR_STATUS_COLORS[r.status]}`}>
+                      <Badge className={`text-[11px] font-bold border ${PR_STATUS_COLORS[r.status]}`}>
                         {PR_STATUS_LABELS[r.status]}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{r.adminNotes ?? "â€”"}</td>
+                    <td className="px-4 py-3 text-[#5d5f5f] text-xs font-semibold">{r.adminNotes ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

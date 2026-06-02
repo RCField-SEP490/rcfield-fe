@@ -83,7 +83,7 @@ export function ProviderMenuItemFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] max-w-2xl overflow-y-auto rounded-xl bg-white p-0">
+      <DialogContent className="max-h-[92svh] max-w-2xl sm:max-w-2xl overflow-y-auto rounded-xl bg-white p-0">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="border-b border-[#e5e2e1] px-5 py-4">
             <DialogTitle className="text-xl font-bold text-[#1c1b1b]">{item ? "Cập nhật món" : "Thêm món"}</DialogTitle>
@@ -131,8 +131,8 @@ export function ProviderMenuItemFormDialog({
             </div>
 
             {values.image_url ? (
-              <div className="flex items-center gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
-                <img src={values.image_url} alt="" className="size-16 rounded-md object-cover" />
+              <div className="flex items-center gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 min-w-0 overflow-hidden">
+                <img src={values.image_url} alt="" className="size-16 shrink-0 rounded-md object-cover" />
                 <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{values.image_url}</span>
               </div>
             ) : null}

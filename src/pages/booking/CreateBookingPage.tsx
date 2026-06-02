@@ -7,6 +7,10 @@ import type { CheckoutStep, CustomerPaymentMethod, CustomerPlayMode, PaymentComp
 import { fnbMenuItems } from "@/features/customer-booking/data/customer-booking-demo"
 import { mockCafes } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
+import { useQuery } from "@tanstack/react-query"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
+import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
 import { CheckoutStepper } from "./components/checkout/CheckoutStepper"
 import { CheckoutSummaryCard } from "./components/checkout/CheckoutSummaryCard"
 import { FnbStep } from "./components/checkout/FnbStep"
@@ -21,7 +25,40 @@ export function CreateBookingPage() {
   const cafeId = searchParams.get("cafeId") ?? mockCafes[0].id
   const vehicleId = searchParams.get("vehicleId") ?? undefined
   const modeParam = searchParams.get("mode") as BookingMode | null
-  const cafe = mockCafes.find((item) => item.id === cafeId) ?? mockCafes[0]
+
+  const isMockId = cafeId.startsWith("cafe-")
+
+  // Fetch real cafe data if not a mock ID
+  const { data: realCafe } = useQuery({
+    queryKey: cafeQueryKeys.detail(isMockId ? undefined : cafeId),
+    queryFn: () => cafeApi.getCafe(cafeId),
+    enabled: !isMockId && !!cafeId,
+  })
+
+  // Fetch cafe images if real cafe is loaded
+  const { data: cafeImages = [] } = useQuery({
+    queryKey: cafeQueryKeys.images(isMockId ? undefined : cafeId),
+    queryFn: () => cafeApi.listCafeImages(cafeId),
+    enabled: !isMockId && !!cafeId,
+  })
+
+  // Fetch real catalogs data
+  const { data: catalogs = [] } = useQuery({
+    queryKey: ["cafe-catalogs", isMockId ? undefined : cafeId],
+    queryFn: () => vehicleApi.listCatalogs(cafeId),
+    enabled: !isMockId && !!cafeId,
+  })
+
+  const cafe = useMemo(() => {
+    if (!isMockId && realCafe) {
+      const mapped = mapCafeToExploreCafe(realCafe, cafeImages)
+      if (catalogs && catalogs.length > 0) {
+        mapped.availableVehicles = catalogs.map(mapCatalogToExploreVehicle)
+      }
+      return mapped
+    }
+    return mockCafes.find((item) => item.id === cafeId) ?? mockCafes[0]
+  }, [cafeId, isMockId, realCafe, cafeImages, catalogs])
 
   // Parse F&B quantities from URL e.g. "fnb-1:2,fnb-2:1"
   const parseFnbParam = (param: string | null): Record<string, number> => {

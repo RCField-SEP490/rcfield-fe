@@ -139,7 +139,7 @@ export function ProviderCafeFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92svh] max-w-4xl overflow-y-auto rounded-xl bg-white p-0">
+      <DialogContent className="max-h-[92svh] max-w-4xl sm:max-w-4xl overflow-y-auto rounded-xl bg-white p-0">
         <form onSubmit={handleSubmit}>
           <DialogHeader className="border-b border-[#e5e2e1] px-5 py-4">
             <DialogTitle className="text-xl font-bold text-[#1c1b1b]">{title}</DialogTitle>
@@ -229,8 +229,8 @@ export function ProviderCafeFormDialog({
                       </div>
                     ) : (
                       images.map((image) => (
-                        <div key={image.id} className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-white p-2">
-                          <img src={image.url} alt="" className="size-12 rounded-md object-cover" />
+                        <div key={image.id} className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-white p-2 min-w-0 overflow-hidden">
+                          <img src={image.url} alt="" className="size-12 shrink-0 rounded-md object-cover" />
                           <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{image.url}</span>
                           <Button
                             type="button"

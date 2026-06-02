@@ -1,245 +1,342 @@
-import { Link, useParams } from "react-router"
-import { ArrowLeft, Ban, BatteryCharging, CircleDot, Clock3, Filter, Radio, Thermometer, Wrench } from "lucide-react"
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useEffect, useState } from "react"
+import { useParams, useNavigate, useSearchParams } from "react-router"
+import { useQuery } from "@tanstack/react-query"
+import {
+  ArrowLeft,
+  Car,
+  AlertTriangle,
+  Save,
+  ImagePlus,
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { uploadImage } from "@/features/uploads/api/upload.api"
+import { sanitizeImageUrl } from "@/shared/lib/utils"
 
 import { routePaths } from "@/app/router/route-paths"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { useVehicleCatalogDetail } from "@/features/vehicles/hooks/useVehicleCatalogs"
+import { useVehicleUnitDetail } from "@/features/vehicles/hooks/useVehicleUnits"
+import { useUpdateVehicleUnit } from "@/features/vehicles/hooks/useVehicleUnitMutations"
+import { VehicleStatus } from "@/features/vehicles/types"
+import type { UpdateVehicleUnitDto } from "@/features/vehicles/types"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
-import { vehicles } from "@/pages/provider/data"
 import { Button } from "@/shared/ui/button"
-
-const specs = [
-  ["Class", "1/5 Monster"],
-  ["Power", "8S LiPo"],
-  ["Chassis", "Composite"],
-  ["Purchased", "Oct 2023"],
-]
-
-const logs = [
-  {
-    title: "Suspension Rebuild",
-    date: "Oct 12, 2023",
-    detail: "Replaced shock oil, new O-rings installed, checked A-arms for stress fractures.",
-    meta: ["Tech: JR", "1.5h"],
-  },
-  {
-    title: "Drivetrain Inspection",
-    date: "Sep 28, 2023",
-    detail: "Cleaned and re-greased front/rear diffs. Pinion gear showing minor wear.",
-    meta: ["Tech: AL", "45m"],
-  },
-  {
-    title: "Tire Replacement",
-    date: "Sep 05, 2023",
-    detail: "Swapped all 4 Sledgehammers and re-glued beads on set B.",
-    meta: ["Tech: JR", "20m"],
-  },
-]
+import { Input } from "@/shared/ui/input"
+import { Label } from "@/shared/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select"
+import { Textarea } from "@/shared/ui/textarea"
 
 export function ProviderVehicleDetailPage() {
-  const { vehicleId } = useParams()
-  const vehicle = vehicles.find((item) => item.id === vehicleId) ?? vehicles[0]
+  const { catalogId = "", vehicleId = "" } = useParams()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const queryCafeId = searchParams.get("cafeId") || ""
+
+  const [localSelectedCafeId] = useState<string>("")
+
+  // Form states
+  const [formColor, setFormColor] = useState("")
+  const [formStatus, setFormStatus] = useState<VehicleStatus>(VehicleStatus.AVAILABLE)
+  const [formNotes, setFormNotes] = useState("")
+  const [formLastMaintenance, setFormLastMaintenance] = useState("")
+  const [formImageUrl, setFormImageUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
+
+  const handleUpload = async (file: File | undefined) => {
+    if (!file) return
+    setUploading(true)
+    try {
+      const uploaded = await uploadImage(file, "vehicles")
+      setFormImageUrl(uploaded.url)
+      toast.success("Tải ảnh lên thành công!")
+    } catch {
+      toast.error("Không thể tải ảnh lên, vui lòng thử lại.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // Fetch managed cafes
+  const { data: cafesData } = useQuery({
+    queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
+    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
+  })
+  const cafes = cafesData?.data ?? []
+
+  const selectedCafeId = localSelectedCafeId || queryCafeId || cafes[0]?.id || ""
+  const fromPage = searchParams.get("from") || ""
+
+  const handleBack = () => {
+    if (fromPage === "vehicles") {
+      navigate(`${routePaths.providerVehicles}?tab=vehicles&cafeId=${selectedCafeId}`)
+    } else {
+      navigate(`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalogId)}?cafeId=${selectedCafeId}`)
+    }
+  }
+
+  // Fetch catalog detail for reference
+  const { data: catalog } = useVehicleCatalogDetail(selectedCafeId, catalogId)
+
+  // Fetch physical unit details
+  const {
+    data: unit,
+    isLoading: isUnitLoading,
+    isError: isUnitError,
+  } = useVehicleUnitDetail(selectedCafeId, catalogId, vehicleId)
+
+  // Update mutation
+  const updateUnitMutation = useUpdateVehicleUnit(selectedCafeId, catalogId, vehicleId)
+
+  // Populate form when unit details load
+  useEffect(() => {
+    if (unit) {
+      setFormColor(unit.color)
+      setFormStatus(unit.status)
+      setFormNotes(unit.notes || "")
+      setFormImageUrl(unit.distinctive_image_url || "")
+      const lastMaint = unit.last_maintenance_at || unit.lastMaintenanceAt
+      if (lastMaint) {
+        // Format to YYYY-MM-DD for date input
+        const date = new Date(lastMaint)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, "0")
+        const day = String(date.getDate()).padStart(2, "0")
+        setFormLastMaintenance(`${year}-${month}-${day}`)
+      } else {
+        setFormLastMaintenance("")
+      }
+    }
+  }, [unit])
+
+  const handleSetTodayMaintenance = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, "0")
+    const day = String(today.getDate()).padStart(2, "0")
+    setFormLastMaintenance(`${year}-${month}-${day}`)
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!unit) return
+
+    const payload: UpdateVehicleUnitDto = {
+      color: formColor || "Mặc định",
+      status: formStatus,
+      notes: formNotes,
+      lastMaintenanceAt: formLastMaintenance ? new Date(formLastMaintenance).toISOString() : null,
+      distinctiveImageUrl: formImageUrl || null,
+    }
+
+    try {
+      await updateUnitMutation.mutateAsync(payload)
+      handleBack()
+    } catch {
+      // error handled in hook
+    }
+  }
+
+  if (isUnitLoading) {
+    return (
+      <ProviderShell>
+        <div className="p-6 space-y-4 animate-pulse">
+          <div className="h-10 w-48 bg-gray-200 rounded" />
+          <div className="h-96 bg-gray-200 rounded-xl" />
+        </div>
+      </ProviderShell>
+    )
+  }
+
+  if (isUnitError || !unit) {
+    return (
+      <ProviderShell>
+        <div className="p-6 text-center max-w-md mx-auto mt-20">
+          <AlertTriangle className="size-12 text-amber-500 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy xe vật lý</h3>
+          <p className="text-sm text-[#444748] mt-2 mb-6">
+            Xe vật lý này không tồn tại hoặc bạn không có quyền xem/cập nhật thông tin chi tiết của xe này.
+          </p>
+          <Button
+            onClick={handleBack}
+            className="bg-[#1c1b1b] text-white font-bold"
+          >
+            Quay lại
+          </Button>
+        </div>
+      </ProviderShell>
+    )
+  }
 
   return (
     <ProviderShell>
       <ProviderPageHeader
-        title={`${vehicle.name} ${vehicle.id}`}
-        description={`Last synced: 2 minutes ago - ID: VHC-8921-XMX - ${vehicle.branch}`}
+        title={`Mã xe: ${unit.identifier}`}
+        description="Xem thông tin chi tiết và cập nhật các thông số bảo trì, vận hành của xe."
       />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-            <span className="size-2 rounded-full bg-emerald-500" />
-            Operational
-          </span>
-          <span className="font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#747878]">{vehicle.tier}</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <Button asChild variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-            <Link to={routePaths.providerVehicles}>
-              <ArrowLeft className="size-4" />
-              Về đội xe
-            </Link>
-          </Button>
-          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-[#1c1b1b] hover:bg-[#e5e2e1]">
-            <Ban className="size-4" />
-            Ngưng hoạt động
-          </Button>
-          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
-            <Wrench className="size-4" />
-            Lên lịch bảo trì
+      <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center justify-start">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleBack}
+            className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold"
+          >
+            <ArrowLeft className="size-4" />
+            Quay lại danh sách
           </Button>
         </div>
+        <form onSubmit={handleFormSubmit} className="rounded-xl border border-[#c4c7c8] bg-white shadow-sm overflow-hidden p-6 space-y-6">
+          <div className="flex items-center gap-4 pb-4 border-b border-[#e5e2e1]">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-[#f6f3f2] text-[#444748]">
+              <Car className="size-6" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-[#747878] uppercase tracking-wider block">Mẫu xe thuộc danh mục</span>
+              <strong className="text-base text-[#1c1b1b] font-extrabold">
+                {catalog?.name || "Đang tải..."}
+              </strong>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-unit-color" className="text-sm font-bold text-[#1c1b1b]">
+                  Màu sắc xe
+                </Label>
+                <Input
+                  id="edit-unit-color"
+                  placeholder="Ví dụ: Đỏ, Xanh"
+                  value={formColor}
+                  onChange={(e) => setFormColor(e.target.value)}
+                  className="h-10 rounded-lg border-[#c4c7c8]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-unit-status" className="text-sm font-bold text-[#1c1b1b]">
+                  Trạng thái hoạt động
+                </Label>
+                <Select
+                  value={formStatus}
+                  onValueChange={(val) => setFormStatus(val as VehicleStatus)}
+                >
+                  <SelectTrigger id="edit-unit-status" className="h-10 w-full rounded-lg border-[#c4c7c8] bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={VehicleStatus.AVAILABLE}>Sẵn sàng thuê (AVAILABLE)</SelectItem>
+                    <SelectItem value={VehicleStatus.IN_USE}>Đang cho thuê (IN_USE)</SelectItem>
+                    <SelectItem value={VehicleStatus.MAINTENANCE}>Đang bảo trì (MAINTENANCE)</SelectItem>
+                    <SelectItem value={VehicleStatus.RETIRED}>Ngừng hoạt động (RETIRED)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-unit-maintenance" className="text-sm font-bold text-[#1c1b1b]">
+                Ngày bảo trì gần nhất
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="edit-unit-maintenance"
+                  type="date"
+                  value={formLastMaintenance}
+                  onChange={(e) => setFormLastMaintenance(e.target.value)}
+                  className="h-10 rounded-lg border-[#c4c7c8] flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSetTodayMaintenance}
+                  className="h-10 rounded-lg border-[#c4c7c8] font-bold"
+                >
+                  Đặt hôm nay
+                </Button>
+              </div>
+            </div>
+
+            {/* Distinctive Identification Image */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-unit-image" className="text-sm font-bold text-[#1c1b1b]">
+                Hình ảnh nhận diện xe vật lý (Đặc điểm riêng)
+              </Label>
+              <div className="grid gap-3 sm:grid-cols-[1fr_120px] sm:items-center">
+                <Input
+                  id="edit-unit-image"
+                  placeholder="Nhập link ảnh nhận diện hoặc tải lên từ thiết bị"
+                  value={formImageUrl}
+                  onChange={(e) => setFormImageUrl(e.target.value)}
+                  className="h-10 rounded-lg border-[#c4c7c8]"
+                />
+                <label className="block cursor-pointer rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] px-3 py-2 text-center text-xs font-semibold text-[#444748] hover:bg-[#f6f3f2]">
+                  <span className="flex items-center justify-center gap-1.5">
+                    <ImagePlus className="size-4 text-orange-600" />
+                    {uploading ? "Đang tải..." : "Tải ảnh"}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={uploading}
+                    className="sr-only"
+                    onChange={(event) => void handleUpload(event.target.files?.[0])}
+                  />
+                </label>
+              </div>
+              {formImageUrl ? (
+                <div className="flex items-center gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-2 mt-1 min-w-0 overflow-hidden">
+                  <img src={sanitizeImageUrl(formImageUrl)!} alt="" className="size-12 shrink-0 rounded-md object-cover" />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{formImageUrl}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-unit-notes" className="text-sm font-bold text-[#1c1b1b]">
+                Ghi chú / Nhật ký tình trạng xe
+              </Label>
+              <Textarea
+                id="edit-unit-notes"
+                placeholder="Nhập ghi chú chi tiết về tình trạng vỏ, pin, motor hoặc lịch sử sửa chữa..."
+                value={formNotes}
+                onChange={(e) => setFormNotes(e.target.value)}
+                rows={4}
+                className="rounded-lg border-[#c4c7c8]"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-[#e5e2e1] flex justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBack}
+              className="h-10 rounded-lg border-[#c4c7c8] font-bold"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              type="submit"
+              disabled={updateUnitMutation.isPending}
+              className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold"
+            >
+              <Save className="size-4" />
+              {updateUnitMutation.isPending ? "Đang cập nhật..." : "Lưu thay đổi"}
+            </Button>
+          </div>
+        </form>
       </div>
-
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-12">
-        <div className="rounded-xl border border-[#c4c7c8] bg-white p-4 shadow-sm md:col-span-4">
-          <div className="relative overflow-hidden rounded-lg border border-[#c4c7c8] bg-[#f6f3f2]">
-            <img
-              alt={vehicle.name}
-              className="h-56 w-full object-cover"
-              src="https://images.unsplash.com/photo-1614200179396-2bdb77ebf81b?auto=format&fit=crop&w=900&q=80"
-            />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {specs.map(([label, value]) => (
-              <div key={label} className="rounded border border-[#c4c7c8] bg-[#fcf8f8] p-3">
-                <div className="mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-[#747878]">{label}</div>
-                <div className="font-semibold text-[#1c1b1b]">{value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:col-span-8">
-          <MetricPanel icon={<BatteryCharging />} label="Battery Cycles" badge="Pack A / B" value="142" suffix="/ 300 expected" progress={47} helper="Condition: Good" />
-          <MetricPanel icon={<CircleDot />} label="Tire Wear Index" badge="Sledgehammer" value="68%" suffix="remaining" progress={68} helper="Est. Replacement: ~45 Sessions" />
-          <MetricPanel icon={<Clock3 />} label="Total Runtime" value="124" suffix="hrs" helper="This Month: 18 hrs" />
-          <div className="rounded-xl border border-[#c4c7c8] bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <span className="rounded-lg bg-[#f6f3f2] p-2 text-[#5d5f5f] [&_svg]:size-5">
-                  <Radio />
-                </span>
-                <h3 className="text-sm font-semibold text-[#1c1b1b]">Telemetry Link</h3>
-              </div>
-              <span className="relative flex size-3">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-3 rounded-full bg-emerald-500" />
-              </span>
-            </div>
-            <div className="mt-10 grid grid-cols-2 gap-2">
-              <SmallSpec label="Signal" value="-45 dBm" />
-              <SmallSpec label="Firmware" value="v2.4.1" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-16 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm lg:col-span-2">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <h3 className="text-xl font-bold text-[#1c1b1b]">Motor Temperature History</h3>
-            <select className="rounded-md border border-[#c4c7c8] bg-[#fcf8f8] px-2 py-1 text-sm text-[#1c1b1b] outline-none">
-              <option>Last 7 Sessions</option>
-              <option>Last 30 Sessions</option>
-            </select>
-          </div>
-          <TemperatureChart />
-          <div className="mt-8 flex items-center justify-between rounded-lg bg-[#f1edec] px-4 py-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-[#1c1b1b]">
-              <Thermometer className="size-4 text-[#ba1a1a]" />
-              Peak temp reached 165°F in Session S18.
-            </div>
-            <button className="text-xs font-bold text-[#1c1b1b] underline">View Session</button>
-          </div>
-        </div>
-
-        <div className="flex max-h-[460px] flex-col overflow-hidden rounded-xl border border-[#c4c7c8] bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-[#c4c7c8] p-5">
-            <h3 className="text-xl font-bold text-[#1c1b1b]">Maintenance Logs</h3>
-            <button className="rounded p-1 text-[#747878] hover:bg-[#f1edec]" aria-label="Lọc log">
-              <Filter className="size-4" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            {logs.map((log) => (
-              <div key={log.title} className="rounded-lg border-l-2 border-transparent p-3 transition-colors hover:border-[#5d5f5f] hover:bg-[#f6f3f2]">
-                <div className="mb-1 flex items-start justify-between gap-3">
-                  <span className="text-sm font-semibold text-[#1c1b1b]">{log.title}</span>
-                  <span className="font-mono text-[10px] text-[#747878]">{log.date}</span>
-                </div>
-                <p className="line-clamp-2 text-xs text-[#444748]">{log.detail}</p>
-                <div className="mt-2 flex gap-2">
-                  {log.meta.map((item) => (
-                    <span key={item} className="rounded border border-[#c4c7c8] bg-[#fcf8f8] px-2 py-0.5 font-mono text-[10px] text-[#444748]">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-[#c4c7c8] p-3">
-            <button className="w-full rounded py-2 text-center text-sm font-medium text-[#5d5f5f] hover:bg-[#f6f3f2]">View Full History</button>
-          </div>
-        </div>
-      </section>
     </ProviderShell>
-  )
-}
-
-function MetricPanel({ icon, label, badge, value, suffix, progress, helper }: { icon: React.ReactNode; label: string; badge?: string; value: string; suffix: string; progress?: number; helper: string }) {
-  return (
-    <div className="flex min-h-48 flex-col justify-between rounded-xl border border-[#c4c7c8] bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between">
-        <div className="flex items-center gap-2">
-          <span className="rounded-lg bg-[#f6f3f2] p-2 text-[#5d5f5f] [&_svg]:size-5">{icon}</span>
-          <h3 className="text-sm font-semibold text-[#1c1b1b]">{label}</h3>
-        </div>
-        {badge ? <span className="rounded bg-[#f1edec] px-2 py-1 font-mono text-xs text-[#444748]">{badge}</span> : null}
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-4xl font-bold text-[#1c1b1b]">{value}</span>
-        <span className="text-sm text-[#444748]">{suffix}</span>
-      </div>
-      {progress ? (
-        <div className="mt-4 h-1.5 w-full rounded-full bg-[#e5e2e1]">
-          <div className="h-1.5 rounded-full bg-[#5d5f5f]" style={{ width: `${progress}%` }} />
-        </div>
-      ) : null}
-      <p className="mt-2 text-xs text-[#444748]">{helper}</p>
-    </div>
-  )
-}
-
-function SmallSpec({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded border border-[#c4c7c8] bg-[#fcf8f8] p-3">
-      <p className="mb-1 font-mono text-[10px] uppercase tracking-[0.05em] text-[#747878]">{label}</p>
-      <p className="text-sm font-semibold text-[#1c1b1b]">{value}</p>
-    </div>
-  )
-}
-
-function TemperatureChart() {
-  const points = [
-    [0, 80],
-    [15, 75],
-    [30, 60],
-    [45, 65],
-    [60, 45],
-    [75, 50],
-    [90, 35],
-    [100, 40],
-  ]
-
-  return (
-    <div className="relative min-h-[270px] overflow-hidden border-b border-l border-[#c4c7c8]/60 pb-2 pl-10 pr-2">
-      <div className="absolute left-2 inset-y-0 flex flex-col justify-between py-2 text-right font-mono text-[10px] leading-none text-[#747878]">
-        <span>180°</span>
-        <span>150°</span>
-        <span>120°</span>
-        <span>90°</span>
-      </div>
-      <div className="absolute inset-y-0 left-10 right-0 flex flex-col justify-between py-2">
-        {[0, 1, 2, 3].map((line) => (
-          <div key={line} className="border-t border-[#c4c7c8]/30" />
-        ))}
-      </div>
-      <svg className="absolute inset-y-0 left-10 right-0 h-full w-[calc(100%-2.5rem)] px-2 pb-2" preserveAspectRatio="none" viewBox="0 0 100 100">
-        <rect fill="#ecfdf5" height="60" opacity="0.5" width="100" x="0" y="40" />
-        <rect fill="#fff1f2" height="40" opacity="0.45" width="100" x="0" y="0" />
-        <polyline fill="none" points={points.map(([x, y]) => `${x},${y}`).join(" ")} stroke="#5d5f5f" strokeWidth="2" />
-        {points.slice(1, -1).map(([x, y], index) => (
-          <circle key={`${x}-${y}`} cx={x} cy={y} fill={index === 5 ? "#ba1a1a" : "#5d5f5f"} r={index === 5 ? "3" : "2"} />
-        ))}
-      </svg>
-      <div className="absolute bottom-0 left-10 right-0 flex justify-between px-2 font-mono text-[10px] text-[#747878]">
-        {["S12", "S13", "S14", "S15", "S16", "S17", "S18"].map((label) => (
-          <span key={label}>{label}</span>
-        ))}
-      </div>
-    </div>
   )
 }

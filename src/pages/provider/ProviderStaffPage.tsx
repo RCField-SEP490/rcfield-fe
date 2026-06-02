@@ -60,29 +60,29 @@ export function ProviderStaffPage() {
         <div className="relative flex flex-grow items-center">
           <Search className="absolute left-3 size-5 text-[#444748]" />
           <input
-            className="w-full border-none bg-transparent py-2 pl-10 pr-4 text-lg leading-relaxed text-[#1c1b1b] placeholder:text-[#444748] focus:ring-0"
+            className="w-full border-none bg-transparent py-2 pl-10 pr-4 text-base font-semibold leading-relaxed text-[#1c1b1b] placeholder:text-[#747878] focus:ring-0"
             placeholder="Tìm kiếm nhân viên..."
             type="text"
           />
         </div>
         <div className="mx-2 h-px w-full bg-[#c4c7c8] md:h-auto md:w-px" />
         <div className="flex gap-2">
-          <select className="cursor-pointer rounded border-none bg-[#f6f3f2] px-3 py-2 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] focus:ring-1 focus:ring-[#747878]">
+          <select className="cursor-pointer rounded border-none bg-[#f6f3f2] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#1c1b1b] focus:ring-1 focus:ring-[#747878]">
             <option>Tất cả Vai trò</option>
             <option>Technician</option>
             <option>Receptionist</option>
             <option>Manager</option>
           </select>
-          <select className="cursor-pointer rounded border-none bg-[#f6f3f2] px-3 py-2 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] focus:ring-1 focus:ring-[#747878]">
+          <select className="cursor-pointer rounded border-none bg-[#f6f3f2] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[#1c1b1b] focus:ring-1 focus:ring-[#747878]">
             <option>Tất cả Chi nhánh</option>
             <option>Hanoi Main</option>
             <option>HCM Central</option>
           </select>
-          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#1c1b1b] hover:bg-[#f6f3f2]">
+          <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#fcf8f8] text-xs font-bold uppercase tracking-wider text-[#1c1b1b] hover:bg-[#f6f3f2]">
             <Settings className="size-[18px]" />
             Edit Permissions
           </Button>
-          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#fcf8f8] hover:bg-[#313030]">
+          <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-xs font-bold uppercase tracking-wider text-[#fcf8f8] hover:bg-[#313030]">
             <UserPlus className="size-[18px]" />
             Invite New Staff
           </Button>
@@ -118,33 +118,33 @@ function StaffCard({ staff }: { staff: (typeof staffCards)[number] }) {
           {staff.avatar ? (
             <img alt="" className="size-12 rounded-full border border-[#c4c7c8] object-cover" src={staff.avatar} />
           ) : (
-            <div className="flex size-12 items-center justify-center rounded-full border border-[#c4c7c8] bg-[#ebe7e7] text-xl font-semibold text-[#444748]">{staff.initials}</div>
+            <div className="flex size-12 items-center justify-center rounded-full border border-[#c4c7c8] bg-[#ebe7e7] text-xl font-bold text-[#444748]">{staff.initials}</div>
           )}
           <div>
-            <h3 className="text-lg font-semibold leading-relaxed text-[#1c1b1b]">{staff.name}</h3>
-            <p className="font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#444748]">{staff.role}</p>
+            <h3 className="text-lg font-bold leading-relaxed text-[#1c1b1b]">{staff.name}</h3>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#747878]">{staff.role}</p>
           </div>
         </div>
         <span className={statusClassName(staff.status)}>{staff.status}</span>
       </div>
 
-      <div className="relative z-10 mt-4 space-y-2 font-mono text-xs font-medium uppercase tracking-[0.05em] text-[#444748]">
+      <div className="relative z-10 mt-4 space-y-2 text-xs font-semibold text-[#5d5f5f]">
         <div className="flex items-center gap-2">
-          <Phone className="size-4" />
+          <Phone className="size-4 text-[#747878]" />
           <span className="tabular-nums">{staff.phone}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Mail className="size-4" />
+          <Mail className="size-4 text-[#747878]" />
           <span className="truncate normal-case">{staff.email}</span>
         </div>
         <div className="flex items-center gap-2">
-          <MapPin className="size-4" />
+          <MapPin className="size-4 text-[#747878]" />
           <span className="normal-case">{staff.branch}</span>
         </div>
       </div>
 
       <div className="relative z-10 mt-5 flex items-center justify-between border-t border-[#c4c7c8] pt-4">
-        {staff.note ? <span className="font-mono text-[10px] font-medium uppercase tracking-[0.05em] text-[#444748]">{staff.note}</span> : <span />}
+        {staff.note ? <span className="text-[10px] font-bold uppercase tracking-wider text-[#ba1a1a]">{staff.note}</span> : <span />}
         <button className="p-1 text-[#444748] transition-colors hover:text-[#1c1b1b]" title="More options">
           <MoreHorizontal className="size-5" />
         </button>

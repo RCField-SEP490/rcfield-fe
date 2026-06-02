@@ -19,7 +19,7 @@ export function ProviderBookingsPage() {
           title="Danh sách đặt lịch"
           subtitle="Theo dõi đặt lịch theo cơ sở, thời gian và trạng thái."
           action={
-            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]">
+            <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
               <Plus className="size-4" />
               Tạo đặt lịch
             </Button>
