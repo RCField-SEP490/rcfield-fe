@@ -3,6 +3,18 @@ import type { Cafe, CafeSearchParams, Vehicle } from "@/shared/data/explore-data
 export type CafeViewMode = "grid" | "list"
 export type SearchTarget = "cafes" | "vehicles"
 export type VehicleWithCafe = Vehicle & { cafe: Cafe }
+export type UserLocation = { lat: number; lng: number }
+export type MapBounds = { north: number; south: number; east: number; west: number }
+
+export function cafeInBounds(cafe: { latitude: number | null; longitude: number | null }, bounds: MapBounds): boolean {
+  if (!cafe.latitude || !cafe.longitude) return false
+  return (
+    cafe.latitude <= bounds.north &&
+    cafe.latitude >= bounds.south &&
+    cafe.longitude <= bounds.east &&
+    cafe.longitude >= bounds.west
+  )
+}
 
 const DEFAULT_VALUE = "all"
 
@@ -85,4 +97,20 @@ function isVehicleInPriceRange(price: number, range: string) {
   if (range === "100to200") return price >= 100000 && price <= 200000
   if (range === "over200") return price > 200000
   return true
+}
+
+export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`
+  if (km < 10) return `${km.toFixed(1)} km`
+  return `${Math.round(km).toLocaleString("vi-VN")} km`
 }

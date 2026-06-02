@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { createBrowserRouter, Navigate } from "react-router"
 import { AuthLayout } from "@/app/layouts/AuthLayout"
 import { DashboardLayout } from "@/app/layouts/DashboardLayout"
+import { ExploreLayout } from "@/app/layouts/ExploreLayout"
 import { PublicLayout } from "@/app/layouts/PublicLayout"
 import { RootLayout } from "@/app/layouts/RootLayout"
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
@@ -89,10 +90,15 @@ export const router = createBrowserRouter([
     element: <RootLayout />,
     children: [
       {
+        element: <ExploreLayout />,
+        children: [
+          { path: routePaths.cafes, element: <ExplorePage /> },
+        ],
+      },
+      {
         element: <PublicLayout />,
         children: [
           { index: true, element: <LandingPage /> },
-          { path: routePaths.cafes, element: <ExplorePage /> },
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
           { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },

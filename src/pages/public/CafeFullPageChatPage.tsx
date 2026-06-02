@@ -74,23 +74,23 @@ export function CafeFullPageChatPage() {
         className="flex shrink-0 items-center gap-3 px-4 py-3 shadow-sm"
         style={{ background: primaryColor }}
       >
-        <Link
+        {/* <Link
           to={routePaths.cafeDetail.replace(":cafeSlug", cafeSlug ?? "")}
           className="rounded p-1 text-white/70 hover:bg-white/20 hover:text-white transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
+        </Link> */}
+        {/* <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
           <Bot className="h-5 w-5 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
+        </div> */}
+        {/* <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-white leading-none truncate">
             Trợ lý AI
           </p>
           <p className="mt-0.5 text-xs text-white/70 truncate">
             {cafeSlug?.replace(/-/g, " ")}
           </p>
-        </div>
+        </div> */}
         <button
           onClick={reset}
           className="rounded p-1.5 text-white/70 hover:bg-white/20 hover:text-white transition-colors"

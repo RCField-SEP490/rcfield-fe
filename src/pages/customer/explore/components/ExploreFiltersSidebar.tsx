@@ -22,6 +22,25 @@ export type ExploreFiltersSidebarProps = {
 }
 
 const filterGroups = {
+  city: [
+    { value: "all", label: "Tất cả thành phố" },
+    { value: "Hồ Chí Minh", label: "Hồ Chí Minh" },
+    { value: "Hà Nội", label: "Hà Nội" },
+    { value: "Đà Nẵng", label: "Đà Nẵng" },
+    { value: "Hải Phòng", label: "Hải Phòng" },
+  ],
+  trackType: [
+    { value: "all", label: "Mọi loại sân" },
+    { value: "DRIFT", label: "Drift" },
+    { value: "OBSTACLE", label: "Obstacle" },
+    { value: "HILL_CLIMB", label: "Hill climb" },
+  ],
+  priceRange: [
+    { value: "all", label: "Mọi mức giá" },
+    { value: "under100", label: "Dưới 100k/slot" },
+    { value: "100to200", label: "100k – 200k/slot" },
+    { value: "over200", label: "Trên 200k/slot" },
+  ],
   feature: [
     { value: "all", label: "Tất cả tiện ích" },
     { value: "Serious Inspection", label: "Kiểm xe" },
@@ -44,7 +63,9 @@ export function ExploreFiltersSidebar(props: ExploreFiltersSidebarProps) {
     <Card className="rounded-xl shadow-sm">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2 text-base"><SlidersHorizontal className="h-4 w-4" /> Bộ lọc</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <SlidersHorizontal className="h-4 w-4" /> Bộ lọc
+          </CardTitle>
           {props.activeFilterCount > 0 && (
             <Button type="button" variant="ghost" size="sm" onClick={props.onClear} className="gap-1 text-muted-foreground">
               <RotateCcw className="h-3.5 w-3.5" /> Xóa
@@ -53,11 +74,16 @@ export function ExploreFiltersSidebar(props: ExploreFiltersSidebarProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <FilterSelect label="Thành phố" value={props.city} onChange={props.onCityChange} options={filterGroups.city} />
+        <FilterSelect label="Loại sân" value={props.trackType} onChange={props.onTrackTypeChange} options={filterGroups.trackType} />
+        <FilterSelect label="Mức giá" value={props.priceRange} onChange={props.onPriceRangeChange} options={filterGroups.priceRange} />
         <FilterSelect label="Tiện ích" value={props.feature} onChange={props.onFeatureChange} options={filterGroups.feature} />
         <FilterSelect label="Loại xe" value={props.vehicleType} onChange={props.onVehicleTypeChange} options={filterGroups.vehicleType} />
         <label className="block space-y-2">
-          <span className="flex items-center gap-2 text-sm font-medium"><CalendarDays className="h-4 w-4 text-muted-foreground" /> Ngày chạy</span>
-          <Input type="date" value={props.date} onChange={(event) => props.onDateChange(event.target.value)} />
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" /> Ngày chạy
+          </span>
+          <Input type="date" value={props.date} onChange={(e) => props.onDateChange(e.target.value)} />
         </label>
       </CardContent>
     </Card>
@@ -69,8 +95,14 @@ function FilterSelect({ label, value, onChange, options }: { label: string; valu
     <label className="block space-y-2">
       <span className="text-sm font-medium">{label}</span>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+          ))}
+        </SelectContent>
       </Select>
     </label>
   )

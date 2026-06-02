@@ -39,6 +39,8 @@ export interface Cafe {
   features: string[]
   description: string
   coordinates: { x: number; y: number }
+  latitude?: number | null
+  longitude?: number | null
   availableVehicles: Vehicle[]
 }
 

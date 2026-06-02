@@ -1,13 +1,14 @@
-import { MapPin, Star, Wifi, ShieldCheck } from "lucide-react"
+import { MapPin, Star, Wifi, ShieldCheck, Navigation } from "lucide-react"
 import { Link } from "react-router"
 import type { Cafe } from "@/shared/data/explore-data"
 import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
 import { formatCurrency } from "@/shared/lib/format"
+import { formatDistance } from "../explore-utils"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 
-export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQuickView: (cafe: Cafe) => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
+export function CafeListItem({ cafe, distanceKm, onQuickView, onBookNow }: { cafe: Cafe; distanceKm?: number; onQuickView: (cafe: Cafe) => void; onBookNow: (cafeId: string, vehicleId?: string) => void }) {
   const cheapest = cafe.availableVehicles.length > 0 ? Math.min(...cafe.availableVehicles.map((v) => v.pricePerHour)) : 0
   const availCount = cafe.availableVehicles.filter((v) => v.status === "available").length
   const priceLabel = cheapest > 0 ? formatCurrency(cheapest) : cafe.priceRange
@@ -17,13 +18,23 @@ export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQ
       <CardContent className="grid gap-4 p-3 sm:grid-cols-[220px_1fr] lg:grid-cols-[230px_1fr_160px]">
         <Link to={buildCafeDetailPath(cafe)} className="relative h-44 overflow-hidden rounded-lg bg-muted sm:h-full">
           <img src={cafe.image} alt={cafe.name} className="h-full w-full object-cover transition duration-300 hover:scale-105" />
-          <Badge className="absolute left-2 top-2 gap-1 bg-background/95 text-foreground shadow-sm"><Star className="h-3 w-3 fill-yellow-500 text-yellow-500" /> {cafe.rating}</Badge>
+          {cafe.rating > 0 && (
+            <Badge className="absolute left-2 top-2 gap-1 bg-background/95 text-foreground shadow-sm"><Star className="h-3 w-3 fill-yellow-500 text-yellow-500" /> {cafe.rating}</Badge>
+          )}
         </Link>
 
         <div className="min-w-0 space-y-3">
           <div>
             <Link to={buildCafeDetailPath(cafe)} className="line-clamp-1 text-lg font-semibold tracking-tight text-foreground hover:text-primary">{cafe.name}</Link>
-            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground"><MapPin className="h-4 w-4 shrink-0" /> <span className="line-clamp-1">{cafe.address}</span></p>
+            <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span className="line-clamp-1">{cafe.address}</span>
+              {distanceKm !== undefined && (
+                <span className="ml-1 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  <Navigation className="h-2.5 w-2.5" />{formatDistance(distanceKm)}
+                </span>
+              )}
+            </p>
           </div>
           <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{cafe.description}</p>
           <div className="flex flex-wrap gap-1.5">
@@ -32,9 +43,12 @@ export function CafeListItem({ cafe, onQuickView, onBookNow }: { cafe: Cafe; onQ
             {cafe.features.includes("Hệ thống Đèn đêm") && <Badge variant="outline" className="rounded-md gap-1"><Wifi className="h-3 w-3" /> Đèn đêm</Badge>}
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span>{cafe.availableVehicles.length} xe thuê</span>
-            <span className="font-medium text-emerald-600">{availCount} xe sẵn sàng</span>
-            <span>{cafe.reviewsCount} đánh giá</span>
+            {cafe.availableVehicles.length > 0 && <span>{cafe.availableVehicles.length} xe thuê</span>}
+            {availCount > 0 && <span className="font-medium text-emerald-600">{availCount} xe sẵn sàng</span>}
+            {cafe.reviewsCount > 0 && <span>{cafe.reviewsCount} đánh giá</span>}
+            {cafe.availableVehicles.length === 0 && cafe.reviewsCount === 0 && (
+              <span className="italic">Chưa có thông tin xe & đánh giá</span>
+            )}
           </div>
         </div>
 

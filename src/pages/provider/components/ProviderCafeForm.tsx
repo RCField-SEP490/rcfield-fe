@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
-import { ImageIcon, ImagePlus, Loader2, MapPin, Trash2 } from "lucide-react"
+import { ImageIcon, ImagePlus, Info, Loader2, MapPin, Trash2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 
 import { LocationPickerDialog } from "@/shared/components/LocationPickerDialog"
@@ -229,8 +229,8 @@ export function ProviderCafeForm({
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <TextField label="Tên cơ sở" value={values.name} onChange={(value) => setField("name", value)} required minLength={2} maxLength={255} />
-            <TextField label="Số điện thoại" value={values.phone ?? ""} onChange={(value) => setField("phone", value)} minLength={9} maxLength={20} />
+            <TextField label="Tên cơ sở" tooltip="Tên hiển thị trên trang khám phá và trang đặt lịch của cơ sở" value={values.name} onChange={(value) => setField("name", value)} required minLength={2} maxLength={255} />
+            <TextField label="Số điện thoại" tooltip="Số liên lạc hiển thị cho khách hàng khi xem trang chi tiết cơ sở" value={values.phone ?? ""} onChange={(value) => setField("phone", value)} minLength={9} maxLength={20} />
 
             <label className="block space-y-2">
               <span className="flex items-center gap-1.5 text-sm font-bold text-[#1c1b1b]">
@@ -285,10 +285,10 @@ export function ProviderCafeForm({
             </label>
           </div>
 
-          <TextField label="Địa chỉ cụ thể:" value={values.address} onChange={(value) => setField("address", value)} required />
+          <TextField label="Địa chỉ cụ thể" tooltip="Số nhà, tên đường (VD: 277B Cách Mạng Tháng 8). Hiển thị trên trang chi tiết và dùng để điều hướng bản đồ" value={values.address} onChange={(value) => setField("address", value)} required />
 
           <label className="block space-y-2">
-            <span className="text-sm font-bold text-[#1c1b1b]">Mô tả:</span>
+            <FieldLabel tooltip="Giới thiệu đường đua, tiện ích, quy định — hiển thị nổi bật trên trang chi tiết cơ sở">Mô tả</FieldLabel>
             <Textarea
               value={values.description ?? ""}
               onChange={(event) => setField("description", event.target.value)}
@@ -329,15 +329,17 @@ export function ProviderCafeForm({
           />
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <NumberField label="Phí slot (VNĐ)" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} formatted />
-            <NumberField label="Thời lượng slot (phút)" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} max={1440} />
-            <NumberField label="Booking đồng thời tối đa" value={values.max_concurrent_bookings} onChange={(value) => setField("max_concurrent_bookings", value ?? 1)} min={1} />
-            <NumberField label="Báo trước (phút)" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />
-            <NumberField label="Sức chứa BYOC (xe)" value={values.byoc_capacity} onChange={(value) => setField("byoc_capacity", value ?? 0)} min={0} />
+            <NumberField label="Phí slot (VNĐ)" tooltip="Giá thuê sân cho mỗi slot thời gian, chưa tính phí thuê xe. Khách thanh toán trước khi vào sân" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} formatted />
+            <NumberField label="Thời lượng slot (phút)" tooltip="Độ dài mỗi slot đặt lịch. VD: 60 = mỗi lượt chạy 1 giờ. Ảnh hưởng đến lưới giờ hiển thị cho khách" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} max={1440} />
+            <NumberField label="Booking đồng thời tối đa" tooltip="Số lượt đặt tối đa trong cùng một khung giờ. Hệ thống tự hiển thị 'Còn chỗ / Sắp đầy / Hết chỗ' dựa trên con số này" value={values.max_concurrent_bookings} onChange={(value) => setField("max_concurrent_bookings", value ?? 1)} min={1} />
+            <NumberField label="Báo trước (phút)" tooltip="Thời gian tối thiểu khách phải đặt trước khi slot bắt đầu. VD: 30 = khách không thể đặt muộn hơn 30 phút trước giờ chạy" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />
+            <NumberField label="Sức chứa BYOC (xe)" tooltip="Số xe cá nhân (Bring Your Own Car) tối đa được vào sân cùng lúc. Đặt 0 nếu cơ sở không hỗ trợ BYOC" value={values.byoc_capacity} onChange={(value) => setField("byoc_capacity", value ?? 0)} min={0} />
           </div>
 
           <div className="rounded-lg border border-[#e5e2e1] p-3">
-            <div className="mb-3 text-sm font-bold text-[#1c1b1b]">Loại track</div>
+            <div className="mb-3">
+              <FieldLabel tooltip="Loại đường đua cơ sở hỗ trợ. Ảnh hưởng đến bộ lọc tìm kiếm — khách có thể lọc cơ sở theo loại track mong muốn">Loại track</FieldLabel>
+            </div>
             <div className="flex flex-wrap gap-3">
               {trackOptions.map((option) => (
                 <Label key={option.value} className="rounded-lg border border-[#e5e2e1] px-3 py-2">
@@ -514,8 +516,29 @@ function OperatingHoursField({
   )
 }
 
+function TooltipIcon({ text }: { text: string }) {
+  return (
+    <span className="group relative cursor-help">
+      <Info className="size-3.5 text-[#9ca3af] group-hover:text-[#6b7280]" />
+      <span className="pointer-events-none absolute left-0 top-full z-50 mt-1.5 w-56 rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-normal leading-relaxed text-[#444748] opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+        {text}
+      </span>
+    </span>
+  )
+}
+
+function FieldLabel({ children, tooltip }: { children: React.ReactNode; tooltip?: string }) {
+  return (
+    <span className="flex items-center gap-1.5 text-sm font-bold text-[#1c1b1b]">
+      {children}
+      {tooltip && <TooltipIcon text={tooltip} />}
+    </span>
+  )
+}
+
 function TextField({
   label,
+  tooltip,
   value,
   onChange,
   type = "text",
@@ -524,6 +547,7 @@ function TextField({
   maxLength,
 }: {
   label: string
+  tooltip?: string
   value: string
   onChange: (value: string) => void
   type?: string
@@ -533,7 +557,7 @@ function TextField({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="text-sm font-bold text-[#1c1b1b]">{label}</span>
+      <FieldLabel tooltip={tooltip}>{label}</FieldLabel>
       <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} minLength={minLength} maxLength={maxLength} className="rounded-lg border-[#c4c7c8]" />
     </label>
   )
@@ -541,6 +565,7 @@ function TextField({
 
 function NumberField({
   label,
+  tooltip,
   value,
   onChange,
   min,
@@ -549,6 +574,7 @@ function NumberField({
   formatted = false,
 }: {
   label: string
+  tooltip?: string
   value: number | ""
   onChange: (value: number | null) => void
   min?: number
@@ -560,7 +586,7 @@ function NumberField({
     const display = value === "" ? "" : Number(value).toLocaleString("vi-VN")
     return (
       <label className="block space-y-2">
-        <span className="text-sm font-bold text-[#1c1b1b]">{label}</span>
+        <FieldLabel tooltip={tooltip}>{label}</FieldLabel>
         <Input
           type="text"
           inputMode="numeric"
@@ -577,7 +603,7 @@ function NumberField({
 
   return (
     <label className="block space-y-2">
-      <span className="text-sm font-bold text-[#1c1b1b]">{label}</span>
+      <FieldLabel tooltip={tooltip}>{label}</FieldLabel>
       <Input
         type="number"
         value={value}
