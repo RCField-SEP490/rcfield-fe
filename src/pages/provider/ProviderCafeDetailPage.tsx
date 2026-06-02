@@ -109,7 +109,7 @@ export function ProviderCafeDetailPage() {
           description="Cơ sở không tồn tại hoặc bạn không có quyền xem/cập nhật cơ sở này."
         />
         <div className="p-6">
-          <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex justify-start">
             <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
               <ArrowLeft className="size-5" />
               Danh sách cơ sở
@@ -134,7 +134,7 @@ export function ProviderCafeDetailPage() {
       />
 
       <div className="space-y-4 p-4 md:p-6">
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-start gap-2">
           <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
             <ArrowLeft className="size-5" />
             Danh sách
