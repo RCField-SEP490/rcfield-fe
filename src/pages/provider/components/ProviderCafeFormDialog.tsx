@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { ImagePlus, Trash2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import type { BackendCafe, CafeImage, CafeOperatingHours, CafeUpsertBody, TrackType } from "@/features/cafes/types"
+import { cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import type { BackendCafe, CafeImage, CafeOperatingHours, CafeUpsertBody } from "@/features/cafes/types"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
@@ -21,12 +21,6 @@ type ProviderCafeFormDialogProps = {
   onDeleteImage: (image: CafeImage) => Promise<void>
 }
 
-const trackOptions: Array<{ value: TrackType; label: string }> = [
-  { value: "DRIFT", label: "Drift" },
-  { value: "OBSTACLE", label: "Obstacle" },
-  { value: "HILL_CLIMB", label: "Hill climb" },
-]
-
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
 const defaultValues: ProviderCafeFormValues = {
@@ -40,7 +34,7 @@ const defaultValues: ProviderCafeFormValues = {
   latitude: null,
   longitude: null,
   operating_hours: buildOperatingHours("09:00", "22:00"),
-  track_types: ["DRIFT"],
+  track_types: [],
   slot_duration_minutes: 60,
   slot_fee_rate: 50000,
   max_concurrent_bookings: 6,
@@ -65,6 +59,12 @@ export function ProviderCafeFormDialog({
     queryKey: cafeQueryKeys.images(cafe?.id),
     queryFn: () => cafeApi.listCafeImages(cafe!.id),
     enabled: open && !!cafe?.id,
+  })
+
+  const { data: trackTypes = [], isLoading: loadingTrackTypes } = useQuery({
+    queryKey: trackTypeQueryKeys.all,
+    queryFn: () => trackTypeApi.listAll(),
+    staleTime: Infinity,
   })
 
   useEffect(() => {
@@ -94,7 +94,7 @@ export function ProviderCafeFormDialog({
       latitude: cafe.latitude === null ? null : Number(cafe.latitude),
       longitude: cafe.longitude === null ? null : Number(cafe.longitude),
       operating_hours: buildOperatingHours(nextOpen, nextClose),
-      track_types: cafe.trackTypes.length > 0 ? cafe.trackTypes : ["DRIFT"],
+      track_types: cafe.trackTypes.map((t) => t.id),
       slot_duration_minutes: cafe.slotDurationMinutes,
       slot_fee_rate: Number(cafe.slotFeeRate),
       max_concurrent_bookings: cafe.maxConcurrentBookings,
@@ -128,12 +128,12 @@ export function ProviderCafeFormDialog({
     setValues((current) => ({ ...current, [field]: value }))
   }
 
-  const toggleTrack = (trackType: TrackType, checked: boolean) => {
+  const toggleTrack = (trackTypeId: string, checked: boolean) => {
     setValues((current) => {
       const next = checked
-        ? Array.from(new Set([...current.track_types, trackType]))
-        : current.track_types.filter((item) => item !== trackType)
-      return { ...current, track_types: next.length > 0 ? next : current.track_types }
+        ? Array.from(new Set([...current.track_types, trackTypeId]))
+        : current.track_types.filter((item) => item !== trackTypeId)
+      return { ...current, track_types: next }
     })
   }
 
@@ -188,17 +188,23 @@ export function ProviderCafeFormDialog({
 
               <div className="rounded-lg border border-[#e5e2e1] p-3">
                 <div className="mb-3 text-sm font-bold text-[#1c1b1b]">Loại track</div>
-                <div className="flex flex-wrap gap-3">
-                  {trackOptions.map((option) => (
-                    <Label key={option.value} className="rounded-lg border border-[#e5e2e1] px-3 py-2">
-                      <Checkbox
-                        checked={values.track_types.includes(option.value)}
-                        onCheckedChange={(checked) => toggleTrack(option.value, checked === true)}
-                      />
-                      {option.label}
-                    </Label>
-                  ))}
-                </div>
+                {loadingTrackTypes ? (
+                  <span className="text-xs text-[#747878] font-semibold">Đang tải danh sách track...</span>
+                ) : trackTypes.length === 0 ? (
+                  <span className="text-xs text-[#747878]">Chưa có dữ liệu loại track.</span>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {trackTypes.map((item) => (
+                      <Label key={item.id} className="rounded-lg border border-[#e5e2e1] px-3 py-2 cursor-pointer hover:bg-[#f6f3f2]">
+                        <Checkbox
+                          checked={values.track_types.includes(item.id)}
+                          onCheckedChange={(checked) => toggleTrack(item.id, checked === true)}
+                        />
+                        <span className="font-semibold">{item.name}</span>
+                      </Label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

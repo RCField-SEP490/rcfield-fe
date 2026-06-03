@@ -71,6 +71,7 @@ export const routePaths = {
   adminPaymentRequests: "/admin/payment-requests",
   adminSubscriptionPlans: "/admin/subscription-plans",
   adminAmenities: "/admin/amenities",
+  adminTrackTypes: "/admin/track-types",
   providerRegister: "/auth/register-provider",
   pendingReview: "/pending-review",
   rejected: "/rejected",

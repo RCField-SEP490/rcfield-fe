@@ -43,7 +43,10 @@ export function filterCafes(cafes: Cafe[], params: CafeSearchParams): Cafe[] {
       cafe.city.toLowerCase().includes(query)
 
     const matchesCity = city === DEFAULT_VALUE || cafe.city === city
-    const matchesTrack = trackType === DEFAULT_VALUE || cafe.trackTypes.some((type) => type.toLowerCase().includes(trackType.toLowerCase()))
+    const matchesTrack =
+      trackType === DEFAULT_VALUE ||
+      cafe.trackTypes.some((type) => type.toLowerCase().includes(trackType.toLowerCase())) ||
+      cafe.trackTypeIds?.includes(trackType)
     const matchesFeature = feature === DEFAULT_VALUE || cafe.features.includes(feature)
     const matchesVehicleType =
       vehicleType === DEFAULT_VALUE ||
@@ -71,7 +74,11 @@ export function filterVehicles(vehicles: VehicleWithCafe[], params: CafeSearchPa
       vehicle.cafe.name.toLowerCase().includes(query)
 
     const matchesCity = city === DEFAULT_VALUE || vehicle.cafe.city === city
-    const matchesTrack = trackType === DEFAULT_VALUE || vehicle.type.toLowerCase().includes(trackType.toLowerCase()) || vehicle.scale.includes(trackType)
+    const matchesTrack =
+      trackType === DEFAULT_VALUE ||
+      vehicle.type.toLowerCase().includes(trackType.toLowerCase()) ||
+      vehicle.scale.includes(trackType) ||
+      vehicle.cafe.trackTypeIds?.includes(trackType)
     const matchesFeature = feature === DEFAULT_VALUE || vehicle.cafe.features.includes(feature)
     const matchesVehicleType = vehicleType === DEFAULT_VALUE || vehicle.type.toLowerCase().includes(vehicleType.toLowerCase()) || vehicle.scale.includes(vehicleType)
     const matchesPrice = priceRange === DEFAULT_VALUE || isVehicleInPriceRange(vehicle.pricePerHour, priceRange)

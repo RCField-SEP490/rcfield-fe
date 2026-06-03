@@ -1,6 +1,13 @@
 export type CafeStatus = "PENDING" | "ACTIVE" | "SUSPENDED"
 
-export type TrackType = "DRIFT" | "OBSTACLE" | "HILL_CLIMB"
+export type TrackType = {
+  id: string
+  code: string
+  name: string
+  sortOrder: number
+  isActive: boolean
+  description: string | null
+}
 
 export type CafeOperatingHour = {
   open?: string
@@ -62,7 +69,7 @@ export type CafeListParams = {
   slug?: string
   district?: string
   city?: string
-  track_type?: TrackType
+  track_type?: string
   status?: CafeStatus
 }
 
@@ -77,7 +84,7 @@ export type CafeUpsertBody = {
   latitude?: number | null
   longitude?: number | null
   operating_hours: CafeOperatingHours
-  track_types: TrackType[]
+  track_types: string[]
   slot_duration_minutes: number
   slot_fee_rate: number
   max_concurrent_bookings: number

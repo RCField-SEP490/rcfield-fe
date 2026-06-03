@@ -16,7 +16,7 @@ import { useVehicleCatalogDetail } from "@/features/vehicles/hooks/useVehicleCat
 import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { useDeleteVehicleUnit } from "@/features/vehicles/hooks/useVehicleUnitMutations"
 import { VehicleStatus, VehicleTier } from "@/features/vehicles/types"
-import type { TrackType, VehicleUnit } from "@/features/vehicles/types"
+import type { VehicleUnit } from "@/features/vehicles/types"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { sanitizeImageUrl } from "@/shared/lib/utils"
@@ -85,12 +85,6 @@ export function ProviderVehicleCatalogDetailPage() {
       currency: "VND",
       maximumFractionDigits: 0,
     }).format(value)
-  }
-
-  const trackLabels: Record<TrackType, string> = {
-    DRIFT: "Đường drift (Drift)",
-    OBSTACLE: "Đường chướng ngại vật (Obstacle)",
-    HILL_CLIMB: "Đường leo dốc (Hill Climb)",
   }
 
   const statusColors: Record<VehicleStatus, string> = {
@@ -248,8 +242,8 @@ export function ProviderVehicleCatalogDetailPage() {
                 </span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {(catalog.compatibleTrackTypes || []).map((t) => (
-                    <Badge key={t} variant="outline" className="text-xs font-bold">
-                      {trackLabels[t] || t}
+                    <Badge key={typeof t === "string" ? t : t.id} variant="outline" className="text-xs font-bold">
+                      {typeof t === "string" ? t : t.name}
                     </Badge>
                   ))}
                 </div>

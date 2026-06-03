@@ -6,14 +6,14 @@ import { toast } from "sonner"
 
 import { uploadImage } from "@/features/uploads/api/upload.api"
 import { routePaths } from "@/app/router/route-paths"
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useVehicleCatalogDetail } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import {
   useCreateVehicleCatalog,
   useUpdateVehicleCatalog,
 } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
 import { VehicleTier } from "@/features/vehicles/types"
-import type { TrackType, CreateVehicleCatalogDto, UpdateVehicleCatalogDto } from "@/features/vehicles/types"
+import type { CreateVehicleCatalogDto, UpdateVehicleCatalogDto } from "@/features/vehicles/types"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
@@ -54,6 +54,12 @@ export function ProviderVehicleCatalogFormPage() {
     catalogId || "",
   )
 
+  const { data: trackTypes = [], isLoading: loadingTrackTypes } = useQuery({
+    queryKey: trackTypeQueryKeys.all,
+    queryFn: () => trackTypeApi.listAll(),
+    staleTime: Infinity,
+  })
+
   // Mutations
   const createCatalogMutation = useCreateVehicleCatalog(selectedCafeId)
   const updateCatalogMutation = useUpdateVehicleCatalog(selectedCafeId, catalogId || "")
@@ -66,7 +72,7 @@ export function ProviderVehicleCatalogFormPage() {
   const [formDamageMultiplier, setFormDamageMultiplier] = useState<number>(1.0)
   const [formImages, setFormImages] = useState<string[]>([])
   const [manualUrl, setManualUrl] = useState("")
-  const [formTracks, setFormTracks] = useState<TrackType[]>(["DRIFT"])
+  const [formTracks, setFormTracks] = useState<string[]>([])
 
   // Pre-populate fields in edit mode
   useEffect(() => {
@@ -83,7 +89,7 @@ export function ProviderVehicleCatalogFormPage() {
       } else {
         setFormImages([])
       }
-      setFormTracks(catalog.compatibleTrackTypes || [])
+      setFormTracks((catalog.compatibleTrackTypes || []).map((t: any) => typeof t === "string" ? t : t.id))
     }
   }, [isEdit, catalog])
 
@@ -179,13 +185,13 @@ export function ProviderVehicleCatalogFormPage() {
     setFormImages((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleTrackChange = (track: TrackType, checked: boolean) => {
+  const handleTrackChange = (trackId: string, checked: boolean) => {
     if (checked) {
-      if (!formTracks.includes(track)) {
-        setFormTracks([...formTracks, track])
+      if (!formTracks.includes(trackId)) {
+        setFormTracks([...formTracks, trackId])
       }
     } else {
-      setFormTracks(formTracks.filter((t) => t !== track))
+      setFormTracks(formTracks.filter((t) => t !== trackId))
     }
   }
 
@@ -225,12 +231,6 @@ export function ProviderVehicleCatalogFormPage() {
     } catch {
       // toast is shown in mutation error handlers
     }
-  }
-
-  const trackLabels: Record<TrackType, string> = {
-    DRIFT: "Đường drift (Drift)",
-    OBSTACLE: "Đường chướng ngại vật (Obstacle)",
-    HILL_CLIMB: "Đường leo dốc (Hill Climb)",
   }
 
   const isFormLoading = isCafesLoading || (isEdit && isCatalogLoading)
@@ -548,21 +548,27 @@ export function ProviderVehicleCatalogFormPage() {
                 Đường chạy tương thích <span className="text-red-500">*</span>
               </Label>
               <div className="grid grid-cols-2 gap-3 border border-[#c4c7c8] rounded-lg p-4 bg-gray-50 max-h-48 overflow-y-auto">
-                {(["DRIFT", "OBSTACLE", "HILL_CLIMB"] as TrackType[]).map((track) => (
-                  <div key={track} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`form-track-${track}`}
-                      checked={formTracks.includes(track)}
-                      onCheckedChange={(checked) => handleTrackChange(track, !!checked)}
-                    />
-                    <label
-                      htmlFor={`form-track-${track}`}
-                      className="text-xs font-semibold text-[#444748] cursor-pointer select-none"
-                    >
-                      {trackLabels[track]}
-                    </label>
-                  </div>
-                ))}
+                {loadingTrackTypes ? (
+                  <span className="text-xs text-[#747878] font-semibold">Đang tải danh sách track...</span>
+                ) : trackTypes.length === 0 ? (
+                  <span className="text-xs text-[#747878]">Không tìm thấy dữ liệu đường chạy.</span>
+                ) : (
+                  trackTypes.map((track) => (
+                    <div key={track.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`form-track-${track.id}`}
+                        checked={formTracks.includes(track.id)}
+                        onCheckedChange={(checked) => handleTrackChange(track.id, !!checked)}
+                      />
+                      <label
+                        htmlFor={`form-track-${track.id}`}
+                        className="text-xs font-semibold text-[#444748] cursor-pointer select-none"
+                      >
+                        {track.name}
+                      </label>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

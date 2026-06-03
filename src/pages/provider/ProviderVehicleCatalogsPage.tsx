@@ -21,7 +21,7 @@ import {
   useDeleteVehicleCatalog,
 } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
 import { VehicleTier } from "@/features/vehicles/types"
-import type { TrackType, VehicleCatalog } from "@/features/vehicles/types"
+import type { VehicleCatalog } from "@/features/vehicles/types"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { getCatalogImageUrl, cn } from "@/shared/lib/utils"
@@ -120,12 +120,6 @@ export function ProviderVehicleCatalogsPage() {
       currency: "VND",
       maximumFractionDigits: 0,
     }).format(value)
-  }
-
-  const trackLabels: Record<TrackType, string> = {
-    DRIFT: "Đường drift (Drift)",
-    OBSTACLE: "Đường chướng ngại vật (Obstacle)",
-    HILL_CLIMB: "Đường leo dốc (Hill Climb)",
   }
 
   return (
@@ -290,7 +284,7 @@ export function ProviderVehicleCatalogsPage() {
                     <div className="flex items-center gap-1 text-xs font-semibold text-[#747878] mb-4">
                       <Compass className="size-3.5" />
                       <span className="truncate">
-                        {(catalog.compatibleTrackTypes || []).map((t) => trackLabels[t] || t).join(", ")}
+                        {(catalog.compatibleTrackTypes || []).map((t) => typeof t === "string" ? t : t.name).join(", ")}
                       </span>
                     </div>
 
