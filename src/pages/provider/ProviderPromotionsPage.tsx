@@ -23,6 +23,7 @@ import {
   type PromoApplicableTo,
   type Promotion,
   type PromotionPayload,
+  type PromotionScheduleMode,
   type ProviderCafe,
 } from "@/features/promotions/api/promotion.api"
 import { DeleteConfirmationModal } from "@/pages/provider/components/DeleteConfirmationModal"
@@ -58,8 +59,12 @@ type PromotionFormState = {
   maxUses: string
   maxUsesPerUser: string
   applicableTo: PromoApplicableTo
-  startsAt: string
-  expiresAt: string
+  scheduleMode: PromotionScheduleMode
+  startDate: string
+  startTime: string
+  endDate: string
+  endTime: string
+  weekdays: string[]
   isActive: boolean
 }
 
@@ -73,10 +78,30 @@ const defaultForm: PromotionFormState = {
   maxUses: "",
   maxUsesPerUser: "1",
   applicableTo: "ALL",
-  startsAt: toDatetimeLocal(new Date()),
-  expiresAt: "",
+  scheduleMode: "ONCE",
+  startDate: toDateInputValue(new Date()),
+  startTime: toTimeInputValue(new Date()),
+  endDate: "",
+  endTime: "",
+  weekdays: [],
   isActive: true,
 }
+
+const scheduleModeOptions: Array<{ value: PromotionScheduleMode; label: string }> = [
+  { value: "ONCE", label: "Không lặp" },
+  { value: "DAILY", label: "Hằng ngày" },
+  { value: "WEEKLY", label: "Theo thứ" },
+]
+
+const weekdayOptions = [
+  { value: "MON", label: "T2" },
+  { value: "TUE", label: "T3" },
+  { value: "WED", label: "T4" },
+  { value: "THU", label: "T5" },
+  { value: "FRI", label: "T6" },
+  { value: "SAT", label: "T7" },
+  { value: "SUN", label: "CN" },
+]
 
 export function ProviderPromotionsPage() {
   const navigate = useNavigate()
@@ -946,17 +971,25 @@ function PromotionForm({
   const setField = <K extends keyof PromotionFormState>(key: K, value: PromotionFormState[K]) => {
     onChange({ ...form, [key]: value })
   }
-  const minStartsAt = toDatetimeLocal(new Date())
-  const minExpiresAt = form.startsAt || minStartsAt
-  const handleStartsAtChange = (value: string) => {
+  const minStartDate = toDateInputValue(new Date())
+  const minEndDate = form.startDate || minStartDate
+  const handleStartDateChange = (value: string) => {
     onChange({
       ...form,
-      startsAt: value,
-      expiresAt: form.expiresAt && isBeforeDatetimeLocal(form.expiresAt, value) ? "" : form.expiresAt,
+      startDate: value,
+      endDate: form.endDate && value && form.endDate < value ? "" : form.endDate,
     })
   }
-  const handleExpiresAtChange = (value: string) => {
-    setField("expiresAt", value && isBeforeDatetimeLocal(value, minExpiresAt) ? minExpiresAt : value)
+  const handleEndDateChange = (value: string) => {
+    setField("endDate", value && value < minEndDate ? minEndDate : value)
+  }
+  const toggleWeekday = (weekday: string) => {
+    setField(
+      "weekdays",
+      form.weekdays.includes(weekday)
+        ? form.weekdays.filter((item) => item !== weekday)
+        : [...form.weekdays, weekday]
+    )
   }
 
   return (
@@ -1003,12 +1036,75 @@ function PromotionForm({
         <Field label="Lượt dùng mỗi khách">
           <Input type="number" min="1" value={form.maxUsesPerUser} onChange={(event) => setField("maxUsesPerUser", event.target.value)} className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Bắt đầu">
-          <Input type="datetime-local" min={minStartsAt} value={form.startsAt} onChange={(event) => handleStartsAtChange(event.target.value)} className="h-11 rounded-lg bg-white" />
-        </Field>
-        <Field label="Kết thúc">
-          <Input type="datetime-local" min={minExpiresAt} value={form.expiresAt} onChange={(event) => handleExpiresAtChange(event.target.value)} className="h-11 rounded-lg bg-white" />
-        </Field>
+        <div className="space-y-4 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 md:col-span-2">
+          <div>
+            <p className="text-sm font-bold text-[#1c1b1b]">Thời gian áp dụng</p>
+            <p className="mt-1 text-xs font-semibold text-[#747878]">
+              Chọn ngày, giờ và kiểu lặp cho mã ưu đãi.
+            </p>
+          </div>
+
+          <Field label="Kiểu thời gian">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {scheduleModeOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setField("scheduleMode", option.value)}
+                  className={cn(
+                    "min-h-11 rounded-lg border px-3 py-2 text-left text-sm font-bold transition",
+                    form.scheduleMode === option.value
+                      ? "border-orange-300 bg-orange-50 text-orange-700 shadow-sm"
+                      : "border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2]"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Ngày bắt đầu">
+              <Input type="date" min={minStartDate} value={form.startDate} onChange={(event) => handleStartDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
+            </Field>
+            <Field label="Giờ bắt đầu">
+              <Input type="time" value={form.startTime} onChange={(event) => setField("startTime", event.target.value)} className="h-11 rounded-lg bg-white" />
+            </Field>
+            <Field label={form.scheduleMode === "ONCE" ? "Ngày kết thúc" : "Ngày cuối áp dụng"}>
+              <Input type="date" min={minEndDate} value={form.endDate} onChange={(event) => handleEndDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
+            </Field>
+            <Field label={form.scheduleMode === "ONCE" ? "Giờ kết thúc" : "Giờ kết thúc mỗi lần"}>
+              <Input type="time" value={form.endTime} onChange={(event) => setField("endTime", event.target.value)} className="h-11 rounded-lg bg-white" />
+            </Field>
+          </div>
+
+          {form.scheduleMode === "WEEKLY" ? (
+            <Field label="Ngày trong tuần">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+                {weekdayOptions.map((weekday) => (
+                  <label
+                    key={weekday.value}
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-bold transition",
+                      form.weekdays.includes(weekday.value)
+                        ? "border-orange-300 bg-orange-50 text-orange-700 shadow-sm"
+                        : "border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2]"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.weekdays.includes(weekday.value)}
+                      onChange={() => toggleWeekday(weekday.value)}
+                      className="sr-only"
+                    />
+                    {weekday.label}
+                  </label>
+                ))}
+              </div>
+            </Field>
+          ) : null}
+        </div>
         <div className="md:col-span-2">
           <Field label="Mô tả">
             <Textarea value={form.description} onChange={(event) => setField("description", event.target.value)} placeholder="Điều kiện áp dụng hoặc ghi chú nội bộ" className="min-h-24 rounded-lg bg-white" />
@@ -1232,6 +1328,9 @@ function PromotionRow({
 }
 
 function toPayload(form: PromotionFormState): PromotionPayload {
+  const startsAt = composeLocalDateTime(form.startDate, form.startTime)
+  const expiresAt = form.endDate && form.endTime ? composeLocalDateTime(form.endDate, form.endTime) : null
+
   return {
     code: form.code.trim().toUpperCase(),
     description: form.description.trim() || null,
@@ -1242,8 +1341,12 @@ function toPayload(form: PromotionFormState): PromotionPayload {
     max_uses: optionalNumber(form.maxUses),
     max_uses_per_user: Number(form.maxUsesPerUser || 1),
     applicable_to: form.applicableTo,
-    starts_at: new Date(form.startsAt).toISOString(),
-    expires_at: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+    starts_at: startsAt.toISOString(),
+    expires_at: expiresAt ? expiresAt.toISOString() : null,
+    schedule_mode: form.scheduleMode,
+    schedule_start_time: form.startTime || null,
+    schedule_end_time: form.endTime || null,
+    schedule_weekdays: form.scheduleMode === "WEEKLY" ? form.weekdays : [],
     is_active: form.isActive,
   }
 }
@@ -1261,11 +1364,18 @@ function promotionToPayload(promotion: Promotion): PromotionPayload {
     applicable_to: promotion.applicableTo,
     starts_at: promotion.startsAt,
     expires_at: promotion.expiresAt,
+    schedule_mode: promotion.scheduleMode,
+    schedule_start_time: normalizeTimeInput(promotion.scheduleStartTime),
+    schedule_end_time: normalizeTimeInput(promotion.scheduleEndTime),
+    schedule_weekdays: promotion.scheduleWeekdays,
     is_active: promotion.isActive,
   }
 }
 
 function promotionToForm(promotion: Promotion): PromotionFormState {
+  const start = splitDateTimeInput(new Date(promotion.startsAt))
+  const end = promotion.expiresAt ? splitDateTimeInput(new Date(promotion.expiresAt)) : null
+
   return {
     code: promotion.code,
     description: promotion.description ?? "",
@@ -1276,8 +1386,12 @@ function promotionToForm(promotion: Promotion): PromotionFormState {
     maxUses: promotion.maxUses?.toString() ?? "",
     maxUsesPerUser: promotion.maxUsesPerUser.toString(),
     applicableTo: promotion.applicableTo,
-    startsAt: toDatetimeLocal(new Date(promotion.startsAt)),
-    expiresAt: promotion.expiresAt ? toDatetimeLocal(new Date(promotion.expiresAt)) : "",
+    scheduleMode: promotion.scheduleMode ?? "ONCE",
+    startDate: start.date,
+    startTime: normalizeTimeInput(promotion.scheduleStartTime) ?? start.time,
+    endDate: end?.date ?? "",
+    endTime: normalizeTimeInput(promotion.scheduleEndTime) ?? end?.time ?? "",
+    weekdays: promotion.scheduleWeekdays ?? [],
     isActive: promotion.isActive,
   }
 }
@@ -1301,8 +1415,20 @@ function getPromotionFormError(form: PromotionFormState) {
   if (!form.maxUsesPerUser.trim() || Number(form.maxUsesPerUser) <= 0) {
     return "Lượt dùng mỗi khách phải lớn hơn 0"
   }
-  if (!isValidDatetimeLocal(form.startsAt)) return "Vui lòng chọn thời gian bắt đầu hợp lệ"
-  if (form.expiresAt && isBeforeDatetimeLocal(form.expiresAt, form.startsAt)) {
+  if (!form.startDate) return "Vui lòng chọn ngày bắt đầu"
+  if (!form.startTime) return "Vui lòng chọn giờ bắt đầu"
+  if (form.scheduleMode !== "ONCE" && !form.endDate) return "Vui lòng chọn ngày cuối áp dụng"
+  if (form.scheduleMode !== "ONCE" && !form.endTime) return "Vui lòng chọn giờ kết thúc"
+  if (form.scheduleMode === "WEEKLY" && form.weekdays.length === 0) {
+    return "Vui lòng chọn ít nhất một ngày trong tuần"
+  }
+  if ((form.endDate && !form.endTime) || (!form.endDate && form.endTime)) {
+    return "Vui lòng chọn đủ ngày và giờ kết thúc"
+  }
+  const startsAt = composeLocalDateTime(form.startDate, form.startTime)
+  const expiresAt = form.endDate && form.endTime ? composeLocalDateTime(form.endDate, form.endTime) : null
+  if (Number.isNaN(startsAt.getTime())) return "Vui lòng chọn thời gian bắt đầu hợp lệ"
+  if (expiresAt && expiresAt.getTime() <= startsAt.getTime()) {
     return "Thời gian kết thúc phải sau thời gian bắt đầu"
   }
   return null
@@ -1312,18 +1438,29 @@ function optionalNumber(value: string): number | null {
   return value.trim() ? Number(value) : null
 }
 
-function toDatetimeLocal(date: Date) {
+function splitDateTimeInput(date: Date) {
   const offset = date.getTimezoneOffset()
   const local = new Date(date.getTime() - offset * 60 * 1000)
-  return local.toISOString().slice(0, 16)
+  return {
+    date: local.toISOString().slice(0, 10),
+    time: local.toISOString().slice(11, 16),
+  }
 }
 
-function isBeforeDatetimeLocal(value: string, min: string) {
-  return new Date(value).getTime() < new Date(min).getTime()
+function toDateInputValue(date: Date) {
+  return splitDateTimeInput(date).date
 }
 
-function isValidDatetimeLocal(value: string) {
-  return value.trim().length > 0 && !Number.isNaN(new Date(value).getTime())
+function toTimeInputValue(date: Date) {
+  return splitDateTimeInput(date).time
+}
+
+function composeLocalDateTime(date: string, time: string) {
+  return new Date(`${date}T${time || "00:00"}`)
+}
+
+function normalizeTimeInput(value?: string | null) {
+  return value ? value.slice(0, 5) : null
 }
 
 function numberInputValue(value: string | null) {

@@ -11,6 +11,7 @@ export type ProviderCafe = {
 
 export type DiscountType = "PERCENT" | "FIXED"
 export type PromoApplicableTo = "ALL" | "RENTAL" | "BYOC"
+export type PromotionScheduleMode = "ONCE" | "DAILY" | "WEEKLY"
 
 export type Promotion = {
   id: string
@@ -27,6 +28,10 @@ export type Promotion = {
   cafeId: string
   startsAt: string
   expiresAt: string | null
+  scheduleMode: PromotionScheduleMode
+  scheduleStartTime: string | null
+  scheduleEndTime: string | null
+  scheduleWeekdays: string[]
   isActive: boolean
   createdAt: string
   updatedAt: string
@@ -44,6 +49,10 @@ export type PromotionPayload = {
   applicable_to?: PromoApplicableTo
   starts_at: string
   expires_at?: string | null
+  schedule_mode?: PromotionScheduleMode
+  schedule_start_time?: string | null
+  schedule_end_time?: string | null
+  schedule_weekdays?: string[]
   is_active?: boolean
 }
 
