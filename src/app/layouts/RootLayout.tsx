@@ -26,6 +26,7 @@ function AuthInitializer() {
             avatarUrl?: string | null
             role: UserRole
             registrationStatus?: string
+            assignedCafeId?: string | null
           }
         }
         if (parsed.user?.role) {
@@ -33,13 +34,15 @@ function AuthInitializer() {
             id: parsed.user.id,
             fullName: parsed.user.fullName ?? parsed.user.email,
             email: parsed.user.email,
+            role: parsed.user.role,
             phone: parsed.user.phone ?? undefined,
             avatarUrl: parsed.user.avatarUrl ?? undefined,
             registrationStatus: parsed.user.registrationStatus,
+            assignedCafeId: parsed.user.assignedCafeId,
           })
         }
-      } catch {
-        // malformed storage — ignore
+      } catch (err) {
+        console.error("RootLayout AuthInitializer - error parsing storage:", err)
       }
     }
 

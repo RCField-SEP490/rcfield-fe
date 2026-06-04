@@ -44,6 +44,7 @@ export type AuthUser = {
   avatarUrl?: string
   role: UserRole
   registrationStatus?: string
+  assignedCafeId?: string | null
 }
 
 export type LoginResponse = {
@@ -67,6 +68,7 @@ type BackendLoginResponse = {
       avatar_url?: string | null
       role: BackendRole
       registration_status?: string
+      assignedCafeId?: string | null
     }
   }
 }
@@ -78,6 +80,7 @@ export type BackendUserProfile = {
   phone: string | null
   avatarUrl: string | null
   role: BackendRole
+  assignedCafeId?: string | null
 }
 
 type BackendProfileResponse = {
@@ -85,7 +88,10 @@ type BackendProfileResponse = {
   data: BackendUserProfile
 }
 
-function mapBackendUser(user: BackendLoginResponse["data"]["user"], jwtUser: ReturnType<typeof getAuthFromJwt>): AuthUser {
+function mapBackendUser(
+  user: BackendLoginResponse["data"]["user"],
+  jwtUser: ReturnType<typeof getAuthFromJwt>
+): AuthUser {
   return {
     id: jwtUser.id || user.id,
     email: jwtUser.email || user.email,
@@ -94,6 +100,7 @@ function mapBackendUser(user: BackendLoginResponse["data"]["user"], jwtUser: Ret
     avatarUrl: user.avatarUrl ?? user.avatar_url ?? undefined,
     role: jwtUser.role,
     registrationStatus: user.registration_status,
+    assignedCafeId: user.assignedCafeId,
   }
 }
 
@@ -105,6 +112,7 @@ function mapProfile(user: BackendUserProfile): AuthUser {
     phone: user.phone ?? undefined,
     avatarUrl: user.avatarUrl ?? undefined,
     role: user.role.toLowerCase() as UserRole,
+    assignedCafeId: user.assignedCafeId,
   }
 }
 

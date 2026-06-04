@@ -10,6 +10,7 @@ export type AuthUser = {
   phone?: string
   avatarUrl?: string
   registrationStatus?: string
+  assignedCafeId?: string | null
 }
 
 export type ImpersonationState = {
@@ -37,8 +38,18 @@ export const useAuthStore = create<AuthState>()((set) => ({
   role: null,
   user: null,
   impersonation: null,
-  setAuthenticated: (role, user) => set({ isAuthenticated: true, role, user }),
-  setUser: (user) => set((state) => ({ user, role: user.role ?? state.role })),
+  setAuthenticated: (role, user) =>
+    set((state) => {
+      return {
+        isAuthenticated: true,
+        role,
+        user: user !== undefined ? user : state.user,
+      }
+    }),
+  setUser: (user) =>
+    set((state) => {
+      return { user, role: user.role ?? state.role }
+    }),
   clearAuthenticated: () =>
     set((state) => {
       // Never save impersonated provider email as the remembered login email

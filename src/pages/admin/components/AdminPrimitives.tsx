@@ -1,8 +1,23 @@
+import { Link, useNavigate } from "react-router"
 import type { ReactNode } from "react"
-import { ArrowUpRight, ArrowDownRight, Search } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, Search, LogOut, UserRound } from "lucide-react"
 
+import { routePaths } from "@/app/router/route-paths"
+import { logoutSession } from "@/features/auth/api/auth.api"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 
 export function AdminHeader({
   title,
@@ -14,13 +29,107 @@ export function AdminHeader({
   actions?: ReactNode
 }) {
   return (
-    <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-      <div>
-        <h2 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl">{title}</h2>
-        <p className="mt-2 text-sm font-semibold text-[#444748]">{description}</p>
+    <header
+      className="sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8]/80 bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6"
+    >
+      <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl">{title}</h2>
+          <p className="mt-2 text-sm font-semibold text-[#444748]">{description}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {actions ? (
+            <div className="flex flex-wrap items-center gap-3 sm:mr-3">
+              {actions}
+            </div>
+          ) : null}
+          <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+            <NotificationBell />
+            <AdminAccountMenu />
+          </div>
+        </div>
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
-    </div>
+    </header>
+  )
+}
+AdminHeader.displayName = "AdminHeader"
+
+function AdminAccountMenu() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+
+  const displayName = user?.fullName ?? "Admin"
+  const email = user?.email ?? "admin@rcfield.vn"
+
+  const handleLogout = async () => {
+    const storedAuth = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
+
+    if (storedAuth) {
+      try {
+        const auth = JSON.parse(storedAuth) as { accessToken?: string; refreshToken?: string }
+
+        if (auth.accessToken && auth.refreshToken) {
+          await logoutSession(auth.accessToken, auth.refreshToken)
+        }
+      } catch {
+        // Local logout still clears the app when the server session is already gone.
+      }
+    }
+
+    clearAuthenticated()
+    localStorage.removeItem(storageKeys.auth)
+    sessionStorage.removeItem(storageKeys.auth)
+    navigate(routePaths.login, { replace: true })
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(-2)
+      .toUpperCase()
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="flex items-center gap-2 rounded-xl border border-orange-200 bg-white/90 py-1.5 pl-2 pr-3 shadow-sm transition hover:bg-white">
+          <Avatar>
+            <AvatarImage src={user?.avatarUrl} />
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
+          <span className="hidden max-w-32 truncate text-sm font-bold text-orange-950 xl:block">{displayName}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 rounded-xl p-2">
+        <DropdownMenuLabel className="px-2 py-2">
+          <div className="flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-950">{displayName}</p>
+              <p className="truncate text-xs text-slate-500">{email}</p>
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-2">
+          <Link to={routePaths.profile}>
+            <UserRound className="h-4 w-4" />
+            Hồ sơ cá nhân
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" className="cursor-pointer rounded-lg px-2 py-2" onClick={handleLogout}>
+          <LogOut className="h-4 w-4" />
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

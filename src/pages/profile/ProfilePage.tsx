@@ -14,6 +14,8 @@ import { AdminShell } from "@/pages/admin/components/AdminShell"
 import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePage"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
+import { StaffShell } from "@/pages/staff/components/StaffShell"
+import { StaffOperationContextProvider } from "@/pages/staff/context/StaffOperationContext"
 import { getMe, updateMe } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { uploadImage } from "@/features/uploads/api/upload.api"
@@ -61,6 +63,16 @@ export function ProfilePage() {
       <PublicPageShell>
         <CustomerProfilePage />
       </PublicPageShell>
+    )
+  }
+
+  if (role === "staff") {
+    return (
+      <StaffOperationContextProvider>
+        <StaffShell>
+          <ProfileContent />
+        </StaffShell>
+      </StaffOperationContextProvider>
     )
   }
 

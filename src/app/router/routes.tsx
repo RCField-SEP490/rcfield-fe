@@ -1,10 +1,26 @@
+
+
 import type { ReactNode } from "react"
-import { createBrowserRouter, Navigate } from "react-router"
+import { createBrowserRouter, Navigate, Outlet } from "react-router"
 import { AuthLayout } from "@/app/layouts/AuthLayout"
 import { DashboardLayout } from "@/app/layouts/DashboardLayout"
 import { ExploreLayout } from "@/app/layouts/ExploreLayout"
 import { PublicLayout } from "@/app/layouts/PublicLayout"
 import { RootLayout } from "@/app/layouts/RootLayout"
+
+// Staff Pages & Context
+import { StaffOperationContextProvider } from "@/pages/staff/context/StaffOperationContext"
+import { StaffShell } from "@/pages/staff/components/StaffShell"
+import StaffDashboardPage from "@/pages/staff/StaffDashboardPage"
+import StaffTodayBookingsPage from "@/pages/staff/StaffTodayBookingsPage"
+import StaffSessionDetailPage from "@/pages/staff/StaffSessionDetailPage"
+import StaffInspectionPage from "@/pages/staff/StaffInspectionPage"
+import StaffFnbOrdersPage from "@/pages/staff/StaffFnbOrdersPage"
+import StaffIncidentsPage from "@/pages/staff/StaffIncidentsPage"
+import StaffMaintenancePage from "@/pages/staff/StaffMaintenancePage"
+import StaffByocPage from "@/pages/staff/StaffByocPage"
+import StaffPackagesPage from "@/pages/staff/StaffPackagesPage"
+
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { RoleGuard } from "@/shared/components/RoleGuard"
 import { ForbiddenPage } from "@/pages/public/ForbiddenPage"
@@ -155,17 +171,36 @@ export const router = createBrowserRouter([
       {
         element: (
           <ProtectedRoute>
+            <RoleGuard allowedRoles={["staff"]}>
+              <StaffOperationContextProvider>
+                <StaffShell>
+                  <Outlet />
+                </StaffShell>
+              </StaffOperationContextProvider>
+            </RoleGuard>
+          </ProtectedRoute>
+        ),
+        children: [
+          { path: routePaths.staffDashboard, element: <StaffDashboardPage /> },
+          { path: routePaths.staffTodayBookings, element: <StaffTodayBookingsPage /> },
+          { path: routePaths.staffSessionDetail, element: <StaffSessionDetailPage /> },
+          { path: routePaths.staffInspection, element: <StaffInspectionPage /> },
+          { path: routePaths.staffFnbOrders, element: <StaffFnbOrdersPage /> },
+          { path: routePaths.staffIncidents, element: <StaffIncidentsPage /> },
+          { path: routePaths.staffMaintenance, element: <StaffMaintenancePage /> },
+          { path: routePaths.staffByoc, element: <StaffByocPage /> },
+          { path: routePaths.staffPackages, element: <StaffPackagesPage /> },
+        ],
+      },
+      {
+        element: (
+          <ProtectedRoute>
             <RoleGuard allowedRoles={["staff", "provider", "admin"]}>
               <DashboardLayout />
             </RoleGuard>
           </ProtectedRoute>
         ),
         children: [
-          { path: routePaths.staffDashboard, element: guardRoute(<PlaceholderPage title="Staff dashboard" />, ["staff"]) },
-          { path: routePaths.staffTodayBookings, element: guardRoute(<PlaceholderPage title="Today bookings" />, ["staff"]) },
-          { path: routePaths.staffSessionDetail, element: guardRoute(<PlaceholderPage title="Session detail" />, ["staff"]) },
-          { path: routePaths.staffInspection, element: guardRoute(<PlaceholderPage title="Inspection" />, ["staff"]) },
-          { path: routePaths.staffFnbOrders, element: guardRoute(<PlaceholderPage title="FnB orders" />, ["staff"]) },
           { path: routePaths.providerDashboard, element: providerGuardRoute(<ProviderDashboardPage />) },
           { path: routePaths.providerCafes, element: providerGuardRoute(<ProviderCafesPage />) },
           { path: routePaths.providerCafeCreate, element: providerGuardRoute(<ProviderCafeCreatePage />) },

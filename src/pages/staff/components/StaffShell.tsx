@@ -1,0 +1,514 @@
+import React, { useState, useEffect } from "react"
+import { Link, useLocation, useNavigate } from "react-router"
+import {
+  LayoutDashboard,
+  CalendarDays,
+  Coffee,
+  QrCode,
+  Building,
+  LogOut,
+  X,
+  AlertTriangle,
+  Wrench,
+  ShieldCheck,
+  Search,
+  UserRound,
+  CircleHelp,
+  Menu,
+} from "lucide-react"
+import { useStaffOperations } from "../context/StaffOperationContext"
+import { cafeApi } from "@/features/cafes/api/cafe.api"
+import type { BackendCafe } from "@/features/cafes/types"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { routePaths } from "@/app/router/route-paths"
+import { toast } from "sonner"
+import { cn } from "@/shared/lib/utils"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
+import { Button } from "@/shared/ui/button"
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
+
+type NavItem = { label: string; icon: React.ComponentType<any>; path: string }
+type NavGroup = { heading: string; items: NavItem[] }
+
+const staffNavGroups: NavGroup[] = [
+  {
+    heading: "Vận hành",
+    items: [
+      { label: "Tổng quan", icon: LayoutDashboard, path: routePaths.staffDashboard },
+      { label: "Đặt lịch ngày", icon: CalendarDays, path: routePaths.staffTodayBookings },
+      { label: "Gọi món F&B", icon: Coffee, path: routePaths.staffFnbOrders },
+      { label: "Đăng ký xe BYOC", icon: ShieldCheck, path: routePaths.staffByoc },
+      { label: "Tra cứu gói chơi", icon: Search, path: routePaths.staffPackages },
+    ],
+  },
+  {
+    heading: "Đội xe & Thiết bị",
+    items: [
+      { label: "Bảo trì đội xe", icon: Wrench, path: routePaths.staffMaintenance },
+      { label: "Quản lý sự cố", icon: AlertTriangle, path: routePaths.staffIncidents },
+    ],
+  },
+]
+
+const staffSidebarScrollKey = "rcfield:staff-sidebar-scroll"
+
+function saveStaffSidebarScroll(element: HTMLElement | null) {
+  if (!element) return
+  sessionStorage.setItem(staffSidebarScrollKey, String(element.scrollTop))
+}
+
+function restoreStaffSidebarScroll(element: HTMLElement | null) {
+  if (!element) return
+  const savedScrollTop = Number(sessionStorage.getItem(staffSidebarScrollKey) ?? 0)
+  if (Number.isFinite(savedScrollTop)) {
+    element.scrollTop = savedScrollTop
+  }
+}
+
+function StaffAccountMenu() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+
+  const displayName = user?.fullName ?? "Nhân viên"
+  const email = user?.email ?? "staff@rcfield.vn"
+
+  const handleLogout = () => {
+    clearAuthenticated()
+    localStorage.removeItem("rcfield:auth")
+    sessionStorage.removeItem("rcfield:auth")
+    toast.success("Đã đăng xuất khỏi tài khoản nhân viên.")
+    navigate(routePaths.login, { replace: true })
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(-2)
+      .toUpperCase()
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="flex items-center gap-2 rounded-xl border border-orange-200 bg-white/90 py-1.5 pl-2 pr-3 shadow-sm transition hover:bg-white">
+          <Avatar>
+            <AvatarImage src={user?.avatarUrl} />
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
+          <span className="hidden max-w-32 truncate text-sm font-bold text-orange-950 xl:block">{displayName}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 rounded-xl p-2">
+        <DropdownMenuLabel className="px-2 py-2">
+          <div className="flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-950">{displayName}</p>
+              <p className="truncate text-xs text-slate-500">{email}</p>
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-2">
+          <Link to={routePaths.profile}>
+            <UserRound className="h-4 w-4" />
+            Hồ sơ cá nhân
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" className="cursor-pointer rounded-lg px-2 py-2" onClick={handleLogout}>
+          <LogOut className="h-4 w-4" />
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { assignedCafeId, bookings, startCheckIn } = useStaffOperations()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+
+  const [cafes, setCafes] = useState<BackendCafe[]>([])
+  const [activeCafe, setActiveCafe] = useState<BackendCafe | null>(null)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanCode, setScanCode] = useState("")
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const desktopNavRef = React.useRef<HTMLElement | null>(null)
+  const mobileNavRef = React.useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      restoreStaffSidebarScroll(desktopNavRef.current)
+      restoreStaffSidebarScroll(mobileNavRef.current)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [location.pathname, mobileMenuOpen])
+
+  // Fetch cafes to display branch name in header
+  useEffect(() => {
+    cafeApi
+      .listCafes()
+      .then((res) => {
+        setCafes(res.data)
+      })
+      .catch((err) => console.error("Error loading cafes in StaffShell", err))
+  }, [])
+
+  useEffect(() => {
+    if (assignedCafeId && cafes.length > 0) {
+      const match = cafes.find((c) => c.id === assignedCafeId)
+      setActiveCafe(match || null)
+    } else {
+      setActiveCafe(null)
+    }
+  }, [assignedCafeId, cafes])
+
+  const handleLogout = () => {
+    clearAuthenticated()
+    localStorage.removeItem("rcfield:auth")
+    sessionStorage.removeItem("rcfield:auth")
+    toast.success("Đã đăng xuất khỏi tài khoản nhân viên.")
+    navigate(routePaths.login, { replace: true })
+  }
+
+  const handleScanSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!scanCode.trim()) return
+
+    const matchedBooking = bookings.find(
+      (b) => b.shortCode.toUpperCase() === scanCode.toUpperCase().trim() || b.bookingId === scanCode.trim()
+    )
+
+    if (!matchedBooking) {
+      toast.error(`Không tìm thấy đơn đặt lịch nào khớp với mã "${scanCode}"!`)
+      return
+    }
+
+    if (matchedBooking.status !== "CONFIRMED") {
+      toast.error(`Đơn đặt lịch ${matchedBooking.shortCode} đang có trạng thái "${matchedBooking.status}", không thể check-in!`)
+      return
+    }
+
+    // Call startCheckIn
+    startCheckIn(matchedBooking.bookingId)
+    setScannerOpen(false)
+    setScanCode("")
+    navigate(`/staff/sessions/${matchedBooking.sessions?.[0]?.sessionId || `SS-NEW`}`)
+  }
+
+  // Layout level access block for unassigned staff
+  if (!assignedCafeId) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#fcf8f8] p-4 text-[#1c1b1b] font-sans">
+        <div className="w-full max-w-md rounded-2xl border border-[#e5e2e1] bg-white p-8 shadow-xl text-center">
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#fff3eb] text-[#ea580c] border border-[#ffdbca]">
+            <Building className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-[#1c1b1b] tracking-tight mb-2">
+            Chưa có phân công chi nhánh
+          </h2>
+          <p className="text-sm text-[#4c4a49] leading-relaxed mb-6">
+            Tài khoản nhân viên của bạn hiện chưa được phân công quản lý chi nhánh nào.
+            Vui lòng liên hệ với Admin hoặc Nhà cung cấp (Provider) để được phân công trước khi truy cập.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#ea580c] py-3 text-sm font-semibold text-white hover:bg-[#d94e0b] shadow-md transition-all duration-200 active:scale-[0.98]"
+            >
+              <LogOut className="h-4 w-4" />
+              Đăng xuất
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen bg-[#fcf8f8] text-[#1c1b1b] font-sans pb-20 md:pb-0">
+      {/* DESKTOP SIDEBAR */}
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-[#e5e2e1] bg-white p-4 md:flex shadow-sm">
+        <Link to={routePaths.staffDashboard} className="mb-8 flex items-center gap-2.5 px-2">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
+            <Building className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="whitespace-nowrap text-xl font-bold leading-tight tracking-tight text-[#1c1b1b]">RCField Staff</h1>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-[#747878]">Cổng nhân viên</p>
+          </div>
+        </Link>
+
+        <nav
+          ref={desktopNavRef}
+          onScroll={(event) => saveStaffSidebarScroll(event.currentTarget)}
+          className="flex flex-1 flex-col gap-4 overflow-y-auto pr-1"
+        >
+          {staffNavGroups.map((group) => (
+            <div key={group.heading}>
+              <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
+                {group.heading}
+              </p>
+              <div className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const active = location.pathname === item.path || (item.path !== routePaths.staffDashboard && location.pathname.startsWith(item.path))
+
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => saveStaffSidebarScroll(desktopNavRef.current)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
+                        active
+                          ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                          : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
+                      )}
+                    >
+                      <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
+          <Link
+            to={routePaths.profile}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
+              location.pathname === routePaths.profile
+                ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
+            )}
+          >
+            <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
+            Hồ sơ cá nhân
+          </Link>
+          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
+            <CircleHelp className="size-5 text-[#747878]" />
+            Trợ giúp
+          </button>
+          <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
+            <LogOut className="size-5 text-[#747878]" />
+            Đăng xuất
+          </button>
+        </div>
+      </aside>
+
+      {/* MOBILE HEADER */}
+      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-orange-200 bg-white px-4 shadow-sm md:hidden">
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-orange-600 text-white shadow-sm">
+            <Building className="size-4" />
+          </div>
+          <span className="text-sm font-extrabold text-[#1c1b1b] truncate max-w-[180px]">
+            {activeCafe ? activeCafe.name : "RCField Staff"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <Button variant="ghost" size="icon" aria-label="Mở menu" className="text-[#444748] hover:bg-[rgb(246,243,242)]" onClick={() => setMobileMenuOpen(true)}>
+            <Menu className="size-5" />
+          </Button>
+        </div>
+      </header>
+
+      {/* MOBILE DRAWER */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div className="relative flex w-full max-w-xs flex-col bg-white p-4 shadow-xl">
+            <div className="mb-8 flex items-center justify-between px-2">
+              <span className="text-lg font-extrabold text-[#1c1b1b]">Menu Nhân viên</span>
+              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)} className="text-[#444748] hover:bg-[rgb(246,243,242)]">
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <nav
+              ref={mobileNavRef}
+              onScroll={(event) => saveStaffSidebarScroll(event.currentTarget)}
+              className="flex flex-1 flex-col gap-4 overflow-y-auto"
+            >
+              {staffNavGroups.map((group) => (
+                <div key={group.heading}>
+                  <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
+                    {group.heading}
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      const active = location.pathname === item.path || (item.path !== routePaths.staffDashboard && location.pathname.startsWith(item.path))
+
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => {
+                            saveStaffSidebarScroll(mobileNavRef.current)
+                            setMobileMenuOpen(false)
+                          }}
+                          className={cn(
+                            "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
+                            active
+                              ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                              : "text-[#444748] hover:bg-[rgb(246,243,242)]"
+                          )}
+                        >
+                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                          {item.label}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+
+            <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
+              <Link
+                to={routePaths.profile}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
+                  location.pathname === routePaths.profile
+                    ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                    : "text-[#444748] hover:bg-[rgb(246,243,242)]"
+                )}
+              >
+                <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
+                Hồ sơ cá nhân
+              </Link>
+              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">
+                <CircleHelp className="size-5 text-[#747878]" />
+                Trợ giúp
+              </button>
+              <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
+                <LogOut className="size-5 text-[#747878]" />
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CONTAINER */}
+      <main className="w-full flex-1 bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
+        {/* DESKTOP STICKY HEADER */}
+        <header className="sticky top-0 z-40 hidden h-16 w-full items-center justify-between border-b border-[#c4c7c8]/80 bg-[#fcf8f8]/80 px-6 backdrop-blur-md md:flex">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
+              <Building className="size-5" />
+            </div>
+            <div>
+              <h1 className="text-sm font-extrabold text-[#1c1b1b]">
+                {activeCafe ? activeCafe.name : "Chưa chọn chi nhánh"}
+              </h1>
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#10b981]"></span>
+                </span>
+                <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider">Trực Ca</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action controls */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+              <NotificationBell />
+              <StaffAccountMenu />
+            </div>
+          </div>
+        </header>
+
+        {/* SCREEN BODY */}
+        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">{children}</div>
+      </main>
+
+      {/* SCANNER MODAL SIMULATOR */}
+      {scannerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-[#e5e2e1] bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-orange-600">
+                <QrCode className="size-5" />
+                <h3 className="font-bold text-[#1c1b1b]">Trình giả lập quét mã QR</h3>
+              </div>
+              <button
+                onClick={() => setScannerOpen(false)}
+                className="flex size-7 items-center justify-center rounded-full bg-[#f6f3f2] text-[#747878] hover:bg-[#e5e2e1] hover:text-[#1c1b1b]"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleScanSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#747878] mb-1">
+                  Nhập mã đặt lịch (Shortcode hoặc Booking ID)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: RCF-8829"
+                  value={scanCode}
+                  onChange={(e) => setScanCode(e.target.value)}
+                  className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2.5 text-sm font-bold text-[#1c1b1b] placeholder-[#b0b4b4] focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  autoFocus
+                />
+              </div>
+
+              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-[11px] text-yellow-800 leading-relaxed flex gap-2">
+                <AlertTriangle className="size-5 shrink-0 text-yellow-600" />
+                <div>
+                  <span className="font-semibold block mb-0.5">Lưu ý kiểm thử:</span>
+                  Nhập một mã đặt lịch có sẵn ở ngày hôm nay (VD: <code className="bg-yellow-100 px-1 font-bold">RCF-8829</code> hoặc <code className="bg-yellow-100 px-1 font-bold">RCF-9021</code>) hoặc mã đặt lịch bạn vừa tạo trực tiếp.
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setScannerOpen(false)}
+                  className="flex-1 rounded-lg bg-[#f6f3f2] py-2.5 text-sm font-semibold text-[#444748] hover:bg-[#e5e2e1]"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 rounded-lg bg-orange-600 py-2.5 text-sm font-semibold text-white hover:bg-orange-500 shadow-md"
+                >
+                  Xác nhận quét
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

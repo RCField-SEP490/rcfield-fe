@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router"
 import type { ReactNode, ElementType } from "react"
-import { useState } from "react"
+import { useState, Children, isValidElement } from "react"
 import {
   BookOpen,
   Building2,
@@ -27,6 +27,8 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
+import { AdminHeader } from "./AdminPrimitives"
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 
 type NavItem = { label: string; icon: ElementType; to: string }
 type NavGroup = { heading: string; items: NavItem[] }
@@ -102,6 +104,14 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
     navigate(routePaths.login, { replace: true })
   }
 
+  const childList = Children.toArray(children)
+  const headerChildren = childList.filter(
+    (child) => isValidElement(child) && child.type === AdminHeader
+  )
+  const contentChildren = childList.filter(
+    (child) => !(isValidElement(child) && child.type === AdminHeader)
+  )
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#fcf8f8] text-[#1c1b1b] font-sans">
       {/* Desktop Sidebar */}
@@ -171,9 +181,12 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
           </div>
           <span className="text-lg font-bold text-[#1c1b1b]">RCField Admin</span>
         </Link>
-        <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)} className="text-[#444748] hover:bg-[#f6f3f2]">
-          <Menu className="size-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <NotificationBell />
+          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)} className="text-[#444748] hover:bg-[#f6f3f2]">
+            <Menu className="size-5" />
+          </Button>
+        </div>
       </header>
 
       {/* Mobile Drawer */}
@@ -236,7 +249,8 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
 
       {/* Main Content Pane */}
       <main className="h-full w-full flex-1 overflow-y-auto bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
-        <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{children}</div>
+        {headerChildren}
+        <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{contentChildren}</div>
       </main>
     </div>
   )
