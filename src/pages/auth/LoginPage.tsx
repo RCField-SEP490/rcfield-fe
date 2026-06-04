@@ -98,9 +98,11 @@ export function LoginPage() {
         id: auth.user.id,
         fullName: auth.user.fullName,
         email: auth.user.email,
+        role: auth.user.role,
         phone: auth.user.phone ?? undefined,
         avatarUrl: auth.user.avatarUrl ?? undefined,
         registrationStatus: auth.user.registrationStatus,
+        assignedCafeId: auth.user.assignedCafeId,
       })
 
       const authPayload = JSON.stringify({
