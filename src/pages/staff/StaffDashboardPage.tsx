@@ -9,7 +9,6 @@ import {
   MapPin,
   Phone,
   ArrowRight,
-  Sparkles,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
@@ -140,16 +139,6 @@ export default function StaffDashboardPage() {
       <StaffHeader
         title="Trực Ca Chi Nhánh"
         subtitle="Quản lý phiên chạy xe, F&B và an toàn đường đua thời gian thực"
-        action={
-          <StaffButton
-            variant="secondary"
-            size="sm"
-            icon={Sparkles}
-            onClick={() => navigate("/staff/today-bookings")}
-          >
-            Danh sách lịch đặt
-          </StaffButton>
-        }
       />
 
       {/* 2. Branch Info Banner */}
