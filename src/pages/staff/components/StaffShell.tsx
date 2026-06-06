@@ -23,17 +23,9 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { routePaths } from "@/app/router/route-paths"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
 import { Button } from "@/shared/ui/button"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
+import { StaffAccountMenu } from "./StaffUI"
 
 type NavItem = { label: string; icon: React.ComponentType<any>; path: string }
 type NavGroup = { heading: string; items: NavItem[] }
@@ -73,74 +65,8 @@ function restoreStaffSidebarScroll(element: HTMLElement | null) {
   }
 }
 
-function StaffAccountMenu() {
-  const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
-  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
-
-  const displayName = user?.fullName ?? "Nhân viên"
-  const email = user?.email ?? "staff@rcfield.vn"
-
-  const handleLogout = () => {
-    clearAuthenticated()
-    localStorage.removeItem("rcfield:auth")
-    sessionStorage.removeItem("rcfield:auth")
-    toast.success("Đã đăng xuất khỏi tài khoản nhân viên.")
-    navigate(routePaths.login, { replace: true })
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .slice(-2)
-      .toUpperCase()
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className="flex items-center gap-2 rounded-xl border border-orange-200 bg-white/90 py-1.5 pl-2 pr-3 shadow-sm transition hover:bg-white">
-          <Avatar>
-            <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
-          </Avatar>
-          <span className="hidden max-w-32 truncate text-sm font-bold text-orange-950 xl:block">{displayName}</span>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 rounded-xl p-2">
-        <DropdownMenuLabel className="px-2 py-2">
-          <div className="flex items-center gap-3">
-            <Avatar size="lg">
-              <AvatarImage src={user?.avatarUrl} />
-              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-slate-950">{displayName}</p>
-              <p className="truncate text-xs text-slate-500">{email}</p>
-            </div>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-2">
-          <Link to={routePaths.profile}>
-            <UserRound className="h-4 w-4" />
-            Hồ sơ cá nhân
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" className="cursor-pointer rounded-lg px-2 py-2" onClick={handleLogout}>
-          <LogOut className="h-4 w-4" />
-          Đăng xuất
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
 export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { assignedCafeId, bookings, startCheckIn } = useStaffOperations()
+  const { assignedCafeId, bookings, startCheckIn, headerProps } = useStaffOperations()
   const location = useLocation()
   const navigate = useNavigate()
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
@@ -417,34 +343,66 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
 
       {/* MAIN CONTAINER */}
       <main className="w-full flex-1 bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
-        {/* DESKTOP STICKY HEADER */}
-        <header className="sticky top-0 z-40 hidden h-16 w-full items-center justify-between border-b border-[#c4c7c8]/80 bg-[#fcf8f8]/80 px-6 backdrop-blur-md md:flex">
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
-              <Building className="size-5" />
-            </div>
-            <div>
-              <h1 className="text-sm font-extrabold text-[#1c1b1b]">
-                {activeCafe ? activeCafe.name : "Chưa chọn chi nhánh"}
-              </h1>
-              <div className="flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#10b981]"></span>
-                </span>
-                <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider">Trực Ca</p>
+        {headerProps ? (
+          <header className="sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8]/80 bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6">
+            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                {assignedCafeId && (
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide bg-[#fff3eb] text-[#ea580c] border border-[#ffdbca]">
+                      <span className="relative flex h-1.5 w-1.5 mr-1.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                      </span>
+                      {activeCafe ? activeCafe.name : "RC Arena"} • ĐANG TRỰC CA
+                    </span>
+                  </div>
+                )}
+                <h2 className="text-2xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-3xl">{headerProps.title}</h2>
+                {headerProps.subtitle && <p className="mt-2 text-xs font-semibold text-[#444748] md:text-sm">{headerProps.subtitle}</p>}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {headerProps.action ? (
+                  <div className="flex flex-wrap items-center gap-3 sm:mr-3">
+                    {headerProps.action}
+                  </div>
+                ) : null}
+                <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+                  <NotificationBell />
+                  <StaffAccountMenu />
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Action controls */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
-              <NotificationBell />
-              <StaffAccountMenu />
+          </header>
+        ) : (
+          <header className="sticky top-0 z-40 hidden h-16 w-full items-center justify-between border-b border-[#c4c7c8]/80 bg-[#fcf8f8]/80 px-6 backdrop-blur-md md:flex">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
+                <Building className="size-5" />
+              </div>
+              <div>
+                <h1 className="text-sm font-extrabold text-[#1c1b1b]">
+                  {activeCafe ? activeCafe.name : "Chưa chọn chi nhánh"}
+                </h1>
+                <div className="flex items-center gap-1.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#10b981]"></span>
+                  </span>
+                  <p className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider">Trực Ca</p>
+                </div>
+              </div>
             </div>
-          </div>
-        </header>
+
+            {/* Action controls */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+                <NotificationBell />
+                <StaffAccountMenu />
+              </div>
+            </div>
+          </header>
+        )}
 
         {/* SCREEN BODY */}
         <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">{children}</div>

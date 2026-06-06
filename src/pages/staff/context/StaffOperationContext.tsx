@@ -91,6 +91,8 @@ export interface StaffOperationContextType {
   updateMaintenanceStatus: (logId: string, status: StaffMaintenanceLog["status"], notes: string) => void
   registerByoc: (byoc: Omit<StaffByocVehicle, "id" | "lastCheckedAt">) => void
   updateByocSafety: (id: string, safetyChecked: boolean) => void
+  headerProps: { title: string; subtitle?: string; action?: React.ReactNode } | null
+  setHeaderProps: (props: { title: string; subtitle?: string; action?: React.ReactNode } | null) => void
 }
 
 const StaffOperationContext = createContext<StaffOperationContextType | undefined>(undefined)
@@ -116,6 +118,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
   const byocKey = `rcfield:staff_operations:byoc:${userId}`
 
   const [assignedCafeId, setAssignedCafeIdState] = useState<string | null>(null)
+  const [headerProps, setHeaderProps] = useState<{ title: string; subtitle?: string; action?: React.ReactNode } | null>(null)
 
   useEffect(() => {
     if (role === "staff") {
@@ -901,6 +904,8 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         updateMaintenanceStatus,
         registerByoc,
         updateByocSafety,
+        headerProps,
+        setHeaderProps,
       }}
     >
       {children}

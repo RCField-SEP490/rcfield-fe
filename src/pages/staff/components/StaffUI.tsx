@@ -1,5 +1,20 @@
-import React from "react"
+import React, { useEffect } from "react"
+import { Link, useNavigate } from "react-router"
 import type { LucideIcon } from "lucide-react"
+import { LogOut, UserRound } from "lucide-react"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { routePaths } from "@/app/router/route-paths"
+import { toast } from "sonner"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
+import { useStaffOperations } from "../context/StaffOperationContext"
 
 // Types & Interfaces
 interface StaffCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -162,7 +177,74 @@ export const StaffStatCard: React.FC<StaffStatCardProps> = ({
   )
 }
 
-// 5. StaffHeader component
+// 5. StaffAccountMenu component
+export function StaffAccountMenu() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+
+  const displayName = user?.fullName ?? "Nhân viên"
+  const email = user?.email ?? "staff@rcfield.vn"
+
+  const handleLogout = () => {
+    clearAuthenticated()
+    localStorage.removeItem("rcfield:auth")
+    sessionStorage.removeItem("rcfield:auth")
+    toast.success("Đã đăng xuất khỏi tài khoản nhân viên.")
+    navigate(routePaths.login, { replace: true })
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(-2)
+      .toUpperCase()
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="flex items-center gap-2 rounded-xl border border-orange-200 bg-white/90 py-1.5 pl-2 pr-3 shadow-sm transition hover:bg-white">
+          <Avatar>
+            <AvatarImage src={user?.avatarUrl} />
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
+          <span className="hidden max-w-32 truncate text-sm font-bold text-orange-950 xl:block">{displayName}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 rounded-xl p-2">
+        <DropdownMenuLabel className="px-2 py-2">
+          <div className="flex items-center gap-3">
+            <Avatar size="lg">
+              <AvatarImage src={user?.avatarUrl} />
+              <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-950">{displayName}</p>
+              <p className="truncate text-xs text-slate-500">{email}</p>
+            </div>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-2 py-2">
+          <Link to={routePaths.profile}>
+            <UserRound className="h-4 w-4" />
+            Hồ sơ cá nhân
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" className="cursor-pointer rounded-lg px-2 py-2" onClick={handleLogout}>
+          <LogOut className="h-4 w-4" />
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// 6. StaffHeader component
 interface StaffHeaderProps {
   title: string
   subtitle?: string
@@ -170,13 +252,15 @@ interface StaffHeaderProps {
 }
 
 export const StaffHeader: React.FC<StaffHeaderProps> = ({ title, subtitle, action }) => {
-  return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1c1b1b] tracking-tight">{title}</h1>
-        {subtitle && <p className="text-sm text-[#6b7280] mt-0.5">{subtitle}</p>}
-      </div>
-      {action && <div className="flex items-center gap-3 shrink-0">{action}</div>}
-    </div>
-  )
+  const { setHeaderProps } = useStaffOperations()
+
+  useEffect(() => {
+    setHeaderProps({ title, subtitle, action })
+    return () => {
+      setHeaderProps(null)
+    }
+  }, [title, subtitle, action, setHeaderProps])
+
+  return null
 }
+StaffHeader.displayName = "StaffHeader"
