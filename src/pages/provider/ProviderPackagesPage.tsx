@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import {
+  ArrowLeft,
   Boxes,
   Building2,
   Check,
@@ -15,6 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import {
@@ -28,6 +30,7 @@ import {
 import { DeleteConfirmationModal } from "@/pages/provider/components/DeleteConfirmationModal"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
+import { routePaths } from "@/app/router/route-paths"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -64,10 +67,12 @@ const defaultForm: PackageFormState = {
 
 export function ProviderPackagesPage() {
   const formPanelRef = useRef<HTMLDivElement | null>(null)
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [cafes, setCafes] = useState<ProviderCafe[]>([])
   const [selectedCafeId, setSelectedCafeId] = useState("")
   const [packages, setPackages] = useState<RecurringPackage[]>([])
-  const [sourcePackages, setSourcePackages] = useState<RecurringPackage[]>([])
+  const [sourcePackages] = useState<RecurringPackage[]>([])
   const [sourceCafeId, setSourceCafeId] = useState("")
   const [selectedSourcePackageId, setSelectedSourcePackageId] = useState("")
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([])
@@ -110,7 +115,7 @@ export function ProviderPackagesPage() {
         const data = await packageApi.listProviderCafes()
         if (!mounted) return
         setCafes(data)
-        setSelectedCafeId((current) => current || data[0]?.id || "")
+        setSelectedCafeId((current) => current || searchParams.get("cafeId") || data[0]?.id || "")
       } catch {
         toast.error("Không tải được danh sách chi nhánh")
       } finally {
@@ -122,7 +127,7 @@ export function ProviderPackagesPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!selectedCafeId) {
@@ -154,51 +159,19 @@ export function ProviderPackagesPage() {
     setSelectedPackageIds([])
     setDeleteMode(null)
     setDeleteTarget(null)
-    setMode("list")
+    if (selectedCafeId) setSearchParams({ cafeId: selectedCafeId }, { replace: true })
   }, [selectedCafeId])
 
-  useEffect(() => {
-    if (mode !== "copy" || !sourceCafeId) return
-    let mounted = true
-
-    async function loadSourcePackages() {
-      const data = await packageApi.listByCafe(sourceCafeId)
-      if (!mounted) return
-      setSourcePackages(data)
-      setSelectedSourcePackageId(data.find((item) => !existingCodes.has(item.code.toUpperCase()))?.id ?? data[0]?.id ?? "")
-    }
-
-    void loadSourcePackages()
-    return () => {
-      mounted = false
-    }
-  }, [mode, sourceCafeId, existingCodes])
-
-  useEffect(() => {
-    if (mode !== "form") return
-    window.requestAnimationFrame(() => {
-      formPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-    })
-  }, [mode, editingPackage?.id])
-
   const startCreate = () => {
-    setEditingPackage(null)
-    setForm(defaultForm)
-    setMode("form")
+    navigate(`${routePaths.providerPackageCreate}?cafeId=${selectedCafeId}`)
   }
 
   const startEdit = (item: RecurringPackage) => {
-    setEditingPackage(item)
-    setForm(packageToForm(item))
-    setMode("form")
+    navigate(`${routePaths.providerPackageEdit.replace(":packageId", item.id)}?cafeId=${selectedCafeId}`)
   }
 
   const startCopy = () => {
-    const initialSourceCafeId = sourceCafes[0]?.id ?? ""
-    setSourceCafeId(initialSourceCafeId)
-    setSourcePackages([])
-    setSelectedSourcePackageId("")
-    setMode("copy")
+    navigate(`${routePaths.providerPackageCopy}?cafeId=${selectedCafeId}`)
   }
 
   const savePackage = async () => {
@@ -472,6 +445,334 @@ export function ProviderPackagesPage() {
                 : null
         }
       />
+    </ProviderShell>
+  )
+}
+
+export function ProviderPackageCreatePage() {
+  return <ProviderPackageFormPage mode="create" />
+}
+
+export function ProviderPackageEditPage() {
+  return <ProviderPackageFormPage mode="edit" />
+}
+
+function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
+  const navigate = useNavigate()
+  const { packageId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [cafes, setCafes] = useState<ProviderCafe[]>([])
+  const [selectedCafeId, setSelectedCafeId] = useState(searchParams.get("cafeId") ?? "")
+  const [packages, setPackages] = useState<RecurringPackage[]>([])
+  const [editingPackage, setEditingPackage] = useState<RecurringPackage | null>(null)
+  const [form, setForm] = useState<PackageFormState>(defaultForm)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const isEdit = mode === "edit"
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCafes() {
+      try {
+        const data = await packageApi.listProviderCafes()
+        if (!mounted) return
+        const cafeId = selectedCafeId || data[0]?.id || ""
+        setCafes(data)
+        setSelectedCafeId(cafeId)
+      } catch {
+        toast.error("Không tải được danh sách chi nhánh")
+      }
+    }
+
+    void loadCafes()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCafeId) return
+    setSearchParams({ cafeId: selectedCafeId }, { replace: true })
+  }, [selectedCafeId, setSearchParams])
+
+  useEffect(() => {
+    if (!selectedCafeId) {
+      setPackages([])
+      setLoading(false)
+      return
+    }
+
+    let mounted = true
+
+    async function loadPackages() {
+      try {
+        setLoading(true)
+        const data = await packageApi.listByCafe(selectedCafeId)
+        if (!mounted) return
+        setPackages(data)
+        if (isEdit) {
+          const current = data.find((item) => item.id === packageId) ?? null
+          setEditingPackage(current)
+          if (current) {
+            setForm(packageToForm(current))
+          } else {
+            toast.error("Không tìm thấy gói cần chỉnh sửa")
+          }
+        } else {
+          setEditingPackage(null)
+          setForm(defaultForm)
+        }
+      } catch {
+        toast.error("Không tải được danh sách gói của chi nhánh")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    void loadPackages()
+    return () => {
+      mounted = false
+    }
+  }, [selectedCafeId, isEdit, packageId])
+
+  const goBack = () => {
+    navigate(buildPackagesPath(selectedCafeId))
+  }
+
+  const savePackage = async () => {
+    if (!selectedCafeId) return
+    const error = getPackageFormError(form, packages, editingPackage?.id)
+    if (error) {
+      toast.error(error)
+      return
+    }
+
+    try {
+      setSaving(true)
+      if (isEdit && editingPackage) {
+        await packageApi.update(selectedCafeId, editingPackage.id, toPayload(form))
+        toast.success("Đã cập nhật gói định kỳ")
+      } else {
+        await packageApi.create(selectedCafeId, toPayload(form))
+        toast.success("Đã tạo gói định kỳ")
+      }
+      goBack()
+    } catch (error) {
+      toast.error("Không lưu được gói định kỳ", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title={isEdit ? "Chỉnh sửa gói định kỳ" : "Tạo gói định kỳ"}
+        description="Thiết lập số slot theo tuần hoặc tháng, giá bán và chi nhánh áp dụng."
+      />
+
+      <section className="space-y-4">
+        <div className="flex justify-start">
+          <Button type="button" variant="outline" onClick={goBack} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
+            <ArrowLeft className="size-5" />
+            Danh sách gói
+          </Button>
+        </div>
+
+        <Panel>
+          <div className="space-y-3">
+            <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">Chi nhánh áp dụng</Label>
+            <select
+              value={selectedCafeId}
+              onChange={(event) => setSelectedCafeId(event.target.value)}
+              disabled={loading || cafes.length === 0}
+              className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold disabled:bg-[#f6f3f2]"
+            >
+              {cafes.length === 0 ? <option>Chưa có chi nhánh</option> : null}
+              {cafes.map((cafe) => (
+                <option key={cafe.id} value={cafe.id}>
+                  {cafe.name} - {cafe.district}, {cafe.city}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Panel>
+
+        <PackageFormPanel
+          form={form}
+          editing={isEdit}
+          saving={saving || loading}
+          onCancel={goBack}
+          onSave={savePackage}
+          onFieldChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
+        />
+      </section>
+    </ProviderShell>
+  )
+}
+
+export function ProviderPackageCopyPage() {
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [cafes, setCafes] = useState<ProviderCafe[]>([])
+  const [selectedCafeId, setSelectedCafeId] = useState(searchParams.get("cafeId") ?? "")
+  const [targetPackages, setTargetPackages] = useState<RecurringPackage[]>([])
+  const [sourcePackages, setSourcePackages] = useState<RecurringPackage[]>([])
+  const [sourceCafeId, setSourceCafeId] = useState("")
+  const [selectedSourcePackageId, setSelectedSourcePackageId] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [copying, setCopying] = useState(false)
+
+  const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
+  const sourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
+  const existingCodes = useMemo(() => new Set(targetPackages.map((item) => item.code.toUpperCase())), [targetPackages])
+  const selectedPackage = sourcePackages.find((item) => item.id === selectedSourcePackageId)
+  const selectedPackageExists = selectedPackage ? existingCodes.has(selectedPackage.code.toUpperCase()) : false
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCafes() {
+      try {
+        const data = await packageApi.listProviderCafes()
+        if (!mounted) return
+        const cafeId = selectedCafeId || data[0]?.id || ""
+        const firstSourceCafeId = data.find((cafe) => cafe.id !== cafeId)?.id ?? ""
+        setCafes(data)
+        setSelectedCafeId(cafeId)
+        setSourceCafeId(firstSourceCafeId)
+      } catch {
+        toast.error("Không tải được danh sách chi nhánh")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    void loadCafes()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!selectedCafeId) return
+    setSearchParams({ cafeId: selectedCafeId }, { replace: true })
+    setSourceCafeId((current) => (current && current !== selectedCafeId ? current : cafes.find((cafe) => cafe.id !== selectedCafeId)?.id ?? ""))
+  }, [cafes, selectedCafeId, setSearchParams])
+
+  useEffect(() => {
+    if (!selectedCafeId) {
+      setTargetPackages([])
+      return
+    }
+
+    let mounted = true
+
+    async function loadTargetPackages() {
+      const data = await packageApi.listByCafe(selectedCafeId)
+      if (mounted) setTargetPackages(data)
+    }
+
+    void loadTargetPackages()
+    return () => {
+      mounted = false
+    }
+  }, [selectedCafeId])
+
+  useEffect(() => {
+    if (!sourceCafeId) {
+      setSourcePackages([])
+      setSelectedSourcePackageId("")
+      return
+    }
+
+    let mounted = true
+
+    async function loadSourcePackages() {
+      const data = await packageApi.listByCafe(sourceCafeId)
+      if (!mounted) return
+      setSourcePackages(data)
+      setSelectedSourcePackageId(data.find((item) => !existingCodes.has(item.code.toUpperCase()))?.id ?? data[0]?.id ?? "")
+    }
+
+    void loadSourcePackages()
+    return () => {
+      mounted = false
+    }
+  }, [sourceCafeId, existingCodes])
+
+  const goBack = () => {
+    navigate(buildPackagesPath(selectedCafeId))
+  }
+
+  const copyPackage = async () => {
+    if (!selectedCafeId || !selectedPackage || selectedPackageExists) return
+    try {
+      setCopying(true)
+      await packageApi.create(selectedCafeId, packageToPayload(selectedPackage))
+      toast.success("Đã thêm gói từ chi nhánh khác")
+      goBack()
+    } catch (error) {
+      toast.error("Không thêm được gói từ chi nhánh khác", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setCopying(false)
+    }
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title="Thêm gói từ chi nhánh"
+        description="Import gói định kỳ từ chi nhánh khác nếu mã gói chưa trùng."
+      />
+
+      <section className="space-y-4">
+        <div className="flex justify-start">
+          <Button type="button" variant="outline" onClick={goBack} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
+            <ArrowLeft className="size-5" />
+            Danh sách gói
+          </Button>
+        </div>
+
+        <Panel>
+          <div className="space-y-3">
+            <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">Chi nhánh áp dụng</Label>
+            <select
+              value={selectedCafeId}
+              onChange={(event) => setSelectedCafeId(event.target.value)}
+              disabled={loading || cafes.length === 0}
+              className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold disabled:bg-[#f6f3f2]"
+            >
+              {cafes.length === 0 ? <option>Chưa có chi nhánh</option> : null}
+              {cafes.map((cafe) => (
+                <option key={cafe.id} value={cafe.id}>
+                  {cafe.name} - {cafe.district}, {cafe.city}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Panel>
+
+        <CopyPackagePanel
+          targetCafe={selectedCafe}
+          sourceCafes={sourceCafes}
+          sourceCafeId={sourceCafeId}
+          sourcePackages={sourcePackages}
+          selectedPackageId={selectedSourcePackageId}
+          selectedPackageExists={selectedPackageExists}
+          copying={copying || loading}
+          onSourceCafeChange={setSourceCafeId}
+          onPackageChange={setSelectedSourcePackageId}
+          onCancel={goBack}
+          onCopy={copyPackage}
+        />
+      </section>
     </ProviderShell>
   )
 }
@@ -759,6 +1060,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
       {children}
     </div>
   )
+}
+
+function buildPackagesPath(cafeId?: string) {
+  return cafeId ? `${routePaths.providerPackages}?cafeId=${cafeId}` : routePaths.providerPackages
 }
 
 function toPayload(form: PackageFormState): PackagePayload {
