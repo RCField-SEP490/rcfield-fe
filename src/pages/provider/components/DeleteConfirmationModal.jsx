@@ -6,6 +6,13 @@ import { cn } from "@/shared/lib/utils"
 export function DeleteConfirmationModal({ isOpen, onClose, onConfirm, offerData }) {
   if (!isOpen || !offerData) return null
   const items = Array.isArray(offerData.items) ? offerData.items : []
+  const title = offerData.title ?? "Xóa mã ưu đãi?"
+  const message = offerData.message ?? (
+    <>
+      Nếu mã đã có lịch sử sử dụng, bạn nên chọn <span className="font-bold text-[#1c1b1b]">Tắt</span> thay vì xóa để giữ dữ liệu đối soát.
+    </>
+  )
+  const confirmLabel = offerData.confirmLabel ?? "Xóa ưu đãi"
 
   const handleConfirm = () => {
     onConfirm()
@@ -25,10 +32,10 @@ export function DeleteConfirmationModal({ isOpen, onClose, onConfirm, offerData 
           </div>
           <div className="min-w-0 flex-1">
             <h2 id="delete-offer-title" className="text-xl font-extrabold tracking-tight text-[#1c1b1b]">
-              Xóa mã ưu đãi?
+              {title}
             </h2>
             <p className="mt-2 text-sm font-medium leading-6 text-[#5d5f5f]">
-              Nếu mã đã có lịch sử sử dụng, bạn nên chọn <span className="font-bold text-[#1c1b1b]">Tắt</span> thay vì xóa để giữ dữ liệu đối soát.
+              {message}
             </p>
           </div>
           <button
@@ -92,7 +99,7 @@ export function DeleteConfirmationModal({ isOpen, onClose, onConfirm, offerData 
           </Button>
           <Button type="button" onClick={handleConfirm} className="rounded-lg bg-red-600 text-white hover:bg-red-700">
             <Trash2 className="mr-2 size-4" />
-            Xóa ưu đãi
+            {confirmLabel}
           </Button>
         </div>
       </div>
