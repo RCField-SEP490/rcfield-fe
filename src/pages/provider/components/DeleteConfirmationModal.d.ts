@@ -1,4 +1,7 @@
 export type DeleteConfirmationOfferData = {
+  title?: string
+  message?: string | JSX.Element
+  confirmLabel?: string
   code: string
   status?: string
   statusClassName?: string
