@@ -21,12 +21,13 @@ const emptyForm: InviteStaffBody = { cafe_id: "", full_name: "", email: "", phon
 export function ProviderStaffPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
+  const [selectedCafeId, setSelectedCafeId] = useState<string | undefined>(undefined)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [form, setForm] = useState<InviteStaffBody>(emptyForm)
 
   const { data: staffList = [], isLoading, isError } = useQuery({
-    queryKey: staffQueryKeys.list(),
-    queryFn: () => staffApi.listStaff(),
+    queryKey: staffQueryKeys.list(selectedCafeId),
+    queryFn: () => staffApi.listStaff(selectedCafeId),
   })
 
   const { data: cafesResp } = useQuery({
@@ -38,7 +39,7 @@ export function ProviderStaffPage() {
   const inviteMutation = useMutation({
     mutationFn: (body: InviteStaffBody) => staffApi.inviteStaff(body),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: staffQueryKeys.list() })
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
       setShowInviteModal(false)
       setForm(emptyForm)
       if (!result.emailSent) {
@@ -53,7 +54,7 @@ export function ProviderStaffPage() {
   const deactivateMutation = useMutation({
     mutationFn: (staffId: string) => staffApi.deactivateStaff(staffId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffQueryKeys.list() })
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
       toast.success("Đã vô hiệu hóa tài khoản nhân viên.")
     },
     onError: () => toast.error("Không thể vô hiệu hóa. Vui lòng thử lại."),
@@ -62,7 +63,7 @@ export function ProviderStaffPage() {
   const reactivateMutation = useMutation({
     mutationFn: (staffId: string) => staffApi.reactivateStaff(staffId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: staffQueryKeys.list() })
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
       toast.success("Đã kích hoạt lại tài khoản nhân viên.")
     },
     onError: () => toast.error("Không thể kích hoạt lại. Vui lòng thử lại."),
@@ -114,6 +115,17 @@ export function ProviderStaffPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <div className="mx-2 h-px w-full bg-[#c4c7c8] md:h-auto md:w-px" />
+        <select
+          className="h-10 cursor-pointer rounded-lg border-none bg-[#f6f3f2] px-3 py-2 text-xs font-bold text-[#1c1b1b] focus:ring-1 focus:ring-[#747878]"
+          value={selectedCafeId ?? ""}
+          onChange={(e) => setSelectedCafeId(e.target.value || undefined)}
+        >
+          <option value="">Tất cả chi nhánh</option>
+          {cafes.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
         <div className="mx-2 h-px w-full bg-[#c4c7c8] md:h-auto md:w-px" />
         <Button
           className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-xs font-bold uppercase tracking-wider text-[#fcf8f8] hover:bg-[#313030]"
