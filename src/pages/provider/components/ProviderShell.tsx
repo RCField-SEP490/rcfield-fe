@@ -52,7 +52,7 @@ const providerNavGroups: NavGroup[] = [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Quản lý đội xe", icon: Car, to: routePaths.providerVehicles },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
-      { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
+      // { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
       { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],

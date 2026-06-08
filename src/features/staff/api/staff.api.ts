@@ -10,6 +10,7 @@ export interface StaffListItem {
   status: "PENDING" | "ACTIVE" | "DISABLED"
   createdAt: string
   activatedAt: string | null
+  inviteExpiresAt: string | null
 }
 
 export interface InviteStaffBody {
@@ -59,6 +60,10 @@ export const staffApi = {
 
   reactivateStaff: async (staffId: string): Promise<void> => {
     await api.patch(`/v1/provider/staff/${staffId}/reactivate`)
+  },
+
+  transferStaff: async (staffId: string, cafeId: string): Promise<void> => {
+    await api.patch(`/v1/provider/staff/${staffId}/branch`, { cafe_id: cafeId })
   },
 
   resendInvite: async (staffId: string): Promise<{ emailSent: boolean }> => {

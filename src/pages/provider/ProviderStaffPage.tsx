@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2 } from "lucide-react"
+import { ArrowLeftRight, Clock, Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -9,6 +9,16 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { staffApi, staffQueryKeys, type StaffListItem, type InviteStaffBody } from "@/features/staff/api/staff.api"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+
+function formatExpiry(isoString: string): { label: string; urgent: boolean } {
+  const diff = new Date(isoString).getTime() - Date.now()
+  if (diff <= 0) return { label: "Đã hết hạn", urgent: true }
+  const hours = Math.floor(diff / 3_600_000)
+  const minutes = Math.floor((diff % 3_600_000) / 60_000)
+  if (hours >= 24) return { label: `Hết hạn sau ${Math.floor(hours / 24)} ngày`, urgent: false }
+  if (hours > 0) return { label: `Hết hạn sau ${hours} giờ ${minutes} phút`, urgent: hours < 4 }
+  return { label: `Hết hạn sau ${minutes} phút`, urgent: true }
+}
 
 const STATUS_LABELS: Record<StaffListItem["status"], string> = {
   ACTIVE: "Đang hoạt động",
@@ -24,6 +34,8 @@ export function ProviderStaffPage() {
   const [selectedCafeId, setSelectedCafeId] = useState<string | undefined>(undefined)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [form, setForm] = useState<InviteStaffBody>(emptyForm)
+  const [transferTarget, setTransferTarget] = useState<StaffListItem | null>(null)
+  const [transferCafeId, setTransferCafeId] = useState("")
 
   const { data: staffList = [], isLoading, isError } = useQuery({
     queryKey: staffQueryKeys.list(selectedCafeId),
@@ -67,6 +79,18 @@ export function ProviderStaffPage() {
       toast.success("Đã kích hoạt lại tài khoản nhân viên.")
     },
     onError: () => toast.error("Không thể kích hoạt lại. Vui lòng thử lại."),
+  })
+
+  const transferMutation = useMutation({
+    mutationFn: ({ staffId, cafeId }: { staffId: string; cafeId: string }) =>
+      staffApi.transferStaff(staffId, cafeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
+      setTransferTarget(null)
+      setTransferCafeId("")
+      toast.success("Đã chuyển nhân viên sang chi nhánh mới.")
+    },
+    onError: () => toast.error("Không thể chuyển chi nhánh. Vui lòng thử lại."),
   })
 
   const resendMutation = useMutation({
@@ -158,6 +182,7 @@ export function ProviderStaffPage() {
               onDeactivate={() => deactivateMutation.mutate(staff.id)}
               onReactivate={() => reactivateMutation.mutate(staff.id)}
               onResend={() => resendMutation.mutate(staff.id)}
+              onTransfer={() => { setTransferTarget(staff); setTransferCafeId(staff.cafeId) }}
             />
           ))}
           {filtered.length === 0 && (
@@ -240,6 +265,46 @@ export function ProviderStaffPage() {
           </div>
         </div>
       )}
+      {transferTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-xl">
+            <h2 className="mb-1 text-lg font-bold text-[#1c1b1b]">Chuyển chi nhánh</h2>
+            <p className="mb-4 text-sm text-[#747878]">
+              Chuyển <span className="font-semibold text-[#1c1b1b]">{transferTarget.fullName}</span> sang chi nhánh khác.
+            </p>
+            <div className="mb-4">
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#444748]">Chi nhánh mới</label>
+              <select
+                className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm"
+                value={transferCafeId}
+                onChange={(e) => setTransferCafeId(e.target.value)}
+              >
+                {cafes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setTransferTarget(null); setTransferCafeId("") }}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                className="flex-1 bg-[#1c1b1b] text-white hover:bg-[#313030]"
+                disabled={transferMutation.isPending || transferCafeId === transferTarget.cafeId}
+                onClick={() => transferMutation.mutate({ staffId: transferTarget.id, cafeId: transferCafeId })}
+              >
+                {transferMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : "Xác nhận"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProviderShell>
   )
 }
@@ -249,11 +314,13 @@ function StaffCard({
   onDeactivate,
   onReactivate,
   onResend,
+  onTransfer,
 }: {
   staff: StaffListItem
   onDeactivate: () => void
   onReactivate: () => void
   onResend: () => void
+  onTransfer: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -279,7 +346,7 @@ function StaffCard({
           </div>
           <div>
             <h3 className="text-lg font-bold leading-relaxed text-[#1c1b1b]">{staff.fullName}</h3>
-            <p className="text-xs font-bold uppercase tracking-wider text-[#747878]">Nhân viên check-in</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#747878]">Nhân viên</p>
           </div>
         </div>
         <span className={statusClassName(staff.status)}>{STATUS_LABELS[staff.status]}</span>
@@ -300,6 +367,18 @@ function StaffCard({
           <MapPin className="size-4 text-[#747878]" />
           <span className="normal-case">{staff.cafeName}</span>
         </div>
+        {staff.status === "PENDING" && staff.inviteExpiresAt && (() => {
+          const { label, urgent } = formatExpiry(staff.inviteExpiresAt)
+          return (
+            <div className={cn(
+              "flex items-center gap-2 rounded-md px-2 py-1",
+              urgent ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700",
+            )}>
+              <Clock className="size-4 shrink-0" />
+              <span className="normal-case">{label}</span>
+            </div>
+          )
+        })()}
       </div>
 
       <div className="relative z-10 mt-5 flex items-center justify-end border-t border-[#c4c7c8] pt-4">
@@ -322,6 +401,15 @@ function StaffCard({
                 >
                   <RefreshCw className="size-4 text-[#747878]" />
                   Gửi lại lời mời
+                </button>
+              )}
+              {(staff.status === "ACTIVE" || staff.status === "PENDING") && (
+                <button
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[#f6f3f2]"
+                  onClick={() => { setMenuOpen(false); onTransfer() }}
+                >
+                  <ArrowLeftRight className="size-4 text-[#747878]" />
+                  Chuyển chi nhánh
                 </button>
               )}
               {staff.status === "ACTIVE" && (
