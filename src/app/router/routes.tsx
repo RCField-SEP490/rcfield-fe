@@ -82,6 +82,7 @@ import { ProviderPackageCopyPage, ProviderPackageCreatePage, ProviderPackageEdit
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
 import { ProviderPromotionCopyPage, ProviderPromotionCreatePage, ProviderPromotionEditPage, ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
+import { StaffActivatePage } from "@/pages/staff/activate/StaffActivatePage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { ProviderConfigurationPage } from "@/pages/provider/ProviderConfigurationPage"
 import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
@@ -126,6 +127,10 @@ export const router = createBrowserRouter([
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
         ],
+      },
+      {
+        path: routePaths.staffActivate,
+        element: <StaffActivatePage />,
       },
       {
         element: <AuthLayout />,

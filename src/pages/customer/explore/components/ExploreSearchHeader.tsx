@@ -1,7 +1,9 @@
-import { CalendarDays, RotateCcw, X } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
 import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { CalendarDays, RotateCcw, Search, X } from "lucide-react"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import type { ExploreFiltersSidebarProps } from "./ExploreFiltersSidebar"
 
@@ -19,7 +21,6 @@ const CITY_OPTIONS = [
   { value: "Đà Nẵng", label: "Đà Nẵng" },
   { value: "Hải Phòng", label: "Hải Phòng" },
 ]
-
 const PRICE_OPTIONS = [
   { value: "all", label: "Mức giá" },
   { value: "under100", label: "Dưới 100k" },
@@ -45,8 +46,6 @@ const VEHICLE_OPTIONS = [
 export function ExploreSearchHeader({
   query,
   onQueryChange,
-  resultCount,
-  onShowMap,
   ...filters
 }: ExploreSearchHeaderProps) {
   const { data: trackTypes = [] } = useQuery({
@@ -54,36 +53,16 @@ export function ExploreSearchHeader({
     queryFn: () => trackTypeApi.listAll(),
   })
 
-  const trackOptions = useMemo(() => {
-    return [
-      { value: "all", label: "Loại sân" },
-      ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
-    ]
-  }, [trackTypes])
+  const trackOptions = useMemo(() => [
+    { value: "all", label: "Loại sân" },
+    ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
+  ], [trackTypes])
 
   return (
     <section className="shrink-0 border-b bg-white shadow-sm">
       <div className="mx-auto w-full max-w-[1600px] px-4 py-3 md:px-6">
-        {/* Title + count */}
-        {/* <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Khám phá cơ sở RC</p>
-            <h1 className="text-lg font-semibold tracking-tight md:text-xl">
-              Tìm sân chơi phù hợp cho lịch chạy của bạn
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Badge variant="secondary" className="rounded-md px-3 py-1 text-sm">
-              {resultCount} cơ sở
-            </Badge>
-            <Button type="button" variant="outline" size="sm" onClick={onShowMap} className="gap-1.5 lg:hidden">
-              <Map className="h-4 w-4" /> Bản đồ
-            </Button>
-          </div>
-        </div> */}
-
         {/* Search */}
-        {/* <div className="relative mb-3">
+        <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -102,7 +81,7 @@ export function ExploreSearchHeader({
               <X className="h-4 w-4" />
             </Button>
           )}
-        </div> */}
+        </div>
 
         {/* Horizontal filter chips */}
         <div className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

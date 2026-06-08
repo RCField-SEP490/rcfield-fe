@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
 import type { CafeSearchParams } from "@/shared/data/explore-data"
 import type { CafeViewMode, SearchTarget } from "./explore-utils"
@@ -9,6 +9,7 @@ export function useExploreFilters() {
   const [searchTarget, setSearchTarget] = useState<SearchTarget>("cafes")
   const [viewMode, setViewMode] = useState<CafeViewMode>("grid")
   const [query, setQuery] = useState(searchParams.get("query") ?? "")
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
   const [city, setCity] = useState(normalizeFilterValue(searchParams.get("city")))
   const [trackType, setTrackType] = useState(normalizeFilterValue(searchParams.get("trackType")))
   const [priceRange, setPriceRange] = useState(normalizeFilterValue(searchParams.get("priceRange")))
@@ -16,15 +17,21 @@ export function useExploreFilters() {
   const [vehicleType, setVehicleType] = useState(normalizeFilterValue(searchParams.get("vehicleType")))
   const [date, setDate] = useState(searchParams.get("date") ?? "")
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
   const params: CafeSearchParams = useMemo(
-    () => ({ query, city, trackType, priceRange, feature, vehicleType, date }),
-    [query, city, trackType, priceRange, feature, vehicleType, date],
+    () => ({ query: debouncedQuery, city, trackType, priceRange, feature, vehicleType, date }),
+    [debouncedQuery, city, trackType, priceRange, feature, vehicleType, date],
   )
 
   const activeFilterCount = useMemo(() => getActiveFilterCount(params), [params])
 
   const clearFilters = () => {
     setQuery("")
+    setDebouncedQuery("")
     setCity("all")
     setTrackType("all")
     setPriceRange("all")
