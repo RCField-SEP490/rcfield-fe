@@ -18,8 +18,8 @@ type ParticipantsStepProps = {
   onParticipantsChange: (value: number) => void
   companions: Companion[]
   onCompanionsChange: (companions: Companion[]) => void
-  selectedVehicleId?: string
-  onVehicleSelect: (id?: string) => void
+  selectedVehicleIds: string[]
+  onVehicleSelect: (ids: string[]) => void
   byocRemaining?: number
 }
 
@@ -36,7 +36,7 @@ export function ParticipantsStep({
   onParticipantsChange,
   companions,
   onCompanionsChange,
-  selectedVehicleId,
+  selectedVehicleIds,
   onVehicleSelect,
   byocRemaining,
 }: ParticipantsStepProps) {
@@ -186,21 +186,31 @@ export function ParticipantsStep({
               <p className="flex items-center gap-2 text-sm font-medium">
                 <Car className="h-4 w-4 text-muted-foreground" /> Xe thuê dự kiến
               </p>
-              <Badge variant="secondary">{cafe.availableVehicles.length} xe</Badge>
+              <div className="flex items-center gap-2">
+                {selectedVehicleIds.length > 0 && (
+                  <Badge variant="default">{selectedVehicleIds.length} xe đã chọn</Badge>
+                )}
+                <Badge variant="secondary">{cafe.availableVehicles.length} xe</Badge>
+              </div>
             </div>
             {cafe.availableVehicles.length === 0 ? (
               <p className="text-sm text-muted-foreground">Cơ sở chưa cập nhật danh sách xe.</p>
             ) : (
               <div className="grid gap-3 md:grid-cols-3">
                 {cafe.availableVehicles.map((vehicle) => {
-                  const isSelected = selectedVehicleId === vehicle.id
+                  const isSelected = selectedVehicleIds.includes(vehicle.id)
                   const isDisabled = vehicle.status !== "available"
                   return (
                     <button
                       key={vehicle.id}
                       type="button"
                       disabled={isDisabled}
-                      onClick={() => onVehicleSelect(isSelected ? undefined : vehicle.id)}
+                      onClick={() => {
+                        const next = isSelected
+                          ? selectedVehicleIds.filter((id) => id !== vehicle.id)
+                          : [...selectedVehicleIds, vehicle.id]
+                        onVehicleSelect(next)
+                      }}
                       className={cn(
                         "overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary/40",
                         isSelected && "border-primary ring-2 ring-primary/10",

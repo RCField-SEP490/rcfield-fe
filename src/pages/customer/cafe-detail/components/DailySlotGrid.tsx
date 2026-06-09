@@ -10,6 +10,8 @@ export type DailySlot = {
   endTime: string
   status: DailySlotStatus
   remaining: number
+  rentalCount: number
+  byocRemaining: number
 }
 
 const DEFAULT_OPEN_HOUR = 8
@@ -24,11 +26,13 @@ type DailySlotGridProps = {
   closeHour?: number
 }
 
-const statusCopy: Record<DailySlotStatus, string> = {
-  available: "Còn",
-  limited: "Ít",
-  booked: "Hết",
-  closed: "Đóng",
+function slotAvailabilityLabel(slot: DailySlot): string {
+  if (slot.status === "booked") return "Hết"
+  if (slot.status === "closed") return "Đóng"
+  if (slot.rentalCount > 0 && slot.byocRemaining > 0) return `${slot.rentalCount}xe·${slot.byocRemaining}B`
+  if (slot.rentalCount > 0) return `${slot.rentalCount} xe`
+  if (slot.byocRemaining > 0) return `BYOC ${slot.byocRemaining}`
+  return "Hết"
 }
 
 export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot, slotDurationMinutes = 60, openHour = DEFAULT_OPEN_HOUR, closeHour = DEFAULT_CLOSE_HOUR }: DailySlotGridProps) {
@@ -71,7 +75,7 @@ export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot, slotDuratio
               )}
             >
               <span>{slot.startTime}</span>
-              <span className="text-[10px] font-medium opacity-80">{statusCopy[slot.status]} {slot.remaining > 0 ? slot.remaining : ""}</span>
+              <span className="text-[10px] font-medium opacity-80">{slotAvailabilityLabel(slot)}</span>
             </Button>
           )
         })}
@@ -90,12 +94,15 @@ export function buildDailySlots(openHour = DEFAULT_OPEN_HOUR, closeHour = DEFAUL
     const startTime = formatHour(hour)
     const endTime = formatHour(hour + 1)
     const status = getMockStatus(hour)
+    const remaining = status === "available" ? 4 : status === "limited" ? 1 : 0
     return {
       id: startTime,
       startTime,
       endTime,
       status,
-      remaining: status === "available" ? 4 : status === "limited" ? 1 : 0,
+      remaining,
+      rentalCount: 0,
+      byocRemaining: remaining,
     }
   })
 }

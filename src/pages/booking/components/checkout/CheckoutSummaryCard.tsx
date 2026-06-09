@@ -13,7 +13,7 @@ type CheckoutSummaryCardProps = {
   playMode: CustomerPlayMode
   date: string
   time: string
-  selectedVehicle?: Vehicle
+  selectedVehicles?: Vehicle[]
   fnbTotal: number
   components: PaymentComponentLine[]
   currentStep: CheckoutStep
@@ -30,7 +30,7 @@ export function CheckoutSummaryCard({
   playMode,
   date,
   time,
-  selectedVehicle,
+  selectedVehicles,
   fnbTotal,
   components,
   currentStep,
@@ -68,7 +68,16 @@ export function CheckoutSummaryCard({
           <Line label="Play mode" value={playMode} />
           <Line label="Ngày" value={new Date(date).toLocaleDateString("vi-VN")} />
           <Line label="Giờ" value={time} />
-          <Line label="Xe thuê" value={selectedVehicle?.name ?? "Chưa chọn"} />
+          <Line
+            label="Xe thuê"
+            value={
+              !selectedVehicles || selectedVehicles.length === 0
+                ? "Chưa chọn"
+                : selectedVehicles.length === 1
+                ? selectedVehicles[0].name
+                : `${selectedVehicles.length} xe`
+            }
+          />
           {fnbTotal > 0 && <Line label="F&B preorder" value={formatCurrency(fnbTotal)} />}
         </div>
 

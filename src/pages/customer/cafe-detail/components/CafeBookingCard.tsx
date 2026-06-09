@@ -252,16 +252,19 @@ function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[]): Daily
     const endTime = `${String(hour + 1).padStart(2, "0")}:00`
 
     if (!data) {
-      return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0 }
+      return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0, rentalCount: 0, byocRemaining: 0 }
     }
 
-    const remaining = data.byoc_remaining ?? (data.vehicles?.length ?? 0)
+    const rentalCount = data.vehicles?.length ?? 0
+    const byocRemaining = data.byoc_remaining ?? 0
+    // Use rental count when available, fall back to BYOC for status thresholds
+    const remaining = rentalCount > 0 ? rentalCount : byocRemaining
     let status: DailySlotStatus
-    if (!data.available || remaining === 0) status = "booked"
+    if (!data.available) status = "booked"
     else if (remaining <= 2) status = "limited"
     else status = "available"
 
-    return { id: startTime, startTime, endTime, status, remaining }
+    return { id: startTime, startTime, endTime, status, remaining, rentalCount, byocRemaining }
   })
 }
 

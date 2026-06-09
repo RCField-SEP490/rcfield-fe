@@ -96,7 +96,7 @@ export function CreateBookingPage() {
   const [playMode, setPlayMode] = useState<CustomerPlayMode>(vehicleId ? "RENTAL" : "BYOC")
   const [participants, setParticipants] = useState(1)
   const [companions, setCompanions] = useState<Companion[]>([])
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(vehicleId)
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(vehicleId ? [vehicleId] : [])
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(() => parseFnbParam(searchParams.get("fnb")))
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
 
@@ -115,7 +115,7 @@ export function CreateBookingPage() {
   const byocRemaining = availabilityData?.byoc_remaining
   const isByocFull = playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0
 
-  const selectedVehicle = cafe.availableVehicles.find((vehicle) => vehicle.id === selectedVehicleId)
+  const selectedVehicles = cafe.availableVehicles.filter((v) => selectedVehicleIds.includes(v.id))
   const fnbTotal = useMemo(
     () =>
       fnbMenuItems.reduce((sum, item) => {
@@ -128,10 +128,10 @@ export function CreateBookingPage() {
       mode,
       planId,
       slotFeeRate: cafe.slotFeeRate ?? 0,
-      selectedVehiclePrice: selectedVehicle?.pricePerHour ?? 0,
+      selectedVehicles,
       fnbTotal,
     }),
-    [fnbTotal, mode, planId, selectedVehicle, cafe.slotFeeRate],
+    [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate],
   )
 
   const handleNext = () => {
@@ -156,7 +156,7 @@ export function CreateBookingPage() {
     try {
       const slotStart = `${date}T${time}:00+07:00`
       const slotEnd = buildSlotEnd(date, time, mode, planId)
-      const vehicleIds = selectedVehicleId && UUID_REGEX.test(selectedVehicleId) ? [selectedVehicleId] : []
+      const vehicleIds = selectedVehicleIds.filter((id) => UUID_REGEX.test(id))
 
       // Build companion participants — booker is auto-inserted by backend as BOOKER type
       const participantList = companions.map((c) => ({
@@ -227,8 +227,8 @@ export function CreateBookingPage() {
               onParticipantsChange={setParticipants}
               companions={companions}
               onCompanionsChange={setCompanions}
-              selectedVehicleId={selectedVehicleId}
-              onVehicleSelect={setSelectedVehicleId}
+              selectedVehicleIds={selectedVehicleIds}
+              onVehicleSelect={setSelectedVehicleIds}
               byocRemaining={byocRemaining}
             />
           )}
@@ -249,7 +249,7 @@ export function CreateBookingPage() {
           playMode={playMode}
           date={date}
           time={time}
-          selectedVehicle={selectedVehicle}
+          selectedVehicles={selectedVehicles}
           fnbTotal={fnbTotal}
           components={paymentComponents}
           currentStep={currentStep}
@@ -289,13 +289,13 @@ function buildPaymentComponents({
   mode,
   planId,
   slotFeeRate,
-  selectedVehiclePrice,
+  selectedVehicles,
   fnbTotal,
 }: {
   mode: BookingMode
   planId: string
   slotFeeRate: number
-  selectedVehiclePrice: number
+  selectedVehicles: import("@/shared/data/explore-data").Vehicle[]
   fnbTotal: number
 }): PaymentComponentLine[] {
   const slotFee = getPlanPrice(mode, planId, slotFeeRate)
@@ -303,9 +303,12 @@ function buildPaymentComponents({
     { id: "slot", type: "SLOT_FEE", label: "Phí lịch chơi", amount: slotFee, status: "PENDING" },
   ]
 
-  if (selectedVehiclePrice > 0) {
-    lines.push({ id: "rental", type: "RENTAL_FEE", label: "Phí thuê xe", amount: selectedVehiclePrice, status: "PENDING" })
-    lines.push({ id: "deposit", type: "SECURITY_DEPOSIT", label: "Cọc xe dự phòng", amount: 100000, status: "HELD" })
+  if (selectedVehicles.length > 0) {
+    const rentalTotal = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
+    const depositTotal = selectedVehicles.length * 100_000
+    const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
+    lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })
+    lines.push({ id: "deposit", type: "SECURITY_DEPOSIT", label: `Cọc xe (×${selectedVehicles.length})`, amount: depositTotal, status: "HELD" })
   }
 
   if (fnbTotal > 0) {
