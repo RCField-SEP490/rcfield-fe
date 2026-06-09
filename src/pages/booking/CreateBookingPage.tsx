@@ -134,6 +134,16 @@ export function CreateBookingPage() {
       }, 0),
     [fnbQuantities],
   )
+
+  const numSlots = useMemo(() => {
+    if (!time || !preselectedSlotEnd) return 1
+    const [sh, sm] = time.split(":").map(Number)
+    const [eh, em] = preselectedSlotEnd.split(":").map(Number)
+    const diffMinutes = (eh * 60 + em) - (sh * 60 + sm)
+    const slotDuration = cafe.slotDurationMinutes ?? 60
+    return Math.max(1, Math.round(diffMinutes / slotDuration))
+  }, [time, preselectedSlotEnd, cafe.slotDurationMinutes])
+
   const paymentComponents = useMemo(
     () => buildPaymentComponents({
       mode,
@@ -141,8 +151,9 @@ export function CreateBookingPage() {
       slotFeeRate: cafe.slotFeeRate ?? 0,
       selectedVehicles,
       fnbTotal,
+      numSlots,
     }),
-    [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate],
+    [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots],
   )
 
   const handleNext = () => {
@@ -279,7 +290,7 @@ export function CreateBookingPage() {
           mode={mode}
           playMode={playMode}
           date={date}
-          time={time}
+          time={preselectedSlotEnd ? `${time} – ${preselectedSlotEnd}` : time}
           selectedVehicles={selectedVehicles}
           fnbTotal={fnbTotal}
           components={paymentComponents}
@@ -326,20 +337,26 @@ function buildPaymentComponents({
   slotFeeRate,
   selectedVehicles,
   fnbTotal,
+  numSlots = 1,
 }: {
   mode: BookingMode
   planId: string
   slotFeeRate: number
   selectedVehicles: import("@/shared/data/explore-data").Vehicle[]
   fnbTotal: number
+  numSlots?: number
 }): PaymentComponentLine[] {
-  const slotFee = getPlanPrice(mode, planId, slotFeeRate)
+  const slotFee = mode === "hourly"
+    ? slotFeeRate * numSlots
+    : getPlanPrice(mode, planId, slotFeeRate)
+  const slotLabel = numSlots > 1 ? `Phí lịch chơi (${numSlots} slot)` : "Phí lịch chơi"
   const lines: PaymentComponentLine[] = [
-    { id: "slot", type: "SLOT_FEE", label: "Phí lịch chơi", amount: slotFee, status: "PENDING" },
+    { id: "slot", type: "SLOT_FEE", label: slotLabel, amount: slotFee, status: "PENDING" },
   ]
 
   if (selectedVehicles.length > 0) {
-    const rentalTotal = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
+    const rentalPerHour = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
+    const rentalTotal = rentalPerHour * numSlots
     const depositTotal = selectedVehicles.length * 100_000
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })

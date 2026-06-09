@@ -164,22 +164,18 @@ function SlotPicker({
         <DailySlotGrid
           slots={slots}
           selectedSlotId={selectedSlot}
+          selectedSlotEndId={selectedSlotEnd ?? undefined}
           onSelectSlot={setSelectedSlot}
           slotDurationMinutes={slotDurationMinutes}
           openHour={openHour}
           closeHour={closeHour}
           onSelectRange={(start, end) => {
             setSelectedSlot(start)
-            setSelectedSlotEnd(end)
+            setSelectedSlotEnd(end || null)
           }}
         />
       </div>
 
-      {selectedSlot && (
-        <p className="mt-2 text-xs text-orange-600 font-medium">
-          Đã chọn: {selectedSlot}{selectedSlotEnd ? ` → ${selectedSlotEnd}` : ""}
-        </p>
-      )}
     </div>
   )
 }

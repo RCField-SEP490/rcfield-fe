@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
@@ -21,11 +20,11 @@ const DEFAULT_CLOSE_HOUR = 22
 type DailySlotGridProps = {
   slots: DailySlot[]
   selectedSlotId: string
+  selectedSlotEndId?: string
   onSelectSlot: (slotId: string) => void
   slotDurationMinutes?: number
   openHour?: number
   closeHour?: number
-  /** Called with (slotStart, slotEnd) after user picks a duration */
   onSelectRange?: (slotStart: string, slotEnd: string) => void
 }
 
@@ -36,17 +35,6 @@ function slotAvailabilityLabel(slot: DailySlot): string {
   if (slot.rentalCount > 0) return `${slot.rentalCount} xe`
   if (slot.byocRemaining > 0) return `BYOC ${slot.byocRemaining}`
   return "Hết"
-}
-
-/** Returns true if all slots in range [startId, startId + durationSlots) are available/limited */
-function isRangeAvailable(slots: DailySlot[], startId: string, durationSlots: number): boolean {
-  const startIdx = slots.findIndex((s) => s.id === startId)
-  if (startIdx === -1) return false
-  for (let i = 0; i < durationSlots; i++) {
-    const s = slots[startIdx + i]
-    if (!s || s.status === "booked" || s.status === "closed") return false
-  }
-  return true
 }
 
 function addMinutesToTime(time: string, minutes: number): string {
@@ -60,40 +48,93 @@ function addMinutesToTime(time: string, minutes: number): string {
 export function DailySlotGrid({
   slots,
   selectedSlotId,
+  selectedSlotEndId,
   onSelectSlot,
   slotDurationMinutes = 60,
   openHour = DEFAULT_OPEN_HOUR,
   closeHour = DEFAULT_CLOSE_HOUR,
   onSelectRange,
 }: DailySlotGridProps) {
-  const [pendingSlotId, setPendingSlotId] = useState<string | null>(null)
-
   const visibleSlots = slots.filter((s) => {
     const hour = parseInt(s.startTime.split(":")[0], 10)
     return hour >= openHour && hour < closeHour
   })
 
-  const operationalSlots = Math.floor((closeHour - openHour) * 60 / slotDurationMinutes)
-  const maxDurationSlots = 8
+  const operationalSlots = Math.floor(((closeHour - openHour) * 60) / slotDurationMinutes)
 
-  const handleSlotClick = (slotId: string) => {
-    if (onSelectRange) {
-      // Multi-slot mode: show duration stepper
-      setPendingSlotId(slotId === pendingSlotId ? null : slotId)
-      onSelectSlot(slotId)
-    } else {
-      onSelectSlot(slotId)
+  // Slot is within the confirmed selection range
+  const isInSelectedRange = (slotId: string): boolean => {
+    if (!selectedSlotId) return false
+    const endTime = (selectedSlotEndId && selectedSlotEndId !== "")
+      ? selectedSlotEndId
+      : addMinutesToTime(selectedSlotId, slotDurationMinutes)
+    return slotId >= selectedSlotId && slotId < endTime
+  }
+
+  // Check if all slots between anchor and targetId are available/limited (no booked/closed)
+  const canExtendTo = (targetSlotId: string): boolean => {
+    const startIdx = visibleSlots.findIndex((s) => s.id === selectedSlotId)
+    const endIdx = visibleSlots.findIndex((s) => s.id === targetSlotId)
+    if (startIdx === -1 || endIdx === -1) return false
+    for (let i = startIdx; i <= endIdx; i++) {
+      const s = visibleSlots[i]
+      if (!s || s.status === "booked" || s.status === "closed") return false
     }
+    return true
   }
 
-  const handleDurationSelect = (durationSlots: number) => {
-    if (!pendingSlotId) return
-    const slot = visibleSlots.find((s) => s.id === pendingSlotId)
-    if (!slot) return
-    const slotEnd = addMinutesToTime(slot.startTime, durationSlots * slotDurationMinutes)
-    onSelectRange?.(slot.startTime, slotEnd)
-    setPendingSlotId(null)
+  const startNew = (slot: DailySlot) => {
+    if (onSelectRange) onSelectRange(slot.startTime, slot.endTime)
+    else onSelectSlot(slot.id)
   }
+
+  const deselect = () => {
+    if (onSelectRange) onSelectRange("", "")
+    else onSelectSlot("")
+  }
+
+  const handleSlotClick = (slot: DailySlot) => {
+    if (slot.status === "booked" || slot.status === "closed") return
+
+    if (!selectedSlotId) {
+      startNew(slot)
+      return
+    }
+
+    // Click anchor → deselect all
+    if (slot.id === selectedSlotId) {
+      deselect()
+      return
+    }
+
+    // Click a slot inside range → shrink: remove this slot and all after it
+    if (isInSelectedRange(slot.id)) {
+      onSelectRange?.(selectedSlotId, slot.startTime)
+      return
+    }
+
+    // Click after range end → extend if no blocked slots in between
+    if (slot.id > selectedSlotId && canExtendTo(slot.id)) {
+      onSelectRange?.(selectedSlotId, slot.endTime)
+      return
+    }
+
+    // Click before anchor or blocked range → start fresh
+    startNew(slot)
+  }
+
+  const numSelected = (() => {
+    if (!selectedSlotId) return 0
+    const endTime = (selectedSlotEndId && selectedSlotEndId !== "")
+      ? selectedSlotEndId
+      : addMinutesToTime(selectedSlotId, slotDurationMinutes)
+    const diffMinutes = (() => {
+      const [eh, em] = endTime.split(":").map(Number)
+      const [sh, sm] = selectedSlotId.split(":").map(Number)
+      return (eh * 60 + em) - (sh * 60 + sm)
+    })()
+    return Math.max(1, Math.round(diffMinutes / slotDurationMinutes))
+  })()
 
   return (
     <div className="space-y-2">
@@ -109,23 +150,23 @@ export function DailySlotGrid({
 
       <div className="grid grid-cols-4 gap-1.5">
         {visibleSlots.map((slot) => {
-          const isSelected = selectedSlotId === slot.id
-          const isDisabled = slot.status === "booked" || slot.status === "closed"
-          const isPending = pendingSlotId === slot.id
+          const isBooked = slot.status === "booked" || slot.status === "closed"
+          const isSelected = isInSelectedRange(slot.id)
+          const isAnchor = slot.id === selectedSlotId && isSelected
 
           return (
             <Button
               key={slot.id}
               type="button"
-              variant={isSelected || isPending ? "default" : "outline"}
-              disabled={isDisabled}
-              onClick={() => handleSlotClick(slot.id)}
+              disabled={isBooked}
+              onClick={() => handleSlotClick(slot)}
               className={cn(
-                "h-10 flex-col gap-0 rounded-md px-1 text-[11px] font-semibold",
-                !isSelected && !isPending && slot.status === "available" && "border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100",
-                !isSelected && !isPending && slot.status === "limited" && "border-amber-200 bg-amber-50/80 text-amber-900 hover:bg-amber-100",
-                isDisabled && "bg-muted text-muted-foreground opacity-80",
-                isPending && "ring-2 ring-orange-400",
+                "h-10 flex-col gap-0 rounded-md px-1 text-[11px] font-semibold border",
+                isBooked && "bg-muted text-muted-foreground opacity-70 border-muted",
+                !isSelected && !isBooked && slot.status === "available" && "border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100",
+                !isSelected && !isBooked && slot.status === "limited" && "border-amber-200 bg-amber-50/80 text-amber-900 hover:bg-amber-100",
+                isSelected && !isAnchor && "bg-orange-300 text-white border-orange-300 hover:bg-orange-200",
+                isAnchor && "bg-orange-500 text-white border-orange-500 hover:bg-orange-600",
               )}
             >
               <span>{slot.startTime}</span>
@@ -135,42 +176,12 @@ export function DailySlotGrid({
         })}
       </div>
 
-      {/* Duration stepper — shown when a slot is selected in multi-slot mode */}
-      {pendingSlotId && onSelectRange && (
-        <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 space-y-2">
-          <p className="text-xs font-bold text-orange-900">Chọn số giờ từ {pendingSlotId}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {Array.from({ length: maxDurationSlots }, (_, i) => i + 1).map((n) => {
-              const available = isRangeAvailable(visibleSlots, pendingSlotId, n)
-              const endTime = addMinutesToTime(pendingSlotId, n * slotDurationMinutes)
-              return (
-                <Button
-                  key={n}
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={!available}
-                  onClick={() => handleDurationSelect(n)}
-                  className={cn(
-                    "h-8 px-2.5 text-xs font-bold",
-                    available
-                      ? "border-orange-300 bg-white text-orange-800 hover:bg-orange-100"
-                      : "opacity-40",
-                  )}
-                >
-                  {n}h → {endTime}
-                </Button>
-              )
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => setPendingSlotId(null)}
-            className="text-[10px] text-slate-500 underline"
-          >
-            Hủy chọn
-          </button>
-        </div>
+      {selectedSlotId && (
+        <p className="text-[11px] text-orange-600 font-medium">
+          {numSelected > 1
+            ? `Đã chọn ${numSelected} slot: ${selectedSlotId} → ${selectedSlotEndId || addMinutesToTime(selectedSlotId, slotDurationMinutes)}`
+            : `Đã chọn: ${selectedSlotId}`}
+        </p>
       )}
 
       <Badge variant="secondary" className="rounded-md px-2 py-1 text-[11px] font-medium">
