@@ -25,10 +25,16 @@ export type HourlySlotAvailability = {
  * A slot is "available" if RENTAL vehicles are available OR BYOC capacity remains.
  * Merged result: byoc_remaining from BYOC check, vehicles from RENTAL check.
  */
-export function useDailyAvailability(cafeId: string, date: string, openHour = 8, closeHour = 22) {
+export function useDailyAvailability(
+  cafeId: string,
+  date: string,
+  openHour = 8,
+  closeHour = 22,
+  trackConfigId?: string,
+) {
   const isMock = cafeId.startsWith('cafe-')
   return useQuery({
-    queryKey: ['daily-availability', cafeId, date, openHour, closeHour],
+    queryKey: ['daily-availability', cafeId, date, openHour, closeHour, trackConfigId ?? null],
     queryFn: async (): Promise<HourlySlotAvailability[]> => {
       const hours = Array.from({ length: closeHour - openHour }, (_, i) => i + openHour)
       const results = await Promise.all(
@@ -39,8 +45,8 @@ export function useDailyAvailability(cafeId: string, date: string, openHour = 8,
           const slotEnd = `${date}T${hh1}:00:00+07:00`
           try {
             const [rental, byoc] = await Promise.all([
-              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'RENTAL' }),
-              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'BYOC' }),
+              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'RENTAL', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
+              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'BYOC', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
             ])
             const rentalCount = rental.vehicles?.length ?? 0
             const byocRemaining = byoc.byoc_remaining ?? 0

@@ -16,7 +16,6 @@ import { CheckoutSummaryCard } from "./components/checkout/CheckoutSummaryCard"
 import { FnbStep } from "./components/checkout/FnbStep"
 import { ParticipantsStep, type Companion } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
-import { ScheduleStep } from "./components/checkout/ScheduleStep"
 import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
 import type { TrackConfig } from "@/features/cafes/types"
 import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
@@ -24,8 +23,9 @@ import { toast } from "sonner"
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const ALL_STEPS: CheckoutStep[] = ["track", "schedule", "participants", "fnb", "payment"]
-const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ["track", "participants", "fnb", "payment"]
+// "track" step now includes date + slot selection — no separate "schedule" step
+const ALL_STEPS: CheckoutStep[] = ["track", "participants", "fnb", "payment"]
+const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ALL_STEPS
 
 export function CreateBookingPage() {
   const [searchParams] = useSearchParams()
@@ -238,26 +238,15 @@ export function CreateBookingPage() {
           {currentStep === "track" && (
             <TrackSelectionStep
               cafeId={isMockId ? "" : cafeId}
-              selectedTrackConfigId={selectedTrackConfig?.id ?? null}
-              onSelect={(config) => {
-                setSelectedTrackConfig(config)
-                handleNext()
-              }}
-            />
-          )}
-          {currentStep === "schedule" && (
-            <ScheduleStep
-              mode={mode}
-              onModeChange={(value) => {
-                setMode(value)
-                setPlanId(getDefaultPlanId(value))
-              }}
-              planId={planId}
-              onPlanChange={setPlanId}
               date={date}
-              onDateChange={setDate}
-              time={time}
-              onTimeChange={setTime}
+              setDate={setDate}
+              selectedSlot={time}
+              setSelectedSlot={setTime}
+              selectedSlotEnd={preselectedSlotEnd}
+              setSelectedSlotEnd={setPreselectedSlotEnd}
+              selectedTrackConfig={selectedTrackConfig}
+              onSelectTrack={setSelectedTrackConfig}
+              slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
             />
           )}
           {currentStep === "participants" && (
@@ -299,7 +288,10 @@ export function CreateBookingPage() {
           onBack={handleBack}
           onConfirmPayment={() => void handleConfirmPayment()}
           isSubmitting={isSubmitting}
-          isNextDisabled={currentStep === "participants" && isByocFull}
+          isNextDisabled={
+            (currentStep === "track" && (!selectedTrackConfig || !time)) ||
+            (currentStep === "participants" && isByocFull)
+          }
           selectedTrackConfig={selectedTrackConfig}
         />
       </div>

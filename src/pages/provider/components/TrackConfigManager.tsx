@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { ImagePlus, PlusCircle, ToggleLeft, ToggleRight, Upload } from "lucide-react"
+import { ImagePlus, PlusCircle, ToggleLeft, ToggleRight, Upload, X, Check } from "lucide-react"
 import { trackTypeApi } from "@/features/cafes/api/cafe.api"
 import {
   useTrackConfigs,
@@ -13,13 +13,6 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Textarea } from "@/shared/ui/textarea"
 import { Badge } from "@/shared/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,10 +50,9 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const updateMutation = useUpdateTrackConfig(cafeId)
   const uploadMutation = useUploadTrackConfigImages(cafeId)
 
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
   const [deactivatingConfig, setDeactivatingConfig] = useState<TrackConfig | null>(null)
   const [uploadingConfigId, setUploadingConfigId] = useState<string | null>(null)
-
   const [form, setForm] = useState(EMPTY_FORM)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -75,7 +67,12 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
       sort_order: Number(form.sort_order),
     }
     await createMutation.mutateAsync(body)
-    setShowCreateDialog(false)
+    setShowAddForm(false)
+    setForm(EMPTY_FORM)
+  }
+
+  const handleCancelAdd = () => {
+    setShowAddForm(false)
     setForm(EMPTY_FORM)
   }
 
@@ -110,7 +107,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-[#f6f3f2]" />
+          <div key={i} className="h-28 animate-pulse rounded-xl bg-[#f6f3f2]" />
         ))}
       </div>
     )
@@ -120,31 +117,143 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const availableTrackTypes = trackTypes.filter((tt) => !usedTrackTypeIds.has(tt.id))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-[#1c1b1b]">Loại sân</h3>
           <p className="text-xs text-[#747878]">Cấu hình từng sân: số slot RENTAL và BYOC tối đa</p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setShowCreateDialog(true)}
-          className="h-8 gap-1.5 rounded-lg font-bold text-xs"
-        >
-          <PlusCircle className="size-3.5" />
-          Thêm loại sân
-        </Button>
+        {!showAddForm && (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowAddForm(true)}
+            disabled={availableTrackTypes.length === 0 && trackTypes.length > 0}
+            className="h-8 gap-1.5 rounded-lg font-bold text-xs"
+          >
+            <PlusCircle className="size-3.5" />
+            Thêm loại sân
+          </Button>
+        )}
       </div>
 
-      {configs.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#c4c7c8] bg-[#fafafa] p-8 text-center">
-          <ImagePlus className="mx-auto mb-2 size-8 text-[#c4c7c8]" />
+      {/* Inline add form */}
+      {showAddForm && (
+        <div className="rounded-xl border-2 border-orange-200 bg-orange-50/30 p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-bold text-[#1c1b1b]">Sân mới</p>
+            <button
+              type="button"
+              onClick={handleCancelAdd}
+              className="flex size-7 items-center justify-center rounded-full text-[#747878] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Track type selector — full row on small */}
+            <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+              <Label className="text-xs font-bold text-[#1c1b1b]">Loại sân</Label>
+              {trackTypesLoading ? (
+                <div className="h-10 animate-pulse rounded-md bg-[#f6f3f2]" />
+              ) : availableTrackTypes.length === 0 ? (
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Tất cả loại sân đã được cấu hình.
+                </p>
+              ) : (
+                <Select value={form.track_type_id} onValueChange={(v) => setForm((f) => ({ ...f, track_type_id: v }))}>
+                  <SelectTrigger className="h-10 bg-white">
+                    <SelectValue placeholder="Chọn loại sân..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTrackTypes.map((tt) => (
+                      <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#1c1b1b]">
+                Slot RENTAL tối đa
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                value={form.max_concurrent}
+                onChange={(e) => setForm((f) => ({ ...f, max_concurrent: e.target.value }))}
+                className="h-10 bg-white"
+              />
+              <p className="text-[10px] text-[#747878]">Số lượt RENTAL đồng thời trên sân</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#1c1b1b]">
+                BYOC tối đa
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.byoc_capacity}
+                onChange={(e) => setForm((f) => ({ ...f, byoc_capacity: e.target.value }))}
+                className="h-10 bg-white"
+              />
+              <p className="text-[10px] text-[#747878]">0 = sân không nhận BYOC</p>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs font-bold text-[#1c1b1b]">Mô tả sân (tuỳ chọn)</Label>
+              <Textarea
+                rows={2}
+                placeholder="Sân drift ngoài trời, bề mặt asphalt, diện tích 500m²..."
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                className="bg-white resize-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-[#1c1b1b]">Thứ tự hiển thị</Label>
+              <Input
+                type="number"
+                min={0}
+                value={form.sort_order}
+                onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
+                className="h-10 bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-end gap-2 border-t border-orange-100 pt-4">
+            <Button type="button" variant="outline" size="sm" onClick={handleCancelAdd} className="h-8 font-bold text-xs">
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleCreate()}
+              disabled={!form.track_type_id || !form.max_concurrent || createMutation.isPending}
+              className="h-8 gap-1.5 font-bold text-xs"
+            >
+              <Check className="size-3.5" />
+              {createMutation.isPending ? "Đang lưu..." : "Lưu loại sân"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Config list */}
+      {configs.length === 0 && !showAddForm ? (
+        <div className="rounded-xl border border-dashed border-[#c4c7c8] bg-[#fafafa] p-10 text-center">
+          <ImagePlus className="mx-auto mb-2 size-9 text-[#c4c7c8]" />
           <p className="text-sm font-medium text-[#747878]">Chưa có loại sân nào</p>
-          <p className="mt-1 text-xs text-[#747878]">Thêm loại sân để customer có thể chọn khi đặt lịch</p>
+          <p className="mt-1 text-xs text-[#747878]">Bấm "Thêm loại sân" để bắt đầu cấu hình</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {configs.map((config) => (
             <TrackConfigCard
               key={config.id}
@@ -166,100 +275,6 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
         className="hidden"
         onChange={(e) => void handleFileChange(e)}
       />
-
-      {/* Create dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-bold">Thêm loại sân mới</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="track-type" className="text-sm font-bold">Loại sân</Label>
-              {trackTypesLoading ? (
-                <div className="h-10 animate-pulse rounded-md bg-[#f6f3f2]" />
-              ) : availableTrackTypes.length === 0 ? (
-                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  {trackTypes.length === 0
-                    ? "Admin chưa tạo loại sân nào trong hệ thống."
-                    : "Tất cả loại sân đã được cấu hình cho chi nhánh này."}
-                </p>
-              ) : (
-                <Select value={form.track_type_id} onValueChange={(v) => setForm((f) => ({ ...f, track_type_id: v }))}>
-                  <SelectTrigger id="track-type" className="h-10">
-                    <SelectValue placeholder="Chọn loại sân" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTrackTypes.map((tt) => (
-                      <SelectItem key={tt.id} value={tt.id}>{tt.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="max-concurrent" className="text-sm font-bold">Slot RENTAL tối đa</Label>
-                <Input
-                  id="max-concurrent"
-                  type="number"
-                  min={1}
-                  value={form.max_concurrent}
-                  onChange={(e) => setForm((f) => ({ ...f, max_concurrent: e.target.value }))}
-                  className="h-10"
-                />
-                <p className="text-[10px] text-[#747878]">Số RENTAL đồng thời trên sân này</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="byoc-capacity" className="text-sm font-bold">BYOC tối đa</Label>
-                <Input
-                  id="byoc-capacity"
-                  type="number"
-                  min={0}
-                  value={form.byoc_capacity}
-                  onChange={(e) => setForm((f) => ({ ...f, byoc_capacity: e.target.value }))}
-                  className="h-10"
-                />
-                <p className="text-[10px] text-[#747878]">0 = sân không nhận BYOC</p>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="description" className="text-sm font-bold">Mô tả (tuỳ chọn)</Label>
-              <Textarea
-                id="description"
-                rows={3}
-                placeholder="Mô tả ngắn về loại sân..."
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sort-order" className="text-sm font-bold">Thứ tự hiển thị</Label>
-              <Input
-                id="sort-order"
-                type="number"
-                min={0}
-                value={form.sort_order}
-                onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
-                className="h-10"
-              />
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} className="font-bold">
-              Hủy
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void handleCreate()}
-              disabled={!form.track_type_id || !form.max_concurrent || createMutation.isPending || availableTrackTypes.length === 0}
-              className="font-bold"
-            >
-              {createMutation.isPending ? "Đang tạo..." : "Tạo loại sân"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Deactivation confirmation */}
       <AlertDialog open={!!deactivatingConfig} onOpenChange={(open) => !open && setDeactivatingConfig(null)}>
@@ -299,69 +314,80 @@ function TrackConfigCard({
   isToggling: boolean
   isUploading: boolean
 }) {
+  const coverImage = config.images[0] ?? null
+
   return (
-    <div className={`rounded-xl border p-4 transition-colors ${config.is_active ? "border-[#c4c7c8] bg-white" : "border-[#e5e2e1] bg-[#fafafa] opacity-70"}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold text-[#1c1b1b]">{config.track_type?.name ?? config.track_type_id}</span>
-            <Badge variant={config.is_active ? "default" : "secondary"} className="text-xs font-bold">
-              {config.is_active ? "Đang hoạt động" : "Tạm tắt"}
-            </Badge>
+    <div className={`overflow-hidden rounded-xl border transition-colors ${config.is_active ? "border-[#c4c7c8] bg-white" : "border-[#e5e2e1] bg-[#fafafa] opacity-60"}`}>
+      {/* Cover — fixed 16:9 */}
+      <button
+        type="button"
+        onClick={onUploadImages}
+        disabled={isUploading}
+        className="group relative block w-full overflow-hidden bg-[#f0edec]"
+        style={{ aspectRatio: "16/9" }}
+        title={coverImage ? "Bấm để thay ảnh" : "Bấm để thêm ảnh"}
+      >
+        {coverImage ? (
+          <img src={coverImage} alt={config.track_type?.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-[#c4c7c8]">
+            <ImagePlus className="size-8" />
+            <span className="text-xs font-medium">Thêm ảnh đại diện sân</span>
           </div>
-          <div className="mt-1 flex flex-wrap gap-3 text-xs text-[#747878]">
-            <span>{config.max_concurrent} slot RENTAL</span>
-            <span>{config.byoc_capacity > 0 ? `${config.byoc_capacity} BYOC` : "Không BYOC"}</span>
-            <span>{config.images.length} ảnh</span>
-            {config.description && <span className="truncate max-w-[200px]">{config.description}</span>}
+        )}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/0 transition-colors group-hover:bg-black/35 group-disabled:hidden">
+          <Upload className="size-5 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+          <span className="text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100">
+            {isUploading ? "Đang upload..." : coverImage ? "Thay ảnh" : "Thêm ảnh"}
+          </span>
+        </div>
+      </button>
+
+      {/* Content */}
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm font-bold text-[#1c1b1b]">{config.track_type?.name ?? config.track_type_id}</span>
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-semibold ${config.is_active ? "border-green-200 bg-green-50 text-green-700" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#747878]"}`}
+              >
+                {config.is_active ? "Hoạt động" : "Tạm tắt"}
+              </Badge>
+            </div>
+            {config.description ? (
+              <p className="mt-1 text-xs leading-relaxed text-[#747878] line-clamp-2">{config.description}</p>
+            ) : (
+              <p className="mt-1 text-xs italic text-[#c4c7c8]">Chưa có mô tả</p>
+            )}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onUploadImages}
-            disabled={isUploading}
-            className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold"
-          >
-            <Upload className="size-3.5" />
-            {isUploading ? "Đang upload..." : "Upload ảnh"}
-          </Button>
+
+        <div className="mt-3 flex items-center gap-4 text-xs text-[#747878]">
+          <span><span className="font-bold text-[#1c1b1b]">{config.max_concurrent}</span> slot RENTAL</span>
+          {config.byoc_capacity > 0 ? (
+            <span><span className="font-bold text-[#1c1b1b]">{config.byoc_capacity}</span> xe BYOC</span>
+          ) : (
+            <span className="text-[#c4c7c8]">Không BYOC</span>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-1 border-t border-[#f0edec] pt-3">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={onToggleActive}
             disabled={isToggling}
-            className="h-8 gap-1.5 rounded-lg text-xs font-bold"
+            className="h-7 gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#747878] hover:text-[#1c1b1b]"
           >
-            {config.is_active ? (
-              <><ToggleRight className="size-4 text-orange-600" /> Tắt</>
-            ) : (
-              <><ToggleLeft className="size-4 text-[#747878]" /> Bật</>
-            )}
+            {config.is_active
+              ? <><ToggleRight className="size-3.5 text-orange-500" /> Tắt sân</>
+              : <><ToggleLeft className="size-3.5" /> Bật sân</>}
           </Button>
         </div>
       </div>
-
-      {config.images.length > 0 && (
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-          {config.images.slice(0, 6).map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt={`Ảnh sân ${i + 1}`}
-              className="h-16 w-16 shrink-0 rounded-lg object-cover"
-            />
-          ))}
-          {config.images.length > 6 && (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-[#f6f3f2] text-xs font-bold text-[#747878]">
-              +{config.images.length - 6}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
