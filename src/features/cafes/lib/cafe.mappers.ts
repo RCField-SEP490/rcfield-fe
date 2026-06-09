@@ -32,6 +32,7 @@ export function mapCafeToExploreCafe(cafe: BackendCafe, images: CafeImage[] = []
     trackTypes: cafe.trackTypes.map(formatTrackType),
     trackTypeIds: cafe.trackTypes.map((t) => t.id),
     features: [],
+    operatingHours: cafe.operatingHours,
     description: cafe.description ?? "Cơ sở chưa cập nhật mô tả.",
     coordinates: buildMapCoordinates(cafe.latitude, cafe.longitude),
     latitude: toNumber(cafe.latitude) || null,

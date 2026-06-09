@@ -12,10 +12,16 @@ export type DailySlot = {
   remaining: number
 }
 
+const DEFAULT_OPEN_HOUR = 8
+const DEFAULT_CLOSE_HOUR = 22
+
 type DailySlotGridProps = {
   slots: DailySlot[]
   selectedSlotId: string
   onSelectSlot: (slotId: string) => void
+  slotDurationMinutes?: number
+  openHour?: number
+  closeHour?: number
 }
 
 const statusCopy: Record<DailySlotStatus, string> = {
@@ -25,7 +31,14 @@ const statusCopy: Record<DailySlotStatus, string> = {
   closed: "Đóng",
 }
 
-export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot }: DailySlotGridProps) {
+export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot, slotDurationMinutes = 60, openHour = DEFAULT_OPEN_HOUR, closeHour = DEFAULT_CLOSE_HOUR }: DailySlotGridProps) {
+  const visibleSlots = slots.filter((s) => {
+    const hour = parseInt(s.startTime.split(":")[0], 10)
+    return hour >= openHour && hour < closeHour
+  })
+
+  const operationalSlots = Math.floor((closeHour - openHour) * 60 / slotDurationMinutes)
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
@@ -39,7 +52,7 @@ export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot }: DailySlot
       </div>
 
       <div className="grid grid-cols-4 gap-1.5">
-        {slots.map((slot) => {
+        {visibleSlots.map((slot) => {
           const isSelected = selectedSlotId === slot.id
           const isDisabled = slot.status === "booked" || slot.status === "closed"
 
@@ -65,25 +78,24 @@ export function DailySlotGrid({ slots, selectedSlotId, onSelectSlot }: DailySlot
       </div>
 
       <Badge variant="secondary" className="rounded-md px-2 py-1 text-[11px] font-medium">
-        24 slot/ngày, mỗi slot 60 phút.
+        {operationalSlots} slot/ngày · {String(openHour).padStart(2, "0")}:00–{String(closeHour).padStart(2, "0")}:00
       </Badge>
     </div>
   )
 }
 
-export function buildDailySlots(): DailySlot[] {
-  return Array.from({ length: 24 }, (_, hour) => {
+export function buildDailySlots(openHour = DEFAULT_OPEN_HOUR, closeHour = DEFAULT_CLOSE_HOUR): DailySlot[] {
+  return Array.from({ length: closeHour - openHour }, (_, i) => {
+    const hour = i + openHour
     const startTime = formatHour(hour)
-    const endTime = formatHour((hour + 1) % 24)
-    const status = getSlotStatus(hour)
-    const remaining = getRemainingByStatus(status, hour)
-
+    const endTime = formatHour(hour + 1)
+    const status = getMockStatus(hour)
     return {
       id: startTime,
       startTime,
       endTime,
       status,
-      remaining,
+      remaining: status === "available" ? 4 : status === "limited" ? 1 : 0,
     }
   })
 }
@@ -92,15 +104,8 @@ function formatHour(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`
 }
 
-function getSlotStatus(hour: number): DailySlotStatus {
-  if (hour < 8 || hour > 22) return "closed"
+function getMockStatus(hour: number): DailySlotStatus {
   if ([10, 15, 20].includes(hour)) return "limited"
   if ([12, 18, 21].includes(hour)) return "booked"
   return "available"
-}
-
-function getRemainingByStatus(status: DailySlotStatus, hour: number) {
-  if (status === "closed" || status === "booked") return 0
-  if (status === "limited") return 1
-  return hour % 3 === 0 ? 4 : 6
 }

@@ -15,6 +15,12 @@ export interface Vehicle {
   }
 }
 
+export type CafeOperatingHour = {
+  open?: string
+  close?: string
+  is_closed?: boolean
+}
+
 export interface Cafe {
   id: string
   providerId?: string
@@ -43,6 +49,7 @@ export interface Cafe {
   latitude?: number | null
   longitude?: number | null
   availableVehicles: Vehicle[]
+  operatingHours?: Record<string, CafeOperatingHour>
 }
 
 export type CafeSearchParams = {

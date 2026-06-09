@@ -1,5 +1,4 @@
-import { ArrowRight, MapPin, ShieldCheck } from "lucide-react"
-import { useNavigate } from "react-router"
+import { ArrowRight, Loader2, MapPin, ShieldCheck } from "lucide-react"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import type { CustomerPlayMode, CheckoutStep, PaymentComponentLine } from "@/features/customer-booking/data/customer-booking-demo"
 import type { Cafe, Vehicle } from "@/shared/data/explore-data"
@@ -20,6 +19,9 @@ type CheckoutSummaryCardProps = {
   currentStep: CheckoutStep
   onNext: () => void
   onBack: () => void
+  onConfirmPayment?: () => void
+  isSubmitting?: boolean
+  isNextDisabled?: boolean
 }
 
 export function CheckoutSummaryCard({
@@ -34,8 +36,10 @@ export function CheckoutSummaryCard({
   currentStep,
   onNext,
   onBack,
+  onConfirmPayment,
+  isSubmitting = false,
+  isNextDisabled = false,
 }: CheckoutSummaryCardProps) {
-  const navigate = useNavigate()
   const total = components.reduce((sum, item) => sum + item.amount, 0)
   const isFirstStep = currentStep === "schedule"
   const isPaymentStep = currentStep === "payment"
@@ -93,17 +97,21 @@ export function CheckoutSummaryCard({
       <CardFooter className="grid gap-2">
         <Button
           type="button"
+          disabled={isSubmitting || isNextDisabled}
           onClick={() => {
             if (isPaymentStep) {
-              navigate("/payment/result?bookingId=RC-8492")
+              onConfirmPayment?.()
               return
             }
             onNext()
           }}
           className="w-full"
         >
-          {isPaymentStep ? "Xác nhận thanh toán" : "Tiếp tục"}
-          <ArrowRight className="h-4 w-4" />
+          {isSubmitting ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /> Đang xử lý...</>
+          ) : (
+            <>{isPaymentStep ? "Xác nhận thanh toán" : "Tiếp tục"}<ArrowRight className="h-4 w-4" /></>
+          )}
         </Button>
         {!isFirstStep && (
           <Button type="button" variant="ghost" onClick={onBack} className="w-full">

@@ -12,7 +12,8 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { buildCafeBookingPath } from "../cafe-detail-utils"
-import { buildDailySlots, DailySlotGrid } from "./DailySlotGrid"
+import { buildDailySlots, DailySlotGrid, type DailySlot, type DailySlotStatus } from "./DailySlotGrid"
+import { useDailyAvailability, type HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
 
 type PlanSummary = {
   label: string
@@ -58,14 +59,22 @@ export function CafeBookingCard({
   setSelectedSlotId,
   menuItems,
 }: CafeBookingCardProps) {
-  const slots = useMemo(() => buildDailySlots(), [])
+  const { openHour, closeHour } = getOperatingHours(cafe.operatingHours, selectedDate)
+
+  const { data: dailyAvailability, isLoading: availabilityLoading } = useDailyAvailability(cafe.id, selectedDate, openHour, closeHour)
+
+  const slots = useMemo<DailySlot[]>(() => {
+    if (!dailyAvailability) return buildDailySlots(openHour, closeHour)
+    return buildSlotsFromAvailability(dailyAvailability)
+  }, [dailyAvailability, openHour, closeHour])
+
   const defaultSlot = slots.find((slot) => slot.status === "available")?.id ?? slots[0]?.id ?? "09:00"
-  
+
   const activeSlotId = selectedSlotId || defaultSlot
   const selectedSlot = slots.find((slot) => slot.id === activeSlotId)
 
-  // Live Price Calculation
-  const plan = getPlanSummary(mode)
+  // Live Price Calculation — dùng giá thật từ cafe entity
+  const plan = getPlanSummary(mode, cafe.slotFeeRate ?? 0, cafe.slotDurationMinutes ?? 60)
   
   const selectedVehicle = cafe.availableVehicles.find((v) => v.id === selectedVehicleId)
   const vehiclePrice = selectedVehicle ? selectedVehicle.pricePerHour : 0
@@ -88,18 +97,18 @@ export function CafeBookingCard({
     <Card className="rounded-2xl border-slate-200 shadow-[0_18px_60px_rgba(15,23,42,0.12)] bg-white/95 backdrop-blur-md">
       <CardHeader className="space-y-1 p-4 pb-2">
         <div className="flex items-start justify-between gap-3">
-          <div>
+          {/* <div>
             <CardTitle className="text-lg text-slate-950 font-bold">Đặt lịch chạy</CardTitle>
             <p className="mt-1 text-xs text-slate-500">Chọn nhanh loại booking và slot trống</p>
-          </div>
+          </div> */}
           <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[11px] border-orange-100 text-orange-600 bg-orange-50/30">
-            60 phút/slot
+            {cafe.slotDurationMinutes ?? 60} phút/slot
           </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="space-y-3.5 p-4 pt-0">
-        <div className="grid grid-cols-3 gap-1.5">
+        {/* <div className="grid grid-cols-3 gap-1.5">
           {bookingModes.map((item) => {
             const Icon = item.icon
             const isActive = mode === item.value
@@ -124,7 +133,7 @@ export function CafeBookingCard({
               </Button>
             )
           })}
-        </div>
+        </div> */}
 
         <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-2.5">
           <div className="flex items-start justify-between gap-3">
@@ -153,8 +162,20 @@ export function CafeBookingCard({
         </label>
 
         <div>
-          <span className="mb-2 block text-xs font-semibold text-slate-800">Chọn giờ</span>
-          <DailySlotGrid slots={slots} selectedSlotId={activeSlotId} onSelectSlot={setSelectedSlotId} />
+          <span className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-800">
+            Chọn giờ
+            {availabilityLoading && <span className="text-[10px] font-normal text-slate-400 animate-pulse">Đang kiểm tra slot...</span>}
+          </span>
+          <div className={cn("transition-opacity", availabilityLoading && "opacity-50 pointer-events-none")}>
+            <DailySlotGrid
+              slots={slots}
+              selectedSlotId={activeSlotId}
+              onSelectSlot={setSelectedSlotId}
+              slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
+              openHour={openHour}
+              closeHour={closeHour}
+            />
+          </div>
         </div>
 
         {/* Live Bill Breakdowns */}
@@ -195,12 +216,12 @@ export function CafeBookingCard({
         </div>
 
         <Button asChild className="h-10 w-full rounded-lg text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md transition-all active:scale-[0.98]">
-          <Link to={buildCafeBookingPath(cafe.id, mode, { 
-            date: selectedDate, 
+          <Link to={buildCafeBookingPath(cafe.id, mode, {
+            date: selectedDate,
             slot: activeSlotId,
             vehicleId: selectedVehicleId,
             fnb: serializedFnb,
-            step: "payment"
+            step: "participants"
           })}>
             Tiến hành đặt lịch
           </Link>
@@ -210,7 +231,41 @@ export function CafeBookingCard({
   )
 }
 
-function getPlanSummary(mode: BookingMode): PlanSummary {
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+
+function getOperatingHours(
+  operatingHours: Record<string, { open?: string; close?: string; is_closed?: boolean }> | undefined,
+  dateStr: string
+): { openHour: number; closeHour: number } {
+  if (!operatingHours) return { openHour: 8, closeHour: 22 }
+  const dayKey = DAY_KEYS[new Date(dateStr).getDay()]
+  const hours = operatingHours[dayKey]
+  if (!hours || hours.is_closed) return { openHour: 8, closeHour: 22 }
+  const openHour = hours.open ? parseInt(hours.open.split(":")[0], 10) : 8
+  const closeHour = hours.close ? parseInt(hours.close.split(":")[0], 10) : 22
+  return { openHour, closeHour }
+}
+
+function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[]): DailySlot[] {
+  return hourlyData.map(({ hour, data }) => {
+    const startTime = `${String(hour).padStart(2, "0")}:00`
+    const endTime = `${String(hour + 1).padStart(2, "0")}:00`
+
+    if (!data) {
+      return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0 }
+    }
+
+    const remaining = data.byoc_remaining ?? (data.vehicles?.length ?? 0)
+    let status: DailySlotStatus
+    if (!data.available || remaining === 0) status = "booked"
+    else if (remaining <= 2) status = "limited"
+    else status = "available"
+
+    return { id: startTime, startTime, endTime, status, remaining }
+  })
+}
+
+function getPlanSummary(mode: BookingMode, slotFeeRate: number, slotDurationMinutes: number): PlanSummary {
   if (mode === "slotPackage") {
     const plan = bookingCatalog.slotPackages[0]
     return {
@@ -233,12 +288,14 @@ function getPlanSummary(mode: BookingMode): PlanSummary {
     }
   }
 
-  const plan = bookingCatalog.hourlyPlans[0]
+  // SINGLE (theo giờ): dùng giá thật từ cafe.slotFeeRate
+  const durationHours = slotDurationMinutes / 60
+  const durationLabel = Number.isInteger(durationHours) ? `${durationHours} giờ` : `${slotDurationMinutes} phút`
   return {
-    label: plan.label,
-    note: plan.note,
-    price: plan.pricePerHour,
-    meta: `${plan.durationHours} giờ`,
+    label: `Tiêu chuẩn ${durationLabel}`,
+    note: `${slotDurationMinutes} phút/slot · giá cố định theo quán`,
+    price: slotFeeRate,
+    meta: durationLabel,
     checkoutMode: "SINGLE",
   }
 }

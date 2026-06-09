@@ -1,4 +1,4 @@
-import { Car, UserRound, Users } from "lucide-react"
+import { AlertCircle, Car, UserRound, Users, X } from "lucide-react"
 import type { CustomerPlayMode } from "@/features/customer-booking/data/customer-booking-demo"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
@@ -8,20 +8,24 @@ import { Badge } from "@/shared/ui/badge"
 import { cn } from "@/shared/lib/utils"
 import { formatCurrency } from "@/shared/lib/format"
 
+export type Companion = { name: string; phone: string }
+
 type ParticipantsStepProps = {
   cafe: Cafe
   playMode: CustomerPlayMode
   onPlayModeChange: (mode: CustomerPlayMode) => void
   participants: number
   onParticipantsChange: (value: number) => void
+  companions: Companion[]
+  onCompanionsChange: (companions: Companion[]) => void
   selectedVehicleId?: string
   onVehicleSelect: (id?: string) => void
+  byocRemaining?: number
 }
 
 const playModeOptions: Array<{ value: CustomerPlayMode; label: string; description: string }> = [
-  { value: "RENTAL", label: "Thuê xe", description: "Dùng xe của cơ sở" },
-  { value: "BYOC", label: "BYOC", description: "Mang xe cá nhân" },
-  { value: "MIXED", label: "Mixed", description: "Vừa thuê vừa BYOC" },
+  { value: "RENTAL", label: "Thuê xe quán", description: "Dùng xe của cơ sở" },
+  { value: "BYOC", label: "Mang xe riêng", description: "Bring Your Own Car" },
 ]
 
 export function ParticipantsStep({
@@ -30,16 +34,42 @@ export function ParticipantsStep({
   onPlayModeChange,
   participants,
   onParticipantsChange,
+  companions,
+  onCompanionsChange,
   selectedVehicleId,
   onVehicleSelect,
+  byocRemaining,
 }: ParticipantsStepProps) {
+  const isByocFull = playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0
+  // BYOC: 1 người = 1 xe = 1 slot → hard cap theo byocRemaining
+  // RENTAL: participants là informational (nhóm bao nhiêu người đến), 1 booking = 1 xe thuê
+  const maxParticipants = playMode === "BYOC" && byocRemaining !== undefined ? byocRemaining : 10
+
+  function handleParticipantsChange(value: number) {
+    const clamped = Math.max(1, Math.min(maxParticipants, value))
+    onParticipantsChange(clamped)
+    // Sync companions array length to clamped - 1 (booker is always participant #1)
+    const companionCount = clamped - 1
+    const updated = Array.from({ length: companionCount }, (_, i) => companions[i] ?? { name: "", phone: "" })
+    onCompanionsChange(updated)
+  }
+
+  function updateCompanion(index: number, field: keyof Companion, value: string) {
+    const updated = companions.map((c, i) => (i === index ? { ...c, [field]: value } : c))
+    onCompanionsChange(updated)
+  }
+
   return (
     <Card className="rounded-xl shadow-sm">
       <CardHeader>
         <CardTitle>Người chơi & phương tiện</CardTitle>
-        <p className="text-sm text-muted-foreground">Planned participants và planned rental vehicles được tách riêng theo database rules.</p>
+        <p className="text-sm text-muted-foreground">
+          Người đặt lịch là người chơi chính. Thêm người đi kèm nếu cần (không bắt buộc — staff có thể cập nhật khi check-in).
+        </p>
       </CardHeader>
       <CardContent className="space-y-5">
+
+        {/* Play mode selector */}
         <div className="grid gap-2 md:grid-cols-3">
           {playModeOptions.map((item) => (
             <Button
@@ -59,19 +89,97 @@ export function ParticipantsStep({
           ))}
         </div>
 
-        <label className="block max-w-xs space-y-2">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Users className="h-4 w-4 text-muted-foreground" /> Số người tham gia
-          </span>
-          <Input
-            type="number"
-            min={1}
-            max={8}
-            value={participants}
-            onChange={(event) => onParticipantsChange(Number(event.target.value))}
-          />
-        </label>
+        {/* BYOC full warning */}
+        {isByocFull && (
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Slot này đã hết chỗ BYOC</p>
+              <p className="mt-0.5 text-xs text-red-600">Chuyển sang "Thuê xe quán" hoặc chọn khung giờ khác.</p>
+            </div>
+          </div>
+        )}
 
+        {/* Participant count */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Users className="h-4 w-4 text-muted-foreground" /> Số người tham gia
+          </label>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 rounded-lg p-0"
+              onClick={() => handleParticipantsChange(participants - 1)}
+              disabled={participants <= 1}
+            >
+              −
+            </Button>
+            <span className="w-8 text-center text-base font-semibold">{participants}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 w-9 rounded-lg p-0"
+              onClick={() => handleParticipantsChange(participants + 1)}
+              disabled={participants >= maxParticipants}
+            >
+              +
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {playMode === "BYOC"
+                ? `/ ${maxParticipants} chỗ còn lại · mỗi người 1 xe`
+                : "người · 1 booking = 1 xe thuê"}
+            </span>
+          </div>
+          {playMode === "BYOC" && participants >= maxParticipants && !isByocFull && (
+            <p className="text-xs text-amber-600">Đã đạt giới hạn chỗ BYOC còn trống cho slot này.</p>
+          )}
+        </div>
+
+        {/* Companion details */}
+        {participants > 1 && (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">
+              Thông tin người đi kèm
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">(tuỳ chọn)</span>
+            </p>
+            {companions.map((companion, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                  {i + 2}
+                </div>
+                <Input
+                  placeholder="Họ tên"
+                  value={companion.name}
+                  onChange={(e) => updateCompanion(i, "name", e.target.value)}
+                  className="h-9 text-sm"
+                />
+                <Input
+                  placeholder="Số điện thoại"
+                  value={companion.phone}
+                  onChange={(e) => updateCompanion(i, "phone", e.target.value)}
+                  className="h-9 w-36 shrink-0 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 w-9 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => handleParticipantsChange(participants - 1)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <p className="text-[11px] text-muted-foreground">
+              Staff sẽ cập nhật thông tin còn thiếu khi check-in.
+            </p>
+          </div>
+        )}
+
+        {/* RENTAL: vehicle picker */}
         {playMode !== "BYOC" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -80,44 +188,58 @@ export function ParticipantsStep({
               </p>
               <Badge variant="secondary">{cafe.availableVehicles.length} xe</Badge>
             </div>
-            <div className="grid gap-3 md:grid-cols-3">
-              {cafe.availableVehicles.map((vehicle) => {
-                const isSelected = selectedVehicleId === vehicle.id
-                const isDisabled = vehicle.status !== "available"
-
-                return (
-                  <button
-                    key={vehicle.id}
-                    type="button"
-                    disabled={isDisabled}
-                    onClick={() => onVehicleSelect(isSelected ? undefined : vehicle.id)}
-                    className={cn(
-                      "overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary/40",
-                      isSelected && "border-primary ring-2 ring-primary/10",
-                      isDisabled && "cursor-not-allowed opacity-50",
-                    )}
-                  >
-                    <img src={vehicle.image} alt={vehicle.name} className="h-28 w-full object-cover" />
-                    <div className="space-y-1 p-3">
-                      <p className="line-clamp-1 text-sm font-semibold">{vehicle.name}</p>
-                      <p className="text-xs text-muted-foreground">{vehicle.type} · {vehicle.scale}</p>
-                      <p className="text-sm font-semibold">{formatCurrency(vehicle.pricePerHour)}/giờ</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
+            {cafe.availableVehicles.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Cơ sở chưa cập nhật danh sách xe.</p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-3">
+                {cafe.availableVehicles.map((vehicle) => {
+                  const isSelected = selectedVehicleId === vehicle.id
+                  const isDisabled = vehicle.status !== "available"
+                  return (
+                    <button
+                      key={vehicle.id}
+                      type="button"
+                      disabled={isDisabled}
+                      onClick={() => onVehicleSelect(isSelected ? undefined : vehicle.id)}
+                      className={cn(
+                        "overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary/40",
+                        isSelected && "border-primary ring-2 ring-primary/10",
+                        isDisabled && "cursor-not-allowed opacity-50",
+                      )}
+                    >
+                      <img src={vehicle.image} alt={vehicle.name} className="h-28 w-full object-cover" />
+                      <div className="space-y-1 p-3">
+                        <p className="line-clamp-1 text-sm font-semibold">{vehicle.name}</p>
+                        <p className="text-xs text-muted-foreground">{vehicle.type} · {vehicle.scale}</p>
+                        <p className="text-sm font-semibold">{formatCurrency(vehicle.pricePerHour)}/giờ</p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
+        {/* BYOC info */}
         {playMode !== "RENTAL" && (
-          <div className="rounded-xl border bg-muted/40 p-4">
+          <div className={cn("rounded-xl border p-4", isByocFull ? "border-red-200 bg-red-50/50" : "border-slate-200 bg-muted/40")}>
             <div className="flex items-start gap-3">
-              <UserRound className="mt-0.5 h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="font-medium">BYOC sẽ được kiểm tra tại quầy</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Staff sẽ tạo actual session vehicles khi check-in. Xe cá nhân không lưu trực tiếp trong bookings.
+              <UserRound className={cn("mt-0.5 h-5 w-5 shrink-0", isByocFull ? "text-red-400" : "text-muted-foreground")} />
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-sm">BYOC sẽ được kiểm tra tại quầy</p>
+                  {byocRemaining !== undefined && (
+                    <Badge
+                      variant={byocRemaining > 0 ? "secondary" : "destructive"}
+                      className="shrink-0 text-xs"
+                    >
+                      {byocRemaining > 0 ? `Còn ${byocRemaining} chỗ BYOC` : "Hết chỗ BYOC"}
+                    </Badge>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mỗi booking chiếm 1 slot BYOC (không phân biệt số người). Staff xác nhận xe tại check-in.
                 </p>
               </div>
             </div>

@@ -14,11 +14,16 @@ import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/caf
 import { CheckoutStepper } from "./components/checkout/CheckoutStepper"
 import { CheckoutSummaryCard } from "./components/checkout/CheckoutSummaryCard"
 import { FnbStep } from "./components/checkout/FnbStep"
-import { ParticipantsStep } from "./components/checkout/ParticipantsStep"
+import { ParticipantsStep, type Companion } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
 import { ScheduleStep } from "./components/checkout/ScheduleStep"
+import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
+import { toast } from "sonner"
 
-const orderedSteps: CheckoutStep[] = ["schedule", "participants", "fnb", "payment"]
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const ALL_STEPS: CheckoutStep[] = ["schedule", "participants", "fnb", "payment"]
+const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ["participants", "fnb", "payment"]
 
 export function CreateBookingPage() {
   const [searchParams] = useSearchParams()
@@ -76,19 +81,39 @@ export function CreateBookingPage() {
     return res
   }
 
-  const stepParam = searchParams.get("step")
+  // Khi có date + slot từ cafe detail → bỏ schedule step
+  const hasPreselectedSlot = !!(searchParams.get("date") && searchParams.get("slot"))
+  const orderedSteps = hasPreselectedSlot ? STEPS_WITHOUT_SCHEDULE : ALL_STEPS
+
+  const stepParam = searchParams.get("step") as CheckoutStep | null
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(
-    stepParam === "payment" ? "payment" : "schedule"
+    orderedSteps.includes(stepParam!) ? stepParam! : orderedSteps[0]
   )
   const [mode, setMode] = useState<BookingMode>(modeParam ?? "hourly")
   const [planId, setPlanId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
   const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
   const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
   const [playMode, setPlayMode] = useState<CustomerPlayMode>(vehicleId ? "RENTAL" : "BYOC")
-  const [participants, setParticipants] = useState(2)
+  const [participants, setParticipants] = useState(1)
+  const [companions, setCompanions] = useState<Companion[]>([])
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(vehicleId)
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(() => parseFnbParam(searchParams.get("fnb")))
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
+
+  const createBookingMutation = useCreateBooking()
+  const createCheckoutMutation = useCreateCheckout()
+  const isSubmitting = createBookingMutation.isPending || createCheckoutMutation.isPending
+
+  // BYOC capacity check — only for real cafes when a time slot is selected
+  const slotStartForCheck = `${date}T${time}:00+07:00`
+  const slotEndForCheck = buildSlotEnd(date, time, mode, planId)
+  const { data: availabilityData } = useAvailability(
+    cafeId,
+    { slot_start: slotStartForCheck, slot_end: slotEndForCheck, play_mode: 'BYOC' },
+    !isMockId && !!date && !!time,
+  )
+  const byocRemaining = availabilityData?.byoc_remaining
+  const isByocFull = playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0
 
   const selectedVehicle = cafe.availableVehicles.find((vehicle) => vehicle.id === selectedVehicleId)
   const fnbTotal = useMemo(
@@ -99,8 +124,14 @@ export function CreateBookingPage() {
     [fnbQuantities],
   )
   const paymentComponents = useMemo(
-    () => buildPaymentComponents({ mode, planId, selectedVehiclePrice: selectedVehicle?.pricePerHour ?? 0, fnbTotal }),
-    [fnbTotal, mode, planId, selectedVehicle],
+    () => buildPaymentComponents({
+      mode,
+      planId,
+      slotFeeRate: cafe.slotFeeRate ?? 0,
+      selectedVehiclePrice: selectedVehicle?.pricePerHour ?? 0,
+      fnbTotal,
+    }),
+    [fnbTotal, mode, planId, selectedVehicle, cafe.slotFeeRate],
   )
 
   const handleNext = () => {
@@ -113,6 +144,46 @@ export function CreateBookingPage() {
     setCurrentStep(orderedSteps[Math.max(index - 1, 0)])
   }
 
+  const handleConfirmPayment = async () => {
+    if (isMockId) {
+      toast.error("Không thể đặt lịch với dữ liệu demo. Vui lòng chọn một cơ sở thực tế.")
+      return
+    }
+    if (playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0) {
+      toast.error("Slot này đã hết chỗ BYOC. Vui lòng chọn khung giờ khác.")
+      return
+    }
+    try {
+      const slotStart = `${date}T${time}:00+07:00`
+      const slotEnd = buildSlotEnd(date, time, mode, planId)
+      const vehicleIds = selectedVehicleId && UUID_REGEX.test(selectedVehicleId) ? [selectedVehicleId] : []
+
+      // Build companion participants — booker is auto-inserted by backend as BOOKER type
+      const participantList = companions.map((c) => ({
+        participant_type: "WALK_IN_GUEST" as const,
+        ...(c.name ? { guest_name: c.name } : {}),
+        ...(c.phone ? { guest_phone: c.phone } : {}),
+      }))
+
+      const booking = await createBookingMutation.mutateAsync({
+        cafe_id: cafeId,
+        play_mode: playMode === "RENTAL" ? "RENTAL" : "BYOC",
+        slot_start: slotStart,
+        slot_end: slotEnd,
+        vehicle_ids: vehicleIds,
+        participants: participantList,
+        fnb_items: [],
+      })
+
+      const checkout = await createCheckoutMutation.mutateAsync(booking.booking_id)
+      window.location.href = checkout.payment_url
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Vui lòng thử lại."
+      toast.error(`Không thể tạo đơn đặt lịch. ${message}`)
+      console.error("[CreateBooking]", err)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="border-b bg-background">
@@ -122,16 +193,11 @@ export function CreateBookingPage() {
               <ChevronLeft className="h-4 w-4" /> Quay lại cơ sở
             </Link>
           </Button>
-          <div className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-end">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">RCField Checkout</p>
-              <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Hoàn tất đặt lịch chạy RC</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Demo full luồng Customer: booking planned data, xe rental/BYOC, F&B preorder, payment ledger và gateway transaction.
-              </p>
-            </div>
-            <CheckoutStepper currentStep={currentStep} />
+          <div className="mb-4">
+            <p className="text-sm font-medium text-muted-foreground">RCField Checkout</p>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Hoàn tất đặt lịch chạy RC</h1>
           </div>
+          <CheckoutStepper currentStep={currentStep} visibleSteps={orderedSteps} />
         </div>
       </section>
 
@@ -159,8 +225,11 @@ export function CreateBookingPage() {
               onPlayModeChange={setPlayMode}
               participants={participants}
               onParticipantsChange={setParticipants}
+              companions={companions}
+              onCompanionsChange={setCompanions}
               selectedVehicleId={selectedVehicleId}
               onVehicleSelect={setSelectedVehicleId}
+              byocRemaining={byocRemaining}
             />
           )}
           {currentStep === "fnb" && (
@@ -186,10 +255,28 @@ export function CreateBookingPage() {
           currentStep={currentStep}
           onNext={handleNext}
           onBack={handleBack}
+          onConfirmPayment={() => void handleConfirmPayment()}
+          isSubmitting={isSubmitting}
+          isNextDisabled={currentStep === "participants" && isByocFull}
         />
       </div>
     </div>
   )
+}
+
+function buildSlotEnd(date: string, time: string, mode: BookingMode, planId: string): string {
+  let hours = 1
+  if (mode === "hourly") {
+    hours = bookingCatalog.hourlyPlans.find((p) => p.id === planId)?.durationHours ?? 1
+  } else if (mode === "slotPackage") {
+    const pkg = bookingCatalog.slotPackages.find((p) => p.id === planId)
+    hours = pkg ? pkg.minutesPerSlot / 60 : 1
+  }
+  const [hh, mm] = time.split(":").map(Number)
+  const totalMinutes = hh * 60 + mm + Math.round(hours * 60)
+  const endHH = String(Math.floor(totalMinutes / 60)).padStart(2, "0")
+  const endMM = String(totalMinutes % 60).padStart(2, "0")
+  return `${date}T${endHH}:${endMM}:00+07:00`
 }
 
 function getDefaultPlanId(mode: BookingMode) {
@@ -201,17 +288,19 @@ function getDefaultPlanId(mode: BookingMode) {
 function buildPaymentComponents({
   mode,
   planId,
+  slotFeeRate,
   selectedVehiclePrice,
   fnbTotal,
 }: {
   mode: BookingMode
   planId: string
+  slotFeeRate: number
   selectedVehiclePrice: number
   fnbTotal: number
 }): PaymentComponentLine[] {
-  const slotFee = getPlanPrice(mode, planId)
+  const slotFee = getPlanPrice(mode, planId, slotFeeRate)
   const lines: PaymentComponentLine[] = [
-    { id: "slot", type: mode === "slotPackage" ? "PACKAGE_PURCHASE" : "SLOT_FEE", label: mode === "slotPackage" ? "Mua gói slot" : "Phí lịch chơi", amount: slotFee, status: "PENDING" },
+    { id: "slot", type: "SLOT_FEE", label: "Phí lịch chơi", amount: slotFee, status: "PENDING" },
   ]
 
   if (selectedVehiclePrice > 0) {
@@ -223,14 +312,19 @@ function buildPaymentComponents({
     lines.push({ id: "fnb", type: "FNB_PREORDER", label: "F&B preorder", amount: fnbTotal, status: "PENDING" })
   }
 
-  const taxable = lines.reduce((sum, item) => sum + item.amount, 0)
-  lines.push({ id: "vat", type: "VAT", label: "Thuế VAT 10%", amount: Math.round(taxable * 0.1), status: "PENDING" })
   return lines
 }
 
-function getPlanPrice(mode: BookingMode, planId: string) {
-  if (mode === "slotPackage") return bookingCatalog.slotPackages.find((plan) => plan.id === planId)?.price ?? 0
-  if (mode === "recurring") return bookingCatalog.recurringPlans.find((plan) => plan.id === planId)?.pricePerMonth ?? 0
-  const plan = bookingCatalog.hourlyPlans.find((item) => item.id === planId)
-  return plan ? plan.pricePerHour * plan.durationHours : 0
+function getPlanPrice(mode: BookingMode, planId: string, slotFeeRate: number) {
+  if (mode === "slotPackage") {
+    const pkg = bookingCatalog.slotPackages.find((p) => p.id === planId)
+    return pkg ? slotFeeRate * (pkg.slots * pkg.minutesPerSlot / 60) : 0
+  }
+  if (mode === "recurring") {
+    return bookingCatalog.recurringPlans.find((p) => p.id === planId)?.sessionsPerMonth
+      ? slotFeeRate * (bookingCatalog.recurringPlans.find((p) => p.id === planId)!.sessionsPerMonth)
+      : 0
+  }
+  const plan = bookingCatalog.hourlyPlans.find((p) => p.id === planId)
+  return plan ? slotFeeRate * plan.durationHours : slotFeeRate
 }
