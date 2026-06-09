@@ -138,6 +138,7 @@ export interface CreateBookingBody {
   participants: ParticipantBody[]
   fnb_items: FnbItemBody[]
   promotion_code?: string
+  track_config_id?: string
 }
 
 export interface CreateBookingResult {

@@ -17,13 +17,15 @@ import { FnbStep } from "./components/checkout/FnbStep"
 import { ParticipantsStep, type Companion } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
 import { ScheduleStep } from "./components/checkout/ScheduleStep"
+import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
+import type { TrackConfig } from "@/features/cafes/types"
 import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import { toast } from "sonner"
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const ALL_STEPS: CheckoutStep[] = ["schedule", "participants", "fnb", "payment"]
-const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ["participants", "fnb", "payment"]
+const ALL_STEPS: CheckoutStep[] = ["track", "schedule", "participants", "fnb", "payment"]
+const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ["track", "participants", "fnb", "payment"]
 
 export function CreateBookingPage() {
   const [searchParams] = useSearchParams()
@@ -93,12 +95,14 @@ export function CreateBookingPage() {
   const [planId, setPlanId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
   const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
   const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
+  const [preselectedSlotEnd, setPreselectedSlotEnd] = useState(searchParams.get("slotEnd") ?? null)
   const [playMode, setPlayMode] = useState<CustomerPlayMode>(vehicleId ? "RENTAL" : "BYOC")
   const [participants, setParticipants] = useState(1)
   const [companions, setCompanions] = useState<Companion[]>([])
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(vehicleId ? [vehicleId] : [])
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(() => parseFnbParam(searchParams.get("fnb")))
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
+  const [selectedTrackConfig, setSelectedTrackConfig] = useState<TrackConfig | null>(null)
 
   const createBookingMutation = useCreateBooking()
   const createCheckoutMutation = useCreateCheckout()
@@ -106,10 +110,17 @@ export function CreateBookingPage() {
 
   // BYOC capacity check — only for real cafes when a time slot is selected
   const slotStartForCheck = `${date}T${time}:00+07:00`
-  const slotEndForCheck = buildSlotEnd(date, time, mode, planId)
+  const slotEndForCheck = preselectedSlotEnd
+    ? `${date}T${preselectedSlotEnd}:00+07:00`
+    : buildSlotEnd(date, time, mode, planId)
   const { data: availabilityData } = useAvailability(
     cafeId,
-    { slot_start: slotStartForCheck, slot_end: slotEndForCheck, play_mode: 'BYOC' },
+    {
+      slot_start: slotStartForCheck,
+      slot_end: slotEndForCheck,
+      play_mode: 'BYOC',
+      ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
+    },
     !isMockId && !!date && !!time,
   )
   const byocRemaining = availabilityData?.byoc_remaining
@@ -155,7 +166,9 @@ export function CreateBookingPage() {
     }
     try {
       const slotStart = `${date}T${time}:00+07:00`
-      const slotEnd = buildSlotEnd(date, time, mode, planId)
+      const slotEnd = preselectedSlotEnd
+        ? `${date}T${preselectedSlotEnd}:00+07:00`
+        : buildSlotEnd(date, time, mode, planId)
       const vehicleIds = selectedVehicleIds.filter((id) => UUID_REGEX.test(id))
 
       // Build companion participants — booker is auto-inserted by backend as BOOKER type
@@ -173,12 +186,31 @@ export function CreateBookingPage() {
         vehicle_ids: vehicleIds,
         participants: participantList,
         fnb_items: [],
+        ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
       })
 
       const checkout = await createCheckoutMutation.mutateAsync(booking.booking_id)
       window.location.href = checkout.payment_url
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Vui lòng thử lại."
+      let message = "Vui lòng thử lại."
+      if (err instanceof Error) {
+        message = err.message
+      }
+      // Check backend error codes for specific user-facing messages
+      const axiosErr = err as { response?: { data?: { code?: string } } }
+      const code = axiosErr?.response?.data?.code
+      if (code === "VEHICLE_TRACK_INCOMPATIBLE") {
+        toast.error("Xe bạn chọn không tương thích với loại sân này. Vui lòng chọn xe khác.")
+        return
+      }
+      if (code === "TRACK_CONFIG_NOT_FOUND") {
+        toast.error("Loại sân không còn hoạt động. Vui lòng quay lại và chọn loại sân khác.")
+        return
+      }
+      if (code === "BYOC_CAPACITY_FULL") {
+        toast.error("Slot BYOC đã hết chỗ cho khung giờ này. Vui lòng chọn giờ khác.")
+        return
+      }
       toast.error(`Không thể tạo đơn đặt lịch. ${message}`)
       console.error("[CreateBooking]", err)
     }
@@ -203,6 +235,16 @@ export function CreateBookingPage() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
+          {currentStep === "track" && (
+            <TrackSelectionStep
+              cafeId={isMockId ? "" : cafeId}
+              selectedTrackConfigId={selectedTrackConfig?.id ?? null}
+              onSelect={(config) => {
+                setSelectedTrackConfig(config)
+                handleNext()
+              }}
+            />
+          )}
           {currentStep === "schedule" && (
             <ScheduleStep
               mode={mode}
@@ -258,6 +300,7 @@ export function CreateBookingPage() {
           onConfirmPayment={() => void handleConfirmPayment()}
           isSubmitting={isSubmitting}
           isNextDisabled={currentStep === "participants" && isByocFull}
+          selectedTrackConfig={selectedTrackConfig}
         />
       </div>
     </div>

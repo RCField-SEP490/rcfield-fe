@@ -1,5 +1,5 @@
 import { api } from "@/shared/lib/axios"
-import type { AmenityCatalogItem, BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType, TrackType } from "../types"
+import type { AmenityCatalogItem, BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType, TrackType, TrackConfig, CreateTrackConfigBody, UpdateTrackConfigBody } from "../types"
 
 function debugCafeApi(message: string, details?: unknown) {
   if (import.meta.env.DEV) {
@@ -14,6 +14,7 @@ export const cafeQueryKeys = {
   images: (cafeId?: string) => [...cafeQueryKeys.all, "images", cafeId] as const,
   widgetConfig: (cafeId?: string) => [...cafeQueryKeys.all, "widget-config", cafeId] as const,
   kbDocuments: (cafeId?: string) => [...cafeQueryKeys.all, "kb-documents", cafeId] as const,
+  trackConfigs: (cafeId?: string) => [...cafeQueryKeys.all, "track-configs", cafeId] as const,
 }
 
 export const cafeApi = {
@@ -180,5 +181,33 @@ export const adminTrackTypeApi = {
 
 export const adminTrackTypeQueryKeys = {
   all: ["admin-track-types"] as const,
+}
+
+export const trackConfigApi = {
+  listTrackConfigs: async (cafeId: string): Promise<TrackConfig[]> => {
+    const res = await api.get<ApiEnvelope<TrackConfig[]>>(`/v1/cafes/${cafeId}/track-configs`)
+    return res.data.data
+  },
+
+  createTrackConfig: async (cafeId: string, body: CreateTrackConfigBody): Promise<TrackConfig> => {
+    const res = await api.post<ApiEnvelope<TrackConfig>>(`/v1/cafes/${cafeId}/track-configs`, body)
+    return res.data.data
+  },
+
+  updateTrackConfig: async (cafeId: string, configId: string, body: UpdateTrackConfigBody): Promise<TrackConfig> => {
+    const res = await api.patch<ApiEnvelope<TrackConfig>>(`/v1/cafes/${cafeId}/track-configs/${configId}`, body)
+    return res.data.data
+  },
+
+  uploadTrackConfigImages: async (cafeId: string, configId: string, files: File[]): Promise<string[]> => {
+    const formData = new FormData()
+    files.forEach((file) => formData.append("files", file))
+    const res = await api.post<ApiEnvelope<{ images: string[] }>>(
+      `/v1/cafes/${cafeId}/track-configs/${configId}/images`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    )
+    return res.data.data.images
+  },
 }
 

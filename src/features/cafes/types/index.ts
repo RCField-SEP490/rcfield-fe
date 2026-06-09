@@ -139,6 +139,39 @@ export type CafeWidgetConfig = {
   fullPageEnabled: boolean
 }
 
+export type TrackConfig = {
+  id: string
+  cafe_id: string
+  track_type_id: string
+  track_type?: {
+    id: string
+    code: string
+    name: string
+    description: string | null
+  }
+  byoc_capacity: number
+  images: string[]
+  description: string | null
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type CreateTrackConfigBody = {
+  track_type_id: string
+  byoc_capacity: number
+  description?: string | null
+  sort_order?: number
+}
+
+export type UpdateTrackConfigBody = {
+  byoc_capacity?: number
+  description?: string | null
+  sort_order?: number
+  is_active?: boolean
+}
+
 export type WidgetConfigBody = {
   greeting_message?: string
   welcome_message?: string

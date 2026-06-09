@@ -1,8 +1,9 @@
-import { Check, CreditCard, ShoppingBag, Users, CalendarClock } from "lucide-react"
+import { Check, CreditCard, ShoppingBag, Users, CalendarClock, Layers } from "lucide-react"
 import type { CheckoutStep } from "@/features/customer-booking/data/customer-booking-demo"
 import { cn } from "@/shared/lib/utils"
 
 const ALL_STEP_DEFS: Array<{ id: CheckoutStep; label: string; icon: typeof CalendarClock }> = [
+  { id: "track", label: "Chọn sân", icon: Layers },
   { id: "schedule", label: "Lịch chơi", icon: CalendarClock },
   { id: "participants", label: "Người & xe", icon: Users },
   { id: "fnb", label: "F&B", icon: ShoppingBag },

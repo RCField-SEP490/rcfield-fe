@@ -167,6 +167,7 @@ export function CafeDetailPage() {
               description={cafe.description}
               amenities={cafeDetail?.amenities}
               rules={cafeDetail?.rules}
+              cafeId={cafeDetail?.id}
             />
           </div>
 

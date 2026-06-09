@@ -1,7 +1,7 @@
 import { mockCafes, type Cafe, type Vehicle } from "@/shared/data/explore-data"
 
 export type CustomerPlayMode = "RENTAL" | "BYOC" | "MIXED"
-export type CheckoutStep = "schedule" | "participants" | "fnb" | "payment"
+export type CheckoutStep = "track" | "schedule" | "participants" | "fnb" | "payment"
 export type CustomerPaymentMethod = "vnpay" | "bank_transfer" | "card"
 
 export type FnbMenuItem = {

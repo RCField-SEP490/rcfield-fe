@@ -10,6 +10,7 @@ import type { BackendCafe, CafeImage, CafeStatus, CafeUpsertBody } from "@/featu
 import { ProviderCafeForm } from "@/pages/provider/components/ProviderCafeForm"
 import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
 import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
+import { TrackConfigManager } from "@/pages/provider/components/TrackConfigManager"
 import { MetricCard, ProviderPageHeader, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import {
@@ -84,7 +85,7 @@ export function ProviderCafeDetailPage() {
     },
   })
 
-  const [tab, setTab] = useState<"info" | "widget">("info")
+  const [tab, setTab] = useState<"info" | "tracks" | "widget">("info")
 
   if (isLoading) {
     return (
@@ -194,6 +195,17 @@ export function ProviderCafeDetailPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("tracks")}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
+                tab === "tracks"
+                  ? "border-orange-600 text-orange-600"
+                  : "border-transparent text-[#747878]"
+              }`}
+            >
+              Loại sân
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("widget")}
               className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
                 tab === "widget"
@@ -218,6 +230,11 @@ export function ProviderCafeDetailPage() {
                   await deleteImageMutation.mutateAsync(image)
                 }}
               />
+            )}
+            {tab === "tracks" && (
+              <section className="rounded-xl border border-[#c4c7c8] bg-white p-5">
+                <TrackConfigManager cafeId={cafe.id} />
+              </section>
             )}
             {tab === "widget" && (
               <div className="space-y-4">

@@ -1,7 +1,8 @@
-import { ArrowRight, Loader2, MapPin, ShieldCheck } from "lucide-react"
+import { ArrowRight, Layers, Loader2, MapPin, ShieldCheck } from "lucide-react"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import type { CustomerPlayMode, CheckoutStep, PaymentComponentLine } from "@/features/customer-booking/data/customer-booking-demo"
 import type { Cafe, Vehicle } from "@/shared/data/explore-data"
+import type { TrackConfig } from "@/features/cafes/types"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Separator } from "@/shared/ui/separator"
@@ -22,6 +23,7 @@ type CheckoutSummaryCardProps = {
   onConfirmPayment?: () => void
   isSubmitting?: boolean
   isNextDisabled?: boolean
+  selectedTrackConfig?: TrackConfig | null
 }
 
 export function CheckoutSummaryCard({
@@ -39,9 +41,10 @@ export function CheckoutSummaryCard({
   onConfirmPayment,
   isSubmitting = false,
   isNextDisabled = false,
+  selectedTrackConfig,
 }: CheckoutSummaryCardProps) {
   const total = components.reduce((sum, item) => sum + item.amount, 0)
-  const isFirstStep = currentStep === "schedule"
+  const isFirstStep = currentStep === "track"
   const isPaymentStep = currentStep === "payment"
 
   return (
@@ -64,6 +67,14 @@ export function CheckoutSummaryCard({
         <Separator />
 
         <div className="grid gap-2 text-sm">
+          {selectedTrackConfig && (
+            <div className="flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2">
+              <Layers className="size-3.5 shrink-0 text-orange-600" />
+              <span className="text-xs font-medium text-orange-800">
+                {selectedTrackConfig.track_type?.name ?? "Loại sân đã chọn"}
+              </span>
+            </div>
+          )}
           <Line label="Loại booking" value={getModeLabel(mode)} />
           <Line label="Play mode" value={playMode} />
           <Line label="Ngày" value={new Date(date).toLocaleDateString("vi-VN")} />

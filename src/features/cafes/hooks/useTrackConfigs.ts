@@ -1,0 +1,81 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import axios from "axios"
+import { trackConfigApi, cafeQueryKeys } from "../api/cafe.api"
+import type { CreateTrackConfigBody, UpdateTrackConfigBody } from "../types"
+
+export function useTrackConfigs(cafeId: string) {
+  return useQuery({
+    queryKey: cafeQueryKeys.trackConfigs(cafeId),
+    queryFn: () => trackConfigApi.listTrackConfigs(cafeId),
+    enabled: !!cafeId,
+  })
+}
+
+export function useCreateTrackConfig(cafeId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (body: CreateTrackConfigBody) => trackConfigApi.createTrackConfig(cafeId, body),
+    onSuccess: () => {
+      toast.success("Tạo loại sân thành công")
+      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+    },
+    onError: (error: unknown) => {
+      let msg = "Đã xảy ra lỗi khi tạo loại sân"
+      if (axios.isAxiosError(error)) {
+        const code = error.response?.data?.code
+        if (code === "TRACK_CONFIG_ALREADY_EXISTS") msg = "Loại sân này đã được cấu hình cho chi nhánh"
+        else msg = error.response?.data?.message || msg
+      }
+      toast.error(msg)
+    },
+  })
+}
+
+export function useUpdateTrackConfig(cafeId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ configId, body }: { configId: string; body: UpdateTrackConfigBody }) =>
+      trackConfigApi.updateTrackConfig(cafeId, configId, body),
+    onSuccess: () => {
+      toast.success("Cập nhật loại sân thành công")
+      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+    },
+    onError: (error: unknown) => {
+      let msg = "Đã xảy ra lỗi khi cập nhật loại sân"
+      if (axios.isAxiosError(error)) {
+        const code = error.response?.data?.code
+        if (code === "TRACK_CONFIG_HAS_UPCOMING_BOOKINGS") {
+          msg = "Không thể tắt loại sân: còn booking sắp tới đang chờ hoặc đã xác nhận"
+        } else {
+          msg = error.response?.data?.message || msg
+        }
+      }
+      toast.error(msg)
+    },
+  })
+}
+
+export function useUploadTrackConfigImages(cafeId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ configId, files }: { configId: string; files: File[] }) =>
+      trackConfigApi.uploadTrackConfigImages(cafeId, configId, files),
+    onSuccess: () => {
+      toast.success("Upload ảnh thành công")
+      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+    },
+    onError: (error: unknown) => {
+      let msg = "Đã xảy ra lỗi khi upload ảnh"
+      if (axios.isAxiosError(error)) {
+        const code = error.response?.data?.code
+        if (code === "TOO_MANY_IMAGES") msg = "Tối đa 20 ảnh cho mỗi loại sân"
+        else msg = error.response?.data?.message || msg
+      }
+      toast.error(msg)
+    },
+  })
+}

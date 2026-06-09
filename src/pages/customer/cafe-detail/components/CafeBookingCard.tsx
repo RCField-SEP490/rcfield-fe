@@ -44,6 +44,8 @@ type CafeBookingCardProps = {
   setSelectedDate: (date: string) => void
   selectedSlotId: string
   setSelectedSlotId: (slot: string) => void
+  selectedSlotEnd?: string
+  setSelectedSlotEnd?: (slotEnd: string) => void
   menuItems: MenuItem[]
 }
 
@@ -57,6 +59,8 @@ export function CafeBookingCard({
   setSelectedDate,
   selectedSlotId,
   setSelectedSlotId,
+  selectedSlotEnd,
+  setSelectedSlotEnd,
   menuItems,
 }: CafeBookingCardProps) {
   const { openHour, closeHour } = getOperatingHours(cafe.operatingHours, selectedDate)
@@ -174,6 +178,10 @@ export function CafeBookingCard({
               slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
               openHour={openHour}
               closeHour={closeHour}
+              onSelectRange={setSelectedSlotEnd ? (start, end) => {
+                setSelectedSlotId(start)
+                setSelectedSlotEnd(end)
+              } : undefined}
             />
           </div>
         </div>
@@ -219,6 +227,7 @@ export function CafeBookingCard({
           <Link to={buildCafeBookingPath(cafe.id, mode, {
             date: selectedDate,
             slot: activeSlotId,
+            slotEnd: selectedSlotEnd,
             vehicleId: selectedVehicleId,
             fnb: serializedFnb,
             step: "participants"

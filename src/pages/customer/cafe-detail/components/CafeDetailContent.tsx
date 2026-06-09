@@ -1,21 +1,34 @@
 import { Wrench } from "lucide-react"
 import type { AmenityCatalogItem } from "@/features/cafes/types"
 import { cafeRules, cafeAmenities } from "../cafe-detail-data"
+import { TrackConfigList } from "./TrackConfigList"
 
 export function CafeDetailContent({
   description,
   amenities,
   rules,
+  cafeId,
 }: {
   description: string
   amenities?: AmenityCatalogItem[]
   rules?: string[]
+  cafeId?: string
 }) {
   const displayAmenities = amenities && amenities.length > 0 ? amenities : null
   const displayRules = rules && rules.length > 0 ? rules : cafeRules
 
   return (
     <div className="space-y-10">
+      {cafeId && (
+        <>
+          <section className="space-y-3">
+            <h2 className="text-base font-bold text-slate-900">Loại sân</h2>
+            <TrackConfigList cafeId={cafeId} />
+          </section>
+          <SectionDivider />
+        </>
+      )}
+
       <section className="space-y-3">
         <h2 className="text-base font-bold text-slate-900">Về cơ sở này</h2>
         <div className="space-y-3 text-sm leading-6 text-slate-600">
