@@ -149,6 +149,7 @@ export type TrackConfig = {
     name: string
     description: string | null
   }
+  max_concurrent: number
   byoc_capacity: number
   images: string[]
   description: string | null
@@ -160,12 +161,14 @@ export type TrackConfig = {
 
 export type CreateTrackConfigBody = {
   track_type_id: string
+  max_concurrent: number
   byoc_capacity: number
   description?: string | null
   sort_order?: number
 }
 
 export type UpdateTrackConfigBody = {
+  max_concurrent?: number
   byoc_capacity?: number
   description?: string | null
   sort_order?: number

@@ -176,9 +176,7 @@ export function ProviderCafeFormDialog({
                 <NumberField label="Longitude" value={values.longitude ?? ""} onChange={(value) => setField("longitude", value)} step="0.0000001" />
                 <NumberField label="Phí slot" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} />
                 <NumberField label="Thời lượng slot" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} />
-                <NumberField label="Max concurrent bookings" value={values.max_concurrent_bookings} onChange={(value) => setField("max_concurrent_bookings", value ?? 1)} min={1} />
                 <NumberField label="Báo trước phút" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />
-                <NumberField label="BYOC capacity" value={values.byoc_capacity} onChange={(value) => setField("byoc_capacity", value ?? 0)} min={0} />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">

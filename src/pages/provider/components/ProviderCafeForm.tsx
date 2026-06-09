@@ -364,9 +364,7 @@ export function ProviderCafeForm({
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField label="Phí slot (VNĐ)" tooltip="Giá thuê sân cho mỗi slot thời gian, chưa tính phí thuê xe. Khách thanh toán trước khi vào sân" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} formatted />
             <NumberField label="Thời lượng slot (phút)" tooltip="Độ dài mỗi slot đặt lịch. VD: 60 = mỗi lượt chạy 1 giờ. Ảnh hưởng đến lưới giờ hiển thị cho khách" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} max={1440} />
-            <NumberField label="Booking đồng thời tối đa" tooltip="Số lượt đặt tối đa trong cùng một khung giờ. Hệ thống tự hiển thị 'Còn chỗ / Sắp đầy / Hết chỗ' dựa trên con số này" value={values.max_concurrent_bookings} onChange={(value) => setField("max_concurrent_bookings", value ?? 1)} min={1} />
             <NumberField label="Báo trước (phút)" tooltip="Thời gian tối thiểu khách phải đặt trước khi slot bắt đầu. VD: 30 = khách không thể đặt muộn hơn 30 phút trước giờ chạy" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />
-            <NumberField label="Sức chứa BYOC (xe)" tooltip="Số xe cá nhân (Bring Your Own Car) tối đa được vào sân cùng lúc. Đặt 0 nếu cơ sở không hỗ trợ BYOC" value={values.byoc_capacity} onChange={(value) => setField("byoc_capacity", value ?? 0)} min={0} />
           </div>
 
           <div className="rounded-lg border border-[#e5e2e1] p-3">

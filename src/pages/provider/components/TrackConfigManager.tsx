@@ -44,6 +44,8 @@ interface TrackConfigManagerProps {
   cafeId: string
 }
 
+const EMPTY_FORM = { track_type_id: "", max_concurrent: "5", byoc_capacity: "0", description: "", sort_order: "0" }
+
 export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
   const { data: trackTypes = [], isLoading: trackTypesLoading } = useQuery({
@@ -59,26 +61,22 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const [deactivatingConfig, setDeactivatingConfig] = useState<TrackConfig | null>(null)
   const [uploadingConfigId, setUploadingConfigId] = useState<string | null>(null)
 
-  const [form, setForm] = useState<{ track_type_id: string; byoc_capacity: string; description: string; sort_order: string }>({
-    track_type_id: "",
-    byoc_capacity: "1",
-    description: "",
-    sort_order: "0",
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleCreate = async () => {
-    if (!form.track_type_id || !form.byoc_capacity) return
+    if (!form.track_type_id || !form.max_concurrent) return
     const body: CreateTrackConfigBody = {
       track_type_id: form.track_type_id,
+      max_concurrent: Number(form.max_concurrent),
       byoc_capacity: Number(form.byoc_capacity),
       description: form.description || undefined,
       sort_order: Number(form.sort_order),
     }
     await createMutation.mutateAsync(body)
     setShowCreateDialog(false)
-    setForm({ track_type_id: "", byoc_capacity: "1", description: "", sort_order: "0" })
+    setForm(EMPTY_FORM)
   }
 
   const handleToggleActive = (config: TrackConfig) => {
@@ -126,7 +124,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-[#1c1b1b]">Loại sân</h3>
-          <p className="text-xs text-[#747878]">Cấu hình loại sân và BYOC capacity cho chi nhánh</p>
+          <p className="text-xs text-[#747878]">Cấu hình từng sân: số slot RENTAL và BYOC tối đa</p>
         </div>
         <Button
           type="button"
@@ -199,16 +197,31 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
                 </Select>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="byoc-capacity" className="text-sm font-bold">BYOC Capacity (số xe cùng lúc)</Label>
-              <Input
-                id="byoc-capacity"
-                type="number"
-                min={1}
-                value={form.byoc_capacity}
-                onChange={(e) => setForm((f) => ({ ...f, byoc_capacity: e.target.value }))}
-                className="h-10"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="max-concurrent" className="text-sm font-bold">Slot RENTAL tối đa</Label>
+                <Input
+                  id="max-concurrent"
+                  type="number"
+                  min={1}
+                  value={form.max_concurrent}
+                  onChange={(e) => setForm((f) => ({ ...f, max_concurrent: e.target.value }))}
+                  className="h-10"
+                />
+                <p className="text-[10px] text-[#747878]">Số RENTAL đồng thời trên sân này</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="byoc-capacity" className="text-sm font-bold">BYOC tối đa</Label>
+                <Input
+                  id="byoc-capacity"
+                  type="number"
+                  min={0}
+                  value={form.byoc_capacity}
+                  onChange={(e) => setForm((f) => ({ ...f, byoc_capacity: e.target.value }))}
+                  className="h-10"
+                />
+                <p className="text-[10px] text-[#747878]">0 = sân không nhận BYOC</p>
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="description" className="text-sm font-bold">Mô tả (tuỳ chọn)</Label>
@@ -239,7 +252,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
             <Button
               type="button"
               onClick={() => void handleCreate()}
-              disabled={!form.track_type_id || !form.byoc_capacity || createMutation.isPending || availableTrackTypes.length === 0}
+              disabled={!form.track_type_id || !form.max_concurrent || createMutation.isPending || availableTrackTypes.length === 0}
               className="font-bold"
             >
               {createMutation.isPending ? "Đang tạo..." : "Tạo loại sân"}
@@ -297,7 +310,8 @@ function TrackConfigCard({
             </Badge>
           </div>
           <div className="mt-1 flex flex-wrap gap-3 text-xs text-[#747878]">
-            <span>BYOC: {config.byoc_capacity} xe</span>
+            <span>{config.max_concurrent} slot RENTAL</span>
+            <span>{config.byoc_capacity > 0 ? `${config.byoc_capacity} BYOC` : "Không BYOC"}</span>
             <span>{config.images.length} ảnh</span>
             {config.description && <span className="truncate max-w-[200px]">{config.description}</span>}
           </div>
