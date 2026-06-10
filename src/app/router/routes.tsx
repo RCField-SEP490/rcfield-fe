@@ -41,6 +41,7 @@ import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePag
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
 import { CustomerBookingDetailPage } from "@/pages/customer/booking-detail/CustomerBookingDetailPage"
+import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
 import { CustomerInspectionConfirmPage } from "@/pages/customer/inspection/CustomerInspectionConfirmPage"
 import { CustomerActiveSessionPage } from "@/pages/customer/session/CustomerActiveSessionPage"
 import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamageReviewPage"
@@ -123,7 +124,7 @@ export const router = createBrowserRouter([
           { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
-          { path: routePaths.bookingDetail, element: <CustomerBookingDetailPage /> },
+          { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
         ],
@@ -162,7 +163,7 @@ export const router = createBrowserRouter([
           { path: routePaths.customerHome, element: <Navigate replace to={routePaths.customerProfile} /> },
           { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
           { path: routePaths.customerProfile, element: <CustomerProfilePage /> },
-          { path: routePaths.customerBookingDetail, element: <CustomerBookingDetailPage /> },
+          { path: routePaths.customerBookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.customerPackages, element: <CustomerPackagesPage /> },
           { path: routePaths.customerSubscriptions, element: <PlaceholderPage title="Customer subscriptions" /> },
           { path: routePaths.customerVehicles, element: <CustomerVehiclesPage /> },

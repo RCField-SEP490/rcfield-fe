@@ -23,10 +23,10 @@ function estimateRefund(booking: BookingResponse): { slotFee: number; rest: numb
   const hoursUntilSlot = (new Date(booking.slotStart).getTime() - Date.now()) / 3_600_000
 
   const slotFeeComponent = booking.payment_components.find((c) => c.type === "SLOT_FEE")
-  const slotFee = slotFeeComponent?.amount ?? 0
+  const slotFee = Number(slotFeeComponent?.amount ?? 0)
   const rest = booking.payment_components
     .filter((c) => c.type !== "SLOT_FEE")
-    .reduce((sum, c) => sum + c.amount, 0)
+    .reduce((sum, c) => sum + Number(c.amount), 0)
 
   let slotFeeRefund: number
   let policy: string
@@ -108,7 +108,7 @@ export function BookingDetailPage() {
   const cancelMutation = useCancelBooking()
   const [showCancelDialog, setShowCancelDialog] = useState(false)
 
-  const total = booking?.payment_components?.reduce((sum, c) => sum + c.amount, 0) ?? 0
+  const total = booking?.payment_components?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0
   const statusInfo = booking ? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING) : null
 
   const handleCancelConfirm = () => {
@@ -227,7 +227,7 @@ export function BookingDetailPage() {
                 {booking.payment_components.map((c) => (
                   <div key={c.id} className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">{formatComponentType(c.type)}</span>
-                    <span className="font-medium">{formatCurrency(c.amount)}</span>
+                    <span className="font-medium">{formatCurrency(Number(c.amount))}</span>
                   </div>
                 ))}
                 <Separator />

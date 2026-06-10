@@ -208,6 +208,7 @@ function SlotPicker({
         <Input
           type="date"
           value={date}
+          min={new Date().toISOString().slice(0, 10)}
           onChange={(e) => {
             setDate(e.target.value)
             setSelectedSlot("")
@@ -227,6 +228,7 @@ function SlotPicker({
           slotDurationMinutes={slotDurationMinutes}
           openHour={openHour}
           closeHour={closeHour}
+          date={date}
           onSelectRange={(start, end) => {
             setSelectedSlot(start)
             setSelectedSlotEnd(end || null)

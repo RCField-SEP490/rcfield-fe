@@ -17,6 +17,8 @@ export function PaymentResultPage() {
   // txn_ref encodes the booking ID — first 8 hex chars are the UUID prefix
   const bookingId = txnRef ? txnRefToBookingId(txnRef) : undefined
 
+  const isSuccess = status === "success"
+
   // Poll until IPN processes and payment_components are populated (VNPay IPN is async)
   const { data: booking, isFetching } = useQuery({
     queryKey: bookingQueryKeys.detail(bookingId),
@@ -28,8 +30,6 @@ export function PaymentResultPage() {
     },
     refetchIntervalInBackground: false,
   })
-
-  const isSuccess = status === "success"
 
   const paymentComponents = booking?.payment_components ?? []
   const total = paymentComponents.reduce((sum, c) => sum + c.amount, 0)
