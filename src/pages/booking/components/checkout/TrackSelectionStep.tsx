@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { CheckCircle2, ImageOff, CalendarDays } from "lucide-react"
 import { useTrackConfigs } from "@/features/cafes/hooks/useTrackConfigs"
 import type { TrackConfig } from "@/features/cafes/types"

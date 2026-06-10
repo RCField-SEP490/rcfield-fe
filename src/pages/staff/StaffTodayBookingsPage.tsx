@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useSearchParams, useNavigate } from "react-router"
+import { useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
   Search as SearchIcon,
@@ -8,7 +8,6 @@ import {
   Calendar,
   Plus,
   ArrowRight,
-  ChevronRight,
   ShieldCheck,
   Tag,
   Loader2,
@@ -31,9 +30,8 @@ import {
 type TabType = "LIST" | "WALKIN"
 
 export default function StaffTodayBookingsPage() {
-  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { assignedCafeId, bookings, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
+  const { assignedCafeId, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
 
   const { data: realBookings = [], isLoading: loadingBookings } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),

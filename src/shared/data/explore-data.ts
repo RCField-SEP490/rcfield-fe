@@ -7,7 +7,7 @@ export interface Vehicle {
   type: string
   image: string
   pricePerHour: number
-  securityDeposit: number
+  securityDeposit?: number
   status: VehicleStatus
   specs: {
     battery: string
@@ -50,7 +50,7 @@ export interface Cafe {
   latitude?: number | null
   longitude?: number | null
   availableVehicles: Vehicle[]
-  operatingHours?: Record<string, CafeOperatingHour>
+  operatingHours?: Record<string, CafeOperatingHour> | string
 }
 
 export type CafeSearchParams = {

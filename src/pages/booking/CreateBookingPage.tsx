@@ -111,8 +111,8 @@ export function CreateBookingPage() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(
     orderedSteps.includes(stepParam!) ? stepParam! : orderedSteps[0]
   )
-  const [mode, setMode] = useState<BookingMode>(modeParam ?? "hourly")
-  const [planId, setPlanId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
+  const [mode] = useState<BookingMode>(modeParam ?? "hourly")
+  const [planId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
   const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
   const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
   const [preselectedSlotEnd, setPreselectedSlotEnd] = useState(searchParams.get("slotEnd") ?? null)
@@ -458,7 +458,7 @@ function buildPaymentComponents({
   if (selectedVehicles.length > 0) {
     const rentalPerHour = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
     const rentalTotal = rentalPerHour * numSlots
-    const depositTotal = selectedVehicles.reduce((sum, v) => sum + v.securityDeposit, 0)
+    const depositTotal = selectedVehicles.reduce((sum, v) => sum + (v.securityDeposit ?? 0), 0)
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })
     lines.push({ id: "deposit", type: "SECURITY_DEPOSIT", label: `Cọc xe (×${selectedVehicles.length})`, amount: depositTotal, status: "HELD" })
