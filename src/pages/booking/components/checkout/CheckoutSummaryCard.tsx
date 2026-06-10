@@ -51,7 +51,7 @@ export function CheckoutSummaryCard({
     <Card className="sticky top-20 rounded-xl shadow-sm">
       <CardHeader>
         <CardTitle>Tóm tắt đơn đặt</CardTitle>
-        <p className="text-sm text-muted-foreground">Snapshot giá sẽ được lưu trong booking khi thanh toán.</p>
+        <p className="text-sm text-muted-foreground">Giá sẽ được chốt tại thời điểm thanh toán.</p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-3">
@@ -75,8 +75,8 @@ export function CheckoutSummaryCard({
               </span>
             </div>
           )}
-          <Line label="Loại booking" value={getModeLabel(mode)} />
-          <Line label="Play mode" value={playMode} />
+          <Line label="Loại đặt lịch" value={getModeLabel(mode)} />
+          <Line label="Hình thức" value={getPlayModeLabel(playMode)} />
           <Line label="Ngày" value={new Date(date).toLocaleDateString("vi-VN")} />
           <Line label="Giờ" value={time} />
           <Line
@@ -89,7 +89,7 @@ export function CheckoutSummaryCard({
                 : `${selectedVehicles.length} xe`
             }
           />
-          {fnbTotal > 0 && <Line label="F&B preorder" value={formatCurrency(fnbTotal)} />}
+          {fnbTotal > 0 && <Line label="Đặt trước F&B" value={formatCurrency(fnbTotal)} />}
         </div>
 
         <Separator />
@@ -111,7 +111,7 @@ export function CheckoutSummaryCard({
         </div>
 
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          <ShieldCheck className="mr-1 inline h-4 w-4" /> Cọc xe được giữ theo ledger, hoàn/khấu trừ dựa trên inspection.
+          <ShieldCheck className="mr-1 inline h-4 w-4" /> Tiền cọc được giữ lại, hoàn trả hoặc khấu trừ sau khi kiểm tra xe khi trả.
         </div>
       </CardContent>
       <CardFooter className="grid gap-2">
@@ -153,7 +153,13 @@ function Line({ label, value }: { label: string; value: string }) {
 }
 
 function getModeLabel(mode: BookingMode) {
-  if (mode === "slotPackage") return "PACKAGE"
-  if (mode === "recurring") return "SUBSCRIPTION"
-  return "SINGLE"
+  if (mode === "slotPackage") return "Gói slot"
+  if (mode === "recurring") return "Định kỳ"
+  return "Đơn lẻ"
+}
+
+function getPlayModeLabel(playMode: string) {
+  if (playMode === "RENTAL") return "Thuê xe"
+  if (playMode === "BYOC") return "Mang xe riêng"
+  return playMode
 }

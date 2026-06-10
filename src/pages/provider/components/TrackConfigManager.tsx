@@ -178,7 +178,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-[#1c1b1b]">
-                Slot RENTAL tối đa
+                Số chỗ thuê xe tối đa
               </Label>
               <Input
                 type="number"
@@ -187,12 +187,12 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
                 onChange={(e) => setForm((f) => ({ ...f, max_concurrent: e.target.value }))}
                 className="h-10 bg-white"
               />
-              <p className="text-[10px] text-[#747878]">Số lượt RENTAL đồng thời trên sân</p>
+              <p className="text-[10px] text-[#747878]">Số xe thuê có thể chạy cùng lúc trên sân</p>
             </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-[#1c1b1b]">
-                BYOC tối đa
+                Số chỗ xe riêng tối đa
               </Label>
               <Input
                 type="number"
@@ -201,7 +201,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
                 onChange={(e) => setForm((f) => ({ ...f, byoc_capacity: e.target.value }))}
                 className="h-10 bg-white"
               />
-              <p className="text-[10px] text-[#747878]">0 = sân không nhận BYOC</p>
+              <p className="text-[10px] text-[#747878]">0 = sân không nhận xe riêng</p>
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
@@ -365,11 +365,11 @@ function TrackConfigCard({
         </div>
 
         <div className="mt-3 flex items-center gap-4 text-xs text-[#747878]">
-          <span><span className="font-bold text-[#1c1b1b]">{config.max_concurrent}</span> slot RENTAL</span>
+          <span><span className="font-bold text-[#1c1b1b]">{config.max_concurrent}</span> chỗ thuê xe</span>
           {config.byoc_capacity > 0 ? (
-            <span><span className="font-bold text-[#1c1b1b]">{config.byoc_capacity}</span> xe BYOC</span>
+            <span><span className="font-bold text-[#1c1b1b]">{config.byoc_capacity}</span> chỗ xe riêng</span>
           ) : (
-            <span className="text-[#c4c7c8]">Không BYOC</span>
+            <span className="text-[#c4c7c8]">Không nhận xe riêng</span>
           )}
         </div>
 

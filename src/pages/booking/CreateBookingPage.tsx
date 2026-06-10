@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import { bookingCatalog } from "@/features/booking/data/booking-options"
 import type { CheckoutStep, CustomerPaymentMethod, CustomerPlayMode, PaymentComponentLine } from "@/features/customer-booking/data/customer-booking-demo"
-import { fnbMenuItems } from "@/features/customer-booking/data/customer-booking-demo"
+import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { mockCafes } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
 import { useQuery } from "@tanstack/react-query"
@@ -55,6 +55,14 @@ export function CreateBookingPage() {
     queryFn: () => vehicleApi.listCatalogs(cafeId),
     enabled: !isMockId && !!cafeId,
   })
+
+  // Fetch real menu items
+  const { data: menuData, isLoading: menuLoading } = useQuery({
+    queryKey: menuQueryKeys.list(isMockId ? undefined : cafeId, { available: true }),
+    queryFn: () => menuApi.listMenuItems(cafeId, { available: true, limit: 50 }),
+    enabled: !isMockId && !!cafeId,
+  })
+  const menuItems = menuData?.data ?? []
 
   const cafe = useMemo(() => {
     if (!isMockId && realCafe) {
@@ -129,10 +137,11 @@ export function CreateBookingPage() {
   const selectedVehicles = cafe.availableVehicles.filter((v) => selectedVehicleIds.includes(v.id))
   const fnbTotal = useMemo(
     () =>
-      fnbMenuItems.reduce((sum, item) => {
-        return sum + item.price * (fnbQuantities[item.id] ?? 0)
+      menuItems.reduce((sum, item) => {
+        const price = typeof item.price === "string" ? parseFloat(item.price) : item.price
+        return sum + price * (fnbQuantities[item.id] ?? 0)
       }, 0),
-    [fnbQuantities],
+    [fnbQuantities, menuItems],
   )
 
   const numSlots = useMemo(() => {
@@ -258,6 +267,8 @@ export function CreateBookingPage() {
               selectedTrackConfig={selectedTrackConfig}
               onSelectTrack={setSelectedTrackConfig}
               slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
+              playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
+              onPlayModeChange={setPlayMode}
             />
           )}
           {currentStep === "participants" && (
@@ -276,6 +287,8 @@ export function CreateBookingPage() {
           )}
           {currentStep === "fnb" && (
             <FnbStep
+              menuItems={menuItems}
+              isLoading={menuLoading}
               quantities={fnbQuantities}
               onQuantityChange={(itemId, quantity) => setFnbQuantities((current) => ({ ...current, [itemId]: quantity }))}
             />

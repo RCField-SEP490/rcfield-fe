@@ -5,9 +5,10 @@ import type { TrackConfig } from "@/features/cafes/types"
 import { useDailyAvailability } from "@/features/booking/hooks/use-booking"
 import { cn } from "@/shared/lib/utils"
 import { Input } from "@/shared/ui/input"
-import { Label } from "@/shared/ui/label"
 import { buildDailySlots, DailySlotGrid, type DailySlot, type DailySlotStatus } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
 import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
+
+type PlayMode = "RENTAL" | "BYOC"
 
 interface TrackSelectionStepProps {
   cafeId: string
@@ -22,6 +23,8 @@ interface TrackSelectionStepProps {
   slotDurationMinutes: number
   openHour?: number
   closeHour?: number
+  playMode: PlayMode
+  onPlayModeChange: (mode: PlayMode) => void
 }
 
 export function TrackSelectionStep({
@@ -37,6 +40,8 @@ export function TrackSelectionStep({
   slotDurationMinutes,
   openHour = 8,
   closeHour = 22,
+  playMode,
+  onPlayModeChange,
 }: TrackSelectionStepProps) {
   const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
 
@@ -76,6 +81,10 @@ export function TrackSelectionStep({
                 onSelectTrack(config)
                 setSelectedSlot("")
                 setSelectedSlotEnd(null)
+                // If new track doesn't support BYOC, reset to RENTAL
+                if (config.byoc_capacity === 0 && playMode === "BYOC") {
+                  onPlayModeChange("RENTAL")
+                }
               }}
             />
           ))}
@@ -86,7 +95,7 @@ export function TrackSelectionStep({
       {selectedTrackConfig && (
         <SlotPicker
           cafeId={cafeId}
-          trackConfigId={selectedTrackConfig.id}
+          trackConfig={selectedTrackConfig}
           date={date}
           setDate={setDate}
           selectedSlot={selectedSlot}
@@ -96,6 +105,8 @@ export function TrackSelectionStep({
           slotDurationMinutes={slotDurationMinutes}
           openHour={openHour}
           closeHour={closeHour}
+          playMode={playMode}
+          onPlayModeChange={onPlayModeChange}
         />
       )}
     </div>
@@ -104,7 +115,7 @@ export function TrackSelectionStep({
 
 function SlotPicker({
   cafeId,
-  trackConfigId,
+  trackConfig,
   date,
   setDate,
   selectedSlot,
@@ -114,9 +125,11 @@ function SlotPicker({
   slotDurationMinutes,
   openHour,
   closeHour,
+  playMode,
+  onPlayModeChange,
 }: {
   cafeId: string
-  trackConfigId: string
+  trackConfig: TrackConfig
   date: string
   setDate: (d: string) => void
   selectedSlot: string
@@ -126,25 +139,70 @@ function SlotPicker({
   slotDurationMinutes: number
   openHour: number
   closeHour: number
+  playMode: PlayMode
+  onPlayModeChange: (mode: PlayMode) => void
 }) {
   const { data: dailyAvailability, isLoading } = useDailyAvailability(
     cafeId,
     date,
     openHour,
     closeHour,
-    trackConfigId,
+    trackConfig.id,
   )
 
   const slots = useMemo<DailySlot[]>(() => {
     if (!dailyAvailability) return buildDailySlots(openHour, closeHour)
-    return buildSlotsFromAvailability(dailyAvailability)
-  }, [dailyAvailability, openHour, closeHour])
+    return buildSlotsFromAvailability(dailyAvailability, playMode)
+  }, [dailyAvailability, openHour, closeHour, playMode])
+
+  const hasByoc = trackConfig.byoc_capacity > 0
 
   return (
-    <div className="rounded-xl border border-orange-100 bg-orange-50/30 p-4">
-      <h3 className="mb-3 text-sm font-bold text-[#1c1b1b]">Chọn ngày & giờ</h3>
+    <div className="rounded-xl border border-orange-100 bg-orange-50/30 p-4 space-y-4">
+      <h3 className="text-sm font-bold text-[#1c1b1b]">Chọn ngày & giờ</h3>
 
-      <label className="mb-3 flex items-center gap-2">
+      {/* Play mode toggle */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            onPlayModeChange("RENTAL")
+            setSelectedSlot("")
+            setSelectedSlotEnd(null)
+          }}
+          className={cn(
+            "flex-1 rounded-lg py-2 text-xs font-bold transition-colors border",
+            playMode === "RENTAL"
+              ? "bg-orange-500 text-white border-orange-500"
+              : "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600",
+          )}
+        >
+          Thuê xe
+        </button>
+        <button
+          type="button"
+          disabled={!hasByoc}
+          onClick={() => {
+            onPlayModeChange("BYOC")
+            setSelectedSlot("")
+            setSelectedSlotEnd(null)
+          }}
+          className={cn(
+            "flex-1 rounded-lg py-2 text-xs font-bold transition-colors border",
+            !hasByoc && "opacity-40 cursor-not-allowed",
+            hasByoc && playMode === "BYOC"
+              ? "bg-orange-500 text-white border-orange-500"
+              : hasByoc
+              ? "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600"
+              : "bg-white text-[#747878] border-[#e5e2e1]",
+          )}
+        >
+          Sử dụng xe cá nhân
+          {!hasByoc && <span className="ml-1 text-[10px] font-normal">Không hỗ trợ</span>}
+        </button>
+      </div>
+
+      <label className="flex items-center gap-2">
         <CalendarDays className="size-4 text-muted-foreground" />
         <span className="text-xs font-semibold text-[#1c1b1b]">Ngày chạy</span>
         <Input
@@ -175,7 +233,6 @@ function SlotPicker({
           }}
         />
       </div>
-
     </div>
   )
 }
@@ -221,8 +278,8 @@ function TrackCard({
       <div className="p-3">
         <p className="font-bold text-[#1c1b1b]">{config.track_type?.name ?? "Loại sân"}</p>
         <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-          <span>{config.max_concurrent} slot RENTAL</span>
-          {config.byoc_capacity > 0 && <span>{config.byoc_capacity} BYOC</span>}
+          <span>{config.max_concurrent} chỗ thuê xe</span>
+          {config.byoc_capacity > 0 && <span>{config.byoc_capacity} mang xe riêng</span>}
         </div>
         {config.description && (
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{config.description}</p>
@@ -232,18 +289,30 @@ function TrackCard({
   )
 }
 
-function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[]): DailySlot[] {
+function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[], playMode: PlayMode): DailySlot[] {
   return hourlyData.map(({ hour, data }) => {
     const startTime = `${String(hour).padStart(2, "0")}:00`
     const endTime = `${String(hour + 1).padStart(2, "0")}:00`
     if (!data) return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0, rentalCount: 0, byocRemaining: 0 }
+
     const rentalCount = data.vehicles?.length ?? 0
     const byocRemaining = data.byoc_remaining ?? 0
-    const remaining = rentalCount > 0 ? rentalCount : byocRemaining
+
+    let remaining: number
+    let available: boolean
+    if (playMode === "RENTAL") {
+      remaining = rentalCount
+      available = rentalCount > 0
+    } else {
+      remaining = byocRemaining
+      available = byocRemaining > 0
+    }
+
     let status: DailySlotStatus
-    if (!data.available) status = "booked"
+    if (!available) status = "booked"
     else if (remaining <= 2) status = "limited"
     else status = "available"
+
     return { id: startTime, startTime, endTime, status, remaining, rentalCount, byocRemaining }
   })
 }

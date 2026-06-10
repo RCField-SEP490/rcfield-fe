@@ -69,24 +69,12 @@ export function ParticipantsStep({
       </CardHeader>
       <CardContent className="space-y-5">
 
-        {/* Play mode selector */}
-        <div className="grid gap-2 md:grid-cols-3">
-          {playModeOptions.map((item) => (
-            <Button
-              key={item.value}
-              type="button"
-              variant={playMode === item.value ? "default" : "outline"}
-              className="h-auto justify-start p-4"
-              onClick={() => onPlayModeChange(item.value)}
-            >
-              <span className="text-left">
-                <span className="block font-medium">{item.label}</span>
-                <span className={cn("block text-xs", playMode === item.value ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                  {item.description}
-                </span>
-              </span>
-            </Button>
-          ))}
+        {/* Play mode — read-only, already selected in step 1 */}
+        <div className="flex items-center gap-2 rounded-lg border border-orange-100 bg-orange-50/50 px-4 py-2.5">
+          <span className="text-sm text-muted-foreground">Hình thức:</span>
+          <span className="text-sm font-semibold text-orange-700">
+            {playMode === "RENTAL" ? "🏎 Thuê xe" : "🚗 Mang xe riêng"}
+          </span>
         </div>
 
         {/* BYOC full warning */}
@@ -94,8 +82,8 @@ export function ParticipantsStep({
           <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
             <div>
-              <p className="text-sm font-semibold text-red-800">Slot này đã hết chỗ BYOC</p>
-              <p className="mt-0.5 text-xs text-red-600">Chuyển sang "Thuê xe quán" hoặc chọn khung giờ khác.</p>
+              <p className="text-sm font-semibold text-red-800">Slot này đã hết chỗ mang xe riêng</p>
+              <p className="mt-0.5 text-xs text-red-600">Quay lại bước 1 và chọn "Thuê xe" hoặc đổi khung giờ khác.</p>
             </div>
           </div>
         )}
