@@ -12,12 +12,21 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const stored = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
+  const stored =
+    localStorage.getItem(storageKeys.auth) ??
+    sessionStorage.getItem(storageKeys.auth) ??
+    localStorage.getItem(storageKeys.legacyAuth) ??
+    sessionStorage.getItem(storageKeys.legacyAuth)
   if (stored) {
     try {
-      const { accessToken } = JSON.parse(stored) as { accessToken?: string }
-      if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`
+      const { accessToken, access_token, token } = JSON.parse(stored) as {
+        accessToken?: string
+        access_token?: string
+        token?: string
+      }
+      const bearerToken = accessToken ?? access_token ?? token
+      if (bearerToken) {
+        config.headers.Authorization = `Bearer ${bearerToken}`
       }
     } catch {
       // ignore malformed storage
@@ -46,6 +55,8 @@ api.interceptors.response.use(
       useAuthStore.getState().clearAuthenticated()
       localStorage.removeItem(storageKeys.auth)
       sessionStorage.removeItem(storageKeys.auth)
+      localStorage.removeItem(storageKeys.legacyAuth)
+      sessionStorage.removeItem(storageKeys.legacyAuth)
       toast.error("Vui lòng đăng nhập lại", { description: "Phiên đăng nhập đã hết hạn." })
       void router.navigate(routePaths.login, { replace: true })
     }

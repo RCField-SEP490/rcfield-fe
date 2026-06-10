@@ -1,5 +1,6 @@
 export const storageKeys = {
   auth: "rcfield.auth",
+  legacyAuth: "rcfield:auth",
   adminAuth: "rcfield.admin_auth",
   impersonation: "rcfield.impersonation",
   lastEmail: "rcfield.last_email",

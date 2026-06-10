@@ -13,11 +13,10 @@ export function PaymentResultPage() {
   const txnRef = searchParams.get("txn_ref")
   const reason = searchParams.get("reason")
   const responseCode = searchParams.get("response_code")
+  const isSuccess = status === "success"
 
   // txn_ref encodes the booking ID — first 8 hex chars are the UUID prefix
   const bookingId = txnRef ? txnRefToBookingId(txnRef) : undefined
-
-  const isSuccess = status === "success"
 
   // Poll until IPN processes and payment_components are populated (VNPay IPN is async)
   const { data: booking, isFetching } = useQuery({

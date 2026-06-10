@@ -138,7 +138,7 @@ export interface CreateBookingBody {
   participants: ParticipantBody[]
   fnb_items: FnbItemBody[]
   promotion_code?: string
-  track_config_id?: string
+  track_type_id?: string
 }
 
 export interface CreateBookingResult {
@@ -166,6 +166,7 @@ export interface CheckAvailabilityParams {
   slot_start: string
   slot_end: string
   play_mode: BookingPlayMode
+  track_type_id?: string
 }
 
 export interface ListMyBookingsParams {

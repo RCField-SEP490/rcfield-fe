@@ -6,6 +6,17 @@ import type { ImpersonationState } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
 import type { UserRole } from "@/shared/types/common"
 
+const roleMap: Record<string, UserRole> = {
+  CUSTOMER: "customer",
+  STAFF: "staff",
+  PROVIDER: "provider",
+  ADMIN: "admin",
+  customer: "customer",
+  staff: "staff",
+  provider: "provider",
+  admin: "admin",
+}
+
 function AuthInitializer() {
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const setInitialized = useAuthStore((state) => state.setInitialized)
@@ -14,7 +25,9 @@ function AuthInitializer() {
   useEffect(() => {
     const raw =
       localStorage.getItem(storageKeys.auth) ??
-      sessionStorage.getItem(storageKeys.auth)
+      sessionStorage.getItem(storageKeys.auth) ??
+      localStorage.getItem(storageKeys.legacyAuth) ??
+      sessionStorage.getItem(storageKeys.legacyAuth)
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as {
@@ -24,17 +37,18 @@ function AuthInitializer() {
             fullName?: string
             phone?: string | null
             avatarUrl?: string | null
-            role: UserRole
+            role: string
             registrationStatus?: string
             assignedCafeId?: string | null
           }
         }
-        if (parsed.user?.role) {
-          setAuthenticated(parsed.user.role, {
+        const normalizedRole = parsed.user?.role ? roleMap[parsed.user.role] : null
+        if (parsed.user && normalizedRole) {
+          setAuthenticated(normalizedRole, {
             id: parsed.user.id,
             fullName: parsed.user.fullName ?? parsed.user.email,
             email: parsed.user.email,
-            role: parsed.user.role,
+            role: normalizedRole,
             phone: parsed.user.phone ?? undefined,
             avatarUrl: parsed.user.avatarUrl ?? undefined,
             registrationStatus: parsed.user.registrationStatus,
