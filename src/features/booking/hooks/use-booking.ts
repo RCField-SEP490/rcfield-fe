@@ -45,8 +45,8 @@ export function useDailyAvailability(
           const slotEnd = `${date}T${hh1}:00:00+07:00`
           try {
             const [rental, byoc] = await Promise.all([
-              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'RENTAL', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
-              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'BYOC', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
+              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'RENTAL', ...(trackConfigId ? { track_type_id: trackConfigId } : {}) }),
+              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'BYOC', ...(trackConfigId ? { track_type_id: trackConfigId } : {}) }),
             ])
             const rentalCount = rental.vehicles?.length ?? 0
             const byocRemaining = byoc.byoc_remaining ?? 0

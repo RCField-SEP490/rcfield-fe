@@ -19,7 +19,6 @@ import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
 import { useMyBookings, useCancelBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import type { BookingStatus } from "@/features/booking/types/booking.types"
-import { formatCurrency } from "@/shared/lib/format"
 
 type FilterKey = "all" | BookingStatus
 

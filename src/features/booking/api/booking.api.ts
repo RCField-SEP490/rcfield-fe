@@ -66,12 +66,6 @@ export const bookingApi = {
   },
 
   createCheckout: async (bookingId: string): Promise<CheckoutResponse> => {
-    if (import.meta.env.DEV) {
-      const res = await api.post<ApiEnvelope<{ redirect_url: string; txn_ref: string }>>(
-        `/v1/bookings/${bookingId}/mock-checkout`,
-      )
-      return { payment_url: res.data.data.redirect_url, txn_ref: res.data.data.txn_ref, total_amount: 0 }
-    }
     const res = await api.post<ApiEnvelope<CheckoutResponse>>(
       `/v1/bookings/${bookingId}/checkout`,
     )

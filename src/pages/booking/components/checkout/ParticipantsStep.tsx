@@ -23,15 +23,10 @@ type ParticipantsStepProps = {
   byocRemaining?: number
 }
 
-const playModeOptions: Array<{ value: CustomerPlayMode; label: string; description: string }> = [
-  { value: "RENTAL", label: "Thuê xe quán", description: "Dùng xe của cơ sở" },
-  { value: "BYOC", label: "Mang xe riêng", description: "Bring Your Own Car" },
-]
-
 export function ParticipantsStep({
   cafe,
   playMode,
-  onPlayModeChange,
+  onPlayModeChange: _onPlayModeChange,
   participants,
   onParticipantsChange,
   companions,

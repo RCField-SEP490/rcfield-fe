@@ -115,6 +115,9 @@ export function LoginPage() {
       const storage = remember ? localStorage : sessionStorage
       const staleStorage = remember ? sessionStorage : localStorage
       staleStorage.removeItem(storageKeys.auth)
+      staleStorage.removeItem(storageKeys.legacyAuth)
+      localStorage.removeItem(storageKeys.legacyAuth)
+      sessionStorage.removeItem(storageKeys.legacyAuth)
       storage.setItem(storageKeys.auth, authPayload)
 
       toast.success(`Chào mừng quay trở lại, ${auth.user.email}!`)

@@ -1,3 +1,4 @@
+import axios from "axios"
 import { api } from "@/shared/lib/axios"
 import type { AmenityCatalogItem, BackendCafe, CafeImage, CafeListParams, CafeListResponse, CafeStatus, CafeUpsertBody, ApiEnvelope, CafeWidgetConfig, WidgetConfigBody, KbDocument, KbContentType, TrackType, TrackConfig, CreateTrackConfigBody, UpdateTrackConfigBody } from "../types"
 
@@ -183,10 +184,52 @@ export const adminTrackTypeQueryKeys = {
   all: ["admin-track-types"] as const,
 }
 
+async function getFallbackTrackConfigs(cafeId: string): Promise<TrackConfig[]> {
+  const cafe = await cafeApi.getCafe(cafeId)
+  return cafe.trackTypes
+    .filter((trackType) => trackType.isActive)
+    .map((trackType) => ({
+      id: trackType.id,
+      cafe_id: cafe.id,
+      track_type_id: trackType.id,
+      track_type: {
+        id: trackType.id,
+        code: trackType.code,
+        name: trackType.name,
+        description: trackType.description,
+      },
+      max_concurrent: cafe.maxConcurrentBookings,
+      byoc_capacity: cafe.byocCapacity,
+      images: [],
+      description: trackType.description,
+      sort_order: trackType.sortOrder,
+      is_active: trackType.isActive,
+      created_at: cafe.createdAt,
+      updated_at: cafe.updatedAt,
+    }))
+}
+
 export const trackConfigApi = {
   listTrackConfigs: async (cafeId: string): Promise<TrackConfig[]> => {
-    const res = await api.get<ApiEnvelope<TrackConfig[]>>(`/v1/cafes/${cafeId}/track-configs`)
-    return res.data.data
+    try {
+      const res = await api.get<ApiEnvelope<TrackConfig[]>>(`/v1/cafes/${cafeId}/track-configs`)
+      if (res.data.data.length > 0) return res.data.data
+      return getFallbackTrackConfigs(cafeId)
+    } catch (error) {
+      if (!axios.isAxiosError(error)) {
+        throw error
+      }
+
+      if (import.meta.env.DEV) {
+        console.warn("[CafeAPI] Falling back to cafe.trackTypes for track configs", {
+          cafeId,
+          status: error.response?.status,
+          message: error.response?.data,
+        })
+      }
+
+      return getFallbackTrackConfigs(cafeId)
+    }
   },
 
   createTrackConfig: async (cafeId: string, body: CreateTrackConfigBody): Promise<TrackConfig> => {

@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,7 @@ const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ALL_STEPS
 
 export function CreateBookingPage() {
   const [searchParams] = useSearchParams()
+  const authRole = useAuthStore((state) => state.role)
   const cafeId = searchParams.get("cafeId") ?? mockCafes[0].id
   const vehicleId = searchParams.get("vehicleId") ?? undefined
   const modeParam = searchParams.get("mode") as BookingMode | null
@@ -109,8 +111,8 @@ export function CreateBookingPage() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(
     orderedSteps.includes(stepParam!) ? stepParam! : orderedSteps[0]
   )
-  const [mode, setMode] = useState<BookingMode>(modeParam ?? "hourly")
-  const [planId, setPlanId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
+  const [mode] = useState<BookingMode>(modeParam ?? "hourly")
+  const [planId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
   const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
   const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
   const [preselectedSlotEnd, setPreselectedSlotEnd] = useState(searchParams.get("slotEnd") ?? null)
@@ -154,7 +156,7 @@ export function CreateBookingPage() {
       slot_start: slotStartForCheck,
       slot_end: slotEndForCheck,
       play_mode: 'BYOC',
-      ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
+      ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
     },
     !isMockId && !!date && !!time,
   )
@@ -203,6 +205,10 @@ export function CreateBookingPage() {
   }
 
   const handleConfirmPayment = async () => {
+    if (authRole !== "customer") {
+      toast.error("TÃ i khoáº£n hiá»‡n táº¡i khÃ´ng cÃ³ quyá»n Ä‘áº·t lá»‹ch. Vui lÃ²ng Ä‘Äƒng nháº­p báº±ng tÃ i khoáº£n khÃ¡ch hÃ ng.")
+      return
+    }
     if (isMockId) {
       toast.error("Không thể đặt lịch với dữ liệu demo. Vui lòng chọn một cơ sở thực tế.")
       return
@@ -235,19 +241,27 @@ export function CreateBookingPage() {
         fnb_items: Object.entries(fnbQuantities)
           .filter(([, qty]) => qty > 0)
           .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
-        ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
+        ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
       })
 
       const checkout = await createCheckoutMutation.mutateAsync(booking.booking_id)
       window.location.href = checkout.payment_url
     } catch (err) {
       let message = "Vui lòng thử lại."
-      if (err instanceof Error) {
-        message = err.message
-      }
       // Check backend error codes for specific user-facing messages
-      const axiosErr = err as { response?: { data?: { code?: string } } }
+      const axiosErr = err as { response?: { data?: { code?: string; message?: string; errors?: Array<{ field?: string; message?: string }> } } }
       const code = axiosErr?.response?.data?.code
+      const backendMessage = axiosErr?.response?.data?.message
+      const validationMessage = axiosErr?.response?.data?.errors?.map((item) => `${item.field}: ${item.message}`).join(", ")
+      message = backendMessage ?? validationMessage ?? (err instanceof Error ? err.message : message)
+      if (code === "UNAUTHORIZED" || code === "TOKEN_INVALID" || code === "TOKEN_EXPIRED") {
+        toast.error("PhiÃªn Ä‘Äƒng nháº­p khÃ´ng há»£p lá»‡. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i báº±ng tÃ i khoáº£n khÃ¡ch hÃ ng.")
+        return
+      }
+      if (code === "FORBIDDEN") {
+        toast.error("TÃ i khoáº£n hiá»‡n táº¡i khÃ´ng cÃ³ quyá»n Ä‘áº·t lá»‹ch. Vui lÃ²ng dÃ¹ng tÃ i khoáº£n khÃ¡ch hÃ ng.")
+        return
+      }
       if (code === "VEHICLE_TRACK_INCOMPATIBLE") {
         toast.error("Xe bạn chọn không tương thích với loại sân này. Vui lòng chọn xe khác.")
         return
@@ -444,7 +458,7 @@ function buildPaymentComponents({
   if (selectedVehicles.length > 0) {
     const rentalPerHour = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
     const rentalTotal = rentalPerHour * numSlots
-    const depositTotal = selectedVehicles.reduce((sum, v) => sum + v.securityDeposit, 0)
+    const depositTotal = selectedVehicles.reduce((sum, v) => sum + (v.securityDeposit ?? 0), 0)
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })
     lines.push({ id: "deposit", type: "SECURITY_DEPOSIT", label: `Cọc xe (×${selectedVehicles.length})`, amount: depositTotal, status: "HELD" })
