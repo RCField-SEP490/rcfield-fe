@@ -160,6 +160,7 @@ export function mapCatalogToExploreVehicle(catalog: any): Vehicle {
     type: compatibleTrack,
     image: getCatalogImageUrl(catalog) || "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?q=80&w=600&auto=format&fit=crop",
     pricePerHour: catalog.hourlyRate || 0,
+    securityDeposit: catalog.securityDeposit || 0,
     status: countVal > 0 ? "available" : "maintenance",
     specs: {
       battery: specBattery,

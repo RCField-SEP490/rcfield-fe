@@ -7,6 +7,7 @@ export interface Vehicle {
   type: string
   image: string
   pricePerHour: number
+  securityDeposit: number
   status: VehicleStatus
   specs: {
     battery: string

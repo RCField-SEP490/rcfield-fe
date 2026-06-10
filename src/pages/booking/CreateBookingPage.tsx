@@ -11,6 +11,16 @@ import { useQuery } from "@tanstack/react-query"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog"
 import { CheckoutStepper } from "./components/checkout/CheckoutStepper"
 import { CheckoutSummaryCard } from "./components/checkout/CheckoutSummaryCard"
 import { FnbStep } from "./components/checkout/FnbStep"
@@ -104,13 +114,30 @@ export function CreateBookingPage() {
   const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
   const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
   const [preselectedSlotEnd, setPreselectedSlotEnd] = useState(searchParams.get("slotEnd") ?? null)
-  const [playMode, setPlayMode] = useState<CustomerPlayMode>(vehicleId ? "RENTAL" : "BYOC")
+  const [playMode, setPlayMode] = useState<CustomerPlayMode>("RENTAL")
   const [participants, setParticipants] = useState(1)
   const [companions, setCompanions] = useState<Companion[]>([])
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(vehicleId ? [vehicleId] : [])
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(() => parseFnbParam(searchParams.get("fnb")))
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
   const [selectedTrackConfig, setSelectedTrackConfig] = useState<TrackConfig | null>(null)
+
+  const [pendingPlayMode, setPendingPlayMode] = useState<CustomerPlayMode | null>(null)
+
+  const handlePlayModeChange = (mode: CustomerPlayMode) => {
+    if (mode === "BYOC" && selectedVehicleIds.length > 0) {
+      setPendingPlayMode("BYOC")
+      return
+    }
+    setPlayMode(mode)
+    if (mode === "BYOC") setSelectedVehicleIds([])
+  }
+
+  const confirmSwitchToBYOC = () => {
+    setPlayMode("BYOC")
+    setSelectedVehicleIds([])
+    setPendingPlayMode(null)
+  }
 
   const createBookingMutation = useCreateBooking()
   const createCheckoutMutation = useCreateCheckout()
@@ -205,7 +232,9 @@ export function CreateBookingPage() {
         slot_end: slotEnd,
         vehicle_ids: vehicleIds,
         participants: participantList,
-        fnb_items: [],
+        fnb_items: Object.entries(fnbQuantities)
+          .filter(([, qty]) => qty > 0)
+          .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
         ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
       })
 
@@ -255,6 +284,13 @@ export function CreateBookingPage() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
+          {currentStep === "track" && (selectedVehicleIds.length > 0 || Object.values(fnbQuantities).some((q) => q > 0)) && (
+            <PreSelectionBanner
+              vehicleName={selectedVehicles[0]?.name}
+              vehicleCount={selectedVehicleIds.length}
+              fnbCount={Object.values(fnbQuantities).reduce((s, q) => s + q, 0)}
+            />
+          )}
           {currentStep === "track" && (
             <TrackSelectionStep
               cafeId={isMockId ? "" : cafeId}
@@ -268,14 +304,14 @@ export function CreateBookingPage() {
               onSelectTrack={setSelectedTrackConfig}
               slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
-              onPlayModeChange={setPlayMode}
+              onPlayModeChange={handlePlayModeChange}
             />
           )}
           {currentStep === "participants" && (
             <ParticipantsStep
               cafe={cafe}
               playMode={playMode}
-              onPlayModeChange={setPlayMode}
+              onPlayModeChange={handlePlayModeChange}
               participants={participants}
               onParticipantsChange={setParticipants}
               companions={companions}
@@ -319,6 +355,44 @@ export function CreateBookingPage() {
           selectedTrackConfig={selectedTrackConfig}
         />
       </div>
+
+      <AlertDialog open={!!pendingPlayMode} onOpenChange={(open) => !open && setPendingPlayMode(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chuyển sang mang xe riêng?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn đang có{" "}
+              <strong>{selectedVehicles.length > 0 ? selectedVehicles.map((v) => v.name).join(", ") : `${selectedVehicleIds.length} xe`}</strong>{" "}
+              đã chọn để thuê. Chuyển sang chế độ mang xe riêng sẽ xóa toàn bộ lựa chọn xe thuê này.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingPlayMode(null)}>Giữ lại xe thuê</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSwitchToBYOC} className="bg-orange-500 hover:bg-orange-600">
+              Chuyển sang mang xe riêng
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+function PreSelectionBanner({
+  vehicleName,
+  vehicleCount,
+  fnbCount,
+}: {
+  vehicleName?: string
+  vehicleCount: number
+  fnbCount: number
+}) {
+  const parts: string[] = []
+  if (vehicleCount > 0) parts.push(vehicleName ?? `${vehicleCount} xe`)
+  if (fnbCount > 0) parts.push(`${fnbCount} món F&B`)
+  return (
+    <div className="mb-4 flex items-center gap-2 rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-2.5 text-sm text-orange-800">
+      <span>🛒 Giỏ của bạn có sẵn <strong>{parts.join(" và ")}</strong> — chọn sân & giờ là đặt được ngay!</span>
     </div>
   )
 }
@@ -370,7 +444,7 @@ function buildPaymentComponents({
   if (selectedVehicles.length > 0) {
     const rentalPerHour = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
     const rentalTotal = rentalPerHour * numSlots
-    const depositTotal = selectedVehicles.length * 100_000
+    const depositTotal = selectedVehicles.reduce((sum, v) => sum + v.securityDeposit, 0)
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })
     lines.push({ id: "deposit", type: "SECURITY_DEPOSIT", label: `Cọc xe (×${selectedVehicles.length})`, amount: depositTotal, status: "HELD" })
