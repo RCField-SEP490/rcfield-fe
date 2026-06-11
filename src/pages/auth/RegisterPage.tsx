@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { motion, AnimatePresence } from "framer-motion"
@@ -22,6 +22,9 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { toast } from "sonner"
+import { registerWithPassword } from "@/features/auth/api/auth.api"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { storageKeys } from "@/shared/lib/storage"
 
 // Zod Schema for Registration validation
 const registerSchema = z.object({
@@ -56,8 +59,14 @@ const rotatingBanners = [
   }
 ]
 
+const roleRedirects = {
+  customer: "/customer/profile",
+  provider: "/pending-review",
+}
+
 export function RegisterPage() {
   const navigate = useNavigate()
+  const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState<"customer" | "provider">("customer")
   const [bannerIndex, setBannerIndex] = useState(0)
@@ -70,7 +79,7 @@ export function RegisterPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
@@ -82,17 +91,63 @@ export function RegisterPage() {
     }
   })
 
-  const onSubmit = (data: RegisterFormValues) => {
+  const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true)
-    
-    // Simulate Registration API
-    setTimeout(() => {
-      setIsLoading(false)
-      toast.success("Đăng ký tài khoản thành công!", {
-        description: `Chào mừng ${data.fullName} tham gia cộng đồng RCField!`
+    try {
+      const auth = await registerWithPassword({
+        fullName: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone: data.phoneNumber.trim() || undefined,
+        password: data.password,
+        role: selectedRole,
       })
-      navigate("/auth/login")
-    }, 1500)
+
+      setAuthenticated(auth.user.role, {
+        id: auth.user.id,
+        fullName: auth.user.fullName,
+        email: auth.user.email,
+        role: auth.user.role,
+        phone: auth.user.phone ?? undefined,
+        avatarUrl: auth.user.avatarUrl ?? undefined,
+        registrationStatus: auth.user.registrationStatus,
+        assignedCafeId: auth.user.assignedCafeId,
+      })
+
+      sessionStorage.setItem(
+        storageKeys.auth,
+        JSON.stringify({
+          accessToken: auth.accessToken,
+          refreshToken: auth.refreshToken,
+          user: auth.user,
+          role: auth.user.role,
+          email: auth.user.email,
+        }),
+      )
+
+      toast.success("Đăng ký tài khoản thành công!", {
+        description: `Chào mừng ${auth.user.fullName} tham gia cộng đồng RCField!`,
+      })
+
+      navigate(roleRedirects[selectedRole] ?? "/")
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { code?: string; message?: string } } }
+      const code = err?.response?.data?.code
+      const message = err?.response?.data?.message
+
+      if (code === "EMAIL_TAKEN") {
+        toast.error("Email đã được sử dụng", {
+          description: "Vui lòng dùng email khác hoặc đăng nhập vào tài khoản hiện có.",
+        })
+      } else if (code === "VALIDATION_ERROR") {
+        toast.error("Thông tin không hợp lệ", { description: message })
+      } else {
+        toast.error("Không thể đăng ký", {
+          description: message ?? "Không kết nối được máy chủ. Vui lòng thử lại.",
+        })
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const ActiveIcon = rotatingBanners[bannerIndex].icon
@@ -328,13 +383,17 @@ export function RegisterPage() {
             {/* Terms checkbox */}
             <div className="space-y-1">
               <div className="flex items-start gap-2.5 pt-1 select-none">
-                <Checkbox 
-                  id="agreeToTerms" 
-                  className="mt-0.5 border-slate-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
-                  onCheckedChange={() => {
-                    // Handled automatically by hook form
-                  }}
-                  {...register("agreeToTerms")}
+                <Controller
+                  name="agreeToTerms"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="agreeToTerms"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="mt-0.5 border-slate-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                    />
+                  )}
                 />
                 <Label htmlFor="agreeToTerms" className="text-xs font-bold text-slate-600 leading-tight cursor-pointer">
                   Tôi đồng ý với{" "}
