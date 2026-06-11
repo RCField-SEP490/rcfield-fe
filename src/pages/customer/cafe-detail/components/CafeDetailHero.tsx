@@ -1,11 +1,25 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { CarFront, Clock3, Heart, Images, MapPin, Share2, Star, WalletCards } from "lucide-react"
+import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 
 export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
+  const handleShare = async () => {
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: cafe.name, url })
+      } catch {
+        // user cancelled — do nothing
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+      toast.success("Đã sao chép link chi nhánh")
+    }
+  }
   const images = useMemo(
     () => dedupeImages([cafe.image, ...(cafe.images ?? []), ...cafe.availableVehicles.map((vehicle) => vehicle.image)]),
     [cafe],
@@ -38,7 +52,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
         </div>
 
         <div className="flex gap-2">
-          <Button type="button" variant="outline" size="icon" className="rounded-full">
+          <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={() => void handleShare()}>
             <Share2 className="h-4 w-4" />
           </Button>
           <Button type="button" variant="outline" size="icon" className="rounded-full">

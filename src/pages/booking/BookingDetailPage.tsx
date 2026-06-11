@@ -1,7 +1,7 @@
 import { useState } from "react"
 import {
   AlertTriangle, CalendarClock, Car, CheckCircle2, Clock3,
-  CreditCard, ImageOff, MapPin, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
+  CreditCard, ImageOff, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
@@ -211,9 +211,20 @@ export function BookingDetailPage() {
                 {booking.cafe && (
                   <div className="flex gap-3">
                     <MapPin className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
-                    <div>
+                    <div className="flex-1">
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Chi nhánh</p>
-                      <p className="mt-1 font-semibold">{booking.cafe.name}</p>
+                      <div className="mt-1 flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold">{booking.cafe.name}</p>
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${booking.cafe.name} ${booking.cafe.address} ${booking.cafe.city}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                          <Navigation className="h-3 w-3" />
+                          Chỉ đường
+                        </a>
+                      </div>
                       <p className="text-sm text-muted-foreground">{booking.cafe.address}{booking.cafe.city ? `, ${booking.cafe.city}` : ""}</p>
                     </div>
                   </div>
@@ -244,25 +255,31 @@ export function BookingDetailPage() {
                 </div>
 
                 {/* Participants list */}
-                {booking.participants.length > 1 && (
+                {booking.participants.length > 0 && (
                   <>
                     <Separator />
                     <div>
                       <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Danh sách người chơi</p>
                       <div className="space-y-2">
-                        {booking.participants.map((p, i) => (
-                          <div key={p.id} className="flex items-center gap-2 text-sm">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
-                              {i + 1}
-                            </span>
-                            <span className="font-medium">
-                              {p.guestName ?? (p.userId ? `Người chơi ${i + 1}` : `Khách ${i + 1}`)}
-                            </span>
-                            {p.guestPhone && (
-                              <span className="text-muted-foreground">· {p.guestPhone}</span>
-                            )}
-                          </div>
-                        ))}
+                        {booking.participants.map((p, i) => {
+                          const isBooker = p.isPrimaryResponsible || p.participantType === "BOOKER"
+                          const name = p.resolvedName ?? (isBooker ? "Người đặt" : `Khách ${i}`)
+                          const phone = p.resolvedPhone
+                          return (
+                            <div key={p.id} className="flex items-center gap-2 text-sm">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                                {i + 1}
+                              </span>
+                              <span className="font-medium">{name}</span>
+                              {phone && <span className="text-muted-foreground">· {phone}</span>}
+                              {isBooker && (
+                                <span className="ml-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-600">
+                                  Người đặt
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   </>

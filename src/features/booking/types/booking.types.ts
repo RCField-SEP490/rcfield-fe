@@ -48,8 +48,12 @@ export interface BookingParticipant {
   id: string
   bookingId: string
   userId: string | null
+  participantType: 'BOOKER' | 'REGISTERED_USER' | 'WALK_IN_GUEST'
+  isPrimaryResponsible: boolean
   guestName: string | null
   guestPhone: string | null
+  resolvedName: string | null
+  resolvedPhone: string | null
 }
 
 export interface BookingVehicleItem {
