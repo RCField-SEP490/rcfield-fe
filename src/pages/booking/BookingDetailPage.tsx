@@ -1,5 +1,8 @@
 import { useState } from "react"
-import { AlertTriangle, CalendarClock, Car, CheckCircle2, Clock3, CreditCard, MapPin, QrCode, RotateCcw, XCircle } from "lucide-react"
+import {
+  AlertTriangle, CalendarClock, Car, CheckCircle2, Clock3,
+  CreditCard, ImageOff, MapPin, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
+} from "lucide-react"
 import { Link, useParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -10,6 +13,12 @@ import { useBooking, useCancelBooking } from "@/features/booking/hooks/use-booki
 import type { BookingResponse, BookingStatus, PaymentComponentType } from "@/features/booking/types/booking.types"
 import { toast } from "sonner"
 
+const TIER_LABELS: Record<string, string> = {
+  STANDARD: "Tiêu chuẩn",
+  PREMIUM: "Cao cấp",
+  RESTRICTED: "Đặc biệt",
+}
+
 const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }> = {
   PENDING: { label: "Chờ thanh toán", className: "bg-amber-100 text-amber-700" },
   CONFIRMED: { label: "Đã xác nhận", className: "bg-emerald-100 text-emerald-700" },
@@ -18,10 +27,8 @@ const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }>
   CANCELLED: { label: "Đã hủy", className: "bg-red-100 text-red-700" },
 }
 
-/** Client-side R1 refund estimate (customer cancels) */
 function estimateRefund(booking: BookingResponse): { slotFee: number; rest: number; total: number; policy: string } {
   const hoursUntilSlot = (new Date(booking.slotStart).getTime() - Date.now()) / 3_600_000
-
   const slotFeeComponent = booking.payment_components.find((c) => c.type === "SLOT_FEE")
   const slotFee = Number(slotFeeComponent?.amount ?? 0)
   const rest = booking.payment_components
@@ -40,15 +47,11 @@ function estimateRefund(booking: BookingResponse): { slotFee: number; rest: numb
     slotFeeRefund = 0
     policy = "Không hoàn phí lịch (hủy dưới 12h)"
   }
-
   return { slotFee: slotFeeRefund, rest, total: slotFeeRefund + rest, policy }
 }
 
 function CancelDialog({
-  booking,
-  onConfirm,
-  onCancel,
-  isPending,
+  booking, onConfirm, onCancel, isPending,
 }: {
   booking: BookingResponse
   onConfirm: () => void
@@ -56,7 +59,6 @@ function CancelDialog({
   isPending: boolean
 }) {
   const refund = estimateRefund(booking)
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200">
@@ -67,7 +69,6 @@ function CancelDialog({
           <h3 className="text-lg font-black text-slate-950">Xác nhận hủy đặt lịch?</h3>
           <p className="text-xs font-semibold text-slate-500">{refund.policy}</p>
         </div>
-
         <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-1.5 text-xs">
           <div className="flex justify-between text-slate-600">
             <span>Hoàn phí lịch</span>
@@ -83,7 +84,6 @@ function CancelDialog({
           </div>
           <p className="text-[10px] text-slate-400">* Số tiền thực tế sẽ được xử lý trong 3-5 ngày làm việc.</p>
         </div>
-
         <div className="flex items-center gap-3 justify-end pt-1">
           <Button variant="outline" className="border-slate-200 font-bold h-10 text-xs rounded-xl" onClick={onCancel}>
             Không, giữ lịch
@@ -108,7 +108,9 @@ export function BookingDetailPage() {
   const cancelMutation = useCancelBooking()
   const [showCancelDialog, setShowCancelDialog] = useState(false)
 
-  const total = booking?.payment_components?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0
+  const componentsTotal = booking?.payment_components?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0
+  const snapshotTotal = (booking?.snapshot as Record<string, unknown> | null)?.total_charged as number | undefined
+  const total = componentsTotal > 0 ? componentsTotal : (snapshotTotal ?? 0)
   const statusInfo = booking ? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING) : null
 
   const handleCancelConfirm = () => {
@@ -116,10 +118,7 @@ export function BookingDetailPage() {
     cancelMutation.mutate(
       { bookingId: booking.id },
       {
-        onSuccess: () => {
-          setShowCancelDialog(false)
-          toast.success("Đã hủy đơn đặt lịch")
-        },
+        onSuccess: () => { setShowCancelDialog(false); toast.success("Đã hủy đơn đặt lịch") },
         onError: () => toast.error("Không thể hủy đơn. Vui lòng thử lại."),
       },
     )
@@ -146,6 +145,7 @@ export function BookingDetailPage() {
   const slotEnd = new Date(booking.slotEnd)
   const slotLabel = `${formatTime(slotStart)} - ${formatTime(slotEnd)}, ${formatDate(slotStart)}`
   const paymentExpiry = booking.paymentExpiresAt ? new Date(booking.paymentExpiresAt) : null
+  const playerCount = booking.participants.length || 1
 
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-6 md:px-6">
@@ -158,6 +158,7 @@ export function BookingDetailPage() {
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <main className="space-y-4">
+            {/* Header card */}
             <Card className="rounded-xl shadow-sm">
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
@@ -175,32 +176,173 @@ export function BookingDetailPage() {
                     icon={CheckCircle2}
                     title="Đặt thành công"
                     description={formatDateTime(new Date(booking.createdAt))}
-                    done={booking.status !== 'PENDING'}
+                    done={booking.status !== "PENDING"}
                   />
-                  {booking.status === 'PENDING' && paymentExpiry && (
+                  {booking.status === "PENDING" && paymentExpiry && (
                     <TimelineItem
                       icon={Clock3}
                       title="Chờ thanh toán"
                       description={`Hết hạn: ${formatDateTime(paymentExpiry)}`}
                     />
                   )}
-                  <TimelineItem icon={Clock3} title="Chờ check-in" description={`Dự kiến: ${slotLabel}`} done={['CHECKED_IN','COMPLETED'].includes(booking.status)} />
-                  <TimelineItem icon={CalendarClock} title="Hoàn thành" description="Sau khi check-out" done={booking.status === 'COMPLETED'} />
+                  <TimelineItem
+                    icon={Clock3}
+                    title="Chờ check-in"
+                    description={`Dự kiến: ${slotLabel}`}
+                    done={["CHECKED_IN", "COMPLETED"].includes(booking.status)}
+                  />
+                  <TimelineItem
+                    icon={CalendarClock}
+                    title="Hoàn thành"
+                    description="Sau khi check-out"
+                    done={booking.status === "COMPLETED"}
+                  />
                 </div>
               </CardContent>
             </Card>
 
+            {/* Booking details */}
             <Card className="rounded-xl shadow-sm">
               <CardHeader>
-                <CardTitle>Thông tin chi tiết</CardTitle>
+                <CardTitle>Thông tin đặt sân</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-5 sm:grid-cols-2">
-                <DetailLine icon={Car} label="Chế độ chơi" value={booking.playMode === 'RENTAL' ? 'Thuê xe quán' : 'Mang xe riêng'} />
-                <DetailLine icon={MapPin} label="Mã cơ sở" value={booking.cafeId.substring(0, 8).toUpperCase()} />
-                <DetailLine icon={CreditCard} label="Số xe" value={booking.vehicles?.length ? `${booking.vehicles.length} xe` : 'Không có'} />
-                <DetailLine icon={Clock3} label="Thời gian" value={slotLabel} />
+              <CardContent className="space-y-5">
+                {/* Cafe info */}
+                {booking.cafe && (
+                  <div className="flex gap-3">
+                    <MapPin className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Chi nhánh</p>
+                      <p className="mt-1 font-semibold">{booking.cafe.name}</p>
+                      <p className="text-sm text-muted-foreground">{booking.cafe.address}{booking.cafe.city ? `, ${booking.cafe.city}` : ""}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <DetailLine icon={Clock3} label="Thời gian" value={slotLabel} />
+                  <DetailLine
+                    icon={Car}
+                    label="Chế độ chơi"
+                    value={booking.playMode === "RENTAL" ? "Thuê xe quán" : "Mang xe riêng"}
+                  />
+                  {booking.track_type_name && (
+                    <DetailLine icon={MapPin} label="Loại sân" value={booking.track_type_name} />
+                  )}
+                  <DetailLine
+                    icon={Users}
+                    label="Số người chơi"
+                    value={`${playerCount} người`}
+                  />
+                  {booking.playMode === "RENTAL" && booking.vehicles.length > 0 && (
+                    <DetailLine
+                      icon={Car}
+                      label="Xe thuê"
+                      value={`${booking.vehicles.length} xe`}
+                    />
+                  )}
+                </div>
+
+                {/* Participants list */}
+                {booking.participants.length > 1 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Danh sách người chơi</p>
+                      <div className="space-y-2">
+                        {booking.participants.map((p, i) => (
+                          <div key={p.id} className="flex items-center gap-2 text-sm">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                              {i + 1}
+                            </span>
+                            <span className="font-medium">
+                              {p.guestName ?? (p.userId ? `Người chơi ${i + 1}` : `Khách ${i + 1}`)}
+                            </span>
+                            {p.guestPhone && (
+                              <span className="text-muted-foreground">· {p.guestPhone}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
+
+            {/* Rental vehicles detail */}
+            {booking.playMode === "RENTAL" && booking.vehicles.length > 0 && (
+              <Card className="rounded-xl shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Car className="h-5 w-5" />
+                    Xe thuê
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {booking.vehicles.map((v, i) => (
+                    <div key={v.id} className="flex items-center gap-4 rounded-xl border p-3">
+                      <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {v.coverImageUrl ? (
+                          <img src={v.coverImageUrl} alt={v.catalogName ?? "Xe"} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center">
+                            <ImageOff className="h-6 w-6 text-muted-foreground/40" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{v.catalogName ?? `Xe ${i + 1}`}</p>
+                        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          {v.tier && <span className="capitalize">{TIER_LABELS[v.tier] ?? v.tier}</span>}
+                          {v.color && <span>{v.color}</span>}
+                          {v.identifier && <span>#{v.identifier}</span>}
+                        </div>
+                      </div>
+                      {v.rentalFeeSnapshot != null && (
+                        <div className="text-right text-sm shrink-0">
+                          <p className="text-xs text-muted-foreground">Phí thuê</p>
+                          <p className="font-semibold">{formatCurrency(Number(v.rentalFeeSnapshot))}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* F&B order */}
+            {booking.fnb_order && booking.fnb_order.items.length > 0 && (
+              <Card className="rounded-xl shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UtensilsCrossed className="h-5 w-5" />
+                    Đồ ăn & thức uống
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {booking.fnb_order.items.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.itemName ?? "Sản phẩm"}</p>
+                        {item.notes && (
+                          <p className="text-xs text-muted-foreground">{item.notes}</p>
+                        )}
+                      </div>
+                      <div className="text-right text-sm">
+                        <p className="text-muted-foreground">×{item.quantity} · {formatCurrency(Number(item.unitPrice))}</p>
+                        <p className="font-semibold">{formatCurrency(Number(item.subtotal))}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <Separator />
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span>Tổng F&B</span>
+                    <span>{formatCurrency(booking.fnb_order.items.reduce((s, i) => s + Number(i.subtotal), 0))}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </main>
 
           <aside className="space-y-4">
@@ -224,27 +366,31 @@ export function BookingDetailPage() {
                 <CardTitle>Thanh toán</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {booking.payment_components.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{formatComponentType(c.type)}</span>
-                    <span className="font-medium">{formatCurrency(Number(c.amount))}</span>
-                  </div>
-                ))}
+                {booking.payment_components.length > 0 ? (
+                  booking.payment_components.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{formatComponentType(c.type)}</span>
+                      <span className="font-medium">{formatCurrency(Number(c.amount))}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Chưa có thông tin thanh toán.</p>
+                )}
                 <Separator />
                 <div className="flex items-center justify-between text-lg font-semibold">
                   <span>Tổng cộng</span>
                   <span>{formatCurrency(total)}</span>
                 </div>
-                {booking.status === 'CONFIRMED' && (
+                {booking.status === "CONFIRMED" && (
                   <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Đã thanh toán qua VNPAY</div>
                 )}
-                {booking.status === 'PENDING' && (
+                {booking.status === "PENDING" && (
                   <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">Chờ thanh toán</div>
                 )}
               </CardContent>
             </Card>
 
-            {['PENDING', 'CONFIRMED'].includes(booking.status) && (
+            {["PENDING", "CONFIRMED"].includes(booking.status) && (
               <>
                 <Button variant="outline" className="w-full" disabled>
                   <RotateCcw className="h-4 w-4" /> Thay đổi lịch
@@ -274,7 +420,9 @@ export function BookingDetailPage() {
   )
 }
 
-function TimelineItem({ icon: Icon, title, description, done = false }: { icon: typeof CheckCircle2; title: string; description: string; done?: boolean }) {
+function TimelineItem({ icon: Icon, title, description, done = false }: {
+  icon: typeof CheckCircle2; title: string; description: string; done?: boolean
+}) {
   return (
     <div className="relative">
       <span className={`absolute -left-8 flex h-7 w-7 items-center justify-center rounded-full border bg-background ${done ? "text-emerald-600" : "text-muted-foreground"}`}>
@@ -289,7 +437,7 @@ function TimelineItem({ icon: Icon, title, description, done = false }: { icon: 
 function DetailLine({ icon: Icon, label, value }: { icon: typeof Car; label: string; value: string }) {
   return (
     <div className="flex gap-3">
-      <Icon className="mt-1 h-5 w-5 text-muted-foreground" />
+      <Icon className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className="mt-1 font-semibold">{value}</p>
@@ -299,11 +447,12 @@ function DetailLine({ icon: Icon, label, value }: { icon: typeof Car; label: str
 }
 
 function formatComponentType(type: PaymentComponentType): string {
-  const map: Record<PaymentComponentType, string> = {
+  const map: Partial<Record<PaymentComponentType, string>> = {
     SLOT_FEE: "Phí lịch chơi",
     RENTAL_FEE: "Phí thuê xe",
     SECURITY_DEPOSIT: "Cọc xe dự phòng",
-    FNB_PREORDER: "F&B preorder",
+    FNB_PREORDER: "Đồ ăn & nước uống",
+    FB_PREORDER: "Đồ ăn & nước uống",
     EXTENSION_FEE: "Phí gia hạn",
     DAMAGE_CHARGE: "Phí thiệt hại",
     PLATFORM_FEE: "Phí nền tảng",
@@ -312,11 +461,11 @@ function formatComponentType(type: PaymentComponentType): string {
 }
 
 function formatTime(d: Date) {
-  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+  return d.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })
 }
 
 function formatDate(d: Date) {
-  return d.toLocaleDateString('vi-VN')
+  return d.toLocaleDateString("vi-VN")
 }
 
 function formatDateTime(d: Date) {

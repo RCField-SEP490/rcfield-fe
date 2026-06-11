@@ -12,6 +12,7 @@ export type PaymentComponentType =
   | 'RENTAL_FEE'
   | 'SECURITY_DEPOSIT'
   | 'FNB_PREORDER'
+  | 'FB_PREORDER'
   | 'EXTENSION_FEE'
   | 'DAMAGE_CHARGE'
   | 'PLATFORM_FEE'
@@ -56,11 +57,17 @@ export interface BookingVehicleItem {
   bookingId: string
   vehicleId: string
   rentalFeeSnapshot: number | null
+  catalogName: string | null
+  tier: string | null
+  identifier: string | null
+  color: string | null
+  coverImageUrl: string | null
 }
 
 export interface FnbOrderItem {
   id: string
   menuItemId: string
+  itemName: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -91,6 +98,8 @@ export interface BookingResponse {
   vehicles: BookingVehicleItem[]
   payment_components: PaymentComponentResponse[]
   fnb_order: FnbOrder | null
+  cafe: { name: string; address: string; city: string } | null
+  track_type_name: string | null
 }
 
 export interface BookingListItem {

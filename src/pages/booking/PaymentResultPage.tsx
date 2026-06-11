@@ -31,7 +31,7 @@ export function PaymentResultPage() {
   })
 
   const paymentComponents = booking?.payment_components ?? []
-  const total = paymentComponents.reduce((sum, c) => sum + c.amount, 0)
+  const total = paymentComponents.reduce((sum, c) => sum + Number(c.amount), 0)
 
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-8 md:px-6">
@@ -64,7 +64,7 @@ export function PaymentResultPage() {
                   <div className="rounded-xl border">
                     {paymentComponents.map((line) => (
                       <div key={line.id} className="flex items-center justify-between border-b px-4 py-3 text-sm last:border-b-0">
-                        <span className="text-muted-foreground capitalize">{formatComponentType(line.type)}</span>
+                        <span className="text-muted-foreground">{formatComponentType(line.type)}</span>
                         <span className="font-medium">{formatCurrency(line.amount)}</span>
                       </div>
                     ))}
@@ -123,7 +123,8 @@ function formatComponentType(type: string): string {
     SLOT_FEE: "Phí lịch chơi",
     RENTAL_FEE: "Phí thuê xe",
     SECURITY_DEPOSIT: "Cọc xe dự phòng",
-    FNB_PREORDER: "F&B preorder",
+    FNB_PREORDER: "Đồ ăn & nước uống",
+    FB_PREORDER: "Đồ ăn & nước uống",
     EXTENSION_FEE: "Phí gia hạn",
     DAMAGE_CHARGE: "Phí thiệt hại",
     PLATFORM_FEE: "Phí nền tảng",

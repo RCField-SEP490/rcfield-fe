@@ -190,8 +190,9 @@ export function CreateBookingPage() {
       selectedVehicles,
       fnbTotal,
       numSlots,
+      playerCount: participants,
     }),
-    [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots],
+    [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots, participants],
   )
 
   const handleNext = () => {
@@ -439,6 +440,7 @@ function buildPaymentComponents({
   selectedVehicles,
   fnbTotal,
   numSlots = 1,
+  playerCount = 1,
 }: {
   mode: BookingMode
   planId: string
@@ -446,11 +448,15 @@ function buildPaymentComponents({
   selectedVehicles: import("@/shared/data/explore-data").Vehicle[]
   fnbTotal: number
   numSlots?: number
+  playerCount?: number
 }): PaymentComponentLine[] {
-  const slotFee = mode === "hourly"
+  const baseSlotFee = mode === "hourly"
     ? slotFeeRate * numSlots
     : getPlanPrice(mode, planId, slotFeeRate)
-  const slotLabel = numSlots > 1 ? `Phí lịch chơi (${numSlots} slot)` : "Phí lịch chơi"
+  const slotFee = baseSlotFee * playerCount
+  const slotLabel = playerCount > 1
+    ? `Phí lịch chơi (×${playerCount} người)`
+    : numSlots > 1 ? `Phí lịch chơi (${numSlots} slot)` : "Phí lịch chơi"
   const lines: PaymentComponentLine[] = [
     { id: "slot", type: "SLOT_FEE", label: slotLabel, amount: slotFee, status: "PENDING" },
   ]
