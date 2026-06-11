@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { addDays, format, startOfWeek } from "date-fns"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { DndProvider, useDrag, useDragLayer, useDrop } from "react-dnd"
@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { staffApi, staffQueryKeys, type StaffListItem } from "@/features/staff/api/staff.api"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import {
   scheduleApi,
   scheduleQueryKeys,
@@ -67,6 +68,7 @@ export function ProviderSchedulePage() {
 function ProviderScheduleBoard() {
   const queryClient = useQueryClient()
   const [weekStart, setWeekStart] = useState(() => getWeekStart())
+  const [selectedCafeId, setSelectedCafeId] = useState("")
   const [search, setSearch] = useState("")
   const [newPositionName, setNewPositionName] = useState("")
   const [addingPosition, setAddingPosition] = useState(false)
@@ -81,9 +83,22 @@ function ProviderScheduleBoard() {
     queryFn: () => scheduleApi.getWeek(weekStart),
   })
 
+  const { data: cafesResp, isLoading: cafesLoading } = useQuery({
+    queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
+    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
+  })
+  const cafes = cafesResp?.data ?? []
+
+  useEffect(() => {
+    if (!selectedCafeId && cafes.length > 0) {
+      setSelectedCafeId(cafes[0].id)
+    }
+  }, [cafes, selectedCafeId])
+
   const { data: staffList = [] } = useQuery({
-    queryKey: staffQueryKeys.list(),
-    queryFn: () => staffApi.listStaff(),
+    queryKey: staffQueryKeys.list(selectedCafeId || undefined),
+    queryFn: () => staffApi.listStaff(selectedCafeId || undefined),
+    enabled: Boolean(selectedCafeId),
   })
 
   const createPositionMutation = useMutation({
@@ -159,6 +174,31 @@ function ProviderScheduleBoard() {
         title="Quản lý ca làm việc"
         description="Phân công nhân sự theo tuần, theo vị trí vận hành và theo tình trạng thiếu người."
       />
+
+      <section className="mb-4 rounded-xl border border-[#c4c7c8] bg-white p-4 shadow-sm">
+        <div className="space-y-3">
+          <label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]" htmlFor="schedule-cafe-select">
+            Chi nhánh áp dụng
+          </label>
+          <select
+            id="schedule-cafe-select"
+            value={selectedCafeId}
+            onChange={(event) => {
+              setSelectedCafeId(event.target.value)
+              setSearch("")
+            }}
+            disabled={cafesLoading || cafes.length === 0}
+            className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold text-[#1c1b1b] outline-none transition-colors focus:border-[#ef6c00] disabled:bg-[#f6f3f2] disabled:text-[#747878]"
+          >
+            {cafes.length === 0 ? <option>Chưa có chi nhánh</option> : null}
+            {cafes.map((cafe) => (
+              <option key={cafe.id} value={cafe.id}>
+                {cafe.name} - {cafe.district}, {cafe.city}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
 
       <div className="mb-4 flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-wider text-[#747878]">
         <LegendDot className="border-[#c4c7c8] bg-[#e5e2e1]" label="Đủ nhân sự" />
