@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Eye, Home, Loader2, RotateCcw } from "lucide-react"
+import { AlertCircle, CheckCircle2, Eye, Home, Layers, Loader2, RotateCcw } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/shared/ui/button"
@@ -15,20 +15,24 @@ export function PaymentResultPage() {
   const responseCode = searchParams.get("response_code")
   const isSuccess = status === "success"
 
-  // txn_ref encodes the booking ID — first 8 hex chars are the UUID prefix
-  const bookingId = txnRef ? txnRefToBookingId(txnRef) : undefined
+  // txn_ref encodes the booking/package ID — first 8 hex chars are the UUID prefix
+  const resourceId = txnRef ? txnRefToBookingId(txnRef) : undefined
 
   // Poll until IPN processes and payment_components are populated (VNPay IPN is async)
-  const { data: booking, isFetching } = useQuery({
-    queryKey: bookingQueryKeys.detail(bookingId),
-    queryFn: () => bookingApi.getBooking(bookingId!),
-    enabled: !!bookingId && isSuccess,
+  const { data: booking, isFetching, isError: bookingError } = useQuery({
+    queryKey: bookingQueryKeys.detail(resourceId),
+    queryFn: () => bookingApi.getBooking(resourceId!),
+    enabled: !!resourceId && isSuccess,
+    retry: 1,
     refetchInterval: (query) => {
       const components = query.state.data?.payment_components ?? []
       return isSuccess && components.length === 0 ? 2000 : false
     },
     refetchIntervalInBackground: false,
   })
+
+  // If booking not found (404), this is a package purchase — no invoice breakdown needed
+  const isPackagePurchase = isSuccess && bookingError && !isFetching
 
   const paymentComponents = booking?.payment_components ?? []
   const total = paymentComponents.reduce((sum, c) => sum + Number(c.amount), 0)
@@ -58,7 +62,15 @@ export function PaymentResultPage() {
 
           {isSuccess && (
             <CardContent className="space-y-6 p-6 text-left">
-              {paymentComponents.length > 0 ? (
+              {isPackagePurchase ? (
+                <div className="flex flex-col items-center gap-3 py-4 text-center">
+                  <Layers className="h-8 w-8 text-orange-500" />
+                  <p className="text-sm font-semibold text-slate-700">Gói slot đã được kích hoạt!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Bạn có thể dùng gói này khi đặt lịch tại cơ sở tương ứng.
+                  </p>
+                </div>
+              ) : paymentComponents.length > 0 ? (
                 <section>
                   <h2 className="mb-3 border-l-4 border-primary pl-3 text-lg font-semibold">Chi tiết hóa đơn</h2>
                   <div className="rounded-xl border">
@@ -94,24 +106,34 @@ export function PaymentResultPage() {
         </Card>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <Button asChild size="lg">
-            <Link to="/customer/bookings">
-              <Home className="h-4 w-4" /> Quay lại lịch đặt
-            </Link>
-          </Button>
-          {isSuccess && booking ? (
-            <Button asChild size="lg" variant="outline">
-              <Link to={`/booking/${booking.id}`}>
-                <Eye className="h-4 w-4" /> Xem chi tiết đặt chỗ
+          {isPackagePurchase ? (
+            <Button asChild size="lg" className="sm:col-span-2">
+              <Link to="/customer/packages">
+                <Layers className="h-4 w-4" /> Xem gói của tôi
               </Link>
             </Button>
-          ) : !isSuccess ? (
-            <Button asChild size="lg" variant="outline">
-              <Link to="/booking/new">
-                <RotateCcw className="h-4 w-4" /> Đặt lại
-              </Link>
-            </Button>
-          ) : null}
+          ) : (
+            <>
+              <Button asChild size="lg">
+                <Link to="/customer/bookings">
+                  <Home className="h-4 w-4" /> Quay lại lịch đặt
+                </Link>
+              </Button>
+              {isSuccess && booking ? (
+                <Button asChild size="lg" variant="outline">
+                  <Link to={`/booking/${booking.id}`}>
+                    <Eye className="h-4 w-4" /> Xem chi tiết đặt chỗ
+                  </Link>
+                </Button>
+              ) : !isSuccess ? (
+                <Button asChild size="lg" variant="outline">
+                  <Link to="/booking/new">
+                    <RotateCcw className="h-4 w-4" /> Đặt lại
+                  </Link>
+                </Button>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
     </div>
