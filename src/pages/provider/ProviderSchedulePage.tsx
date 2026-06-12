@@ -1141,7 +1141,7 @@ function ShiftCard({
   return (
     <div
       ref={cardRef}
-      onClick={(event) => {
+      onDoubleClick={(event) => {
         event.stopPropagation()
         onSelect(event)
       }}
