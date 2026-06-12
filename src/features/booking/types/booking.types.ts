@@ -152,6 +152,7 @@ export interface CreateBookingBody {
   fnb_items: FnbItemBody[]
   promotion_code?: string
   track_type_id?: string
+  customer_package_id?: string
 }
 
 export interface CreateBookingResult {
@@ -170,9 +171,12 @@ export interface CreateBookingResult {
 }
 
 export interface CheckoutResponse {
-  payment_url: string
+  payment_url: string | null
   txn_ref: string
   total_amount: number
+  confirmed?: boolean
+  slots_used?: number
+  slots_remaining_after?: number
 }
 
 export interface CheckAvailabilityParams {

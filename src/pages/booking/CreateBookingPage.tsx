@@ -122,6 +122,7 @@ export function CreateBookingPage() {
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(vehicleId ? [vehicleId] : [])
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(() => parseFnbParam(searchParams.get("fnb")))
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null)
   const [selectedTrackConfig, setSelectedTrackConfig] = useState<TrackConfig | null>(null)
 
   const [pendingPlayMode, setPendingPlayMode] = useState<CustomerPlayMode | null>(null)
@@ -243,10 +244,17 @@ export function CreateBookingPage() {
           .filter(([, qty]) => qty > 0)
           .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
         ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
+        ...(selectedPackageId ? { customer_package_id: selectedPackageId } : {}),
       })
 
       const checkout = await createCheckoutMutation.mutateAsync(booking.booking_id)
-      window.location.href = checkout.payment_url
+      if (checkout.confirmed) {
+        // Zero-total: package covered slot_fee and no other charges — already confirmed
+        toast.success("Đặt lịch thành công! Gói slot đã được áp dụng.")
+        window.location.href = "/customer/bookings"
+        return
+      }
+      window.location.href = checkout.payment_url!
     } catch (err) {
       let message = "Vui lòng thử lại."
       // Check backend error codes for specific user-facing messages
@@ -345,7 +353,15 @@ export function CreateBookingPage() {
             />
           )}
           {currentStep === "payment" && (
-            <PaymentStep paymentMethod={paymentMethod} onPaymentMethodChange={setPaymentMethod} />
+            <PaymentStep
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              cafeId={isMockId ? undefined : cafeId}
+              playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
+              slotsNeeded={numSlots}
+              selectedPackageId={selectedPackageId}
+              onPackageSelect={setSelectedPackageId}
+            />
           )}
         </main>
 
