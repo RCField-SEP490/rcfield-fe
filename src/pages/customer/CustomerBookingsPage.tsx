@@ -61,6 +61,11 @@ export function CustomerBookingsPage() {
     setResumingId(bookingId)
     checkoutMutation.mutate(bookingId, {
       onSuccess: (result) => {
+        if (!result.payment_url) {
+          toast.error("Không thể tạo link thanh toán. Vui lòng thử lại.")
+          setResumingId(null)
+          return
+        }
         window.location.href = result.payment_url
       },
       onError: () => {

@@ -1,5 +1,8 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { ArrowLeftRight, Clock, Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -28,14 +31,39 @@ const STATUS_LABELS: Record<StaffListItem["status"], string> = {
 
 const emptyForm: InviteStaffBody = { cafe_id: "", full_name: "", email: "", phone: "" }
 
+const phoneRegex = /^(84|0[3|5|7|8|9])([0-9]{8})$/
+
+const inviteStaffSchema = z.object({
+  cafe_id: z.string().min(1, { message: "Vui lòng chọn chi nhánh" }),
+  full_name: z.string().trim().min(2, { message: "Họ tên phải có ít nhất 2 ký tự" }).max(255),
+  email: z.string().trim().min(1, { message: "Vui lòng nhập email" }).email({ message: "Email không hợp lệ" }).max(255),
+  phone: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || phoneRegex.test(value), {
+      message: "Số điện thoại phải có dạng 0xxxxxxxxx hoặc 84xxxxxxxxx",
+    }),
+})
+
+type InviteStaffFormValues = z.infer<typeof inviteStaffSchema>
+
 export function ProviderStaffPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [selectedCafeId, setSelectedCafeId] = useState<string | undefined>(undefined)
   const [showInviteModal, setShowInviteModal] = useState(false)
-  const [form, setForm] = useState<InviteStaffBody>(emptyForm)
   const [transferTarget, setTransferTarget] = useState<StaffListItem | null>(null)
   const [transferCafeId, setTransferCafeId] = useState("")
+  const {
+    register,
+    handleSubmit,
+    reset: resetInviteForm,
+    formState: { errors },
+  } = useForm<InviteStaffFormValues>({
+    resolver: zodResolver(inviteStaffSchema),
+    defaultValues: emptyForm,
+  })
 
   const { data: staffList = [], isLoading, isError } = useQuery({
     queryKey: staffQueryKeys.list(selectedCafeId),
@@ -53,7 +81,7 @@ export function ProviderStaffPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
       setShowInviteModal(false)
-      setForm(emptyForm)
+      resetInviteForm(emptyForm)
       if (!result.emailSent) {
         toast.warning("Đã tạo tài khoản nhưng gửi email thất bại. Dùng 'Gửi lại lời mời' sau.")
       } else {
@@ -112,13 +140,13 @@ export function ProviderStaffPage() {
       s.cafeName.toLowerCase().includes(search.toLowerCase()),
   )
 
-  const handleInviteSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.cafe_id || !form.full_name || !form.email) {
-      toast.error("Vui lòng điền đầy đủ thông tin.")
-      return
-    }
-    inviteMutation.mutate({ ...form, phone: form.phone || undefined })
+  const handleInviteSubmit = (values: InviteStaffFormValues) => {
+    inviteMutation.mutate({
+      cafe_id: values.cafe_id,
+      full_name: values.full_name.trim(),
+      email: values.email.trim().toLowerCase(),
+      phone: values.phone?.trim() || undefined,
+    })
   }
 
   return (
@@ -197,59 +225,76 @@ export function ProviderStaffPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-xl">
             <h2 className="mb-4 text-lg font-bold text-[#1c1b1b]">Mời nhân viên mới</h2>
-            <form onSubmit={handleInviteSubmit} className="space-y-3">
+            <form onSubmit={handleSubmit(handleInviteSubmit)} className="space-y-3" noValidate>
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#444748]">Chi nhánh *</label>
                 <select
-                  required
-                  className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm"
-                  value={form.cafe_id}
-                  onChange={(e) => setForm({ ...form, cafe_id: e.target.value })}
+                  className={cn(
+                    "w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500/20",
+                    errors.cafe_id && "border-red-500 focus:border-red-500",
+                  )}
+                  {...register("cafe_id")}
                 >
                   <option value="">Chọn chi nhánh</option>
                   {cafes.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
+                {errors.cafe_id && (
+                  <p className="mt-1 text-xs font-medium text-red-600">{errors.cafe_id.message}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#444748]">Họ và tên *</label>
                 <input
-                  required
                   type="text"
-                  className="w-full rounded-lg border border-[#c4c7c8] px-3 py-2 text-sm"
-                  value={form.full_name}
-                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                  className={cn(
+                    "w-full rounded-lg border border-[#c4c7c8] px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500/20",
+                    errors.full_name && "border-red-500 focus:border-red-500",
+                  )}
+                  {...register("full_name")}
                   placeholder="Nguyễn Văn A"
                 />
+                {errors.full_name && (
+                  <p className="mt-1 text-xs font-medium text-red-600">{errors.full_name.message}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#444748]">Email *</label>
                 <input
-                  required
                   type="email"
-                  className="w-full rounded-lg border border-[#c4c7c8] px-3 py-2 text-sm"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className={cn(
+                    "w-full rounded-lg border border-[#c4c7c8] px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500/20",
+                    errors.email && "border-red-500 focus:border-red-500",
+                  )}
+                  {...register("email")}
                   placeholder="nhanvien@example.com"
                 />
+                {errors.email && (
+                  <p className="mt-1 text-xs font-medium text-red-600">{errors.email.message}</p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-[#444748]">Số điện thoại</label>
                 <input
                   type="tel"
-                  className="w-full rounded-lg border border-[#c4c7c8] px-3 py-2 text-sm"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="090 123 4567"
+                  className={cn(
+                    "w-full rounded-lg border border-[#c4c7c8] px-3 py-2 text-sm focus:border-orange-500 focus:ring-orange-500/20",
+                    errors.phone && "border-red-500 focus:border-red-500",
+                  )}
+                  {...register("phone")}
+                  placeholder="0901234567"
                 />
+                {errors.phone && (
+                  <p className="mt-1 text-xs font-medium text-red-600">{errors.phone.message}</p>
+                )}
               </div>
               <div className="flex gap-2 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => { setShowInviteModal(false); setForm(emptyForm) }}
+                  onClick={() => { setShowInviteModal(false); resetInviteForm(emptyForm) }}
                 >
                   Hủy
                 </Button>

@@ -5,7 +5,6 @@ import { useMyPackages } from "@/features/customer-packages/hooks/use-customer-p
 import type { MyPackageItem } from "@/features/customer-packages/api/customer-package.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { Badge } from "@/shared/ui/badge"
-import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { formatCurrency } from "@/shared/lib/format"
 

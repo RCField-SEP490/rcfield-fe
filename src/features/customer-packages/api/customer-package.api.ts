@@ -26,6 +26,7 @@ export interface MyPackageItem {
   cafe_id: string
   cafe_name: string
   package_name: string
+  applicable_play_modes?: string[]
   slots_total: number
   slots_remaining: number
   expires_at: string
