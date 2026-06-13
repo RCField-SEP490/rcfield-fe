@@ -184,8 +184,8 @@ export function CreateBookingPage() {
     return Math.max(1, Math.round(diffMinutes / slotDuration))
   }, [time, preselectedSlotEnd, cafe.slotDurationMinutes])
 
-  const paymentComponents = useMemo(
-    () => buildPaymentComponents({
+  const paymentComponents = useMemo(() => {
+    const components = buildPaymentComponents({
       mode,
       planId,
       slotFeeRate: cafe.slotFeeRate ?? 0,
@@ -193,9 +193,16 @@ export function CreateBookingPage() {
       fnbTotal,
       numSlots,
       playerCount: participants,
-    }),
-    [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots, participants],
-  )
+    })
+    if (selectedPackageId) {
+      return components.map((c) =>
+        c.type === "SLOT_FEE"
+          ? { ...c, amount: 0, label: c.label + " (Gói slot)" }
+          : c,
+      )
+    }
+    return components
+  }, [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots, participants, selectedPackageId])
 
   const handleNext = () => {
     const index = orderedSteps.indexOf(currentStep)
@@ -313,6 +320,7 @@ export function CreateBookingPage() {
               cafeId={cafeId}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
               slotsNeeded={numSlots}
+              slotFeeRate={cafe.slotFeeRate ?? 0}
               selectedPackageId={selectedPackageId}
               onPackageSelect={setSelectedPackageId}
             />

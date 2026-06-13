@@ -1,7 +1,9 @@
 import { useState } from "react"
 import { CheckCircle2, Clock, Layers, Loader2, ShoppingCart, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import {
+  useMyPackages,
   usePublicPackages,
   usePurchasePackage,
 } from "@/features/customer-packages/hooks/use-customer-packages"
@@ -23,6 +25,17 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
   const isCustomer = authRole === "customer"
   const [purchasingId, setPurchasingId] = useState<string | null>(null)
 
+  const { data: myPackages = [] } = useMyPackages(
+    cafeId && isCustomer ? { cafe_id: cafeId } : undefined,
+  )
+
+  // Set of package_ids the customer currently owns (ACTIVE or PENDING_PAYMENT)
+  const ownedPackageIds = new Set(
+    myPackages
+      .filter((p) => p.status === "ACTIVE" || p.status === "PENDING_PAYMENT")
+      .map((p) => p.package_id),
+  )
+
   if (!isLoading && packages.length === 0) return null
 
   const handlePurchase = async (pkg: PublicPackage) => {
@@ -31,6 +44,13 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
     try {
       const result = await purchaseMutation.mutateAsync({ cafeId, packageId: pkg.id })
       window.location.href = result.payment_url
+    } catch (err) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
+      if (code === "PACKAGE_ALREADY_OWNED") {
+        toast.error("Bạn đã có gói này đang hoạt động. Hãy dùng hết trước khi mua lại.")
+      } else {
+        toast.error("Không thể mua gói. Vui lòng thử lại.")
+      }
     } finally {
       setPurchasingId(null)
     }
@@ -64,6 +84,7 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
               key={pkg.id}
               pkg={pkg}
               isCustomer={isCustomer}
+              isOwned={ownedPackageIds.has(pkg.id)}
               isPurchasing={purchasingId === pkg.id}
               onPurchase={() => void handlePurchase(pkg)}
             />
@@ -77,11 +98,13 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
 function PackageCard({
   pkg,
   isCustomer,
+  isOwned,
   isPurchasing,
   onPurchase,
 }: {
   pkg: PublicPackage
   isCustomer: boolean
+  isOwned: boolean
   isPurchasing: boolean
   onPurchase: () => void
 }) {
@@ -96,11 +119,18 @@ function PackageCard({
       <CardHeader className="pb-2 pt-5">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base font-extrabold text-slate-950 leading-tight">{pkg.name}</CardTitle>
-          {pkg.is_popular && (
-            <Badge className="shrink-0 bg-orange-500/10 text-orange-700 border-none text-[10px] font-bold">
-              Phổ biến
-            </Badge>
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            {isOwned && (
+              <Badge className="bg-emerald-500/10 text-emerald-700 border-none text-[10px] font-bold">
+                Đã sở hữu
+              </Badge>
+            )}
+            {pkg.is_popular && !isOwned && (
+              <Badge className="bg-orange-500/10 text-orange-700 border-none text-[10px] font-bold">
+                Phổ biến
+              </Badge>
+            )}
+          </div>
         </div>
         {pkg.description && (
           <p className="text-xs text-slate-500 leading-relaxed mt-1">{pkg.description}</p>
@@ -145,17 +175,24 @@ function PackageCard({
         </div>
 
         {isCustomer ? (
-          <Button
-            className="w-full bg-slate-950 hover:bg-orange-600 text-white font-bold text-xs h-9 rounded-xl transition-colors"
-            disabled={isPurchasing}
-            onClick={onPurchase}
-          >
-            {isPurchasing ? (
-              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang xử lý...</>
-            ) : (
-              <><ShoppingCart className="h-3.5 w-3.5" /> Mua gói này</>
-            )}
-          </Button>
+          isOwned ? (
+            <div className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200 py-2 text-xs font-bold text-emerald-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Gói đang hoạt động
+            </div>
+          ) : (
+            <Button
+              className="w-full bg-slate-950 hover:bg-orange-600 text-white font-bold text-xs h-9 rounded-xl transition-colors"
+              disabled={isPurchasing}
+              onClick={onPurchase}
+            >
+              {isPurchasing ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang xử lý...</>
+              ) : (
+                <><ShoppingCart className="h-3.5 w-3.5" /> Mua gói này</>
+              )}
+            </Button>
+          )
         ) : (
           <p className="w-full text-center text-[11px] text-slate-400 font-semibold py-1">
             Đăng nhập để mua gói

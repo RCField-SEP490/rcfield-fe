@@ -10,6 +10,7 @@ type Props = {
   cafeId?: string
   playMode?: BookingPlayMode
   slotsNeeded?: number
+  slotFeeRate?: number
   selectedPackageId?: string | null
   onPackageSelect?: (id: string | null) => void
 }
@@ -36,6 +37,7 @@ export function BookingPackageSelector({
   cafeId,
   playMode,
   slotsNeeded = 1,
+  slotFeeRate = 0,
   selectedPackageId,
   onPackageSelect,
 }: Props) {
@@ -47,9 +49,16 @@ export function BookingPackageSelector({
   )
 
   // Exclude actually expired packages (status ACTIVE but past expires_at)
-  const visiblePackages = allPackages.filter(
-    (pkg) => new Date(pkg.expires_at) >= new Date() || pkg.slots_remaining > 0,
-  )
+  // Dedup by package_id — keep only the one with most slots_remaining (avoid showing duplicates from old data)
+  const seen = new Map<string, (typeof allPackages)[number]>()
+  for (const pkg of allPackages) {
+    if (new Date(pkg.expires_at) < new Date() && pkg.slots_remaining <= 0) continue
+    const existing = seen.get(pkg.package_id)
+    if (!existing || pkg.slots_remaining > existing.slots_remaining) {
+      seen.set(pkg.package_id, pkg)
+    }
+  }
+  const visiblePackages = Array.from(seen.values())
 
   if (!isCustomer || visiblePackages.length === 0) return null
 
@@ -75,6 +84,7 @@ export function BookingPackageSelector({
               pkg={pkg}
               isSelected={selectedPackageId === pkg.id}
               slotsNeeded={slotsNeeded}
+              slotFeeRate={slotFeeRate}
               ineligibleReason={ineligibleReason}
               onSelect={() => {
                 if (ineligibleReason) return
@@ -98,12 +108,14 @@ function PackageOption({
   pkg,
   isSelected,
   slotsNeeded,
+  slotFeeRate,
   ineligibleReason,
   onSelect,
 }: {
   pkg: MyPackageItem
   isSelected: boolean
   slotsNeeded: number
+  slotFeeRate: number
   ineligibleReason: string | null
   onSelect: () => void
 }) {
@@ -150,11 +162,14 @@ function PackageOption({
           )}
         </div>
       </div>
-      {isSelected && !isDisabled && (
-        <p className="mt-1.5 text-[10px] font-semibold text-orange-700">
-          Tiết kiệm ~{formatCurrency((pkg.purchased_price / pkg.slots_total) * slotsNeeded)} so với đặt thường
-        </p>
-      )}
+      {isSelected && !isDisabled && (() => {
+        const savings = (slotFeeRate - pkg.purchased_price / pkg.slots_total) * slotsNeeded
+        return savings > 0 ? (
+          <p className="mt-1.5 text-[10px] font-semibold text-orange-700">
+            Tiết kiệm ~{formatCurrency(savings)} so với đặt thường
+          </p>
+        ) : null
+      })()}
     </button>
   )
 }
