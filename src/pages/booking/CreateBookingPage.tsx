@@ -28,6 +28,7 @@ import { FnbStep } from "./components/checkout/FnbStep"
 import { ParticipantsStep, type Companion } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
 import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
+import { BookingPackageSelector } from "./components/checkout/BookingPackageSelector"
 import type { TrackConfig } from "@/features/cafes/types"
 import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import { toast } from "sonner"
@@ -307,6 +308,15 @@ export function CreateBookingPage() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
+          {currentStep !== "track" && !isMockId && (
+            <BookingPackageSelector
+              cafeId={cafeId}
+              playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
+              slotsNeeded={numSlots}
+              selectedPackageId={selectedPackageId}
+              onPackageSelect={setSelectedPackageId}
+            />
+          )}
           {currentStep === "track" && (selectedVehicleIds.length > 0 || Object.values(fnbQuantities).some((q) => q > 0)) && (
             <PreSelectionBanner
               vehicleName={selectedVehicles[0]?.name}
