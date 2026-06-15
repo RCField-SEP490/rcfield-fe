@@ -195,11 +195,16 @@ export function CreateBookingPage() {
       playerCount: participants,
     })
     if (selectedPackageId) {
-      return components.map((c) =>
-        c.type === "SLOT_FEE"
-          ? { ...c, amount: 0, label: c.label + " (Gói slot)" }
-          : c,
-      )
+      return components.map((c) => {
+        if (c.type !== "SLOT_FEE") return c
+        const perPersonFee = participants > 0 ? c.amount / participants : 0
+        const companionFee = perPersonFee * Math.max(0, participants - 1)
+        const label =
+          participants > 1
+            ? `Phí lịch chơi (×${participants - 1} người) + Gói slot`
+            : c.label + " (Gói slot)"
+        return { ...c, amount: companionFee, label }
+      })
     }
     return components
   }, [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots, participants, selectedPackageId])
@@ -399,7 +404,9 @@ export function CreateBookingPage() {
           isSubmitting={isSubmitting}
           isNextDisabled={
             (currentStep === "track" && (!selectedTrackConfig || !time)) ||
-            (currentStep === "participants" && isByocFull)
+            (currentStep === "participants" && isByocFull) ||
+            (currentStep === "participants" && companions.some((c) => !c.name.trim())) ||
+            (currentStep === "participants" && playMode === "RENTAL" && selectedVehicleIds.length < participants)
           }
           selectedTrackConfig={selectedTrackConfig}
         />

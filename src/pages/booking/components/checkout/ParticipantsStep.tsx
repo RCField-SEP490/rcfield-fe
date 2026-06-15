@@ -59,7 +59,7 @@ export function ParticipantsStep({
       <CardHeader>
         <CardTitle>Người chơi & phương tiện</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Người đặt lịch là người chơi chính. Thêm người đi kèm nếu cần (không bắt buộc — staff có thể cập nhật khi check-in).
+          Người đặt lịch là người chơi chính. Thêm người đi kèm nếu có — họ tên là bắt buộc để tiếp tục. Staff có thể bổ sung khi check-in.
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -126,7 +126,7 @@ export function ParticipantsStep({
           <div className="space-y-3">
             <p className="text-sm font-medium text-slate-700">
               Thông tin người đi kèm
-              <span className="ml-1.5 text-xs font-normal text-muted-foreground">(tuỳ chọn)</span>
+              <span className="ml-1.5 text-xs font-normal text-rose-500">(bắt buộc điền họ tên)</span>
             </p>
             {companions.map((companion, i) => (
               <div key={i} className="flex items-center gap-2">
@@ -168,14 +168,23 @@ export function ParticipantsStep({
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 text-sm font-medium">
                 <Car className="h-4 w-4 text-muted-foreground" /> Xe thuê dự kiến
+                <span className="text-xs font-normal text-rose-500">(chọn đủ {participants} xe)</span>
               </p>
               <div className="flex items-center gap-2">
                 {selectedVehicleIds.length > 0 && (
-                  <Badge variant="default">{selectedVehicleIds.length} xe đã chọn</Badge>
+                  <Badge variant={selectedVehicleIds.length >= participants ? "default" : "destructive"}>
+                    {selectedVehicleIds.length}/{participants} xe
+                  </Badge>
                 )}
-                <Badge variant="secondary">{cafe.availableVehicles.length} xe</Badge>
+                <Badge variant="secondary">{cafe.availableVehicles.length} xe có sẵn</Badge>
               </div>
             </div>
+            {selectedVehicleIds.length < participants && selectedVehicleIds.length > 0 && (
+              <p className="text-xs text-rose-500">Cần chọn thêm {participants - selectedVehicleIds.length} xe nữa.</p>
+            )}
+            {selectedVehicleIds.length === 0 && (
+              <p className="text-xs text-rose-500">Vui lòng chọn xe để tiếp tục.</p>
+            )}
             {cafe.availableVehicles.length === 0 ? (
               <p className="text-sm text-muted-foreground">Cơ sở chưa cập nhật danh sách xe.</p>
             ) : (
