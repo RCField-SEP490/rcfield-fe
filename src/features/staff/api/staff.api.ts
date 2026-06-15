@@ -31,6 +31,7 @@ export interface TodayBookingItem {
   customerPhone: string | null
   startTime: string
   endTime: string
+  createdAt: string
   status: string
   mode: string
   vehicleName: string | null

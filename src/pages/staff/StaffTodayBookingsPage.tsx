@@ -34,6 +34,22 @@ import {
 
 type TabType = "LIST" | "WALKIN"
 
+function getSlotCountdown(startTime: string): { label: string; urgent: boolean } | null {
+  const diffMs = new Date(startTime).getTime() - Date.now()
+  if (diffMs <= 0) return null // already started or past
+
+  const totalMinutes = Math.floor(diffMs / 60000)
+  if (totalMinutes >= 24 * 60) return null // more than 24h away, skip
+
+  if (totalMinutes < 60) {
+    return { label: `còn ${totalMinutes} phút`, urgent: totalMinutes <= 30 }
+  }
+  const hours = Math.floor(totalMinutes / 60)
+  const mins = totalMinutes % 60
+  const label = mins > 0 ? `còn ${hours}g ${mins}p` : `còn ${hours} tiếng`
+  return { label, urgent: false }
+}
+
 export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { assignedCafeId, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
@@ -296,6 +312,7 @@ export default function StaffTodayBookingsPage() {
                     : "warning"
 
                   const hasFnb = b.fnbPreorderAmount > 0
+                  const countdown = getSlotCountdown(b.startTime)
 
                   return (
                     <StaffCard key={b.id} className="space-y-3">
@@ -338,6 +355,16 @@ export default function StaffTodayBookingsPage() {
                             {" – "}
                             {new Date(b.endTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
                           </span>
+                          {countdown && (
+                            <span className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                              countdown.urgent
+                                ? "bg-red-50 text-red-600 border border-red-200"
+                                : "bg-[#f5f3f2] text-[#6b7280]"
+                            )}>
+                              {countdown.label}
+                            </span>
+                          )}
                         </span>
                         {b.trackTypeName && (
                           <span className="flex items-center gap-1.5">
