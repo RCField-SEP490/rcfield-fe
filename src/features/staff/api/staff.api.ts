@@ -26,6 +26,7 @@ export interface InviteStaffResult extends StaffListItem {
 
 export interface TodayBookingItem {
   id: string
+  shortCode?: string
   customerName: string
   customerPhone: string | null
   startTime: string
@@ -33,12 +34,36 @@ export interface TodayBookingItem {
   status: string
   mode: string
   vehicleName: string | null
+  trackTypeName: string | null
+  participantCount: number
+  vehicleCount: number
+  fnbPreorderAmount: number
+}
+
+export interface FnbOrderItemDetail {
+  name: string
+  quantity: number
+  unitPrice: number
+  subtotal: number
+  notes: string | null
+}
+
+export interface TodayFnbOrderItem {
+  id: string
+  bookingId: string
+  status: "PENDING" | "CONFIRMED" | "DELIVERED" | "CANCELLED"
+  totalAmount: number
+  createdAt: string
+  slotStart: string
+  customerName: string
+  items: FnbOrderItemDetail[]
 }
 
 export const staffQueryKeys = {
   all: ["staff"] as const,
   list: (cafeId?: string) => [...staffQueryKeys.all, "list", cafeId ?? "all"] as const,
   todayBookings: () => [...staffQueryKeys.all, "today-bookings"] as const,
+  fnbOrders: () => [...staffQueryKeys.all, "fnb-orders"] as const,
 }
 
 export const staffApi = {
@@ -76,6 +101,15 @@ export const staffApi = {
   getTodayBookings: async (): Promise<TodayBookingItem[]> => {
     const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/today-bookings")
     return res.data.data
+  },
+
+  getFnbOrders: async (): Promise<TodayFnbOrderItem[]> => {
+    const res = await api.get<{ success: boolean; data: TodayFnbOrderItem[] }>("/v1/staff/fnb-orders")
+    return res.data.data
+  },
+
+  updateFnbOrder: async (orderId: string, status: string): Promise<void> => {
+    await api.patch(`/v1/staff/fnb-orders/${orderId}`, { status })
   },
 
   validateInviteToken: async (token: string): Promise<{ email: string; fullName: string }> => {

@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from "react"
-import { useSearchParams } from "react-router"
+import { useSearchParams, Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
   Search as SearchIcon,
   Car,
-  User,
-  Calendar,
   Plus,
   ArrowRight,
+  ChevronRight,
   ShieldCheck,
   Tag,
   Loader2,
+  Clock,
+  Phone,
+  Users,
+  MapPin,
+  UtensilsCrossed,
 } from "lucide-react"
+import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
@@ -33,7 +38,7 @@ export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { assignedCafeId, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
 
-  const { data: realBookings = [], isLoading: loadingBookings } = useQuery({
+  const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),
     queryFn: staffApi.getTodayBookings,
     refetchInterval: 60_000,
@@ -242,10 +247,10 @@ export default function StaffTodayBookingsPage() {
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
               {[
                 { code: "ALL", label: "Tất cả" },
-                { code: "CONFIRMED", label: "Chờ đua" },
-                { code: "ACTIVE", label: "Đang chạy" },
-                { code: "EXTENDING", label: "Gia hạn" },
-                { code: "CHECKING_OUT", label: "Trả xe" },
+                { code: "PENDING", label: "Chờ thanh toán" },
+                { code: "CONFIRMED", label: "Đã xác nhận" },
+                { code: "COMPLETED", label: "Hoàn thành" },
+                { code: "CANCELLED", label: "Đã hủy" },
               ].map((filter) => (
                 <button
                   key={filter.code}
@@ -263,80 +268,121 @@ export default function StaffTodayBookingsPage() {
             </div>
           </div>
 
-          {/* BOOKINGS CARDS GRID — real API data */}
+          {/* BOOKINGS CARDS GRID */}
           {loadingBookings ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="size-6 animate-spin text-[#a09e9d]" />
             </div>
           ) : (
             <div className="grid gap-4">
-              {realBookings
+              {displayBookings
                 .filter((b) => {
-                  const matchSearch = b.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+                  const matchSearch = searchTerm === "" || b.customerName.toLowerCase().includes(searchTerm.toLowerCase())
                   const matchStatus = statusFilter === "ALL" || b.status === statusFilter
                   return matchSearch && matchStatus
                 })
                 .map((b) => {
                   const statusLabel: Record<string, string> = {
-                    CONFIRMED: "XÁC NHẬN",
-                    ACTIVE: "ĐANG CHẠY",
-                    EXTENDING: "GIA HẠN",
-                    CHECKING_OUT: "TRẢ XE",
+                    PENDING: "CHỜ THANH TOÁN",
+                    CONFIRMED: "ĐÃ XÁC NHẬN",
+                    NO_SHOW: "KHÔNG ĐẾN",
+                    COMPLETED: "HOÀN THÀNH",
+                    CANCELLED: "ĐÃ HỦY",
                   }
                   const badgeVariant =
-                    b.status === "CONFIRMED" ? "info" : b.status === "ACTIVE" ? "success" : "warning"
+                    b.status === "CONFIRMED" ? "info"
+                    : b.status === "COMPLETED" ? "success"
+                    : b.status === "CANCELLED" || b.status === "NO_SHOW" ? "default"
+                    : "warning"
+
+                  const hasFnb = b.fnbPreorderAmount > 0
 
                   return (
-                    <StaffCard key={b.id}>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="space-y-1.5 flex-1 min-w-0">
-                          <div className="flex items-center flex-wrap gap-2">
-                            <span className="text-xs text-[#a09e9d] font-mono font-bold">{b.id.slice(0, 8)}</span>
-                            <StaffBadge variant={badgeVariant}>{statusLabel[b.status] ?? b.status}</StaffBadge>
-                          </div>
-
-                          <h4 className="text-base font-bold text-[#1c1b1b] flex items-center gap-2 truncate">
-                            <User className="size-4 text-[#6b7280] shrink-0" />
-                            {b.customerName}
-                          </h4>
-
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6b7280] font-medium">
-                            <span className="flex items-center gap-1.5">
-                              <Calendar className="size-3.5 text-[#ea580c]/80" />
-                              {new Date(b.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} -{" "}
-                              {new Date(b.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                            {b.vehicleName && (
-                              <span className="flex items-center gap-1.5">
-                                <Car className="size-3.5 text-[#ea580c]/80" />
-                                {b.vehicleName}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <Tag className="size-3 text-[#ea580c]/70" />
-                              {b.mode === "BYOC" ? "Tự mang xe" : b.mode === "RENTAL" ? "Thuê xe" : b.mode}
-                            </span>
-                          </div>
+                    <StaffCard key={b.id} className="space-y-3">
+                      {/* Row 1 — ID + status + detail link */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#a09e9d] font-mono font-bold">
+                            #{b.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <StaffBadge variant={badgeVariant}>{statusLabel[b.status] ?? b.status}</StaffBadge>
                         </div>
+                        <Link
+                          to={`/booking/${b.id}`}
+                          className="flex items-center justify-center size-7 rounded-lg border border-[#e5e2e1] bg-white hover:bg-[#fcf8f8] text-[#6b7280] hover:text-[#1c1b1b] transition-colors shrink-0"
+                        >
+                          <ChevronRight className="size-3.5" />
+                        </Link>
+                      </div>
 
-                        {b.status === "CONFIRMED" && (
-                          <div className="flex items-center justify-end pt-3 md:pt-0 border-t border-[#e5e2e1] md:border-none">
-                            <StaffButton
-                              onClick={() => startCheckIn(b.id)}
-                              variant="primary"
-                              size="sm"
-                            >
+                      {/* Row 2 — Customer name + phone */}
+                      <div className="flex items-start justify-between gap-3">
+                        <h4 className="text-base font-bold text-[#1c1b1b] leading-tight">{b.customerName}</h4>
+                        {b.customerPhone && (
+                          <a
+                            href={`tel:${b.customerPhone}`}
+                            className="flex items-center gap-1 text-xs font-semibold text-[#ea580c] shrink-0 hover:underline"
+                          >
+                            <Phone className="size-3" />
+                            {b.customerPhone}
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Row 3 — Time + track + mode */}
+                      <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-[#4c4a49] font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="size-3.5 text-[#ea580c]/80 shrink-0" />
+                          <span className="font-bold text-[#1c1b1b]">
+                            {new Date(b.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                            {" – "}
+                            {new Date(b.endTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                          </span>
+                        </span>
+                        {b.trackTypeName && (
+                          <span className="flex items-center gap-1.5">
+                            <MapPin className="size-3.5 text-[#ea580c]/80 shrink-0" />
+                            {b.trackTypeName}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1.5">
+                          <Tag className="size-3 text-[#ea580c]/70 shrink-0" />
+                          {b.mode === "BYOC" ? "Tự mang xe" : "Thuê xe"}
+                        </span>
+                      </div>
+
+                      {/* Row 4 — Counts + FnB badge */}
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#f0eeee]">
+                        <span className="flex items-center gap-1 rounded-md bg-[#f5f3f2] px-2 py-1 text-[11px] font-bold text-[#4c4a49]">
+                          <Users className="size-3 text-[#6b7280]" />
+                          {b.participantCount} người chơi
+                        </span>
+                        {b.mode !== "BYOC" && b.vehicleCount > 0 && (
+                          <span className="flex items-center gap-1 rounded-md bg-[#f5f3f2] px-2 py-1 text-[11px] font-bold text-[#4c4a49]">
+                            <Car className="size-3 text-[#6b7280]" />
+                            {b.vehicleCount} xe thuê
+                          </span>
+                        )}
+                        {hasFnb && (
+                          <span className="flex items-center gap-1 rounded-md bg-orange-50 border border-orange-200 px-2 py-1 text-[11px] font-bold text-orange-700">
+                            <UtensilsCrossed className="size-3" />
+                            F&B đặt trước · {formatCurrency(b.fnbPreorderAmount)}
+                          </span>
+                        )}
+                        <div className="ml-auto">
+                          {b.status === "CONFIRMED" && (
+                            <StaffButton onClick={() => startCheckIn(b.id)} variant="primary" size="sm">
                               Check-In bàn giao
                               <ArrowRight className="size-3.5" />
                             </StaffButton>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     </StaffCard>
                   )
                 })}
 
-              {realBookings.length === 0 && (
+              {displayBookings.length === 0 && (
                 <StaffCard className="py-12 text-center text-[#6b7280] space-y-2 border-dashed">
                   <p className="text-sm font-bold">Không có đơn đặt lịch nào hôm nay</p>
                   <p className="text-xs">
