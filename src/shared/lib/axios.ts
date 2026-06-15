@@ -6,6 +6,8 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { router } from "@/app/router/routes"
 import { routePaths } from "@/app/router/route-paths"
 
+let isHandling401 = false
+
 export const api = axios.create({
   baseURL: env.apiUrl,
   withCredentials: false,
@@ -42,6 +44,9 @@ api.interceptors.response.use(
     const code = error?.response?.data?.code
 
     if (status === 401 || code === "TOKEN_INVALID" || code === "TOKEN_EXPIRED") {
+      if (isHandling401) return Promise.reject(error)
+      isHandling401 = true
+
       const adminRaw = localStorage.getItem(storageKeys.adminAuth)
       if (adminRaw) {
         // Graceful exit from impersonation — restore admin session and reload
@@ -58,7 +63,9 @@ api.interceptors.response.use(
       localStorage.removeItem(storageKeys.legacyAuth)
       sessionStorage.removeItem(storageKeys.legacyAuth)
       toast.error("Vui lòng đăng nhập lại", { description: "Phiên đăng nhập đã hết hạn." })
-      void router.navigate(routePaths.login, { replace: true })
+      void router.navigate(routePaths.login, { replace: true }).finally(() => {
+        isHandling401 = false
+      })
     }
 
     return Promise.reject(error)

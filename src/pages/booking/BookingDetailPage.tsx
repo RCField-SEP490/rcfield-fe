@@ -1,7 +1,7 @@
 import { useState } from "react"
 import {
   AlertTriangle, CalendarClock, Car, CheckCircle2, Clock3,
-  ImageOff, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
+  ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
@@ -393,6 +393,7 @@ export function BookingDetailPage() {
                 ) : (
                   <p className="text-sm text-muted-foreground">Chưa có thông tin thanh toán.</p>
                 )}
+                <PackageUsedBadge snapshot={booking.snapshot} />
                 <Separator />
                 <div className="flex items-center justify-between text-lg font-semibold">
                   <span>Tổng cộng</span>
@@ -432,6 +433,24 @@ export function BookingDetailPage() {
           onCancel={() => setShowCancelDialog(false)}
           isPending={cancelMutation.isPending}
         />
+      )}
+    </div>
+  )
+}
+
+function PackageUsedBadge({ snapshot }: { snapshot: Record<string, unknown> | null }) {
+  if (!snapshot) return null
+  const pkg = snapshot.package_used as { package_name?: string; slots_used?: number } | undefined
+  if (!pkg?.package_name) return null
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs">
+      <Layers className="h-3.5 w-3.5 shrink-0 text-orange-500" />
+      <div className="flex-1 min-w-0">
+        <span className="font-semibold text-orange-800">Gói slot: </span>
+        <span className="text-orange-700">{pkg.package_name}</span>
+      </div>
+      {pkg.slots_used != null && (
+        <span className="shrink-0 font-bold text-orange-600">−{pkg.slots_used} slot</span>
       )}
     </div>
   )
