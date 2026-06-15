@@ -1,8 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import {
-  BadgePercent,
-  ChevronLeft,
   ChevronRight,
   Clock,
   Compass,
@@ -17,37 +15,14 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/u
 import { Skeleton } from "@/shared/ui/skeleton"
 import { formatCurrency } from "@/shared/lib/format"
 import { CustomerSubNav } from "./components/CustomerSubNav"
+import { CustomerPageShell } from "./components/CustomerPageShell"
 
 export function CustomerPackagesPage() {
   const { data: packages = [], isLoading } = useMyPackages()
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-6 md:p-12 relative">
-      <div className="absolute top-0 right-[10%] w-[350px] h-[350px] rounded-full bg-orange-400/10 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-indigo-400/10 blur-[100px] pointer-events-none" />
-
-      <div className="max-w-5xl mx-auto space-y-6 relative z-10">
-        <div>
-          <Link
-            to="/customer/bookings"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-sm hover:bg-slate-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Quay lại
-          </Link>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <BadgePercent className="h-4 w-4 text-orange-500" />
-              Tài khoản & Hội viên
-            </div>
-            <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">Gói Của Bạn</h1>
-          </div>
-        </div>
-
+    <CustomerPageShell>
         <CustomerSubNav activeTab="packages" />
 
         {/* Owned packages */}
@@ -101,8 +76,7 @@ export function CustomerPackagesPage() {
             </Link>
           </Button>
         </div>
-      </div>
-    </div>
+    </CustomerPageShell>
   )
 }
 

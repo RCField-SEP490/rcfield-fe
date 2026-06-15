@@ -23,7 +23,7 @@ function BotMarkdown({ content }: { content: string }) {
         h2: ({ children }) => <p className="mb-1 font-semibold">{children}</p>,
         h3: ({ children }) => <p className="mb-1 font-medium">{children}</p>,
         a: ({ href, children }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer" className="underline opacity-80 hover:opacity-100">
+          <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-orange-600 underline underline-offset-2 hover:text-orange-700">
             {children}
           </a>
         ),

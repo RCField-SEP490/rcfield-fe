@@ -46,11 +46,14 @@ export function useUpdateTrackConfig(cafeId: string) {
     onError: (error: unknown) => {
       let msg = "Đã xảy ra lỗi khi cập nhật loại sân"
       if (axios.isAxiosError(error)) {
-        const code = error.response?.data?.code
+        const data = error.response?.data as { code?: string; message?: string; errors?: { field: string; message: string }[] } | undefined
+        const code = data?.code
         if (code === "TRACK_CONFIG_HAS_UPCOMING_BOOKINGS") {
           msg = "Không thể tắt loại sân: còn booking sắp tới đang chờ hoặc đã xác nhận"
+        } else if (code === "VALIDATION_ERROR" && data?.errors?.length) {
+          msg = data.errors.map((e) => `${e.field}: ${e.message}`).join(", ")
         } else {
-          msg = error.response?.data?.message || msg
+          msg = data?.message || msg
         }
       }
       toast.error(msg)

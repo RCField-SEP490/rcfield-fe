@@ -1,22 +1,20 @@
 import { useState } from "react"
-import { useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { 
-  mockCustomerVehicles, 
-  type MockVehicle 
+import {
+  mockCustomerVehicles,
+  type MockVehicle
 } from "@/shared/data/user-mock-data"
-import { 
-  Car, 
-  Plus, 
-  CheckCircle, 
-  Clock, 
+import {
+  Car,
+  Plus,
+  CheckCircle,
+  Clock,
   XCircle,
   Cpu,
   Bookmark,
   Wifi,
-  ChevronLeft
 } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
@@ -26,6 +24,7 @@ import { Label } from "@/shared/ui/label"
 import { Input } from "@/shared/ui/input"
 import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
+import { CustomerPageShell } from "./components/CustomerPageShell"
 
 // Zod Schema for Vehicle Registration
 const vehicleSchema = z.object({
@@ -38,7 +37,6 @@ const vehicleSchema = z.object({
 type VehicleFormValues = z.infer<typeof vehicleSchema>
 
 export function CustomerVehiclesPage() {
-  const navigate = useNavigate()
   const [vehicles, setVehicles] = useState<MockVehicle[]>(mockCustomerVehicles)
   const [isFormOpen, setIsFormOpen] = useState(false)
 
@@ -101,48 +99,19 @@ export function CustomerVehiclesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-6 md:p-12 relative">
-      
-      {/* Decorative glows */}
-      <div className="absolute top-0 left-[10%] w-[350px] h-[350px] rounded-full bg-orange-400/10 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-indigo-400/10 blur-[100px] pointer-events-none" />
+    <CustomerPageShell>
+        <CustomerSubNav activeTab="vehicles" />
 
-      <div className="max-w-5xl mx-auto space-y-6 relative z-10">
-        
-        {/* Back Button */}
-        <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-sm hover:bg-slate-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Quay lại trang trước
-          </button>
-        </div>
-
-        {/* Header Ribbon */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <Car className="h-4 w-4 text-orange-500" />
-              Đội xe BYOC cá nhân
-            </div>
-            <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">
-              Xe RC Cá Nhân Đăng Ký
-            </h1>
-          </div>
-
-          <Button 
-            className="bg-slate-950 hover:bg-slate-900 text-white font-bold h-11 px-5 rounded-xl shadow-md flex items-center gap-2 transition-all shrink-0"
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-700">Xe RC cá nhân đăng ký</h2>
+          <Button
+            className="bg-slate-950 hover:bg-slate-900 text-white font-bold h-9 px-4 rounded-xl text-xs"
             onClick={() => setIsFormOpen(true)}
           >
             <Plus className="h-4 w-4" />
-            Đăng ký xe BYOC mới
+            Đăng ký mới
           </Button>
         </div>
-
-        {/* SUB NAVIGATION BAR FOR CUSTOMER SPACE */}
-        <CustomerSubNav activeTab="vehicles" />
 
         {/* VEHICLES GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -213,8 +182,6 @@ export function CustomerVehiclesPage() {
             </Card>
           ))}
         </div>
-
-      </div>
 
       {/* REGISTER BYOC FORM DIALOG MODAL */}
       {isFormOpen && (
@@ -326,6 +293,6 @@ export function CustomerVehiclesPage() {
         </div>
       )}
 
-    </div>
+    </CustomerPageShell>
   )
 }

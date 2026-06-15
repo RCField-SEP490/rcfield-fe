@@ -1,22 +1,20 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router"
+import { Link } from "react-router"
 import {
-  Calendar,
-  Car,
-  ShieldCheck,
   AlertTriangle,
   XCircle,
   HelpCircle,
-  ChevronLeft,
   Clock,
   CreditCard,
   Loader2,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/shared/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Badge } from "@/shared/ui/badge"
+import { cn } from "@/shared/lib/utils"
 import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
+import { CustomerPageShell } from "./components/CustomerPageShell"
 import { useMyBookings, useCancelBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import type { BookingStatus } from "@/features/booking/types/booking.types"
 
@@ -30,8 +28,8 @@ const STATUS_LABELS: Record<BookingStatus, { label: string; badge: string }> = {
   CANCELLED: { label: "Đã hủy", badge: "bg-red-100 text-red-800 border-none font-bold text-xs" },
 }
 
-const TOP_COLOR: Record<BookingStatus, string> = {
-  PENDING: "bg-amber-500",
+const ACCENT: Record<BookingStatus, string> = {
+  PENDING: "bg-amber-400",
   CONFIRMED: "bg-emerald-500",
   NO_SHOW: "bg-orange-400",
   COMPLETED: "bg-indigo-500",
@@ -47,7 +45,6 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
 ]
 
 export function CustomerBookingsPage() {
-  const navigate = useNavigate()
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
   const [resumingId, setResumingId] = useState<string | null>(null)
@@ -94,136 +91,106 @@ export function CustomerBookingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-6 md:p-12 relative">
-      <div className="absolute top-0 right-[10%] w-[350px] h-[350px] rounded-full bg-orange-400/10 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] left-[10%] w-[350px] h-[350px] rounded-full bg-indigo-400/10 blur-[100px] pointer-events-none" />
+    <CustomerPageShell>
+      <CustomerSubNav activeTab="bookings" />
 
-      <div className="max-w-5xl mx-auto space-y-6 relative z-10">
-        <div>
+      <div className="flex flex-wrap items-center gap-2">
+        {FILTERS.map((f) => (
           <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-sm hover:bg-slate-50"
+            key={f.key}
+            onClick={() => setActiveFilter(f.key)}
+            className={`py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${activeFilter === f.key ? "bg-slate-950 text-white shadow-md shadow-slate-900/20" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
           >
-            <ChevronLeft className="h-4 w-4" />
-            Quay lại trang trước
+            {f.label}
           </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="py-16 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
+      ) : bookings.length === 0 ? (
+        <div className="py-16 bg-white border border-dashed border-slate-200 rounded-2xl text-center space-y-3">
+          <HelpCircle className="h-10 w-10 text-slate-300 mx-auto" />
+          <p className="text-sm font-semibold text-slate-500">Không tìm thấy lịch đặt nào</p>
+          <p className="text-xs text-slate-400 max-w-xs mx-auto">Bạn không có giao dịch đặt lịch nào khớp với bộ lọc đã chọn.</p>
         </div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
+          {bookings.map((booking) => {
+            const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
+            const accent = ACCENT[booking.status] ?? "bg-slate-300"
+            const slotStart = new Date(booking.slotStart)
+            const slotEnd = new Date(booking.slotEnd)
+            const shortId = booking.id.substring(0, 8).toUpperCase()
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <ShieldCheck className="h-4 w-4 text-orange-500" />
-              Trang cá nhân Người chơi
-            </div>
-            <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">Quản Lý Lịch Đặt Sân</h1>
-          </div>
-        </div>
+            return (
+              <div key={booking.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/70 transition-colors">
+                <div className={cn("w-1 self-stretch rounded-full shrink-0", accent)} />
 
-        <CustomerSubNav activeTab="bookings" />
+                <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1 items-center">
+                  {/* ID + status */}
+                  <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-0.5 sm:w-28">
+                    <span className="text-sm font-extrabold text-slate-900 font-mono">#{shortId}</span>
+                    <Badge className={cn("text-[10px] shrink-0", statusInfo.badge)}>{statusInfo.label}</Badge>
+                  </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setActiveFilter(f.key)}
-              className={`py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${activeFilter === f.key ? "bg-slate-950 text-white shadow-md shadow-slate-900/20" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {isLoading ? (
-          <div className="py-16 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
-        ) : bookings.length === 0 ? (
-          <div className="py-16 bg-white border border-dashed border-slate-300/80 rounded-2xl text-center space-y-4">
-            <HelpCircle className="h-12 w-12 text-slate-300 mx-auto" />
-            <div className="space-y-1">
-              <p className="text-sm font-extrabold text-slate-950">Không tìm thấy lịch đặt nào</p>
-              <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto">Bạn không có giao dịch đặt lịch nào khớp với bộ lọc trạng thái đã chọn.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {bookings.map((booking) => {
-              const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
-              const topColor = TOP_COLOR[booking.status] ?? "bg-slate-300"
-              const slotStart = new Date(booking.slotStart)
-              const slotEnd = new Date(booking.slotEnd)
-              const shortId = booking.id.substring(0, 8).toUpperCase()
-
-              return (
-                <Card key={booking.id} className="border-slate-200/80 shadow-sm hover:shadow-md transition-all relative overflow-hidden bg-white">
-                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${topColor}`} />
-
-                  <CardHeader className="flex flex-row items-center justify-between pb-3">
-                    <div>
-                      <CardTitle className="text-base font-extrabold text-slate-950">
-                        #{shortId}
-                      </CardTitle>
-                      <CardDescription className="text-[10px] font-bold text-slate-400 mt-0.5">MÃ ĐẶT LỊCH</CardDescription>
-                    </div>
-                    <Badge className={statusInfo.badge}>{statusInfo.label}</Badge>
-                  </CardHeader>
-
-                  <CardContent className="space-y-3.5 text-xs text-slate-700 font-semibold border-t border-slate-50 pt-3">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span>
-                        {slotStart.toLocaleDateString("vi-VN")} · {slotStart.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}–{slotEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Car className="h-4 w-4 text-slate-400 shrink-0" />
-                      <Badge className={`text-[9px] px-1.5 py-0 border-none font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}>
-                        {booking.playMode === "RENTAL" ? "Thuê xe quán" : "Mang xe riêng"}
-                      </Badge>
-                    </div>
-
+                  {/* Date, time, mode */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-medium">
+                    <span className="font-semibold text-slate-800">
+                      {slotStart.toLocaleDateString("vi-VN")}
+                    </span>
+                    <span className="text-slate-400">
+                      {slotStart.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      {" – "}
+                      {slotEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                    </span>
+                    <Badge className={cn("text-[10px] border-none font-bold", booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700")}>
+                      {booking.playMode === "RENTAL" ? "Thuê xe" : "Xe riêng"}
+                    </Badge>
                     {booking.status === "PENDING" && booking.paymentExpiresAt && (
-                      <div className="flex items-center gap-2 text-amber-700">
-                        <Clock className="h-4 w-4 shrink-0" />
-                        <span>Hết hạn TT: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
-                      </div>
+                      <span className="flex items-center gap-1 text-amber-600 font-semibold">
+                        <Clock className="h-3 w-3" />
+                        HH: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     )}
-                  </CardContent>
+                  </div>
 
-                  <CardFooter className="pt-3 border-t border-slate-50 flex gap-2 justify-end flex-wrap">
-                    <Button asChild variant="outline" className="font-bold text-xs h-9 rounded-lg">
-                      <Link to={`/booking/${booking.id}`}>Xem chi tiết</Link>
-                    </Button>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1.5 justify-end">
                     {booking.status === "PENDING" && (
                       <Button
-                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-9 rounded-lg shadow-sm"
+                        size="sm"
+                        className="h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg shadow-sm"
                         onClick={() => handleResumePayment(booking.id)}
                         disabled={resumingId === booking.id}
                       >
-                        {resumingId === booking.id ? (
-                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                        ) : (
-                          <CreditCard className="h-3.5 w-3.5 mr-1" />
-                        )}
-                        Tiếp tục thanh toán
+                        {resumingId === booking.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <><CreditCard className="h-3.5 w-3.5 mr-1" />Thanh toán</>}
                       </Button>
                     )}
                     {(booking.status === "CONFIRMED" || booking.status === "PENDING") && (
                       <Button
-                        variant="outline"
-                        className="border-red-200 hover:bg-red-50 text-red-600 font-bold text-xs h-9 rounded-lg"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
                         onClick={() => setCancelTarget(booking.id)}
                       >
-                        <XCircle className="h-4 w-4 mr-1" />
-                        Hủy
+                        <XCircle className="h-4 w-4" />
                       </Button>
                     )}
-                  </CardFooter>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                    <Button asChild size="sm" variant="ghost" className="h-8 px-2 text-slate-500 hover:text-slate-800">
+                      <Link to={`/booking/${booking.id}`}>
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {cancelTarget && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -252,6 +219,6 @@ export function CustomerBookingsPage() {
           </div>
         </div>
       )}
-    </div>
+    </CustomerPageShell>
   )
 }

@@ -1,21 +1,18 @@
 import { useState } from "react"
-import { useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { 
-  mockCustomerReviews, 
-  type MockReview 
+import {
+  mockCustomerReviews,
+  type MockReview
 } from "@/shared/data/user-mock-data"
-import { 
-  Star, 
-  MessageSquare, 
-  Plus, 
-  Calendar, 
-  MapPin, 
+import {
+  Star,
+  Plus,
+  Calendar,
+  MapPin,
   ThumbsUp,
   Award,
-  ChevronLeft
 } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
@@ -24,6 +21,7 @@ import { Label } from "@/shared/ui/label"
 import { Input } from "@/shared/ui/input"
 import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
+import { CustomerPageShell } from "./components/CustomerPageShell"
 
 // Zod validation for reviews
 const reviewSchema = z.object({
@@ -36,7 +34,6 @@ const reviewSchema = z.object({
 type ReviewFormValues = z.infer<typeof reviewSchema>
 
 export function CustomerReviewsPage() {
-  const navigate = useNavigate()
   const [reviews, setReviews] = useState<MockReview[]>(mockCustomerReviews)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [hoveredStar, setHoveredStar] = useState<number | null>(null)
@@ -78,48 +75,19 @@ export function CustomerReviewsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans p-6 md:p-12 relative">
-      
-      {/* Decorative glows */}
-      <div className="absolute top-0 left-[10%] w-[350px] h-[350px] rounded-full bg-orange-400/10 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[10%] w-[350px] h-[350px] rounded-full bg-indigo-400/10 blur-[100px] pointer-events-none" />
+    <CustomerPageShell>
+        <CustomerSubNav activeTab="reviews" />
 
-      <div className="max-w-5xl mx-auto space-y-6 relative z-10">
-        
-        {/* Back Button */}
-        <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors bg-white px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-sm hover:bg-slate-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Quay lại trang trước
-          </button>
-        </div>
-
-        {/* Header Ribbon */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <MessageSquare className="h-4 w-4 text-orange-500" />
-              Lịch sử tương tác
-            </div>
-            <h1 className="text-3xl font-extrabold text-slate-950 tracking-tight">
-              Đánh Giá & Phản Hồi Của Tôi
-            </h1>
-          </div>
-
-          <Button 
-            className="bg-slate-950 hover:bg-slate-900 text-white font-bold h-11 px-5 rounded-xl shadow-md flex items-center gap-2 transition-all shrink-0"
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-slate-700">Đánh giá & Phản hồi của tôi</h2>
+          <Button
+            className="bg-slate-950 hover:bg-slate-900 text-white font-bold h-9 px-4 rounded-xl text-xs"
             onClick={() => setIsFormOpen(true)}
           >
             <Plus className="h-4 w-4" />
             Viết đánh giá mới
           </Button>
         </div>
-
-        {/* SUB NAVIGATION BAR FOR CUSTOMER SPACE */}
-        <CustomerSubNav activeTab="reviews" />
 
         {/* REVIEWS GRID LIST */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -168,8 +136,6 @@ export function CustomerReviewsPage() {
             </Card>
           ))}
         </div>
-
-      </div>
 
       {/* CREATE REVIEW DIALOG MODAL */}
       {isFormOpen && (
@@ -284,6 +250,6 @@ export function CustomerReviewsPage() {
         </div>
       )}
 
-    </div>
+    </CustomerPageShell>
   )
 }

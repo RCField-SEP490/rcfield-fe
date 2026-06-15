@@ -81,8 +81,10 @@ export function TrackSelectionStep({
                 onSelectTrack(config)
                 setSelectedSlot("")
                 setSelectedSlotEnd(null)
-                // If new track doesn't support BYOC, reset to RENTAL
-                if (config.byoc_capacity === 0 && playMode === "BYOC") {
+                // Auto-switch to supported mode when track changes
+                if (config.max_concurrent === 0 && playMode === "RENTAL") {
+                  onPlayModeChange("BYOC")
+                } else if (config.byoc_capacity === 0 && playMode === "BYOC") {
                   onPlayModeChange("RENTAL")
                 }
               }}
@@ -155,6 +157,7 @@ function SlotPicker({
     return buildSlotsFromAvailability(dailyAvailability, playMode)
   }, [dailyAvailability, openHour, closeHour, playMode])
 
+  const hasRental = trackConfig.max_concurrent > 0
   const hasByoc = trackConfig.byoc_capacity > 0
 
   return (
@@ -165,6 +168,7 @@ function SlotPicker({
       <div className="flex gap-2">
         <button
           type="button"
+          disabled={!hasRental}
           onClick={() => {
             onPlayModeChange("RENTAL")
             setSelectedSlot("")
@@ -172,12 +176,16 @@ function SlotPicker({
           }}
           className={cn(
             "flex-1 rounded-lg py-2 text-xs font-bold transition-colors border",
-            playMode === "RENTAL"
+            !hasRental && "opacity-40 cursor-not-allowed",
+            hasRental && playMode === "RENTAL"
               ? "bg-orange-500 text-white border-orange-500"
-              : "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600",
+              : hasRental
+              ? "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600"
+              : "bg-white text-[#747878] border-[#e5e2e1]",
           )}
         >
           Thuê xe
+          {!hasRental && <span className="ml-1 text-[10px] font-normal">Không hỗ trợ</span>}
         </button>
         <button
           type="button"
@@ -280,8 +288,12 @@ function TrackCard({
       <div className="p-3">
         <p className="font-bold text-[#1c1b1b]">{config.track_type?.name ?? "Loại sân"}</p>
         <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-          <span>{config.max_concurrent} chỗ thuê xe</span>
-          {config.byoc_capacity > 0 && <span>{config.byoc_capacity} mang xe riêng</span>}
+          {config.max_concurrent > 0
+            ? <span>{config.max_concurrent} chỗ thuê xe</span>
+            : <span className="text-[#c4c7c8]">Không có xe thuê</span>}
+          {config.byoc_capacity > 0
+            ? <span>{config.byoc_capacity} mang xe riêng</span>
+            : <span className="text-[#c4c7c8]">Không nhận xe riêng</span>}
         </div>
         {config.description && (
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{config.description}</p>

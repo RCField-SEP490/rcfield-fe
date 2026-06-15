@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { ImagePlus, PlusCircle, ToggleLeft, ToggleRight, Upload, X, Check } from "lucide-react"
+import { ImagePlus, PlusCircle, ToggleLeft, ToggleRight, Upload, X, Check, Pencil } from "lucide-react"
 import { trackTypeApi } from "@/features/cafes/api/cafe.api"
 import {
   useTrackConfigs,
@@ -58,13 +58,15 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleCreate = async () => {
-    if (!form.track_type_id || !form.max_concurrent) return
+    const mc = parseInt(form.max_concurrent, 10) || 0
+    const bc = parseInt(form.byoc_capacity, 10) || 0
+    if (!form.track_type_id || (mc === 0 && bc === 0)) return
     const body: CreateTrackConfigBody = {
       track_type_id: form.track_type_id,
-      max_concurrent: Number(form.max_concurrent),
-      byoc_capacity: Number(form.byoc_capacity),
-      description: form.description || undefined,
-      sort_order: Number(form.sort_order),
+      max_concurrent: mc,
+      byoc_capacity: bc,
+      description: form.description.trim() || undefined,
+      sort_order: parseInt(form.sort_order, 10) || 0,
     }
     await createMutation.mutateAsync(body)
     setShowAddForm(false)
@@ -235,7 +237,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
               type="button"
               size="sm"
               onClick={() => void handleCreate()}
-              disabled={!form.track_type_id || !form.max_concurrent || createMutation.isPending}
+              disabled={!form.track_type_id || ((parseInt(form.max_concurrent, 10) || 0) === 0 && (parseInt(form.byoc_capacity, 10) || 0) === 0) || createMutation.isPending}
               className="h-8 gap-1.5 font-bold text-xs"
             >
               <Check className="size-3.5" />
@@ -260,8 +262,10 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
               config={config}
               onToggleActive={() => handleToggleActive(config)}
               onUploadImages={() => handleUploadClick(config.id)}
+              onSaveEdit={(body) => updateMutation.mutate({ configId: config.id, body })}
               isToggling={updateMutation.isPending}
               isUploading={uploadMutation.isPending && uploadingConfigId === config.id}
+              isSaving={updateMutation.isPending}
             />
           ))}
         </div>
@@ -301,20 +305,64 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   )
 }
 
+type UpdateTrackConfigBody = {
+  max_concurrent?: number
+  byoc_capacity?: number
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}
+
 function TrackConfigCard({
   config,
   onToggleActive,
   onUploadImages,
+  onSaveEdit,
   isToggling,
   isUploading,
+  isSaving,
 }: {
   config: TrackConfig
   onToggleActive: () => void
   onUploadImages: () => void
+  onSaveEdit: (body: UpdateTrackConfigBody) => void
   isToggling: boolean
   isUploading: boolean
+  isSaving: boolean
 }) {
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    max_concurrent: String(config.max_concurrent ?? 5),
+    byoc_capacity: String(config.byoc_capacity ?? 0),
+    description: config.description ?? "",
+    sort_order: String(config.sort_order ?? 0),
+  })
+
   const coverImage = config.images[0] ?? null
+
+  const handleSave = () => {
+    const mc = parseInt(editForm.max_concurrent, 10) || 0
+    const bc = parseInt(editForm.byoc_capacity, 10) || 0
+    const so = parseInt(editForm.sort_order, 10) || 0
+    if (mc < 0 || bc < 0 || (mc === 0 && bc === 0)) return
+    onSaveEdit({
+      max_concurrent: mc,
+      byoc_capacity: bc,
+      description: editForm.description.trim() || null,
+      sort_order: Math.max(0, so),
+    })
+    setEditing(false)
+  }
+
+  const handleCancel = () => {
+    setEditForm({
+      max_concurrent: String(config.max_concurrent ?? 5),
+      byoc_capacity: String(config.byoc_capacity ?? 0),
+      description: config.description ?? "",
+      sort_order: String(config.sort_order ?? 0),
+    })
+    setEditing(false)
+  }
 
   return (
     <div className={`overflow-hidden rounded-xl border transition-colors ${config.is_active ? "border-[#c4c7c8] bg-white" : "border-[#e5e2e1] bg-[#fafafa] opacity-60"}`}>
@@ -322,7 +370,7 @@ function TrackConfigCard({
       <button
         type="button"
         onClick={onUploadImages}
-        disabled={isUploading}
+        disabled={isUploading || editing}
         className="group relative block w-full overflow-hidden bg-[#f0edec]"
         style={{ aspectRatio: "16/9" }}
         title={coverImage ? "Bấm để thay ảnh" : "Bấm để thêm ảnh"}
@@ -345,48 +393,136 @@ function TrackConfigCard({
 
       {/* Content */}
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-sm font-bold text-[#1c1b1b]">{config.track_type?.name ?? config.track_type_id}</span>
-              <Badge
-                variant="outline"
-                className={`text-[10px] font-semibold ${config.is_active ? "border-green-200 bg-green-50 text-green-700" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#747878]"}`}
-              >
-                {config.is_active ? "Hoạt động" : "Tạm tắt"}
-              </Badge>
+        {/* Header — name + status badge */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-sm font-bold text-[#1c1b1b]">{config.track_type?.name ?? config.track_type_id}</span>
+          <Badge
+            variant="outline"
+            className={`text-[10px] font-semibold ${config.is_active ? "border-green-200 bg-green-50 text-green-700" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#747878]"}`}
+          >
+            {config.is_active ? "Hoạt động" : "Tạm tắt"}
+          </Badge>
+        </div>
+
+        {/* Inline edit form */}
+        {editing ? (
+          <div className="mt-3 space-y-3">
+            {(() => {
+              const mc = parseInt(editForm.max_concurrent, 10) || 0
+              const bc = parseInt(editForm.byoc_capacity, 10) || 0
+              const bothZero = mc === 0 && bc === 0
+              return (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-[#1c1b1b]">Chỗ thuê xe tối đa</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editForm.max_concurrent}
+                        onChange={(e) => setEditForm((f) => ({ ...f, max_concurrent: e.target.value }))}
+                        className={`h-8 text-xs ${bothZero ? "border-rose-400" : ""}`}
+                      />
+                      <p className="text-[10px] text-[#747878]">0 = sân không có xe thuê</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-[#1c1b1b]">Chỗ xe riêng tối đa</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editForm.byoc_capacity}
+                        onChange={(e) => setEditForm((f) => ({ ...f, byoc_capacity: e.target.value }))}
+                        className={`h-8 text-xs ${bothZero ? "border-rose-400" : ""}`}
+                      />
+                      <p className="text-[10px] text-[#747878]">0 = sân không nhận xe riêng</p>
+                    </div>
+                  </div>
+                  {bothZero && (
+                    <p className="text-[10px] text-rose-500">Sân phải hỗ trợ ít nhất một hình thức chơi (thuê xe hoặc xe riêng)</p>
+                  )}
+                </div>
+              )
+            })()}
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-[#1c1b1b]">Mô tả (tuỳ chọn)</Label>
+              <Textarea
+                rows={2}
+                value={editForm.description}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                className="resize-none text-xs"
+                placeholder="Mô tả sân..."
+              />
             </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold text-[#1c1b1b]">Thứ tự hiển thị</Label>
+              <Input
+                type="number"
+                min={0}
+                value={editForm.sort_order}
+                onChange={(e) => setEditForm((f) => ({ ...f, sort_order: e.target.value }))}
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-[#f0edec] pt-3">
+              <Button type="button" variant="outline" size="sm" onClick={handleCancel} className="h-7 text-xs font-semibold">
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving || ((parseInt(editForm.max_concurrent, 10) || 0) === 0 && (parseInt(editForm.byoc_capacity, 10) || 0) === 0)}
+                className="h-7 gap-1 text-xs font-semibold"
+              >
+                <Check className="size-3" />
+                {isSaving ? "Đang lưu..." : "Lưu"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
             {config.description ? (
               <p className="mt-1 text-xs leading-relaxed text-[#747878] line-clamp-2">{config.description}</p>
             ) : (
               <p className="mt-1 text-xs italic text-[#c4c7c8]">Chưa có mô tả</p>
             )}
+            <div className="mt-3 flex items-center gap-4 text-xs text-[#747878]">
+              <span><span className="font-bold text-[#1c1b1b]">{config.max_concurrent}</span> chỗ thuê xe</span>
+              {config.byoc_capacity > 0 ? (
+                <span><span className="font-bold text-[#1c1b1b]">{config.byoc_capacity}</span> chỗ xe riêng</span>
+              ) : (
+                <span className="text-[#c4c7c8]">Không nhận xe riêng</span>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Action footer */}
+        {!editing && (
+          <div className="mt-3 flex items-center gap-1 border-t border-[#f0edec] pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onToggleActive}
+              disabled={isToggling}
+              className="h-7 gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#747878] hover:text-[#1c1b1b]"
+            >
+              {config.is_active
+                ? <><ToggleRight className="size-3.5 text-orange-500" /> Tắt sân</>
+                : <><ToggleLeft className="size-3.5" /> Bật sân</>}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditing(true)}
+              className="h-7 gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#747878] hover:text-[#1c1b1b]"
+            >
+              <Pencil className="size-3.5" /> Chỉnh sửa
+            </Button>
           </div>
-        </div>
-
-        <div className="mt-3 flex items-center gap-4 text-xs text-[#747878]">
-          <span><span className="font-bold text-[#1c1b1b]">{config.max_concurrent}</span> chỗ thuê xe</span>
-          {config.byoc_capacity > 0 ? (
-            <span><span className="font-bold text-[#1c1b1b]">{config.byoc_capacity}</span> chỗ xe riêng</span>
-          ) : (
-            <span className="text-[#c4c7c8]">Không nhận xe riêng</span>
-          )}
-        </div>
-
-        <div className="mt-3 flex items-center gap-1 border-t border-[#f0edec] pt-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onToggleActive}
-            disabled={isToggling}
-            className="h-7 gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#747878] hover:text-[#1c1b1b]"
-          >
-            {config.is_active
-              ? <><ToggleRight className="size-3.5 text-orange-500" /> Tắt sân</>
-              : <><ToggleLeft className="size-3.5" /> Bật sân</>}
-          </Button>
-        </div>
+        )}
       </div>
     </div>
   )
