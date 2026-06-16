@@ -379,11 +379,7 @@ export function CreateBookingPage() {
             <PaymentStep
               paymentMethod={paymentMethod}
               onPaymentMethodChange={setPaymentMethod}
-              cafeId={isMockId ? undefined : cafeId}
-              playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
-              slotsNeeded={numSlots}
               selectedPackageId={selectedPackageId}
-              onPackageSelect={setSelectedPackageId}
             />
           )}
         </main>

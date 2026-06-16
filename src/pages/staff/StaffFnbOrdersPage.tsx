@@ -79,7 +79,7 @@ export default function StaffFnbOrdersPage() {
       {isLoading ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {[1, 2, 3].map((i) => (
-            <StaffCard key={i} className="h-48 animate-pulse bg-[#f5f3f2]" />
+            <StaffCard key={i} className="h-48 animate-pulse bg-[#f5f3f2]"></StaffCard>
           ))}
         </div>
       ) : (
