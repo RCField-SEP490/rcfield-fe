@@ -348,7 +348,7 @@ function TrackConfigCard({
     onSaveEdit({
       max_concurrent: mc,
       byoc_capacity: bc,
-      description: editForm.description.trim() || null,
+      description: editForm.description.trim() || undefined,
       sort_order: Math.max(0, so),
     })
     setEditing(false)

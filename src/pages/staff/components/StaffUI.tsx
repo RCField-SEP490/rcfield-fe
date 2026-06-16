@@ -18,7 +18,7 @@ import { useStaffOperations } from "../context/StaffOperationContext"
 
 // Types & Interfaces
 interface StaffCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode
+  children?: React.ReactNode
   variant?: "default" | "warning" | "error" | "success"
   glow?: boolean
 }

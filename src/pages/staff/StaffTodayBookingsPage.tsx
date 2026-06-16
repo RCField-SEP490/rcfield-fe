@@ -308,7 +308,7 @@ export default function StaffTodayBookingsPage() {
                   const badgeVariant =
                     b.status === "CONFIRMED" ? "info"
                     : b.status === "COMPLETED" ? "success"
-                    : b.status === "CANCELLED" || b.status === "NO_SHOW" ? "default"
+                    : b.status === "CANCELLED" || b.status === "NO_SHOW" ? "neutral"
                     : "warning"
 
                   const hasFnb = b.fnbPreorderAmount > 0

@@ -1103,7 +1103,7 @@ function packageToForm(item: RecurringPackage): PackageFormState {
     description: item.description ?? "",
     slotCount: String(item.slotCount),
     billingPeriod: item.billingPeriod,
-    price: formatMoneyInput(String(item.price)),
+    price: formatMoneyInput(String(Math.round(Number(item.price)))),
     benefits: item.benefits.join("\n"),
     applicablePlayModes: item.applicablePlayModes?.length ? item.applicablePlayModes : ["RENTAL", "BYOC"],
     isPopular: item.isPopular,
