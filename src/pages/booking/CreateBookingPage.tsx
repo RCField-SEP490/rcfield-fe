@@ -25,7 +25,7 @@ import {
 import { CheckoutStepper } from "./components/checkout/CheckoutStepper"
 import { CheckoutSummaryCard } from "./components/checkout/CheckoutSummaryCard"
 import { FnbStep } from "./components/checkout/FnbStep"
-import { ParticipantsStep, type Companion } from "./components/checkout/ParticipantsStep"
+import { ParticipantsStep, type Companion, isPhoneOkOrEmpty } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
 import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
 import { BookingPackageSelector } from "./components/checkout/BookingPackageSelector"
@@ -406,6 +406,7 @@ export function CreateBookingPage() {
             (currentStep === "track" && (!selectedTrackConfig || !time)) ||
             (currentStep === "participants" && isByocFull) ||
             (currentStep === "participants" && companions.some((c) => !c.name.trim())) ||
+            (currentStep === "participants" && companions.some((c) => !isPhoneOkOrEmpty(c.phone))) ||
             (currentStep === "participants" && playMode === "RENTAL" && selectedVehicleIds.length < participants)
           }
           selectedTrackConfig={selectedTrackConfig}

@@ -10,6 +10,17 @@ import { formatCurrency } from "@/shared/lib/format"
 
 export type Companion = { name: string; phone: string }
 
+/** Kiểm tra SĐT Việt Nam: 10 chữ số, bắt đầu bằng 0 */
+export function isValidVietnamesePhone(phone: string): boolean {
+  return /^0\d{9}$/.test(phone.trim())
+}
+
+/** Trả về true nếu SĐT hợp lệ hoặc bỏ trống */
+export function isPhoneOkOrEmpty(phone: string): boolean {
+  const trimmed = phone.trim()
+  return trimmed === '' || isValidVietnamesePhone(trimmed)
+}
+
 type ParticipantsStepProps = {
   cafe: Cafe
   playMode: CustomerPlayMode
@@ -52,6 +63,15 @@ export function ParticipantsStep({
   function updateCompanion(index: number, field: keyof Companion, value: string) {
     const updated = companions.map((c, i) => (i === index ? { ...c, [field]: value } : c))
     onCompanionsChange(updated)
+  }
+
+  /** Kiểm tra SĐT của 1 companion: lỗi nếu có nhập nhưng sai định dạng */
+  function getPhoneError(phone: string): string | null {
+    const trimmed = phone.trim()
+    if (trimmed === '') return null
+    return isValidVietnamesePhone(trimmed)
+      ? null
+      : 'SĐT phải gồm 10 chữ số và bắt đầu bằng số 0'
   }
 
   return (
@@ -128,34 +148,46 @@ export function ParticipantsStep({
               Thông tin người đi kèm
               <span className="ml-1.5 text-xs font-normal text-rose-500">(bắt buộc điền họ tên)</span>
             </p>
-            {companions.map((companion, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
-                  {i + 2}
-                </div>
-                <Input
-                  placeholder="Họ tên"
-                  value={companion.name}
-                  onChange={(e) => updateCompanion(i, "name", e.target.value)}
-                  className="h-9 text-sm"
-                />
-                <Input
-                  placeholder="Số điện thoại"
-                  value={companion.phone}
-                  onChange={(e) => updateCompanion(i, "phone", e.target.value)}
-                  className="h-9 w-36 shrink-0 text-sm"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 w-9 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleParticipantsChange(participants - 1)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+            {companions.map((companion, i) => {
+                const phoneError = getPhoneError(companion.phone)
+                return (
+                  <div key={i} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                        {i + 2}
+                      </div>
+                      <Input
+                        placeholder="Họ tên"
+                        value={companion.name}
+                        onChange={(e) => updateCompanion(i, "name", e.target.value)}
+                        className="h-9 text-sm"
+                      />
+                      <Input
+                        placeholder="Số điện thoại"
+                        value={companion.phone}
+                        onChange={(e) => updateCompanion(i, "phone", e.target.value)}
+                        maxLength={10}
+                        className={cn(
+                          "h-9 w-36 shrink-0 text-sm",
+                          phoneError && "border-rose-400 focus-visible:ring-rose-300",
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleParticipantsChange(participants - 1)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {phoneError && (
+                      <p className="pl-9 text-[11px] text-rose-500">{phoneError}</p>
+                    )}
+                  </div>
+                )
+              })}
             <p className="text-[11px] text-muted-foreground">
               Staff sẽ cập nhật thông tin còn thiếu khi check-in.
             </p>
