@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe, CafeImage, CafeStatus, CafeUpsertBody } from "@/features/cafes/types"
+import { CafePricingTab } from "@/pages/provider/components/CafePricingTab"
 import { ProviderCafeForm } from "@/pages/provider/components/ProviderCafeForm"
 import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
 import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
@@ -85,7 +86,7 @@ export function ProviderCafeDetailPage() {
     },
   })
 
-  const [tab, setTab] = useState<"info" | "tracks" | "widget">("info")
+  const [tab, setTab] = useState<"info" | "tracks" | "pricing" | "widget">("info")
 
   if (isLoading) {
     return (
@@ -206,6 +207,17 @@ export function ProviderCafeDetailPage() {
             </button>
             <button
               type="button"
+              onClick={() => setTab("pricing")}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
+                tab === "pricing"
+                  ? "border-orange-600 text-orange-600"
+                  : "border-transparent text-[#747878]"
+              }`}
+            >
+              Cấu hình giá
+            </button>
+            <button
+              type="button"
               onClick={() => setTab("widget")}
               className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
                 tab === "widget"
@@ -236,6 +248,7 @@ export function ProviderCafeDetailPage() {
                 <TrackConfigManager cafeId={cafe.id} />
               </section>
             )}
+            {tab === "pricing" && <CafePricingTab cafeId={cafe.id} />}
             {tab === "widget" && (
               <div className="space-y-4">
                 <section className="rounded-xl border border-[#c4c7c8] bg-white">

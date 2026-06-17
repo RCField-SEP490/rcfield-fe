@@ -12,6 +12,7 @@ import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { pricingApi, pricingQueryKeys } from "@/features/pricing/api/pricing.api"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -165,6 +166,16 @@ export function CreateBookingPage() {
   const byocRemaining = availabilityData?.byoc_remaining
   const isByocFull = playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0
 
+  // Dynamic pricing preview — fetch when slot is selected on a real cafe
+  const { data: pricingPreview } = useQuery({
+    queryKey: pricingQueryKeys.preview(cafeId, slotStartForCheck, slotEndForCheck),
+    queryFn: () => pricingApi.getPricingPreview(cafeId, slotStartForCheck, slotEndForCheck),
+    enabled: !isMockId && !!date && !!time,
+  })
+  const slotMultiplier = pricingPreview?.multiplier ?? 1
+  const pricingLabel = pricingPreview?.label ?? null
+  const effectivePricePerHour = pricingPreview?.effective_price_per_hour ?? (cafe.slotFeeRate ?? 0)
+
   const selectedVehicles = cafe.availableVehicles.filter((v) => selectedVehicleIds.includes(v.id))
   const fnbTotal = useMemo(
     () =>
@@ -188,7 +199,7 @@ export function CreateBookingPage() {
     const components = buildPaymentComponents({
       mode,
       planId,
-      slotFeeRate: cafe.slotFeeRate ?? 0,
+      slotFeeRate: effectivePricePerHour,
       selectedVehicles,
       fnbTotal,
       numSlots,
@@ -351,6 +362,8 @@ export function CreateBookingPage() {
               slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
               onPlayModeChange={handlePlayModeChange}
+              effectivePricePerHour={isMockId ? undefined : effectivePricePerHour}
+              pricingLabel={isMockId ? undefined : pricingLabel}
             />
           )}
           {currentStep === "participants" && (
@@ -398,6 +411,8 @@ export function CreateBookingPage() {
           onBack={handleBack}
           onConfirmPayment={() => void handleConfirmPayment()}
           isSubmitting={isSubmitting}
+          pricingLabel={isMockId ? null : pricingLabel}
+          slotMultiplier={isMockId ? 1 : slotMultiplier}
           isNextDisabled={
             (currentStep === "track" && (!selectedTrackConfig || !time)) ||
             (currentStep === "participants" && isByocFull) ||

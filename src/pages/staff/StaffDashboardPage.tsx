@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router"
+import { useQuery } from "@tanstack/react-query"
 import {
   Play,
   ClipboardList,
   QrCode,
   Coffee,
   Car,
-  MapPin,
-  Phone,
   ArrowRight,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
+import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe } from "@/features/cafes/types"
 import { toast } from "sonner"
@@ -36,6 +36,18 @@ export default function StaffDashboardPage() {
   const [activeCafe, setActiveCafe] = useState<BackendCafe | null>(null)
   const [loadingCafe, setLoadingCafe] = useState(false)
   const [simulatedCode, setSimulatedCode] = useState("")
+
+  const { data: todayBookings = [] } = useQuery({
+    queryKey: staffQueryKeys.todayBookings(),
+    queryFn: staffApi.getTodayBookings,
+    refetchInterval: 60_000,
+  })
+
+  const { data: fnbOrdersReal = [] } = useQuery({
+    queryKey: staffQueryKeys.fnbOrders(),
+    queryFn: staffApi.getFnbOrders,
+    refetchInterval: 30_000,
+  })
 
   // Load active cafe details
   useEffect(() => {
@@ -131,7 +143,7 @@ export default function StaffDashboardPage() {
 
   const activeSessions = sessions.filter((s) => s.status === "ACTIVE" || s.status === "EXTENDING")
   const pendingInspections = sessions.filter((s) => s.status === "CHECKED_IN" || s.status === "CHECKING_OUT")
-  const activeFnbOrders = fnbOrders.filter((o) => o.status === "PENDING" || o.status === "PREPARING")
+  const activeFnbCount = fnbOrdersReal.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED").length
 
   return (
     <div className="space-y-6">
@@ -140,43 +152,6 @@ export default function StaffDashboardPage() {
         title="Trực Ca Chi Nhánh"
         subtitle="Quản lý phiên chạy xe, F&B và an toàn đường đua thời gian thực"
       />
-
-      {/* 2. Branch Info Banner */}
-      {loadingCafe ? (
-        <div className="h-28 animate-pulse rounded-xl bg-white border border-[#e5e2e1]" />
-      ) : activeCafe ? (
-        <StaffCard className="relative overflow-hidden border-orange-100 bg-gradient-to-br from-white to-[#fffaf7]">
-          <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-[#fff3eb]/40 to-transparent pointer-events-none" />
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <StaffBadge variant="orange">Chi nhánh làm việc</StaffBadge>
-                <span className="text-xs text-[#6b7280] font-medium">Mã: {activeCafe.id}</span>
-              </div>
-              <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">{activeCafe.name}</h2>
-              <div className="mt-2.5 flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-[#4c4a49] font-medium">
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="size-3.5 text-[#ea580c]/80" />
-                  {activeCafe.address}, {activeCafe.city}
-                </span>
-                {activeCafe.phone && (
-                  <span className="flex items-center gap-1.5">
-                    <Phone className="size-3.5 text-[#ea580c]/80" />
-                    {activeCafe.phone}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-[#e5e2e1]">
-              <span className="relative flex h-2 w-2 mr-1">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              </span>
-              <span className="text-xs font-semibold text-emerald-700">Đang Trực Ca</span>
-            </div>
-          </div>
-        </StaffCard>
-      ) : null}
 
       {/* 3. Metric Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -188,7 +163,7 @@ export default function StaffDashboardPage() {
         />
         <StaffStatCard
           title="Tổng lịch hôm nay"
-          value={bookings.length}
+          value={todayBookings.length}
           description="Đơn đặt lịch trong ngày"
           icon={ClipboardList}
         />
@@ -200,7 +175,7 @@ export default function StaffDashboardPage() {
         />
         <StaffStatCard
           title="Đơn F&B chờ"
-          value={activeFnbOrders.length}
+          value={activeFnbCount}
           description="Đang chế biến & phục vụ"
           icon={Coffee}
         />

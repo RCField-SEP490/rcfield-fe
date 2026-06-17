@@ -7,6 +7,7 @@ import { cn } from "@/shared/lib/utils"
 import { Input } from "@/shared/ui/input"
 import { buildDailySlots, DailySlotGrid, type DailySlot, type DailySlotStatus } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
 import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
+import { SlotPriceLabel } from "@/shared/components/SlotPriceLabel"
 
 type PlayMode = "RENTAL" | "BYOC"
 
@@ -25,6 +26,10 @@ interface TrackSelectionStepProps {
   closeHour?: number
   playMode: PlayMode
   onPlayModeChange: (mode: PlayMode) => void
+  /** Effective price per hour from the pricing preview API (optional) */
+  effectivePricePerHour?: number
+  /** Dynamic pricing label, e.g. "Cuối tuần" or "Giờ cao điểm" (optional) */
+  pricingLabel?: string | null
 }
 
 export function TrackSelectionStep({
@@ -42,6 +47,8 @@ export function TrackSelectionStep({
   closeHour = 22,
   playMode,
   onPlayModeChange,
+  effectivePricePerHour,
+  pricingLabel,
 }: TrackSelectionStepProps) {
   const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
 
@@ -110,6 +117,17 @@ export function TrackSelectionStep({
           playMode={playMode}
           onPlayModeChange={onPlayModeChange}
         />
+      )}
+
+      {/* Dynamic pricing label — shown when a slot is selected */}
+      {selectedSlot && effectivePricePerHour !== undefined && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-100 bg-amber-50/60 px-3 py-2">
+          <span className="text-xs text-[#5c5a5a]">Giá slot:</span>
+          <SlotPriceLabel
+            effectivePrice={effectivePricePerHour}
+            label={pricingLabel ?? null}
+          />
+        </div>
       )}
     </div>
   )

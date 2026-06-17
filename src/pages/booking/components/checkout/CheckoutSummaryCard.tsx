@@ -7,6 +7,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Separator } from "@/shared/ui/separator"
 import { formatCurrency } from "@/shared/lib/format"
+import { Badge } from "@/shared/ui/badge"
 
 type CheckoutSummaryCardProps = {
   cafe: Cafe
@@ -24,6 +25,8 @@ type CheckoutSummaryCardProps = {
   isSubmitting?: boolean
   isNextDisabled?: boolean
   selectedTrackConfig?: TrackConfig | null
+  pricingLabel?: string | null
+  slotMultiplier?: number
 }
 
 export function CheckoutSummaryCard({
@@ -42,6 +45,8 @@ export function CheckoutSummaryCard({
   isSubmitting = false,
   isNextDisabled = false,
   selectedTrackConfig,
+  pricingLabel,
+  slotMultiplier,
 }: CheckoutSummaryCardProps) {
   const total = components.reduce((sum, item) => sum + item.amount, 0)
   const isFirstStep = currentStep === "track"
@@ -79,6 +84,14 @@ export function CheckoutSummaryCard({
           <Line label="Hình thức" value={getPlayModeLabel(playMode)} />
           <Line label="Ngày" value={new Date(date).toLocaleDateString("vi-VN")} />
           <Line label="Giờ" value={time} />
+          {pricingLabel && slotMultiplier && slotMultiplier > 1 && (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="text-muted-foreground">Phụ thu</span>
+              <Badge className="rounded-full bg-amber-100 text-amber-800 border-amber-200 text-xs font-medium">
+                {pricingLabel} ×{slotMultiplier}
+              </Badge>
+            </div>
+          )}
           <Line
             label="Xe thuê"
             value={
