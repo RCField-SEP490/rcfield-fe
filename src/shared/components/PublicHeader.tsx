@@ -1,4 +1,4 @@
-import { CalendarCheck, Car, LogOut, Menu, Package, UserRound, X } from "lucide-react"
+import { CalendarCheck, Car, LogOut, Menu, Package, UserRound, X, Trophy } from "lucide-react"
 import { useState } from "react"
 import { NavLink } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
@@ -18,6 +18,7 @@ import {
 
 const navItems = [
   { label: "Khám phá", to: routePaths.cafes },
+  { label: "Giải đấu", to: routePaths.contests },
   { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
   { label: "Đơn đặt", to: routePaths.customerBookings },
   { label: "Khách hàng", to: routePaths.profile },
@@ -30,6 +31,7 @@ const customerMenuItems = [
   { label: "Lịch đặt sân", to: routePaths.customerBookings, icon: CalendarCheck },
   { label: "Xe cá nhân", to: routePaths.customerVehicles, icon: Car },
   { label: "Gói hội viên", to: routePaths.customerPackages, icon: Package },
+  { label: "Thưởng giải đấu", to: routePaths.customerRewards, icon: Trophy },
 ]
 
 export function PublicHeader() {

@@ -92,6 +92,17 @@ import { PartnerLandingPage } from "@/pages/public/PartnerLandingPage"
 import { PendingReviewPage } from "@/pages/auth/PendingReviewPage"
 import { RejectedPage } from "@/pages/auth/RejectedPage"
 import { SuspendedPage } from "@/pages/auth/SuspendedPage"
+
+// Contest Features
+import { ContestListPage } from "@/features/contests/pages/ContestListPage"
+import { ContestDetailPage } from "@/features/contests/pages/ContestDetailPage"
+import { CustomerRewardsPage } from "@/features/contests/pages/CustomerRewardsPage"
+import { ProviderContestsPage } from "@/features/contests/pages/ProviderContestsPage"
+import { ProviderContestFormPage } from "@/features/contests/pages/ProviderContestFormPage"
+import { ProviderContestDetailPage } from "@/features/contests/pages/ProviderContestDetailPage"
+import { StaffContestsPage } from "@/features/contests/pages/StaffContestsPage"
+import { StaffContestDetailPage } from "@/features/contests/pages/StaffContestDetailPage"
+
 import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
 
@@ -126,6 +137,8 @@ export const router = createBrowserRouter([
           { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
+          { path: routePaths.contests, element: <ContestListPage /> },
+          { path: routePaths.contestDetail, element: <ContestDetailPage /> },
         ],
       },
       {
@@ -171,6 +184,7 @@ export const router = createBrowserRouter([
           { path: routePaths.customerActiveSession, element: <CustomerActiveSessionPage /> },
           { path: routePaths.customerDamageReview, element: <CustomerDamageReviewPage /> },
           { path: routePaths.customerExtensionResponse, element: <CustomerExtensionResponsePage /> },
+          { path: routePaths.customerRewards, element: <CustomerRewardsPage /> },
         ],
       },
       {
@@ -195,6 +209,8 @@ export const router = createBrowserRouter([
           { path: routePaths.staffMaintenance, element: <StaffMaintenancePage /> },
           { path: routePaths.staffByoc, element: <StaffByocPage /> },
           { path: routePaths.staffPackages, element: <StaffPackagesPage /> },
+          { path: routePaths.staffContests, element: <StaffContestsPage /> },
+          { path: routePaths.staffContestDetail, element: <StaffContestDetailPage /> },
         ],
       },
       {
@@ -237,6 +253,10 @@ export const router = createBrowserRouter([
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
           { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },
+          { path: routePaths.providerContests, element: providerGuardRoute(<ProviderContestsPage />) },
+          { path: routePaths.providerContestCreate, element: providerGuardRoute(<ProviderContestFormPage />) },
+          { path: routePaths.providerContestEdit, element: providerGuardRoute(<ProviderContestFormPage />) },
+          { path: routePaths.providerContestDetail, element: providerGuardRoute(<ProviderContestDetailPage />) },
           { path: routePaths.adminDashboard, element: guardRoute(<AdminDashboardPage />, ["admin"]) },
           { path: routePaths.adminUsers, element: guardRoute(<AdminUsersPage />, ["admin"]) },
           { path: routePaths.adminCafes, element: guardRoute(<AdminCafesPage />, ["admin"]) },

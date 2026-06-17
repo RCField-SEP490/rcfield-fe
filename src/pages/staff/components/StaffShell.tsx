@@ -15,6 +15,7 @@ import {
   UserRound,
   CircleHelp,
   Menu,
+  Trophy,
 } from "lucide-react"
 import { useStaffOperations } from "../context/StaffOperationContext"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
@@ -38,6 +39,7 @@ const staffNavGroups: NavGroup[] = [
       { label: "Đặt lịch ngày", icon: CalendarDays, path: routePaths.staffTodayBookings },
       { label: "Gọi món F&B", icon: Coffee, path: routePaths.staffFnbOrders },
       { label: "Đăng ký xe BYOC", icon: ShieldCheck, path: routePaths.staffByoc },
+      { label: "Giải đấu", icon: Trophy, path: routePaths.staffContests },
       { label: "Tra cứu gói chơi", icon: Search, path: routePaths.staffPackages },
     ],
   },
