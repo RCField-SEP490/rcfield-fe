@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  Calendar,
   CalendarDays,
   Clock3,
   Lock,
@@ -10,7 +9,6 @@ import {
   RotateCcw,
   Tag,
   Trash2,
-  TrendingUp,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -120,7 +118,6 @@ export function ProviderPricingPage() {
               weekendRule={weekendRule ?? null}
               basePrice={basePrice}
               onSaved={invalidatePricing}
-              allRules={rules}
               peakRules={peakRules}
             />
             <PeakHoursPanel
@@ -173,14 +170,12 @@ function WeekendRulePanel({
   weekendRule,
   basePrice,
   onSaved,
-  allRules,
   peakRules,
 }: {
   cafeId: string
   weekendRule: PricingRule | null
   basePrice: number
   onSaved: () => void
-  allRules: PricingRule[]
   peakRules: PricingRule[]
 }) {
   const [enabled, setEnabled] = useState(!!weekendRule)

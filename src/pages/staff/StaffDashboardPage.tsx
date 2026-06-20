@@ -29,12 +29,10 @@ export default function StaffDashboardPage() {
     assignedCafeId,
     bookings,
     sessions,
-    fnbOrders,
     startCheckIn,
   } = useStaffOperations()
 
   const [activeCafe, setActiveCafe] = useState<BackendCafe | null>(null)
-  const [loadingCafe, setLoadingCafe] = useState(false)
   const [simulatedCode, setSimulatedCode] = useState("")
 
   const { data: todayBookings = [] } = useQuery({
@@ -52,7 +50,6 @@ export default function StaffDashboardPage() {
   // Load active cafe details
   useEffect(() => {
     if (assignedCafeId) {
-      setLoadingCafe(true)
       cafeApi
         .getCafe(assignedCafeId)
         .then((data) => {
@@ -61,9 +58,6 @@ export default function StaffDashboardPage() {
         .catch((err) => {
           console.error("Error loading cafe details:", err)
           toast.error("Không thể tải thông tin chi nhánh chi tiết.")
-        })
-        .finally(() => {
-          setLoadingCafe(false)
         })
     } else {
       setActiveCafe(null)
