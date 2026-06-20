@@ -60,7 +60,7 @@ const rotatingBanners = [
 ]
 
 const roleRedirects = {
-  customer: "/customer/profile",
+  customer: "/cafes",
   provider: "/pending-review",
 }
 

@@ -37,7 +37,7 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 const roleRedirects: Record<UserRole, string> = {
-  customer: routePaths.customerProfile,
+  customer: routePaths.cafes,
   staff: routePaths.staffDashboard,
   provider: routePaths.providerDashboard,
   admin: routePaths.adminDashboard,
