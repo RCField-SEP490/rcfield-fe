@@ -1,7 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router"
-import { Children, isValidElement } from "react"
+import { Children, isValidElement, useCallback } from "react"
 import type { ElementType, ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   BadgePercent,
   BarChart3,
@@ -32,6 +33,7 @@ import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
+import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { ProviderHeader, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner"
 
@@ -111,6 +113,24 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   
   // IMPERSONATION CANNOT DELETE
   const impersonation = useAuthStore((state) => state.impersonation)
+
+  const queryClient = useQueryClient()
+  const handleWsMessage = useCallback(
+    (msg: { event: string; data: unknown }) => {
+      if (msg.event === "booking.new") {
+        const data = msg.data as { cafeName?: string; slotStart?: string }
+        const slotLabel = data.slotStart
+          ? new Date(data.slotStart).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })
+          : ""
+        toast.success(`Đặt lịch mới${data.cafeName ? ` — ${data.cafeName}` : ""}`, {
+          description: slotLabel || undefined,
+        })
+        void queryClient.invalidateQueries({ queryKey: ["providerBookings"] })
+      }
+    },
+    [queryClient],
+  )
+  useWebSocket(handleWsMessage)
 
   const handleLogout = async () => {
     // When impersonating, the logout button exits the impersonation session instead
