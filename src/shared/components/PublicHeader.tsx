@@ -1,8 +1,11 @@
 import { CalendarCheck, Car, LogOut, Menu, Package, UserRound, X } from "lucide-react"
 import { useState } from "react"
-import { NavLink } from "react-router"
+import { NavLink, useNavigate } from "react-router"
+import { toast } from "sonner"
+import { logoutSession } from "@/features/auth/api/auth.api"
 import { routePaths } from "@/app/router/route-paths"
 import { useAuthStore, type AuthUser } from "@/features/auth/stores/auth.store"
+import { storageKeys } from "@/shared/lib/storage"
 import { AppLogo } from "@/shared/components/AppLogo"
 import { cn } from "@/shared/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
@@ -16,13 +19,20 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 
-const navItems = [
+// Items visible to everyone (unauthenticated included)
+const publicNavItems = [
+  { label: "Trang chủ", to: routePaths.home, end: true },
   { label: "Khám phá", to: routePaths.cafes },
+  { label: "Chính sách", to: routePaths.customerPolicy },
   { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
-  { label: "Đơn đặt", to: routePaths.customerBookings },
-  { label: "Khách hàng", to: routePaths.profile },
-  { label: "Cơ sở", to: routePaths.providerCafes },
-  { label: "Quản trị", to: routePaths.adminDashboard },
+]
+
+// Items only for specific authenticated roles
+const authNavItems = [
+  { label: "Trang chủ", to: routePaths.customerHome, role: "customer", end: true },
+  { label: "Đơn đặt", to: routePaths.customerBookings, role: "customer" },
+  { label: "Cơ sở", to: routePaths.providerCafes, role: "provider" },
+  { label: "Quản trị", to: routePaths.adminDashboard, role: "admin" },
 ]
 
 const customerMenuItems = [
@@ -35,22 +45,28 @@ const customerMenuItems = [
 export function PublicHeader() {
   const [isOpen, setIsOpen] = useState(false)
   const { isAuthenticated, user, role, clearAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
 
-  const filteredNavItems = navItems.filter((item) => {
-    if (item.to === routePaths.partnerLanding) {
-      return !isAuthenticated || role === "provider"
+  const filteredNavItems = !isAuthenticated || role === "customer"
+    ? publicNavItems
+    : authNavItems.filter((item) => item.role === role)
+
+  const handleLogout = async () => {
+    const storedAuth = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
+    if (storedAuth) {
+      try {
+        const auth = JSON.parse(storedAuth) as { accessToken?: string; refreshToken?: string }
+        if (auth.accessToken && auth.refreshToken) {
+          await logoutSession(auth.accessToken, auth.refreshToken)
+        }
+      } catch {
+        // ignore — local logout still clears the session
+      }
     }
-    if (item.to === routePaths.customerBookings || item.to === routePaths.profile) {
-      return isAuthenticated && role === "customer"
-    }
-    if (item.to === routePaths.providerCafes) {
-      return isAuthenticated && role === "provider"
-    }
-    if (item.to === routePaths.adminDashboard) {
-      return isAuthenticated && role === "admin"
-    }
-    return true
-  })
+    clearAuthenticated()
+    toast.success("Đã đăng xuất thành công.")
+    navigate(routePaths.login, { replace: true })
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -63,10 +79,11 @@ export function PublicHeader() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={"end" in item ? item.end : undefined}
                 className={({ isActive }) =>
                   cn(
                     "relative rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition-all duration-200 ease-out hover:bg-slate-100 hover:text-slate-900",
-                    isActive && "bg-slate-900 text-white shadow-md shadow-slate-900/20 hover:bg-slate-800 hover:text-white",
+                    isActive && !item.to.includes("#") && "bg-slate-900 text-white shadow-md shadow-slate-900/20 hover:bg-slate-800 hover:text-white",
                   )
                 }
               >
@@ -77,7 +94,7 @@ export function PublicHeader() {
 
           <div className="hidden items-center gap-2 lg:flex">
             {isAuthenticated && user ? (
-              <UserMenu user={user} onLogout={clearAuthenticated} />
+              <UserMenu user={user} onLogout={handleLogout} />
             ) : (
               <>
                 <Button asChild variant="ghost" className="rounded-xl font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900">
@@ -109,11 +126,12 @@ export function PublicHeader() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  end={"end" in item ? item.end : undefined}
                   onClick={() => setIsOpen(false)}
                   className={({ isActive }) =>
                     cn(
                       "rounded-xl px-4 py-3 text-sm font-semibold transition-colors",
-                      isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100",
+                      isActive && !item.to.includes("#") ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100",
                     )
                   }
                 >
@@ -146,8 +164,8 @@ export function PublicHeader() {
                     variant="destructive"
                     className="col-span-2 rounded-xl text-xs font-semibold"
                     onClick={() => {
-                      clearAuthenticated()
                       setIsOpen(false)
+                      handleLogout()
                     }}
                   >
                     Đăng xuất
@@ -171,7 +189,7 @@ export function PublicHeader() {
   )
 }
 
-function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
+function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<void> }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

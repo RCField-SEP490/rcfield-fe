@@ -24,6 +24,11 @@ export interface InviteStaffResult extends StaffListItem {
   emailSent: boolean
 }
 
+export interface StaffImpersonateResponse {
+  token: string
+  staff: { id: string; email: string; fullName: string; cafeName: string; cafeId: string }
+}
+
 export interface TodayBookingItem {
   id: string
   shortCode?: string
@@ -90,6 +95,11 @@ export const staffApi = {
 
   transferStaff: async (staffId: string, cafeId: string): Promise<void> => {
     await api.patch(`/v1/provider/staff/${staffId}/branch`, { cafe_id: cafeId })
+  },
+
+  impersonateStaff: async (staffId: string): Promise<StaffImpersonateResponse> => {
+    const res = await api.post<StaffImpersonateResponse>(`/v1/provider/staff/${staffId}/impersonate`)
+    return res.data
   },
 
   resendInvite: async (staffId: string): Promise<{ emailSent: boolean }> => {

@@ -33,6 +33,7 @@ import { RegisterPage } from "@/pages/auth/RegisterPage"
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage"
 import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
+import { CustomerHomePage } from "@/pages/customer/CustomerHomePage"
 import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
 import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
@@ -89,6 +90,7 @@ import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
 import { FacebookOAuthCallbackPage } from "@/pages/FacebookOAuthCallbackPage"
 import { ProviderStatusGuard } from "@/shared/components/ProviderStatusGuard"
 import { PartnerLandingPage } from "@/pages/public/PartnerLandingPage"
+import { CustomerPolicyPage } from "@/pages/public/CustomerPolicyPage"
 import { PendingReviewPage } from "@/pages/auth/PendingReviewPage"
 import { RejectedPage } from "@/pages/auth/RejectedPage"
 import { SuspendedPage } from "@/pages/auth/SuspendedPage"
@@ -126,6 +128,7 @@ export const router = createBrowserRouter([
           { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
+          { path: routePaths.customerPolicy, element: <CustomerPolicyPage /> },
         ],
       },
       {
@@ -159,7 +162,7 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { path: routePaths.customerHome, element: <Navigate replace to={routePaths.customerProfile} /> },
+          { path: routePaths.customerHome, element: <CustomerHomePage /> },
           { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
           { path: routePaths.customerProfile, element: <CustomerProfilePage /> },
           { path: routePaths.customerBookingDetail, element: <BookingDetailPage /> },

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { ArrowLeftRight, Clock, Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2 } from "lucide-react"
+import { ArrowLeftRight, Clock, Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2, MonitorSmartphone } from "lucide-react"
 import { toast } from "sonner"
 
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -12,6 +12,8 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { staffApi, staffQueryKeys, type StaffListItem, type InviteStaffBody } from "@/features/staff/api/staff.api"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { storageKeys } from "@/shared/lib/storage"
+import { routePaths } from "@/app/router/route-paths"
 
 function formatExpiry(isoString: string): { label: string; urgent: boolean } {
   const diff = new Date(isoString).getTime() - Date.now()
@@ -55,6 +57,32 @@ export function ProviderStaffPage() {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [transferTarget, setTransferTarget] = useState<StaffListItem | null>(null)
   const [transferCafeId, setTransferCafeId] = useState("")
+  const [impersonatingId, setImpersonatingId] = useState<string | null>(null)
+
+  const handleImpersonate = async (staff: StaffListItem) => {
+    setImpersonatingId(staff.id)
+    try {
+      const resp = await staffApi.impersonateStaff(staff.id)
+      const currentAuthRaw = localStorage.getItem(storageKeys.auth)
+      if (currentAuthRaw) {
+        localStorage.setItem(storageKeys.providerAuth, currentAuthRaw)
+      }
+      localStorage.setItem(storageKeys.auth, JSON.stringify({
+        accessToken: resp.token,
+        user: { id: resp.staff.id, email: resp.staff.email, role: "staff", assignedCafeId: resp.staff.cafeId },
+        role: "staff",
+      }))
+      localStorage.setItem(storageKeys.staffImpersonation, JSON.stringify({
+        staffId: staff.id,
+        staffName: staff.fullName,
+        cafeName: staff.cafeName,
+      }))
+      window.location.href = routePaths.staffDashboard
+    } catch {
+      toast.error("Không thể mở phiên xem với tư cách nhân viên.")
+      setImpersonatingId(null)
+    }
+  }
   const {
     register,
     handleSubmit,
@@ -207,10 +235,12 @@ export function ProviderStaffPage() {
             <StaffCard
               key={staff.id}
               staff={staff}
+              impersonating={impersonatingId === staff.id}
               onDeactivate={() => deactivateMutation.mutate(staff.id)}
               onReactivate={() => reactivateMutation.mutate(staff.id)}
               onResend={() => resendMutation.mutate(staff.id)}
               onTransfer={() => { setTransferTarget(staff); setTransferCafeId(staff.cafeId) }}
+              onImpersonate={() => handleImpersonate(staff)}
             />
           ))}
           {filtered.length === 0 && (
@@ -356,16 +386,20 @@ export function ProviderStaffPage() {
 
 function StaffCard({
   staff,
+  impersonating,
   onDeactivate,
   onReactivate,
   onResend,
   onTransfer,
+  onImpersonate,
 }: {
   staff: StaffListItem
+  impersonating: boolean
   onDeactivate: () => void
   onReactivate: () => void
   onResend: () => void
   onTransfer: () => void
+  onImpersonate: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -436,9 +470,20 @@ function StaffCard({
           </button>
           {menuOpen && (
             <div
-              className="absolute right-0 top-8 z-20 min-w-[180px] rounded-lg border border-[#c4c7c8] bg-white py-1 shadow-lg"
+              className="absolute right-0 top-8 z-20 min-w-[210px] rounded-lg border border-[#c4c7c8] bg-white py-1 shadow-lg"
               onMouseLeave={() => setMenuOpen(false)}
             >
+              {staff.status === "ACTIVE" && (
+                <button
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm font-medium text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+                  disabled={impersonating}
+                  onClick={() => { setMenuOpen(false); onImpersonate() }}
+                >
+                  {impersonating ? <Loader2 className="size-4 animate-spin" /> : <MonitorSmartphone className="size-4" />}
+                  Xem với tư cách NV
+                </button>
+              )}
+              {staff.status === "ACTIVE" && <div className="my-1 h-px bg-[#c4c7c8]" />}
               {staff.status === "PENDING" && (
                 <button
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm hover:bg-[#f6f3f2]"

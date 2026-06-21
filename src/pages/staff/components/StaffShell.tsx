@@ -15,12 +15,14 @@ import {
   UserRound,
   CircleHelp,
   Menu,
+  MonitorSmartphone,
 } from "lucide-react"
 import { useStaffOperations } from "../context/StaffOperationContext"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe } from "@/features/cafes/types"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { routePaths } from "@/app/router/route-paths"
+import { storageKeys } from "@/shared/lib/storage"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -76,6 +78,22 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scanCode, setScanCode] = useState("")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Provider-impersonating-staff mode
+  const staffImpersonationRaw = localStorage.getItem(storageKeys.staffImpersonation)
+  const staffImpersonation = staffImpersonationRaw
+    ? (JSON.parse(staffImpersonationRaw) as { staffId: string; staffName: string; cafeName: string })
+    : null
+
+  const handleExitStaffImpersonation = () => {
+    const providerAuthRaw = localStorage.getItem(storageKeys.providerAuth)
+    if (providerAuthRaw) {
+      localStorage.setItem(storageKeys.auth, providerAuthRaw)
+      localStorage.removeItem(storageKeys.providerAuth)
+    }
+    localStorage.removeItem(storageKeys.staffImpersonation)
+    window.location.href = routePaths.providerStaff
+  }
 
   const desktopNavRef = React.useRef<HTMLElement | null>(null)
   const mobileNavRef = React.useRef<HTMLElement | null>(null)
@@ -171,8 +189,24 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
 
   return (
     <div className="flex min-h-screen bg-[#fcf8f8] text-[#1c1b1b] font-sans pb-20 md:pb-0">
+      {/* PROVIDER-IMPERSONATING-STAFF BANNER */}
+      {staffImpersonation && (
+        <div className="fixed left-0 right-0 top-0 z-[100] flex h-10 items-center justify-between gap-3 bg-orange-600 px-4 text-white shadow-md">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <MonitorSmartphone className="size-4 shrink-0" />
+            <span>Đang xem với tư cách nhân viên: <strong>{staffImpersonation.staffName}</strong> — {staffImpersonation.cafeName}</span>
+          </div>
+          <button
+            onClick={handleExitStaffImpersonation}
+            className="flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-1 text-xs font-bold hover:bg-white/20 transition-colors shrink-0"
+          >
+            <X className="size-3.5" />
+            Thoát
+          </button>
+        </div>
+      )}
       {/* DESKTOP SIDEBAR */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-[#e5e2e1] bg-white p-4 md:flex shadow-sm">
+      <aside className={cn("fixed bottom-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-[#e5e2e1] bg-white p-4 md:flex shadow-sm", staffImpersonation ? "top-10" : "top-0")}>
         <Link to={routePaths.staffDashboard} className="mb-8 flex items-center gap-2.5 px-2">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white shadow-md">
             <Building className="size-4" />
@@ -245,7 +279,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
       </aside>
 
       {/* MOBILE HEADER */}
-      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-orange-200 bg-white px-4 shadow-sm md:hidden">
+      <header className={cn("fixed inset-x-0 z-50 flex h-16 items-center justify-between border-b border-orange-200 bg-white px-4 shadow-sm md:hidden", staffImpersonation ? "top-10" : "top-0")}>
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-orange-600 text-white shadow-sm">
             <Building className="size-4" />
@@ -342,7 +376,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
       )}
 
       {/* MAIN CONTAINER */}
-      <main className="w-full flex-1 bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
+      <main className={cn("w-full flex-1 bg-[#fcf8f8] pb-24 md:ml-64 md:pb-0", staffImpersonation ? "pt-26 md:pt-10" : "pt-16 md:pt-0")}>
         {headerProps ? (
           <header className="sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8]/80 bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6">
             <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">

@@ -52,10 +52,15 @@ export const useAuthStore = create<AuthState>()((set) => ({
     }),
   clearAuthenticated: () =>
     set((state) => {
-      // Never save impersonated provider email as the remembered login email
       if (state.user?.email && !state.impersonation) {
         localStorage.setItem(storageKeys.lastEmail, state.user.email)
       }
+      localStorage.removeItem(storageKeys.auth)
+      localStorage.removeItem(storageKeys.legacyAuth)
+      localStorage.removeItem(storageKeys.adminAuth)
+      localStorage.removeItem(storageKeys.impersonation)
+      sessionStorage.removeItem(storageKeys.auth)
+      sessionStorage.removeItem(storageKeys.legacyAuth)
       return { isAuthenticated: false, role: null, user: null, impersonation: null }
     }),
   setInitialized: () => set({ isInitialized: true }),

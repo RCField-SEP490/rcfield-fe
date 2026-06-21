@@ -42,14 +42,30 @@ api.interceptors.response.use(
   (error) => {
     const status = error?.response?.status
     const code = error?.response?.data?.code
+    const requestUrl: string = error?.config?.url ?? ""
 
-    if (status === 401 || code === "TOKEN_INVALID" || code === "TOKEN_EXPIRED") {
+    // Skip session-expiry handling for public auth endpoints — a 401 there means
+    // wrong credentials, not an expired token, so the form handles its own error.
+    const isPublicAuthEndpoint = /\/auth\/(login|register|google|facebook|forgot-password|reset-password)/.test(requestUrl)
+
+    if (!isPublicAuthEndpoint && (status === 401 || code === "TOKEN_INVALID" || code === "TOKEN_EXPIRED")) {
       if (isHandling401) return Promise.reject(error)
       isHandling401 = true
 
+      const providerRaw = localStorage.getItem(storageKeys.providerAuth)
+      if (providerRaw) {
+        // Graceful exit from provider→staff impersonation
+        localStorage.setItem(storageKeys.auth, providerRaw)
+        localStorage.removeItem(storageKeys.providerAuth)
+        localStorage.removeItem(storageKeys.staffImpersonation)
+        toast.error("Phiên xem nhân viên đã hết hạn", { description: "Đã khôi phục phiên Provider." })
+        window.location.href = "/provider/staff"
+        return Promise.reject(error)
+      }
+
       const adminRaw = localStorage.getItem(storageKeys.adminAuth)
       if (adminRaw) {
-        // Graceful exit from impersonation — restore admin session and reload
+        // Graceful exit from admin→provider impersonation — restore admin session and reload
         localStorage.setItem(storageKeys.auth, adminRaw)
         localStorage.removeItem(storageKeys.adminAuth)
         localStorage.removeItem(storageKeys.impersonation)
