@@ -4,7 +4,6 @@ import { storageKeys } from "@/shared/lib/storage"
 
 export type WsMessage<T = unknown> = { event: string; data: T }
 
-type Handler<T = unknown> = (data: T) => void
 
 function getAccessToken(): string | null {
   const stored =

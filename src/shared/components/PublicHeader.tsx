@@ -165,7 +165,7 @@ export function PublicHeader() {
                     className="col-span-2 rounded-xl text-xs font-semibold"
                     onClick={() => {
                       setIsOpen(false)
-                      handleLogout()
+                      void handleLogout()
                     }}
                   >
                     Đăng xuất
