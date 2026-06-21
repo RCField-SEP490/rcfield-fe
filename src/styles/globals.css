@@ -1,6 +1,3 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "@fontsource/be-vietnam-pro/400.css";
 @import "@fontsource/be-vietnam-pro/500.css";
 @import "@fontsource/be-vietnam-pro/600.css";
@@ -9,6 +6,9 @@
 @import "@fontsource/be-vietnam-pro/vietnamese-500.css";
 @import "@fontsource/be-vietnam-pro/vietnamese-600.css";
 @import "@fontsource/be-vietnam-pro/vietnamese-700.css";
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
