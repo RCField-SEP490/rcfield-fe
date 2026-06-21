@@ -65,12 +65,12 @@ const defaultForm: PackageFormState = {
   isActive: true,
 }
 
-export function ProviderPackagesPage() {
+export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }) {
   const formPanelRef = useRef<HTMLDivElement | null>(null)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [cafes, setCafes] = useState<ProviderCafe[]>([])
-  const [selectedCafeId, setSelectedCafeId] = useState("")
+  const [selectedCafeId, setSelectedCafeId] = useState(propCafeId ?? "")
   const [packages, setPackages] = useState<RecurringPackage[]>([])
   const [sourcePackages] = useState<RecurringPackage[]>([])
   const [sourceCafeId, setSourceCafeId] = useState("")
@@ -115,7 +115,7 @@ export function ProviderPackagesPage() {
         const data = await packageApi.listProviderCafes()
         if (!mounted) return
         setCafes(data)
-        setSelectedCafeId((current) => current || searchParams.get("cafeId") || data[0]?.id || "")
+        setSelectedCafeId((current) => propCafeId || current || searchParams.get("cafeId") || data[0]?.id || "")
       } catch {
         toast.error("Không tải được danh sách chi nhánh")
       } finally {
@@ -127,7 +127,7 @@ export function ProviderPackagesPage() {
     return () => {
       mounted = false
     }
-  }, [searchParams])
+  }, [searchParams, propCafeId])
 
   useEffect(() => {
     if (!selectedCafeId) {
@@ -159,8 +159,8 @@ export function ProviderPackagesPage() {
     setSelectedPackageIds([])
     setDeleteMode(null)
     setDeleteTarget(null)
-    if (selectedCafeId) setSearchParams({ cafeId: selectedCafeId }, { replace: true })
-  }, [selectedCafeId])
+    if (selectedCafeId && !propCafeId) setSearchParams({ cafeId: selectedCafeId }, { replace: true })
+  }, [selectedCafeId, propCafeId])
 
   const startCreate = () => {
     navigate(`${routePaths.providerPackageCreate}?cafeId=${selectedCafeId}`)
@@ -268,20 +268,15 @@ export function ProviderPackagesPage() {
     toast.success(ids.length === 1 ? "Đã xóa gói" : `Đã xóa ${ids.length} gói`)
   }
 
-  return (
-    <ProviderShell>
-      <ProviderPageHeader
-        title="Quản lý Gói & Bảng giá"
-        description="Cấu hình các gói định kì theo tuần hoặc tháng, số lượng slot và chi nhánh áp dụng."
-      />
+  const content = (
+    <section className="space-y-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard label="Đang hoạt động" value={String(stats.active)} helper="Theo chi nhánh đang chọn" icon={<Boxes />} tone="success" />
+        <MetricCard label="Tổng slot" value={String(stats.totalSlots)} helper="Slot định kì đang bán" icon={<PackagePlus />} tone="info" />
+        <MetricCard label="Gói nổi bật" value={stats.popular?.name ?? "--"} helper={stats.popular ? formatPackageCycle(stats.popular) : "Chưa có dữ liệu"} icon={<Building2 />} tone="neutral" />
+      </section>
 
-      <section className="space-y-4">
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="Đang hoạt động" value={String(stats.active)} helper="Theo chi nhánh đang chọn" icon={<Boxes />} tone="success" />
-          <MetricCard label="Tổng slot" value={String(stats.totalSlots)} helper="Slot định kì đang bán" icon={<PackagePlus />} tone="info" />
-          <MetricCard label="Gói nổi bật" value={stats.popular?.name ?? "--"} helper={stats.popular ? formatPackageCycle(stats.popular) : "Chưa có dữ liệu"} icon={<Building2 />} tone="neutral" />
-        </section>
-
+      {!propCafeId && (
         <Panel>
           <div className="space-y-3">
             <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">
@@ -302,110 +297,110 @@ export function ProviderPackagesPage() {
             </select>
           </div>
         </Panel>
+      )}
 
-        {mode === "form" ? (
-          <div ref={formPanelRef}>
-            <PackageFormPanel
-              form={form}
-              editing={!!editingPackage}
-              saving={saving}
-              onCancel={() => setMode("list")}
-              onSave={savePackage}
-              onFieldChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
-            />
-          </div>
-        ) : null}
-
-        {mode === "copy" ? (
-          <CopyPackagePanel
-            targetCafe={selectedCafe}
-            sourceCafes={sourceCafes}
-            sourceCafeId={sourceCafeId}
-            sourcePackages={sourcePackages}
-            selectedPackageId={selectedSourcePackageId}
-            selectedPackageExists={selectedPackageExists}
-            copying={copying}
-            onSourceCafeChange={setSourceCafeId}
-            onPackageChange={setSelectedSourcePackageId}
+      {mode === "form" ? (
+        <div ref={formPanelRef}>
+          <PackageFormPanel
+            form={form}
+            editing={!!editingPackage}
+            saving={saving}
             onCancel={() => setMode("list")}
-            onCopy={copyPackage}
+            onSave={savePackage}
+            onFieldChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
           />
-        ) : null}
+        </div>
+      ) : null}
 
-        <Panel>
-          <PanelTitle
-            title={selectedCafe ? `Danh sách gói định kì - ${selectedCafe.name}` : "Danh sách gói định kì"}
-            subtitle="Mỗi gói chỉ thuộc chi nhánh đang chọn. Có thể import gói từ chi nhánh khác nếu chưa trùng mã."
-            action={
-              <div className="flex flex-nowrap items-center gap-2">
-                <Button disabled={!selectedCafeId || sourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                  <Copy className="mr-2 size-4" />
-                  Thêm từ chi nhánh
-                </Button>
-                <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                  <Plus className="mr-2 size-4" />
-                  Thêm gói
-                </Button>
-              </div>
-            }
-          />
+      {mode === "copy" ? (
+        <CopyPackagePanel
+          targetCafe={selectedCafe}
+          sourceCafes={sourceCafes}
+          sourceCafeId={sourceCafeId}
+          sourcePackages={sourcePackages}
+          selectedPackageId={selectedSourcePackageId}
+          selectedPackageExists={selectedPackageExists}
+          copying={copying}
+          onSourceCafeChange={setSourceCafeId}
+          onPackageChange={setSelectedSourcePackageId}
+          onCancel={() => setMode("list")}
+          onCopy={copyPackage}
+        />
+      ) : null}
 
-          <div className="mb-4 flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
-              <input type="checkbox" checked={allPackagesSelected} onChange={toggleAll} className="size-4 rounded border-[#c4c7c8] accent-orange-600" />
-              Chọn tất cả ({selectedPackageIds.length}/{packages.length})
-            </label>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#747878]" />
-                <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm gói..." className="h-9 w-56 rounded-lg bg-white pl-9" />
-              </div>
-              <Button disabled={selectedPackageIds.length === 0} variant="outline" onClick={() => setDeleteMode("selected")} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
-                <Trash2 className="mr-2 size-4" />
-                Xóa đã chọn
+      <Panel>
+        <PanelTitle
+          title={selectedCafe ? `Danh sách gói định kì - ${selectedCafe.name}` : "Danh sách gói định kì"}
+          subtitle="Mỗi gói chỉ thuộc chi nhánh đang chọn. Có thể import gói từ chi nhánh khác nếu chưa trùng mã."
+          action={
+            <div className="flex flex-nowrap items-center gap-2">
+              <Button disabled={!selectedCafeId || sourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
+                <Copy className="mr-2 size-4" />
+                Thêm từ chi nhánh
               </Button>
-              <Button disabled={packages.length === 0} variant="outline" onClick={() => setDeleteMode("all")} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
-                <Trash2 className="mr-2 size-4" />
-                Xóa hết
-              </Button>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
-              Đang tải dữ liệu gói...
-            </div>
-          ) : filteredPackages.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
-              <PackagePlus className="mx-auto size-10 text-[#747878]" />
-              <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chưa có gói phù hợp</h3>
-              <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo gói định kì đầu tiên cho chi nhánh hoặc đổi từ khóa tìm kiếm.</p>
-              <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+              <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
                 <Plus className="mr-2 size-4" />
-                Tạo gói
+                Thêm gói
               </Button>
             </div>
-          ) : (
-            <div className="grid gap-3">
-              {filteredPackages.map((item) => (
-                <PackageRow
-                  key={item.id}
-                  item={item}
-                  selected={selectedPackageIds.includes(item.id)}
-                  onSelect={() => toggleSelection(item.id)}
-                  onEdit={() => startEdit(item)}
-                  onTogglePriority={() => void togglePriority(item)}
-                  onToggle={() => void toggleActive(item)}
-                  onDelete={() => {
-                    setDeleteTarget(item)
-                    setDeleteMode("single")
-                  }}
-                />
-              ))}
+          }
+        />
+
+        <div className="mb-4 flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
+            <input type="checkbox" checked={allPackagesSelected} onChange={toggleAll} className="size-4 rounded border-[#c4c7c8] accent-orange-600" />
+            Chọn tất cả ({selectedPackageIds.length}/{packages.length})
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#747878]" />
+              <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Tìm kiếm gói..." className="h-9 w-56 rounded-lg bg-white pl-9" />
             </div>
-          )}
-        </Panel>
-      </section>
+            <Button disabled={selectedPackageIds.length === 0} variant="outline" onClick={() => setDeleteMode("selected")} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
+              <Trash2 className="mr-2 size-4" />
+              Xóa đã chọn
+            </Button>
+            <Button disabled={packages.length === 0} variant="outline" onClick={() => setDeleteMode("all")} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
+              <Trash2 className="mr-2 size-4" />
+              Xóa hết
+            </Button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
+            Đang tải dữ liệu gói...
+          </div>
+        ) : filteredPackages.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
+            <PackagePlus className="mx-auto size-10 text-[#747878]" />
+            <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chưa có gói phù hợp</h3>
+            <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo gói định kì đầu tiên cho chi nhánh hoặc đổi từ khóa tìm kiếm.</p>
+            <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+              <Plus className="mr-2 size-4" />
+              Tạo gói
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {filteredPackages.map((item) => (
+              <PackageRow
+                key={item.id}
+                item={item}
+                selected={selectedPackageIds.includes(item.id)}
+                onSelect={() => toggleSelection(item.id)}
+                onEdit={() => startEdit(item)}
+                onTogglePriority={() => void togglePriority(item)}
+                onToggle={() => void toggleActive(item)}
+                onDelete={() => {
+                  setDeleteTarget(item)
+                  setDeleteMode("single")
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </Panel>
 
       <DeleteConfirmationModal
         isOpen={!!deleteMode}
@@ -445,6 +440,20 @@ export function ProviderPackagesPage() {
                 : null
         }
       />
+    </section>
+  )
+
+  if (propCafeId) {
+    return content
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title="Quản lý Gói & Bảng giá"
+        description="Cấu hình các gói định kì theo tuần hoặc tháng, số lượng slot và chi nhánh áp dụng."
+      />
+      {content}
     </ProviderShell>
   )
 }
@@ -1063,7 +1072,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function buildPackagesPath(cafeId?: string) {
-  return cafeId ? `${routePaths.providerPackages}?cafeId=${cafeId}` : routePaths.providerPackages
+  return cafeId ? `/provider/cafes/${cafeId}?tab=packages` : routePaths.providerPackages
 }
 
 function toPayload(form: PackageFormState): PackagePayload {

@@ -103,12 +103,12 @@ const weekdayOptions = [
   { value: "SUN", label: "CN" },
 ]
 
-export function ProviderPromotionsPage() {
+export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedCafeId = searchParams.get("cafeId") ?? ""
+  const requestedCafeId = propCafeId || searchParams.get("cafeId") || ""
   const [cafes, setCafes] = useState<ProviderCafe[]>([])
-  const [selectedCafeId, setSelectedCafeId] = useState("")
+  const [selectedCafeId, setSelectedCafeId] = useState(propCafeId ?? "")
   const [promotions, setPromotions] = useState<Promotion[]>([])
   const [loading, setLoading] = useState(true)
   const [deleteTarget, setDeleteTarget] = useState<Promotion | null>(null)
@@ -144,6 +144,7 @@ export function ProviderPromotionsPage() {
         if (!mounted) return
         setCafes(data)
         setSelectedCafeId((current) => {
+          if (propCafeId) return propCafeId
           if (current) return current
           if (requestedCafeId && data.some((cafe) => cafe.id === requestedCafeId)) return requestedCafeId
           return data[0]?.id || ""
@@ -159,7 +160,7 @@ export function ProviderPromotionsPage() {
     return () => {
       mounted = false
     }
-  }, [requestedCafeId])
+  }, [requestedCafeId, propCafeId])
 
   useEffect(() => {
     if (!selectedCafeId) {
@@ -191,7 +192,10 @@ export function ProviderPromotionsPage() {
     setSelectedPromotionIds([])
     setDeleteTarget(null)
     setDeleteMode(null)
-  }, [selectedCafeId])
+    if (selectedCafeId && !propCafeId) {
+      setSearchParams(selectedCafeId ? { cafeId: selectedCafeId } : {})
+    }
+  }, [selectedCafeId, propCafeId])
 
   const startCreate = () => {
     navigate(`${routePaths.providerPromotionCreate}?cafeId=${selectedCafeId}`)
@@ -298,20 +302,15 @@ export function ProviderPromotionsPage() {
     }
   }
 
-  return (
-    <ProviderShell>
-      <ProviderPageHeader
-        title="Ưu đãi theo chi nhánh"
-        description="Chọn một chi nhánh bạn sở hữu để tạo, chỉnh sửa và theo dõi mã ưu đãi riêng cho chi nhánh đó."
-      />
+  const content = (
+    <section className="space-y-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard label="Đang hoạt động" value={String(stats.active)} helper="Theo chi nhánh đang chọn" icon={<BadgePercent />} tone="success" />
+        <MetricCard label="Sắp hết hạn" value={String(stats.expiringSoon)} helper="Trong 7 ngày tới" icon={<CalendarClock />} tone={stats.expiringSoon ? "warning" : "neutral"} />
+        <MetricCard label="Lượt dùng" value={String(stats.uses)} helper="Tổng lượt dùng mã" icon={<Building2 />} tone="info" />
+      </section>
 
-      <section className="space-y-4">
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard label="Đang hoạt động" value={String(stats.active)} helper="Theo chi nhánh đang chọn" icon={<BadgePercent />} tone="success" />
-          <MetricCard label="Sắp hết hạn" value={String(stats.expiringSoon)} helper="Trong 7 ngày tới" icon={<CalendarClock />} tone={stats.expiringSoon ? "warning" : "neutral"} />
-          <MetricCard label="Lượt dùng" value={String(stats.uses)} helper="Tổng lượt dùng mã" icon={<Building2 />} tone="info" />
-        </section>
-
+      {!propCafeId && (
         <Panel>
           <div className="space-y-3">
             <Label className="text-lg font-bold leading-tight tracking-tight text-[#1c1b1b]">
@@ -336,77 +335,77 @@ export function ProviderPromotionsPage() {
             </select>
           </div>
         </Panel>
+      )}
 
-        <Panel>
-          <PanelTitle
-            title={selectedCafe ? `Danh sách ưu đãi - ${selectedCafe.name}` : "Danh sách ưu đãi"}
-            subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
-            action={
-              <div className="flex flex-nowrap items-center gap-2">
-                <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                  <Copy className="mr-2 size-4" />
-                  Thêm từ chi nhánh
-                </Button>
-                <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                  <Plus className="mr-2 size-4" />
-                  Thêm mã
-                </Button>
-              </div>
-            }
-          />
-
-          {loading ? (
-            <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
-              Đang tải dữ liệu ưu đãi...
-            </div>
-          ) : promotions.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
-              <BadgePercent className="mx-auto size-10 text-[#747878]" />
-              <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chi nhánh này chưa có ưu đãi</h3>
-              <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo mã đầu tiên để khách hàng áp dụng khi đặt sân hoặc thuê xe.</p>
-              <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+      <Panel>
+        <PanelTitle
+          title={selectedCafe ? `Danh sách ưu đãi - ${selectedCafe.name}` : "Danh sách ưu đãi"}
+          subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
+          action={
+            <div className="flex flex-nowrap items-center gap-2">
+              <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
+                <Copy className="mr-2 size-4" />
+                Thêm từ chi nhánh
+              </Button>
+              <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
                 <Plus className="mr-2 size-4" />
-                Tạo ưu đãi
+                Thêm mã
               </Button>
             </div>
-          ) : (
-            <div className="grid gap-3">
-              <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
-                <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
-                  <input
-                    type="checkbox"
-                    checked={allPromotionsSelected}
-                    onChange={toggleAllPromotions}
-                    className="size-4 rounded border-[#c4c7c8] accent-orange-600"
-                  />
-                  Chọn tất cả ({selectedPromotionIds.length}/{promotions.length})
-                </label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
-                    <Trash2 className="mr-2 size-4" />
-                    Xóa đã chọn
-                  </Button>
-                  <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
-                    <Trash2 className="mr-2 size-4" />
-                    Xóa hết
-                  </Button>
-                </div>
-              </div>
-              {promotions.map((promotion) => (
-                <PromotionRow
-                  key={promotion.id}
-                  promotion={promotion}
-                  selected={selectedPromotionIds.includes(promotion.id)}
-                  onSelect={() => togglePromotionSelection(promotion.id)}
-                  onEdit={() => startEdit(promotion)}
-                  onToggle={() => void toggleActive(promotion)}
-                  onDelete={() => openSingleDelete(promotion)}
+          }
+        />
+
+        {loading ? (
+          <div className="rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] p-8 text-center text-sm font-semibold text-[#747878]">
+            Đang tải dữ liệu ưu đãi...
+          </div>
+        ) : promotions.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-10 text-center">
+            <BadgePercent className="mx-auto size-10 text-[#747878]" />
+            <h3 className="mt-4 text-lg font-bold text-[#1c1b1b]">Chi nhánh này chưa có ưu đãi</h3>
+            <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Tạo mã đầu tiên để khách hàng áp dụng khi đặt sân hoặc thuê xe.</p>
+            <Button disabled={!selectedCafeId} onClick={startCreate} className="mt-5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+              <Plus className="mr-2 size-4" />
+              Tạo ưu đãi
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 sm:flex-row sm:items-center sm:justify-between">
+              <label className="flex items-center gap-3 text-sm font-bold text-[#1c1b1b]">
+                <input
+                  type="checkbox"
+                  checked={allPromotionsSelected}
+                  onChange={toggleAllPromotions}
+                  className="size-4 rounded border-[#c4c7c8] accent-orange-600"
                 />
-              ))}
+                Chọn tất cả ({selectedPromotionIds.length}/{promotions.length})
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button disabled={selectedPromotionIds.length === 0} variant="outline" onClick={openSelectedDelete} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
+                  <Trash2 className="mr-2 size-4" />
+                  Xóa đã chọn
+                </Button>
+                <Button disabled={promotions.length === 0} variant="outline" onClick={openDeleteAll} className="h-9 rounded-lg bg-white text-red-600 hover:bg-red-50 font-bold">
+                  <Trash2 className="mr-2 size-4" />
+                  Xóa hết
+                </Button>
+              </div>
             </div>
-          )}
-        </Panel>
-      </section>
+            {promotions.map((promotion) => (
+              <PromotionRow
+                key={promotion.id}
+                promotion={promotion}
+                selected={selectedPromotionIds.includes(promotion.id)}
+                onSelect={() => togglePromotionSelection(promotion.id)}
+                onEdit={() => startEdit(promotion)}
+                onToggle={() => void toggleActive(promotion)}
+                onDelete={() => openSingleDelete(promotion)}
+              />
+            ))}
+          </div>
+        )}
+      </Panel>
 
       <DeleteConfirmationModal
         isOpen={!!deleteMode}
@@ -497,6 +496,20 @@ export function ProviderPromotionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </section>
+  )
+
+  if (propCafeId) {
+    return content
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title="Ưu đãi theo chi nhánh"
+        description="Chọn một chi nhánh bạn sở hữu để tạo, chỉnh sửa và theo dõi mã ưu đãi riêng cho chi nhánh đó."
+      />
+      {content}
     </ProviderShell>
   )
 }
@@ -1512,5 +1525,5 @@ function getErrorMessage(error: unknown) {
 }
 
 function buildPromotionsPath(cafeId?: string) {
-  return cafeId ? `${routePaths.providerPromotions}?cafeId=${encodeURIComponent(cafeId)}` : routePaths.providerPromotions
+  return cafeId ? `/provider/cafes/${cafeId}?tab=promotions` : routePaths.providerPromotions
 }

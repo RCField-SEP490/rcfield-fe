@@ -7,6 +7,10 @@ type PaymentStepProps = {
   paymentMethod: CustomerPaymentMethod
   onPaymentMethodChange: (method: CustomerPaymentMethod) => void
   selectedPackageId?: string | null
+  cafeId?: string
+  playMode?: string
+  slotsNeeded?: number
+  onPackageSelect?: (id: string | null) => void
 }
 
 const isSandbox = import.meta.env.DEV

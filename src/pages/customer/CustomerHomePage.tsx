@@ -241,7 +241,7 @@ export function CustomerHomePage() {
     .filter((b) => b.status === "CONFIRMED" || b.status === "PENDING")
     .slice(0, 3)
 
-  const activePackages = (packagesData?.data ?? []).slice(0, 3)
+  const activePackages = (packagesData ?? []).slice(0, 3)
   const nearbyCafes = cafes.slice(0, 8)
 
   const hasUpcoming = upcomingBookings.length > 0

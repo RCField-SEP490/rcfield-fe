@@ -11,7 +11,7 @@ export function useCreateVehicleUnit(cafeId: string, catalogId: string) {
   return useMutation({
     mutationFn: (data: CreateVehicleUnitDto) => vehicleApi.createUnit(cafeId, catalogId, data),
     onSuccess: () => {
-      toast.success("Thêm xe vật lý thành công")
+      toast.success("Thêm xe thành công")
       void queryClient.invalidateQueries({
         queryKey: vehicleKeys.units(cafeId),
       })
@@ -20,7 +20,7 @@ export function useCreateVehicleUnit(cafeId: string, catalogId: string) {
       })
     },
     onError: (error: unknown) => {
-      let msg = "Đã xảy ra lỗi khi thêm xe vật lý"
+      let msg = "Đã xảy ra lỗi khi thêm xe"
       if (axios.isAxiosError(error)) {
         msg = error.response?.data?.message || msg
       }
@@ -62,7 +62,7 @@ export function useDeleteVehicleUnit(cafeId: string, catalogId: string) {
   return useMutation({
     mutationFn: (unitId: string) => vehicleApi.deleteUnit(cafeId, catalogId, unitId),
     onSuccess: () => {
-      toast.success("Xóa xe vật lý thành công")
+      toast.success("Xóa xe thành công")
       void queryClient.invalidateQueries({
         queryKey: vehicleKeys.units(cafeId),
       })
@@ -71,7 +71,7 @@ export function useDeleteVehicleUnit(cafeId: string, catalogId: string) {
       })
     },
     onError: (error: unknown) => {
-      let msg = "Đã xảy ra lỗi khi xóa xe vật lý"
+      let msg = "Đã xảy ra lỗi khi xóa xe"
       if (axios.isAxiosError(error)) {
         msg = error.response?.data?.message || msg
       }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useNavigate, Link } from "react-router"
+import { useNavigate, Link, useSearchParams } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -72,6 +72,7 @@ export function LoginPage() {
   const [isGoogleReady, setIsGoogleReady] = useState(false)
   const [taglineIndex, setTaglineIndex] = useState(0)
   const googleButtonRef = useRef<HTMLDivElement>(null)
+  const [searchParams] = useSearchParams()
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
 
   // Auto rotate the taglines on the left panel
@@ -122,9 +123,14 @@ export function LoginPage() {
 
       toast.success(`Chào mừng quay trở lại, ${auth.user.email}!`)
 
-      navigate(roleRedirects[auth.user.role])
+      const redirectUrl = searchParams.get("redirect")
+      if (redirectUrl) {
+        navigate(redirectUrl)
+      } else {
+        navigate(roleRedirects[auth.user.role])
+      }
     },
-    [navigate, setAuthenticated],
+    [navigate, setAuthenticated, searchParams],
   )
   const handleGoogleCredential = useCallback(
     async (credential: string) => {
@@ -138,16 +144,16 @@ export function LoginPage() {
         const message = error?.response?.data?.message
 
         if (code === "GOOGLE_AUTH_FAILED") {
-          toast.error("KhÃ´ng thá»ƒ xÃ¡c thá»±c Google", {
-            description: "Vui lÃ²ng kiá»ƒm tra Google Client ID vÃ  thá»­ láº¡i.",
+          toast.error("Không thể xác thực Google", {
+            description: "Vui lòng kiểm tra Google Client ID và thử lại.",
           })
         } else if (code === "ACCOUNT_LOCKED") {
-          toast.error("TÃ i khoáº£n Ä‘ang bá»‹ khÃ³a", {
-            description: message ?? "Vui lÃ²ng liÃªn há»‡ quáº£n trá»‹ viÃªn Ä‘á»ƒ Ä‘Æ°á»£c há»— trá»£.",
+          toast.error("Tài khoản đang bị khóa", {
+            description: message ?? "Vui lòng liên hệ quản trị viên để được hỗ trợ.",
           })
         } else {
-          toast.error("KhÃ´ng thá»ƒ Ä‘Äƒng nháº­p Google", {
-            description: message ?? "KhÃ´ng káº¿t ná»‘i Ä‘Æ°á»£c tá»›i mÃ¡y chá»§ xÃ¡c thá»±c.",
+          toast.error("Không thể đăng nhập Google", {
+            description: message ?? "Không kết nối được tới máy chủ xác thực.",
           })
         }
       } finally {
@@ -169,7 +175,7 @@ export function LoginPage() {
           if (response.credential) {
             void handleGoogleCredential(response.credential)
           } else {
-            toast.error("Google khÃ´ng tráº£ vá» token Ä‘Äƒng nháº­p.")
+            toast.error("Google không trả về token đăng nhập.")
           }
         },
       })
@@ -210,7 +216,7 @@ export function LoginPage() {
     script.defer = true
     script.onload = initializeGoogleIdentity
     script.onerror = () => {
-      toast.error("KhÃ´ng táº£i Ä‘Æ°á»£c Google Sign-In.")
+      toast.error("Không tải được Google Sign-In.")
     }
     document.head.appendChild(script)
   }, [handleGoogleCredential])

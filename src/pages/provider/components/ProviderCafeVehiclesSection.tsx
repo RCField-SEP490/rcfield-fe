@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Link, useNavigate, useSearchParams } from "react-router"
+import { Link, useNavigate } from "react-router"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -18,25 +17,15 @@ import {
 } from "lucide-react"
 
 import { routePaths } from "@/app/router/route-paths"
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { useVehicleCatalogs } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import { useDeleteVehicleCatalog } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
 import { VehicleStatus, VehicleTier } from "@/features/vehicles/types"
 import type { VehicleUnit, VehicleCatalog } from "@/features/vehicles/types"
-import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
-import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { cn, sanitizeImageUrl, getCatalogImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Badge } from "@/shared/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -52,13 +41,14 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 
-export function ProviderVehiclesPage() {
+interface ProviderCafeVehiclesSectionProps {
+  cafeId: string
+  tab: "vehicles" | "catalogs"
+}
+
+export function ProviderCafeVehiclesSection({ cafeId, tab }: ProviderCafeVehiclesSectionProps) {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get("tab") || "vehicles"
-  const queryCafeId = searchParams.get("cafeId") || ""
   
-  const [localSelectedCafeId, setLocalSelectedCafeId] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<"ALL" | VehicleStatus>("ALL")
   
@@ -68,23 +58,15 @@ export function ProviderVehiclesPage() {
   const [isCatalogDeleteOpen, setIsCatalogDeleteOpen] = useState(false)
   const [catalogToDelete, setCatalogToDelete] = useState<VehicleCatalog | null>(null)
 
-  const { data: cafesData, isLoading: isCafesLoading } = useQuery({
-    queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
-    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
-  })
-  const cafes = cafesData?.data ?? []
+  const { data: units = [], isLoading: isUnitsLoading } = useVehicleUnits(cafeId)
+  const { data: catalogs = [], isLoading: isCatalogsLoading } = useVehicleCatalogs(cafeId)
 
-  const selectedCafeId = localSelectedCafeId || queryCafeId || cafes[0]?.id || ""
-
-  const { data: units = [], isLoading: isUnitsLoading } = useVehicleUnits(selectedCafeId)
-  const { data: catalogs = [], isLoading: isCatalogsLoading } = useVehicleCatalogs(selectedCafeId)
-
-  const deleteCatalogMutation = useDeleteVehicleCatalog(selectedCafeId)
+  const deleteCatalogMutation = useDeleteVehicleCatalog(cafeId)
 
   useEffect(() => {
     setCurrentPage(1)
     setCurrentCatalogPage(1)
-  }, [selectedCafeId])
+  }, [cafeId])
 
   const getCatalogForUnit = (unit: VehicleUnit) => {
     return catalogs.find((c) => c.id === (unit.catalogId || unit.catalog?.id))
@@ -125,15 +107,6 @@ export function ProviderVehiclesPage() {
     currentCatalogPage * CATALOG_PAGE_SIZE
   )
 
-  const handleCafeChange = (val: string) => {
-    setLocalSelectedCafeId(val)
-    setSearchParams({ tab, cafeId: val })
-  }
-
-  const handleTabChange = (newTab: string) => {
-    setSearchParams({ tab: newTab, cafeId: selectedCafeId })
-  }
-
   const handleDeleteCatalogSubmit = async () => {
     if (!catalogToDelete) return
     try {
@@ -152,331 +125,269 @@ export function ProviderVehiclesPage() {
   }
 
   return (
-    <ProviderShell>
-      <ProviderPageHeader
-        title="Quản lý Đội xe"
-        description="Theo dõi tình trạng vận hành của xe và thiết lập danh mục mẫu xe của bạn."
-      />
-
-      <div className="p-4 md:p-6 space-y-6">
-        <div className="flex flex-col gap-4 rounded-xl border border-[#c4c7c8] bg-white p-4 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            {cafes.length > 0 ? (
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">Cơ sở hoạt động:</span>
-                <Select value={selectedCafeId} onValueChange={handleCafeChange}>
-                  <SelectTrigger className="h-10 w-64 rounded-lg border-[#c4c7c8] bg-white text-sm font-bold text-[#1c1b1b]">
-                    <SelectValue placeholder="Chọn cơ sở" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cafes.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="font-semibold">
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+    <div className="space-y-6">
+      {tab === "vehicles" ? (
+        // TAB 1: FLEET VEHICLES
+        <>
+          {/* Top Actions Row */}
+          <div className="flex flex-col gap-4 rounded-xl border border-[#c4c7c8] bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-extrabold text-zinc-800">Quản lý Danh sách xe</h3>
+                <p className="text-xs text-zinc-500 font-semibold mt-0.5">Theo dõi và quản lý tình trạng vận hành các xe tại cơ sở này.</p>
               </div>
-            ) : (
-              <div />
-            )}
-
-            {tab === "vehicles" ? (
               <Button
-                disabled={!selectedCafeId}
-                onClick={() => navigate(`${routePaths.providerVehicleUnitCreateWithoutCatalog}?cafeId=${selectedCafeId}`)}
+                onClick={() => navigate(`${routePaths.providerVehicleUnitCreateWithoutCatalog}?cafeId=${cafeId}`)}
                 className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold shadow-sm"
               >
                 <Plus className="size-4" />
                 Thêm xe mới
               </Button>
-            ) : (
+            </div>
+          </div>
+
+          {/* KPI Cards */}
+          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <KpiCard
+              label="Tổng số xe"
+              value={totalCount.toString()}
+              icon={Car}
+              accentClass="text-indigo-600"
+              bgClass="bg-indigo-50"
+              description="Tổng phương tiện đăng ký"
+            />
+            <KpiCard
+              label="Sẵn sàng & Đang thuê"
+              value={activeCount.toString()}
+              icon={Activity}
+              accentClass="text-emerald-600"
+              bgClass="bg-emerald-50"
+              description="Đang hoạt động tốt"
+            />
+            <KpiCard
+              label="Đang bảo dưỡng"
+              value={maintenanceCount.toString()}
+              icon={Wrench}
+              accentClass="text-amber-600"
+              bgClass="bg-amber-50"
+              description="Cần kiểm tra định kỳ"
+            />
+            <KpiCard
+              label="Ngừng hoạt động / Hỏng"
+              value={retiredCount.toString()}
+              icon={AlertTriangle}
+              accentClass="text-rose-600"
+              bgClass="bg-rose-50"
+              description={retiredCount > 0 ? "Yêu cầu xử lý gấp" : "Không có sự cố"}
+            />
+          </section>
+
+          {/* Dashboard Sections */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Detailed status grid */}
+            <section className="flex flex-col gap-4 lg:col-span-8">
+              {/* Search and Filters Bar */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1 w-full sm:min-w-[320px] sm:max-w-sm">
+                  <Search className="absolute left-3 top-3 size-4 text-zinc-400" />
+                  <Input
+                    placeholder="Tìm xe theo mã, tên mẫu, màu..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-9 h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold text-zinc-800 shadow-sm placeholder:text-zinc-400 focus-visible:ring-1 focus-visible:ring-zinc-200"
+                  />
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-zinc-100 p-1">
+                  {[
+                    { value: "ALL", label: "Tất cả", count: units.length },
+                    { value: "AVAILABLE", label: "Sẵn sàng", count: units.filter(u => u.status === "AVAILABLE").length },
+                    { value: "IN_USE", label: "Đang thuê", count: units.filter(u => u.status === "IN_USE").length },
+                    { value: "MAINTENANCE", label: "Bảo trì", count: units.filter(u => u.status === "MAINTENANCE").length },
+                    { value: "RETIRED", label: "Ngừng chạy", count: units.filter(u => u.status === "RETIRED").length },
+                  ].map((f) => {
+                    const isActive = statusFilter === f.value
+                    return (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => {
+                          setStatusFilter(f.value as any)
+                          setCurrentPage(1)
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all shrink-0",
+                          isActive
+                            ? "bg-white text-zinc-900 shadow-sm"
+                            : "text-zinc-600 hover:text-zinc-900"
+                        )}
+                      >
+                        {f.label}
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-extrabold",
+                            isActive ? "bg-zinc-100 text-zinc-900" : "bg-zinc-200 text-zinc-700"
+                          )}
+                        >
+                          {f.count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <h3 className="text-base font-extrabold leading-tight tracking-tight text-zinc-800 mt-2">
+                Chi tiết trạng thái đội xe
+              </h3>
+
+              {isUnitsLoading ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <div key={i} className="h-44 animate-pulse rounded-xl bg-gray-100" />
+                  ))}
+                </div>
+              ) : filteredUnits.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-zinc-200 bg-white p-12 text-center shadow-sm">
+                  <Car className="size-10 text-zinc-300 mx-auto mb-2" />
+                  <p className="text-sm font-bold text-zinc-800">Không tìm thấy phương tiện nào</p>
+                  <p className="text-xs font-semibold text-zinc-500 mt-1 max-w-xs mx-auto">
+                    Hãy thử thay đổi điều kiện tìm kiếm hoặc thêm xe mới vào danh mục hoạt động.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {paginatedUnits.map((unit) => (
+                      <FleetHealthCard
+                        key={unit.id}
+                        unit={unit}
+                        catalog={getCatalogForUnit(unit)}
+                        cafeId={cafeId}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Vehicles Pagination */}
+                  {totalVehiclePages > 1 && (
+                    <div className="flex items-center justify-between border-t border-[#e5e2e1] pt-4">
+                      <p className="text-xs font-bold text-[#747878]">
+                        Hiển thị {Math.min((currentPage - 1) * VEHICLE_PAGE_SIZE + 1, filteredUnits.length)} - {Math.min(currentPage * VEHICLE_PAGE_SIZE, filteredUnits.length)} trong số {filteredUnits.length} xe
+                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          className="h-8 rounded-lg text-xs font-bold border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
+                        >
+                          Trang trước
+                        </Button>
+                        {Array.from({ length: totalVehiclePages }).map((_, idx) => {
+                          const page = idx + 1
+                          const isCurrent = currentPage === page
+                          return (
+                            <Button
+                              key={page}
+                              variant={isCurrent ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentPage(page)}
+                              className={cn(
+                                "h-8 w-8 rounded-lg text-xs font-bold",
+                                isCurrent
+                                  ? "bg-[#1c1b1b] text-white hover:bg-[#313030]"
+                                  : "border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
+                              )}
+                            >
+                              {page}
+                            </Button>
+                          )
+                        })}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage === totalVehiclePages}
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalVehiclePages))}
+                          className="h-8 rounded-lg text-xs font-bold border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
+                        >
+                          Trang sau
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* Maintenance list section */}
+            <aside className="flex flex-col gap-4 lg:col-span-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-extrabold leading-tight tracking-tight text-zinc-800">
+                  Hàng đợi bảo trì & Hỏng
+                </h3>
+                <Badge className="bg-amber-100 text-amber-800 font-extrabold border-amber-200">
+                  {units.filter((u) => u.status === VehicleStatus.MAINTENANCE || u.status === VehicleStatus.RETIRED).length} xe
+                </Badge>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 shadow-sm min-h-[300px] max-h-[480px] overflow-y-auto">
+                <div className="flex flex-col gap-3">
+                  {units.filter((u) => u.status === VehicleStatus.MAINTENANCE || u.status === VehicleStatus.RETIRED).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center p-8 text-center text-zinc-500 my-auto">
+                      <CheckCircle2 className="size-8 text-emerald-500 mb-2" />
+                      <p className="text-xs font-bold text-zinc-700">Đội xe khỏe mạnh</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">Không có phương tiện nào đang bảo dưỡng hoặc gặp sự cố.</p>
+                    </div>
+                  ) : (
+                    units
+                      .filter((u) => u.status === VehicleStatus.MAINTENANCE || u.status === VehicleStatus.RETIRED)
+                      .map((unit) => (
+                        <QueueItem
+                          key={unit.id}
+                          unit={unit}
+                          catalog={getCatalogForUnit(unit)}
+                          cafeId={cafeId}
+                        />
+                      ))
+                  )}
+                </div>
+              </div>
+            </aside>
+          </div>
+        </>
+      ) : (
+        // TAB 2: VEHICLE CATALOGS
+        <>
+          {/* Top Actions Row */}
+          <div className="flex flex-col gap-4 rounded-xl border border-[#c4c7c8] bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base font-extrabold text-zinc-800">Quản lý Danh mục mẫu xe</h3>
+                <p className="text-xs text-zinc-500 font-semibold mt-0.5">Cấu hình các dòng xe RC, giá thuê giờ và tiền đặt cọc tương ứng.</p>
+              </div>
               <Button
-                disabled={!selectedCafeId}
-                onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${selectedCafeId}`)}
+                onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${cafeId}`)}
                 className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold shadow-sm"
               >
                 <Plus className="size-4" />
                 Thêm danh mục mới
               </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex border-b border-[#e5e2e1]">
-          <button
-            onClick={() => handleTabChange("vehicles")}
-            className={cn(
-              "px-6 py-3 text-sm font-bold border-b-2 transition-all mr-2",
-              tab === "vehicles"
-                ? "border-orange-600 text-orange-600 font-extrabold"
-                : "border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300"
-            )}
-          >
-            Danh sách xe ({totalCount})
-          </button>
-          <button
-            onClick={() => handleTabChange("catalogs")}
-            className={cn(
-              "px-6 py-3 text-sm font-bold border-b-2 transition-all",
-              tab === "catalogs"
-                ? "border-orange-600 text-orange-600 font-extrabold"
-                : "border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300"
-            )}
-          >
-            Danh mục mẫu xe ({catalogs.length})
-          </button>
-        </div>
-
-        {isCafesLoading ? (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-64 animate-pulse rounded-xl bg-gray-100" />
-            ))}
-          </div>
-        ) : cafes.length === 0 ? (
-          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-[#c4c7c8] bg-white p-8 text-center shadow-sm">
-            <div className="flex size-14 items-center justify-center rounded-full bg-[#f6f3f2] text-[#747878] mb-4">
-              <AlertTriangle className="size-7" />
             </div>
-            <h3 className="text-lg font-bold text-[#1c1b1b] mb-1">Chưa có cơ sở hoạt động</h3>
-            <p className="text-sm font-semibold text-[#444748] max-w-sm mb-6">
-              Bạn cần tạo và kích hoạt ít nhất một cơ sở (Cafe) trước khi có thể cấu hình và giám sát đội xe.
-            </p>
-            <Button
-              onClick={() => navigate(routePaths.providerCafeCreate)}
-              className="h-10 bg-[#1c1b1b] text-white rounded-lg hover:bg-[#313030] font-bold"
-            >
-              Tạo cơ sở của bạn ngay
-            </Button>
           </div>
-        ) : tab === "vehicles" ? (
-          // TAB 1: FLEET VEHICLES
-          <>
-            {/* KPI Cards */}
-            <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <KpiCard
-                label="Tổng số xe"
-                value={totalCount.toString()}
-                icon={Car}
-                accentClass="text-indigo-600"
-                bgClass="bg-indigo-50"
-                description="Tổng phương tiện đăng ký"
-              />
-              <KpiCard
-                label="Sẵn sàng & Đang thuê"
-                value={activeCount.toString()}
-                icon={Activity}
-                accentClass="text-emerald-600"
-                bgClass="bg-emerald-50"
-                description="Đang hoạt động tốt"
-              />
-              <KpiCard
-                label="Đang bảo dưỡng"
-                value={maintenanceCount.toString()}
-                icon={Wrench}
-                accentClass="text-amber-600"
-                bgClass="bg-amber-50"
-                description="Cần kiểm tra định kỳ"
-              />
-              <KpiCard
-                label="Ngừng hoạt động / Hỏng"
-                value={retiredCount.toString()}
-                icon={AlertTriangle}
-                accentClass="text-rose-600"
-                bgClass="bg-rose-50"
-                description={retiredCount > 0 ? "Yêu cầu xử lý gấp" : "Không có sự cố"}
-              />
-            </section>
 
-            {/* Dashboard Sections */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              {/* Detailed status grid */}
-              <section className="flex flex-col gap-4 lg:col-span-8">
-                {/* Search and Filters Bar */}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="relative flex-1 w-full sm:min-w-[320px] sm:max-w-sm">
-                    <Search className="absolute left-3 top-3 size-4 text-zinc-400" />
-                    <Input
-                      placeholder="Tìm xe theo mã, tên mẫu, màu..."
-                      value={searchTerm}
-                      onChange={(e) => {
-                        setSearchTerm(e.target.value)
-                        setCurrentPage(1)
-                      }}
-                      className="pl-9 h-10 rounded-xl border-zinc-200 bg-white text-xs font-semibold text-zinc-800 shadow-sm placeholder:text-zinc-400 focus-visible:ring-1 focus-visible:ring-zinc-200"
-                    />
-                  </div>
-
-                  {/* Filter Tabs */}
-                  <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-zinc-100 p-1">
-                    {[
-                      { value: "ALL", label: "Tất cả", count: units.length },
-                      { value: "AVAILABLE", label: "Sẵn sàng", count: units.filter(u => u.status === "AVAILABLE").length },
-                      { value: "IN_USE", label: "Đang thuê", count: units.filter(u => u.status === "IN_USE").length },
-                      { value: "MAINTENANCE", label: "Bảo trì", count: units.filter(u => u.status === "MAINTENANCE").length },
-                      { value: "RETIRED", label: "Ngừng chạy", count: units.filter(u => u.status === "RETIRED").length },
-                    ].map((f) => {
-                      const isActive = statusFilter === f.value
-                      return (
-                        <button
-                          key={f.value}
-                          type="button"
-                          onClick={() => {
-                            setStatusFilter(f.value as any)
-                            setCurrentPage(1)
-                          }}
-                          className={cn(
-                            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all shrink-0",
-                            isActive
-                              ? "bg-white text-zinc-900 shadow-sm"
-                              : "text-zinc-600 hover:text-zinc-900"
-                          )}
-                        >
-                          {f.label}
-                          <span
-                            className={cn(
-                              "rounded-full px-1.5 py-0.5 text-[10px] font-extrabold",
-                              isActive ? "bg-zinc-100 text-zinc-900" : "bg-zinc-200 text-zinc-700"
-                            )}
-                          >
-                            {f.count}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-extrabold leading-tight tracking-tight text-zinc-800 mt-2">
-                  Chi tiết trạng thái đội xe
-                </h3>
-
-                {isUnitsLoading ? (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <div key={i} className="h-44 animate-pulse rounded-xl bg-gray-100" />
-                    ))}
-                  </div>
-                ) : filteredUnits.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-zinc-200 bg-white p-12 text-center shadow-sm">
-                    <Car className="size-10 text-zinc-300 mx-auto mb-2" />
-                    <p className="text-sm font-bold text-zinc-800">Không tìm thấy phương tiện nào</p>
-                    <p className="text-xs font-semibold text-zinc-500 mt-1 max-w-xs mx-auto">
-                      Hãy thử thay đổi điều kiện tìm kiếm hoặc thêm xe mới vào danh mục hoạt động.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      {paginatedUnits.map((unit) => (
-                        <FleetHealthCard
-                          key={unit.id}
-                          unit={unit}
-                          catalog={getCatalogForUnit(unit)}
-                          cafeId={selectedCafeId}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Vehicles Pagination */}
-                    {totalVehiclePages > 1 && (
-                      <div className="flex items-center justify-between border-t border-[#e5e2e1] pt-4">
-                        <p className="text-xs font-bold text-[#747878]">
-                          Hiển thị {Math.min((currentPage - 1) * VEHICLE_PAGE_SIZE + 1, filteredUnits.length)} - {Math.min(currentPage * VEHICLE_PAGE_SIZE, filteredUnits.length)} trong số {filteredUnits.length} xe
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={currentPage === 1}
-                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                            className="h-8 rounded-lg text-xs font-bold border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
-                          >
-                            Trang trước
-                          </Button>
-                          {Array.from({ length: totalVehiclePages }).map((_, idx) => {
-                            const page = idx + 1
-                            const isCurrent = currentPage === page
-                            return (
-                              <Button
-                                key={page}
-                                variant={isCurrent ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setCurrentPage(page)}
-                                className={cn(
-                                  "h-8 w-8 rounded-lg text-xs font-bold",
-                                  isCurrent
-                                    ? "bg-[#1c1b1b] text-white hover:bg-[#313030]"
-                                    : "border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
-                                )}
-                              >
-                                {page}
-                              </Button>
-                            )
-                          })}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={currentPage === totalVehiclePages}
-                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalVehiclePages))}
-                            className="h-8 rounded-lg text-xs font-bold border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
-                          >
-                            Trang sau
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-
-              {/* Maintenance list section */}
-              <aside className="flex flex-col gap-4 lg:col-span-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-extrabold leading-tight tracking-tight text-zinc-800">
-                    Hàng đợi bảo trì & Hỏng
-                  </h3>
-                  <Badge className="bg-amber-100 text-amber-800 font-extrabold border-amber-200">
-                    {units.filter((u) => u.status === VehicleStatus.MAINTENANCE || u.status === VehicleStatus.RETIRED).length} xe
-                  </Badge>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-zinc-50/50 p-4 shadow-sm min-h-[300px] max-h-[480px] overflow-y-auto">
-                  <div className="flex flex-col gap-3">
-                    {units.filter((u) => u.status === VehicleStatus.MAINTENANCE || u.status === VehicleStatus.RETIRED).length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-8 text-center text-zinc-500 my-auto">
-                        <CheckCircle2 className="size-8 text-emerald-500 mb-2" />
-                        <p className="text-xs font-bold text-zinc-700">Đội xe khỏe mạnh</p>
-                        <p className="text-[10px] text-zinc-400 mt-0.5">Không có phương tiện nào đang bảo dưỡng hoặc gặp sự cố.</p>
-                      </div>
-                    ) : (
-                      units
-                        .filter((u) => u.status === VehicleStatus.MAINTENANCE || u.status === VehicleStatus.RETIRED)
-                        .map((unit) => (
-                          <QueueItem
-                            key={unit.id}
-                            unit={unit}
-                            catalog={getCatalogForUnit(unit)}
-                            cafeId={selectedCafeId}
-                          />
-                        ))
-                    )}
-                  </div>
-                </div>
-              </aside>
-            </div>
-          </>
-        ) : (
-          // TAB 2: VEHICLE CATALOGS
-          isCatalogsLoading ? (
+          {isCatalogsLoading ? (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-64 animate-pulse rounded-xl bg-gray-100" />
               ))}
             </div>
           ) : catalogs.length === 0 ? (
-            <div className="flex min-h-[400px] flex-col items-center justify-center rounded-xl border border-dashed border-[#c4c7c8] bg-white p-8 text-center shadow-sm">
+            <div className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-dashed border-[#c4c7c8] bg-white p-8 text-center shadow-sm">
               <div className="flex size-14 items-center justify-center rounded-full bg-[#f6f3f2] text-[#747878] mb-4">
                 <Car className="size-7" />
               </div>
@@ -485,7 +396,7 @@ export function ProviderVehiclesPage() {
                 Cơ sở này chưa có danh mục mẫu xe nào. Hãy tạo danh mục mẫu đầu tiên để bắt đầu nhập thông số và giá thuê xe.
               </p>
               <Button
-                onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${selectedCafeId}`)}
+                onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${cafeId}`)}
                 className="h-10 bg-[#1c1b1b] text-white rounded-lg hover:bg-[#313030] font-bold"
               >
                 Tạo danh mục xe đầu tiên
@@ -541,7 +452,7 @@ export function ProviderVehiclesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40 rounded-lg bg-white border-[#c4c7c8]">
                             <DropdownMenuItem
-                              onClick={() => navigate(`${routePaths.providerVehicleCatalogEdit.replace(":catalogId", catalog.id)}?cafeId=${selectedCafeId}`)}
+                              onClick={() => navigate(`${routePaths.providerVehicleCatalogEdit.replace(":catalogId", catalog.id)}?cafeId=${cafeId}`)}
                               className="cursor-pointer gap-2 py-2"
                             >
                               <Edit2 className="size-4" />
@@ -598,7 +509,7 @@ export function ProviderVehiclesPage() {
                         </div>
 
                         <Link
-                          to={`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalog.id)}?cafeId=${selectedCafeId}`}
+                          to={`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalog.id)}?cafeId=${cafeId}`}
                           className="inline-flex items-center text-xs font-extrabold text-slate-800 hover:text-black transition-colors"
                         >
                           Quản lý xe
@@ -659,9 +570,9 @@ export function ProviderVehiclesPage() {
                 </div>
               )}
             </div>
-          )
-        )}
-      </div>
+          )}
+        </>
+      )}
 
       {/* Dialog: Delete Catalog Confirmation */}
       <Dialog open={isCatalogDeleteOpen} onOpenChange={setIsCatalogDeleteOpen}>
@@ -701,7 +612,7 @@ export function ProviderVehiclesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </ProviderShell>
+    </div>
   )
 }
 
@@ -746,7 +657,6 @@ function FleetHealthCard({
   const navigate = useNavigate()
   const catalogId = unit.catalogId || unit.catalog?.id || ""
 
-  // Visual status indicators mapping
   const statusConfig = {
     AVAILABLE: {
       label: "Sẵn sàng",
@@ -774,7 +684,6 @@ function FleetHealthCard({
     dot: "bg-gray-500",
   }
 
-  // Tier design
   const tierConfig = {
     PREMIUM: {
       label: "Premium",
@@ -790,7 +699,6 @@ function FleetHealthCard({
     },
   }[catalog?.tier || "STANDARD"]
 
-  // Resolve Image Url (with fallbacks so it is never blank!)
   const imageUrl = sanitizeImageUrl(unit.distinctive_image_url) 
     || sanitizeImageUrl(catalog?.coverImageUrl) 
     || (catalog?.images && catalog.images.length > 0 ? sanitizeImageUrl(catalog.images[0].url) : null)
@@ -943,4 +851,3 @@ function QueueItem({
     </Link>
   )
 }
-

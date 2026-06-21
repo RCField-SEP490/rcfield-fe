@@ -1,21 +1,17 @@
-import { Link, useLocation, useNavigate } from "react-router"
+import { Link, useLocation, useNavigate, useSearchParams, useParams } from "react-router"
 import { Children, isValidElement, useCallback } from "react"
 import type { ElementType, ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
-  BadgePercent,
   BarChart3,
   Building2,
-  Car,
   CalendarDays,
   CircleHelp,
   ClipboardList,
-  Coffee,
   LayoutDashboard,
   LogOut,
   Menu,
-  Package,
   PlayCircle,
   Settings,
   ShieldCheck,
@@ -23,6 +19,16 @@ import {
   UserRound,
   Users,
   X,
+  ChevronRight,
+  ChevronDown,
+  MessageSquare,
+  Compass,
+  DollarSign,
+  Coffee,
+  Tag,
+  BadgePercent,
+  Car,
+  Package,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -52,21 +58,13 @@ const providerNavGroups: NavGroup[] = [
     heading: "Vận hành",
     items: [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
-      { label: "Quản lý đội xe", icon: Car, to: routePaths.providerVehicles },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
       { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],
   },
-  {
-    heading: "Kinh doanh",
-    items: [
-      { label: "Menu F&B", icon: Coffee, to: routePaths.providerMenu },
-      { label: "Gói & Giá", icon: Package, to: routePaths.providerPackages },
-      { label: "Ưu đãi", icon: BadgePercent, to: routePaths.providerPromotions },
-    ],
-  },
+
   {
     heading: "Hệ thống",
     items: [
@@ -97,6 +95,14 @@ function restoreProviderSidebarScroll(element: HTMLElement | null) {
 export function ProviderShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { cafeId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get("tab") || "info"
+  const [openGroups, setOpenGroups] = useState({
+    config: true,
+    operations: true,
+    business: true,
+  })
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const desktopNavRef = useRef<HTMLElement | null>(null)
@@ -166,6 +172,214 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     navigate(routePaths.login, { replace: true })
   }
 
+  const renderSubMenu = (isMobile: boolean) => {
+    if (!cafeId || location.pathname !== `/provider/cafes/${cafeId}`) return null
+    return (
+      <div className="mt-1.5 ml-6 pl-2 border-l border-[#e5e2e1] space-y-3">
+        {/* Nhóm 1: Thiết lập chung */}
+        <div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setOpenGroups((prev) => ({ ...prev, config: !prev.config }))
+            }}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-extrabold text-[#747878] hover:bg-orange-50/50 hover:text-orange-700 transition-colors"
+          >
+            <span>THIẾT LẬP CHUNG</span>
+            {openGroups.config ? <ChevronDown className="size-3 text-[#747878]" /> : <ChevronRight className="size-3 text-[#747878]" />}
+          </button>
+          {openGroups.config && (
+            <div className="mt-1 ml-1 space-y-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "info" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "info"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Settings className="size-3.5" />
+                Thông tin cơ sở
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "widget" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "widget"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <MessageSquare className="size-3.5" />
+                Widget Chat
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Nhóm 2: Vận hành sân & xe */}
+        <div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setOpenGroups((prev) => ({ ...prev, operations: !prev.operations }))
+            }}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-extrabold text-[#747878] hover:bg-orange-50/50 hover:text-orange-700 transition-colors"
+          >
+            <span>VẬN HÀNH SÂN & XE</span>
+            {openGroups.operations ? <ChevronDown className="size-3 text-[#747878]" /> : <ChevronRight className="size-3 text-[#747878]" />}
+          </button>
+          {openGroups.operations && (
+            <div className="mt-1 ml-1 space-y-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "tracks" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "tracks"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Compass className="size-3.5" />
+                Loại sân (Track)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "pricing" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "pricing"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <DollarSign className="size-3.5" />
+                Cấu hình giá
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "vehicles" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "vehicles"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Car className="size-3.5" />
+                Danh sách xe
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "catalogs" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "catalogs"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Tag className="size-3.5" />
+                Danh mục mẫu xe
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Nhóm 3: Quản lý kinh doanh */}
+        <div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setOpenGroups((prev) => ({ ...prev, business: !prev.business }))
+            }}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-extrabold text-[#747878] hover:bg-orange-50/50 hover:text-orange-700 transition-colors"
+          >
+            <span>QUẢN LÝ KINH DOANH</span>
+            {openGroups.business ? <ChevronDown className="size-3 text-[#747878]" /> : <ChevronRight className="size-3 text-[#747878]" />}
+          </button>
+          {openGroups.business && (
+            <div className="mt-1 ml-1 space-y-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "menu" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "menu"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Coffee className="size-3.5" />
+                Menu F&B
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "packages" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "packages"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Package className="size-3.5" />
+                Gói & Giá
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "promotions" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "promotions"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <BadgePercent className="size-3.5" />
+                Ưu đãi
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const childList = Children.toArray(children)
   const headerChildren = childList.filter(
     (child) => isValidElement(child) && (child.type === ProviderHeader || child.type === ProviderPageHeader)
@@ -203,20 +417,22 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                   const active = location.pathname === item.to || (item.to !== routePaths.providerDashboard && location.pathname.startsWith(item.to))
 
                   return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => saveProviderSidebarScroll(desktopNavRef.current)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
-                        active
-                          ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                          : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
-                      )}
-                    >
-                      <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                      {item.label}
-                    </Link>
+                    <div key={item.to} className="flex flex-col">
+                      <Link
+                        to={item.to}
+                        onClick={() => saveProviderSidebarScroll(desktopNavRef.current)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
+                          active
+                            ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                            : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
+                        )}
+                      >
+                        <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                        {item.label}
+                      </Link>
+                      {item.to === routePaths.providerCafes && renderSubMenu(false)}
+                    </div>
                   )
                 })}
               </div>
@@ -231,13 +447,13 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
               location.pathname === routePaths.profile
                 ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
+                : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
             )}
           >
             <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
             Hồ sơ cá nhân
           </Link>
-          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
+          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-orange-50/70 hover:text-orange-700">
             <CircleHelp className="size-5 text-[#747878]" />
             Trợ giúp
           </button>
@@ -285,23 +501,26 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                       const active = location.pathname === item.to || (item.to !== routePaths.providerDashboard && location.pathname.startsWith(item.to))
 
                       return (
-                        <Link
-                          key={item.to}
-                          to={item.to}
-                          onClick={() => {
-                            saveProviderSidebarScroll(mobileNavRef.current)
-                            setMobileMenuOpen(false)
-                          }}
-                          className={cn(
-                            "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
-                            active
-                              ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                              : "text-[#444748] hover:bg-[rgb(246,243,242)]"
-                          )}
-                        >
-                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                          {item.label}
-                        </Link>
+                        <div key={item.to} className="flex flex-col">
+                          <Link
+                            key={item.to}
+                            to={item.to}
+                            onClick={() => {
+                              saveProviderSidebarScroll(mobileNavRef.current)
+                              setMobileMenuOpen(false)
+                            }}
+                            className={cn(
+                              "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
+                              active
+                                ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                                : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
+                            )}
+                          >
+                            <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                            {item.label}
+                          </Link>
+                          {item.to === routePaths.providerCafes && renderSubMenu(true)}
+                        </div>
                       )
                     })}
                   </div>
@@ -317,13 +536,13 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                   "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
                   location.pathname === routePaths.profile
                     ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                    : "text-[#444748] hover:bg-[rgb(246,243,242)]"
+                    : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
                 )}
               >
                 <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
                 Hồ sơ cá nhân
               </Link>
-              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">
+              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-orange-50/70 hover:text-orange-700">
                 <CircleHelp className="size-5 text-[#747878]" />
                 Trợ giúp
               </button>

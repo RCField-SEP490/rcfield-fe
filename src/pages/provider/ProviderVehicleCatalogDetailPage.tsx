@@ -121,7 +121,7 @@ export function ProviderVehicleCatalogDetailPage() {
           <p className="text-sm text-[#444748] mt-2 mb-6">
             Danh mục phương tiện này không tồn tại hoặc cơ sở hiện tại chưa được tải đúng cách.
           </p>
-          <Button onClick={() => navigate(`${routePaths.providerVehicles}?tab=catalogs&cafeId=${selectedCafeId}`)} className="bg-[#1c1b1b] text-white">
+          <Button onClick={() => navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)} className="bg-[#1c1b1b] text-white">
             Quay lại danh sách
           </Button>
         </div>
@@ -139,7 +139,7 @@ export function ProviderVehicleCatalogDetailPage() {
     <ProviderShell>
       <ProviderPageHeader
         title={catalog.name}
-        description="Xem chi tiết các thông số kỹ thuật và quản lý đội xe vật lý thuộc danh mục này."
+        description="Xem chi tiết các thông số kỹ thuật và quản lý danh sách xe thuộc danh mục này."
       />
 
       <div className="p-4 md:p-6 space-y-6">
@@ -148,7 +148,7 @@ export function ProviderVehicleCatalogDetailPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate(`${routePaths.providerVehicles}?tab=catalogs&cafeId=${selectedCafeId}`)}
+            onClick={() => navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)}
             className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold"
           >
             <ArrowLeft className="size-4" />
@@ -159,7 +159,7 @@ export function ProviderVehicleCatalogDetailPage() {
             className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold"
           >
             <Plus className="size-4" />
-            Thêm xe vật lý
+            Thêm xe mới
           </Button>
         </div>
 
@@ -257,7 +257,7 @@ export function ProviderVehicleCatalogDetailPage() {
           <div className="rounded-xl border border-[#c4c7c8] bg-white shadow-sm overflow-hidden p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-[#1c1b1b]">Danh sách xe vật lý</h3>
+                <h3 className="text-xl font-bold text-[#1c1b1b]">Danh sách xe</h3>
                 <p className="text-xs font-medium text-[#747878] mt-0.5">
                   Tổng cộng {units.length} xe đang hoạt động tại cơ sở
                 </p>
@@ -273,9 +273,9 @@ export function ProviderVehicleCatalogDetailPage() {
             ) : units.length === 0 ? (
               <div className="text-center py-12 border border-dashed border-[#c4c7c8] rounded-lg">
                 <Car className="size-10 text-[#747878] mx-auto mb-2" />
-                <h4 className="text-sm font-bold text-[#1c1b1b]">Chưa có xe vật lý nào</h4>
+                <h4 className="text-sm font-bold text-[#1c1b1b]">Chưa có xe nào</h4>
                 <p className="text-xs font-semibold text-[#444748] mt-1 mb-4">
-                  Chưa có xe vật lý cụ thể nào được gán cho mẫu danh mục này.
+                  Chưa có xe cụ thể nào được gán cho mẫu danh mục này.
                 </p>
                 <Button
                   onClick={() => navigate(routePaths.providerVehicleUnitCreate.replace(":catalogId", catalogId) + `?cafeId=${selectedCafeId}`)}
@@ -403,10 +403,10 @@ export function ProviderVehicleCatalogDetailPage() {
               <AlertTriangle className="size-5" />
             </div>
             <DialogTitle className="text-base font-bold text-[#1c1b1b]">
-              Xác nhận xóa xe vật lý?
+              Xác nhận xóa xe?
             </DialogTitle>
             <DialogDescription className="text-xs text-[#444748] pt-1">
-              Bạn có chắc chắn muốn xóa xe vật lý mã số <strong>{unitToDelete?.identifier}</strong> khỏi hệ thống?
+              Bạn có chắc chắn muốn xóa xe mã số <strong>{unitToDelete?.identifier}</strong> khỏi hệ thống?
               Hành động này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
