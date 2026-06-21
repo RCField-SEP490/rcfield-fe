@@ -308,7 +308,7 @@ export function ProviderVehicleCatalogsPage() {
                     <div className="flex items-center justify-between border-t border-[#e5e2e1] pt-4 mt-2">
                       <div className="flex items-center gap-1.5 text-sm font-bold text-[#444748]">
                         <Car className="size-4 text-[#747878]" />
-                        <span>{catalog.total_units ?? catalog._count?.units ?? 0} xe vật lý</span>
+                        <span>{catalog.total_units ?? catalog._count?.units ?? 0} xe</span>
                       </div>
 
                       <Link

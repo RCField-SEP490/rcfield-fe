@@ -77,7 +77,7 @@ export function ProviderVehicleDetailPage() {
 
   const handleBack = () => {
     if (fromPage === "vehicles") {
-      navigate(`${routePaths.providerVehicles}?tab=vehicles&cafeId=${selectedCafeId}`)
+      navigate(`/provider/cafes/${selectedCafeId}?tab=vehicles`)
     } else {
       navigate(`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalogId)}?cafeId=${selectedCafeId}`)
     }
@@ -161,9 +161,9 @@ export function ProviderVehicleDetailPage() {
       <ProviderShell>
         <div className="p-6 text-center max-w-md mx-auto mt-20">
           <AlertTriangle className="size-12 text-amber-500 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy xe vật lý</h3>
+          <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy xe</h3>
           <p className="text-sm text-[#444748] mt-2 mb-6">
-            Xe vật lý này không tồn tại hoặc bạn không có quyền xem/cập nhật thông tin chi tiết của xe này.
+            Xe này không tồn tại hoặc bạn không có quyền xem/cập nhật thông tin chi tiết của xe này.
           </p>
           <Button
             onClick={handleBack}
@@ -270,7 +270,7 @@ export function ProviderVehicleDetailPage() {
             {/* Distinctive Identification Image */}
             <div className="space-y-2">
               <Label htmlFor="edit-unit-image" className="text-sm font-bold text-[#1c1b1b]">
-                Hình ảnh nhận diện xe vật lý (Đặc điểm riêng)
+                Hình ảnh nhận diện xe (Đặc điểm riêng)
               </Label>
               <div className="grid gap-3 sm:grid-cols-[1fr_120px] sm:items-center">
                 <Input

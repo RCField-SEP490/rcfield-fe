@@ -20,14 +20,18 @@ const availabilityOptions = [
   { value: "false", label: "Tạm ẩn" },
 ] as const
 
-export function ProviderMenuPage() {
+import { cn } from "@/shared/lib/utils"
+
+export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
   const queryClient = useQueryClient()
   const providerId = useAuthStore((state) => state.user?.id)
-  const [selectedCafeId, setSelectedCafeId] = useState<string>("")
+  const [selectedCafeId, setSelectedCafeId] = useState<string>(propCafeId ?? "")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedAvailability, setSelectedAvailability] = useState<(typeof availabilityOptions)[number]["value"]>("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 10
 
   const cafesQuery = useQuery({
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100 }),
@@ -38,10 +42,16 @@ export function ProviderMenuPage() {
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId) ?? null
 
   useEffect(() => {
-    if (!selectedCafeId && cafes.length > 0) {
+    if (propCafeId) {
+      setSelectedCafeId(propCafeId)
+    } else if (!selectedCafeId && cafes.length > 0) {
       setSelectedCafeId(cafes[0].id)
     }
-  }, [cafes, selectedCafeId])
+  }, [cafes, selectedCafeId, propCafeId])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [selectedCafeId, selectedCategory, selectedAvailability])
 
   const menuParams: MenuListParams = useMemo(
     () => ({
@@ -60,6 +70,11 @@ export function ProviderMenuPage() {
   })
 
   const menuItems = menuQuery.data?.data ?? []
+  const totalPages = Math.ceil(menuItems.length / PAGE_SIZE)
+  const paginatedMenuItems = menuItems.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
   const categoryOptions = useMemo(() => {
     const categories = new Set<string>()
     for (const item of menuItems) {
@@ -129,13 +144,8 @@ export function ProviderMenuPage() {
     setDialogOpen(true)
   }
 
-  return (
-    <ProviderShell>
-      <ProviderPageHeader
-        title="Quản lý menu đồ ăn"
-        description="Tạo, sửa, bật/tắt và xóa mềm món ăn/uống theo từng cơ sở provider."
-      />
-
+  const content = (
+    <>
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard label="Tổng món" value={`${menuItems.length}`} helper={selectedCafe?.name ?? "Chọn cơ sở"} icon={<Utensils />} tone="neutral" />
         <MetricCard label="Đang bán" value={`${availableCount}`} helper={`${menuItems.length - availableCount} món tạm ẩn`} icon={<Coffee />} tone="success" />
@@ -159,19 +169,21 @@ export function ProviderMenuPage() {
           }
         />
 
-        <div className="mb-5 grid gap-3 lg:grid-cols-3">
-          <Select value={selectedCafeId} onValueChange={setSelectedCafeId} disabled={cafesQuery.isLoading || cafes.length === 0}>
-            <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
-              <SelectValue placeholder="Chọn cơ sở" />
-            </SelectTrigger>
-            <SelectContent>
-              {cafes.map((cafe) => (
-                <SelectItem key={cafe.id} value={cafe.id}>
-                  {cafe.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className={cn("mb-5 grid gap-3", propCafeId ? "lg:grid-cols-2" : "lg:grid-cols-3")}>
+          {!propCafeId && (
+            <Select value={selectedCafeId} onValueChange={setSelectedCafeId} disabled={cafesQuery.isLoading || cafes.length === 0}>
+              <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
+                <SelectValue placeholder="Chọn cơ sở" />
+              </SelectTrigger>
+              <SelectContent>
+                {cafes.map((cafe) => (
+                  <SelectItem key={cafe.id} value={cafe.id}>
+                    {cafe.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
             <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
@@ -205,32 +217,83 @@ export function ProviderMenuPage() {
           <MenuSkeleton />
         ) : cafesQuery.isError || menuQuery.isError ? (
           <RetryState onRetry={() => void Promise.all([cafesQuery.refetch(), menuQuery.refetch()])} />
-        ) : cafes.length === 0 ? (
+        ) : !propCafeId && cafes.length === 0 ? (
           <EmptyState message="Provider chưa có cơ sở nào để quản lý menu." />
         ) : menuItems.length === 0 ? (
           <EmptyState message="Chưa có món nào theo bộ lọc hiện tại." />
         ) : (
-          <ProviderTable
-            columns={["Món", "Category", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
-            rows={menuItems.map((item) => [
-              <MenuNameCell key={`${item.id}-name`} item={item} />,
-              item.category ?? "--",
-              formatMoney(item.price),
-              selectedCafe ? formatCafeName(selectedCafe) : "--",
-              <StatusBadge key={`${item.id}-status`} status={item.isAvailable ? "Đang bán" : "Tạm ẩn"} />,
-              <div key={`${item.id}-actions`} className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="icon-sm" onClick={() => handleOpenEdit(item)} className="rounded-lg border-[#c4c7c8]">
-                  <Pencil className="size-4" />
-                </Button>
-                <Button type="button" variant="outline" size="icon-sm" onClick={() => toggleMutation.mutate(item)} className="rounded-lg border-[#c4c7c8]">
-                  <Power className="size-4" />
-                </Button>
-                <Button type="button" variant="outline" size="icon-sm" onClick={() => deleteMutation.mutate(item)} className="rounded-lg border-red-200 text-red-600 hover:bg-red-50">
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>,
-            ])}
-          />
+          <div className="space-y-6">
+            <ProviderTable
+              columns={["Món", "Category", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
+              rows={paginatedMenuItems.map((item) => [
+                <MenuNameCell key={`${item.id}-name`} item={item} />,
+                item.category ?? "--",
+                formatMoney(item.price),
+                selectedCafe ? formatCafeName(selectedCafe) : "--",
+                <StatusBadge key={`${item.id}-status`} status={item.isAvailable ? "Đang bán" : "Tạm ẩn"} />,
+                <div key={`${item.id}-actions`} className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="icon-sm" onClick={() => handleOpenEdit(item)} className="rounded-lg border-[#c4c7c8]">
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button type="button" variant="outline" size="icon-sm" onClick={() => toggleMutation.mutate(item)} className="rounded-lg border-[#c4c7c8]">
+                    <Power className="size-4" />
+                  </Button>
+                  <Button type="button" variant="outline" size="icon-sm" onClick={() => deleteMutation.mutate(item)} className="rounded-lg border-red-200 text-red-600 hover:bg-red-50">
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>,
+              ])}
+            />
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-[#e5e2e1] pt-6">
+                <p className="text-xs font-bold text-[#747878]">
+                  Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, menuItems.length)} - {Math.min(currentPage * PAGE_SIZE, menuItems.length)} trong số {menuItems.length} món
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className="h-8 rounded-lg text-xs font-bold border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
+                  >
+                    Trang trước
+                  </Button>
+                  {Array.from({ length: totalPages }).map((_, idx) => {
+                    const page = idx + 1
+                    const isCurrent = currentPage === page
+                    return (
+                      <Button
+                        key={page}
+                        variant={isCurrent ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(page)}
+                        className={cn(
+                          "h-8 w-8 rounded-lg text-xs font-bold",
+                          isCurrent
+                            ? "bg-[#1c1b1b] text-white hover:bg-[#313030]"
+                            : "border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
+                        )}
+                      >
+                        {page}
+                      </Button>
+                    )
+                  })}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    className="h-8 rounded-lg text-xs font-bold border-[#c4c7c8] text-[#444748] hover:bg-zinc-50"
+                  >
+                    Trang sau
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </Panel>
 
@@ -250,6 +313,20 @@ export function ProviderMenuPage() {
           await saveMutation.mutateAsync({ cafeId: selectedCafeId, item: editingItem, values })
         }}
       />
+    </>
+  )
+
+  if (propCafeId) {
+    return content
+  }
+
+  return (
+    <ProviderShell>
+      <ProviderPageHeader
+        title="Quản lý menu đồ ăn"
+        description="Tạo, sửa, bật/tắt và xóa mềm món ăn/uống theo từng cơ sở provider."
+      />
+      {content}
     </ProviderShell>
   )
 }

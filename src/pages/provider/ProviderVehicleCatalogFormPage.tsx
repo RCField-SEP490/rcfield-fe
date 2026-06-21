@@ -5,7 +5,6 @@ import { ArrowLeft, ArrowRight, ImagePlus, Save, Car, AlertTriangle, Star, Trash
 import { toast } from "sonner"
 
 import { uploadImage } from "@/features/uploads/api/upload.api"
-import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useVehicleCatalogDetail } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import {
@@ -227,7 +226,7 @@ export function ProviderVehicleCatalogFormPage() {
         await createCatalogMutation.mutateAsync(payload as CreateVehicleCatalogDto)
       }
       // Navigate back to catalogs view with active cafe pre-selected
-      navigate(`${routePaths.providerVehicleCatalogs}?cafeId=${selectedCafeId}`)
+      navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)
     } catch {
       // toast is shown in mutation error handlers
     }
@@ -246,7 +245,7 @@ export function ProviderVehicleCatalogFormPage() {
         {/* Back Button */}
         <div>
           <Link
-            to={`${routePaths.providerVehicleCatalogs}?cafeId=${selectedCafeId}`}
+            to={`/provider/cafes/${selectedCafeId}?tab=catalogs`}
             className="inline-flex items-center gap-1.5 text-sm font-bold text-[#747878] hover:text-[#1c1b1b] transition-colors"
           >
             <ArrowLeft className="size-4" />
@@ -577,7 +576,7 @@ export function ProviderVehicleCatalogFormPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate(`${routePaths.providerVehicleCatalogs}?cafeId=${selectedCafeId}`)}
+                onClick={() => navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)}
                 className="h-10 px-6 rounded-lg border-[#c4c7c8] font-bold text-[#1c1b1b] hover:bg-gray-50"
               >
                 Hủy

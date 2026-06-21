@@ -97,7 +97,7 @@ export function ProviderVehicleUnitFormPage() {
       if (routeCatalogId) {
         navigate(`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", routeCatalogId)}?cafeId=${selectedCafeId}`)
       } else {
-        navigate(`${routePaths.providerVehicles}?tab=vehicles&cafeId=${selectedCafeId}`)
+        navigate(`/provider/cafes/${selectedCafeId}?tab=vehicles`)
       }
     } catch {
       // error toast handled in hook
@@ -107,7 +107,7 @@ export function ProviderVehicleUnitFormPage() {
   return (
     <ProviderShell>
       <ProviderPageHeader
-        title="Thêm xe vật lý"
+        title="Thêm xe mới"
         description="Gán một xe thực tế vào danh mục mẫu xe."
       />
 
@@ -120,7 +120,7 @@ export function ProviderVehicleUnitFormPage() {
               if (routeCatalogId) {
                 navigate(`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", routeCatalogId)}?cafeId=${selectedCafeId}`)
               } else {
-                navigate(`${routePaths.providerVehicles}?tab=vehicles&cafeId=${selectedCafeId}`)
+                navigate(`/provider/cafes/${selectedCafeId}?tab=vehicles`)
               }
             }}
             className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold"
@@ -215,7 +215,7 @@ export function ProviderVehicleUnitFormPage() {
             {/* Distinctive Identification Image */}
             <div className="space-y-2">
               <Label htmlFor="unit-image" className="text-sm font-bold text-[#1c1b1b]">
-                Hình ảnh nhận diện xe vật lý (Đặc điểm riêng)
+                Hình ảnh nhận diện xe (Đặc điểm riêng)
               </Label>
               <div className="grid gap-3 sm:grid-cols-[1fr_120px] sm:items-center">
                 <Input

@@ -1,7 +1,15 @@
-import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, BarChart3, Car, CheckCircle2, ExternalLink, Power, ShieldAlert, TrendingUp } from "lucide-react"
-import { useNavigate, useParams } from "react-router"
+import {
+  ArrowLeft,
+  BarChart3,
+  Car,
+  CheckCircle2,
+  ExternalLink,
+  Power,
+  ShieldAlert,
+  TrendingUp,
+} from "lucide-react"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
@@ -12,8 +20,12 @@ import { ProviderCafeForm } from "@/pages/provider/components/ProviderCafeForm"
 import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
 import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
 import { TrackConfigManager } from "@/pages/provider/components/TrackConfigManager"
+import { ProviderCafeVehiclesSection } from "@/pages/provider/components/ProviderCafeVehiclesSection"
 import { MetricCard, ProviderPageHeader, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
+import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
+import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
+import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,7 +98,18 @@ export function ProviderCafeDetailPage() {
     },
   })
 
-  const [tab, setTab] = useState<"info" | "tracks" | "pricing" | "widget">("info")
+  const [searchParams] = useSearchParams()
+  const tab = (searchParams.get("tab") || "info") as
+    | "info"
+    | "tracks"
+    | "widget"
+    | "vehicles"
+    | "catalogs"
+    | "pricing"
+    | "menu"
+    | "packages"
+    | "promotions"
+
 
   if (isLoading) {
     return (
@@ -151,115 +174,85 @@ export function ProviderCafeDetailPage() {
             Xem trước
           </Button>
         </div>
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <MetricCard label="Doanh thu tháng" value="--" helper="Chưa có API doanh thu" icon={<BarChart3 />} tone="neutral" />
-          <MetricCard label="Tỷ lệ lấp đầy" value="--" helper="Chưa có API vận hành" icon={<TrendingUp />} tone="neutral" />
-          <MetricCard label="Đội xe" value="--" helper="Chưa có API xe theo cơ sở" icon={<Car />} tone="neutral" />
-          <MetricCard
-            label="Trạng thái"
-            value={formatCafeStatus(cafe.status)}
-            helper="Theo dữ liệu backend"
-            icon={<CheckCircle2 />}
-            tone={cafe.status === "SUSPENDED" || cafe.status === "PENDING" ? "warning" : "success"}
-          />
-        </section>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4">
-          <div className="flex items-center gap-3">
-            {cafe.status === "PENDING" ? (
-              <span className="text-xs font-bold text-amber-700">Cơ sở đang chờ admin duyệt — chưa thể thay đổi trạng thái</span>
-            ) : (
-              <span className="text-sm font-bold text-[#1c1b1b]">Trạng thái vận hành hiện tại</span>
-            )}
-            <StatusBadge status={formatCafeStatus(cafe.status)} />
-          </div>
-          <StatusConfirmAction
-            cafe={cafe}
-            nextStatus={nextStatus}
-            disabled={!canProviderToggle || statusMutation.isPending}
-            onConfirm={() => statusMutation.mutate({ cafe, status: nextStatus })}
-          />
-        </div>
-
-        <div>
-          <div className="flex border-b border-[#e5e2e1]">
-            <button
-              type="button"
-              onClick={() => setTab("info")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
-                tab === "info"
-                  ? "border-orange-600 text-orange-600"
-                  : "border-transparent text-[#747878]"
-              }`}
-            >
-              Thông tin cơ sở
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("tracks")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
-                tab === "tracks"
-                  ? "border-orange-600 text-orange-600"
-                  : "border-transparent text-[#747878]"
-              }`}
-            >
-              Loại sân
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("pricing")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
-                tab === "pricing"
-                  ? "border-orange-600 text-orange-600"
-                  : "border-transparent text-[#747878]"
-              }`}
-            >
-              Cấu hình giá
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("widget")}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors ${
-                tab === "widget"
-                  ? "border-orange-600 text-orange-600"
-                  : "border-transparent text-[#747878]"
-              }`}
-            >
-              Widget Chat
-            </button>
-          </div>
-
-          <div className="mt-4">
-            {tab === "info" && (
-              <ProviderCafeForm
-                cafe={cafe}
-                isPending={saveMutation.isPending}
-                submitLabel="Lưu thay đổi"
-                onSubmit={async (values, files, coverFile) => {
-                  await saveMutation.mutateAsync({ values, files, coverFile })
-                }}
-                onDeleteImage={async (image) => {
-                  await deleteImageMutation.mutateAsync(image)
-                }}
+        {tab === "info" && (
+          <>
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+              <MetricCard label="Doanh thu tháng" value="--" helper="Chưa có API doanh thu" icon={<BarChart3 />} tone="neutral" />
+              <MetricCard label="Tỷ lệ lấp đầy" value="--" helper="Chưa có API vận hành" icon={<TrendingUp />} tone="neutral" />
+              <MetricCard label="Đội xe" value="--" helper="Chưa có API xe theo cơ sở" icon={<Car />} tone="neutral" />
+              <MetricCard
+                label="Trạng thái"
+                value={formatCafeStatus(cafe.status)}
+                helper="Theo dữ liệu backend"
+                icon={<CheckCircle2 />}
+                tone={cafe.status === "SUSPENDED" || cafe.status === "PENDING" ? "warning" : "success"}
               />
-            )}
-            {tab === "tracks" && (
-              <section className="rounded-xl border border-[#c4c7c8] bg-white p-5">
-                <TrackConfigManager cafeId={cafe.id} />
-              </section>
-            )}
-            {tab === "pricing" && <CafePricingTab cafeId={cafe.id} />}
-            {tab === "widget" && (
-              <div className="space-y-4">
-                <section className="rounded-xl border border-[#c4c7c8] bg-white">
-                  <WidgetConfigForm cafeId={cafe.id} />
-                </section>
-                <section className="rounded-xl border border-[#c4c7c8] bg-white">
-                  <KbDocumentsSection cafeId={cafe.id} />
-                </section>
+            </section>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4">
+              <div className="flex items-center gap-3">
+                {cafe.status === "PENDING" ? (
+                  <span className="text-xs font-bold text-amber-700">Cơ sở đang chờ admin duyệt — chưa thể thay đổi trạng thái</span>
+                ) : (
+                  <span className="text-sm font-bold text-[#1c1b1b]">Trạng thái vận hành hiện tại</span>
+                )}
+                <StatusBadge status={formatCafeStatus(cafe.status)} />
               </div>
-            )}
-          </div>
+              <StatusConfirmAction
+                cafe={cafe}
+                nextStatus={nextStatus}
+                disabled={!canProviderToggle || statusMutation.isPending}
+                onConfirm={() => statusMutation.mutate({ cafe, status: nextStatus })}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="space-y-6">
+          {tab === "info" && (
+            <ProviderCafeForm
+              cafe={cafe}
+              isPending={saveMutation.isPending}
+              submitLabel="Lưu thay đổi"
+              onSubmit={async (values, files, coverFile) => {
+                await saveMutation.mutateAsync({ values, files, coverFile })
+              }}
+              onDeleteImage={async (image) => {
+                await deleteImageMutation.mutateAsync(image)
+              }}
+            />
+          )}
+          {tab === "tracks" && (
+            <section className="rounded-xl border border-[#c4c7c8] bg-white p-5">
+              <TrackConfigManager cafeId={cafe.id} />
+            </section>
+          )}
+          {tab === "pricing" && <CafePricingTab cafeId={cafe.id} />}
+          {tab === "vehicles" && (
+            <ProviderCafeVehiclesSection cafeId={cafe.id} tab="vehicles" />
+          )}
+          {tab === "catalogs" && (
+            <ProviderCafeVehiclesSection cafeId={cafe.id} tab="catalogs" />
+          )}
+          {tab === "widget" && (
+            <div className="space-y-4">
+              <section className="rounded-xl border border-[#c4c7c8] bg-white">
+                <WidgetConfigForm cafeId={cafe.id} />
+              </section>
+              <section className="rounded-xl border border-[#c4c7c8] bg-white">
+                <KbDocumentsSection cafeId={cafe.id} />
+              </section>
+            </div>
+          )}
+          {tab === "menu" && (
+            <ProviderMenuPage cafeId={cafe.id} />
+          )}
+          {tab === "packages" && (
+            <ProviderPackagesPage cafeId={cafe.id} />
+          )}
+          {tab === "promotions" && (
+            <ProviderPromotionsPage cafeId={cafe.id} />
+          )}
         </div>
       </div>
     </ProviderShell>
