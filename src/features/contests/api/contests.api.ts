@@ -29,6 +29,10 @@ export const contestQueryKeys = {
   list: (params?: any) => [...contestQueryKeys.all, "list", params ?? {}] as const,
   detail: (id?: string) => [...contestQueryKeys.all, "detail", id] as const,
   registrations: (id?: string) => [...contestQueryKeys.all, "registrations", id] as const,
+  myRegistrations: (id?: string) => [...contestQueryKeys.all, "my-registrations", id] as const,
+  classes: (id?: string) => [...contestQueryKeys.all, "classes", id] as const,
+  rounds: (id?: string) => [...contestQueryKeys.all, "rounds", id] as const,
+  bracket: (id?: string) => [...contestQueryKeys.all, "bracket", id] as const,
   leaderboard: (id?: string) => [...contestQueryKeys.all, "leaderboard", id] as const,
   rewards: (id?: string) => [...contestQueryKeys.all, "rewards", id] as const,
   rewardClaims: () => [...contestQueryKeys.all, "reward-claims"] as const,
@@ -73,6 +77,13 @@ export const contestsApi = {
   getMyRewardClaims: async (): Promise<ApiEnvelope<ContestRewardClaim[]>> => {
     const res = await api.get<ApiEnvelope<ContestRewardClaim[]>>("/v1/me/contest-reward-claims");
     return res.data;
+  },
+
+  getMyContestRegistrations: async (contestId?: string): Promise<ContestRegistration[]> => {
+    const res = await api.get<ApiEnvelope<ContestRegistration[]>>("/v1/me/contest-registrations", {
+      params: contestId ? { contest_id: contestId } : undefined,
+    });
+    return res.data.data;
   },
 
   // --- Participant Registration API ---
@@ -122,6 +133,16 @@ export const contestsApi = {
     return res.data.data;
   },
 
+  lookupContestRegistrationByCode: async (
+    contestId: string,
+    checkInCode: string
+  ): Promise<ContestRegistration> => {
+    const res = await api.get<ApiEnvelope<ContestRegistration>>(`/v1/contests/${contestId}/registrations/lookup`, {
+      params: { check_in_code: checkInCode },
+    });
+    return res.data.data;
+  },
+
   checkInParticipant: async (
     registrationId: string,
     body: { cafe_id: string }
@@ -136,8 +157,33 @@ export const contestsApi = {
     return res.data.data;
   },
 
+  listContestClasses: async (contestId: string): Promise<ContestClass[]> => {
+    const res = await api.get<ApiEnvelope<ContestClass[]>>(`/v1/contests/${contestId}/classes`);
+    return res.data.data;
+  },
+
   createContestRound: async (contestId: string, body: any): Promise<ContestRound> => {
     const res = await api.post<ApiEnvelope<ContestRound>>(`/v1/contests/${contestId}/rounds`, body);
+    return res.data.data;
+  },
+
+  listContestRounds: async (contestId: string): Promise<ContestRound[]> => {
+    const res = await api.get<ApiEnvelope<ContestRound[]>>(`/v1/contests/${contestId}/rounds`);
+    return res.data.data;
+  },
+
+  getContestBracket: async (contestId: string): Promise<{
+    classes: ContestClass[];
+    rounds: ContestRound[];
+    matches: BracketMatch[];
+    registrations: ContestRegistration[];
+  }> => {
+    const res = await api.get<ApiEnvelope<{
+      classes: ContestClass[];
+      rounds: ContestRound[];
+      matches: BracketMatch[];
+      registrations: ContestRegistration[];
+    }>>(`/v1/contests/${contestId}/bracket`);
     return res.data.data;
   },
 

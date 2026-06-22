@@ -9,6 +9,7 @@ import {
   Edit,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import { useAuthStore } from "@/features/auth/stores/auth.store";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
@@ -31,6 +32,7 @@ function formatDateTime(dateStr: string) {
 
 export function ProviderContestsPage() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "draft" | "active" | "past">("all");
 
@@ -39,7 +41,7 @@ export function ProviderContestsPage() {
     queryFn: () => contestsApi.listContests(),
   });
 
-  const contestsList = contestsEnvelope?.data || [];
+  const contestsList = (contestsEnvelope?.data || []).filter((contest) => contest.provider_id === user?.id);
 
   const filteredContests = contestsList.filter((contest) => {
     const matchesSearch = contest.name.toLowerCase().includes(search.toLowerCase());

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Calendar,
   Users,
@@ -16,26 +16,21 @@ import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "sonner";
+import type { ContestRegistration } from "../types";
 
 export function StaffContestDetailPage() {
   const { contestId } = useParams<{ contestId: string }>();
-  const queryClient = useQueryClient();
   const { assignedCafeId } = useStaffOperations();
 
   const [search, setSearch] = useState("");
   const [showScanDialog, setShowScanDialog] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const [lookedUpRegistrations, setLookedUpRegistrations] = useState<ContestRegistration[]>([]);
 
   // Queries
   const { data: contest, isLoading: isContestLoading } = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
     queryFn: () => contestsApi.getContestDetail(contestId!),
-    enabled: !!contestId,
-  });
-
-  const { data: registrations = [] } = useQuery({
-    queryKey: contestQueryKeys.registrations(contestId),
-    queryFn: () => contestsApi.getContestRegistrations(contestId!),
     enabled: !!contestId,
   });
 
@@ -45,12 +40,37 @@ export function StaffContestDetailPage() {
       if (!assignedCafeId) throw new Error("Staff chưa được cấu hình chi nhánh làm việc.");
       return contestsApi.checkInParticipant(regId, { cafe_id: assignedCafeId });
     },
-    onSuccess: () => {
+    onSuccess: (registration) => {
       toast.success("Điểm danh check-in vận động viên thành công!");
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      setLookedUpRegistrations((prev) => {
+        const existing = prev.some((item) => item.id === registration.id);
+        return existing
+          ? prev.map((item) => (item.id === registration.id ? registration : item))
+          : [registration, ...prev];
+      });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || "Check-in thất bại.");
+    },
+  });
+
+  const lookupMutation = useMutation({
+    mutationFn: (code: string) => contestsApi.lookupContestRegistrationByCode(contestId!, code),
+    onSuccess: (registration) => {
+      setLookedUpRegistrations((prev) => {
+        const existing = prev.some((item) => item.id === registration.id);
+        return existing
+          ? prev.map((item) => (item.id === registration.id ? registration : item))
+          : [registration, ...prev];
+      });
+      if (registration.status !== "CONFIRMED") {
+        toast.error("Mã hợp lệ nhưng vận động viên không ở trạng thái chờ check-in.");
+        return;
+      }
+      checkInMutation.mutate(registration.id);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Mã check-in không hợp lệ.");
     },
   });
 
@@ -62,21 +82,12 @@ export function StaffContestDetailPage() {
       return;
     }
 
-    const targetReg = registrations.find(
-      (r) => r.check_in_code === manualCode && r.status === "CONFIRMED"
-    );
-
-    if (!targetReg) {
-      toast.error("Mã check-in không hợp lệ hoặc vận động viên đã check-in trước đó!");
-      return;
-    }
-
-    checkInMutation.mutate(targetReg.id);
+    lookupMutation.mutate(manualCode.trim());
     setShowScanDialog(false);
     setManualCode("");
   };
 
-  const filteredRegs = registrations.filter((r) => {
+  const filteredRegs = lookedUpRegistrations.filter((r) => {
     const fullName = r.user?.fullName?.toLowerCase() || "";
     const email = r.user?.email?.toLowerCase() || "";
     const code = r.check_in_code?.toLowerCase() || "";
@@ -145,7 +156,7 @@ export function StaffContestDetailPage() {
               <Users size={18} className="text-orange-500" /> Danh sách điểm danh Vận động viên
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">
-              Tổng số đăng ký: {registrations.length} | Đã check-in: {registrations.filter((r) => r.status === "CHECKED_IN").length}
+              Tổng số đăng ký: {contest.registration_summary?.active ?? 0} | Đã check-in: {contest.registration_summary?.checked_in ?? 0}
             </p>
           </div>
 
@@ -162,7 +173,7 @@ export function StaffContestDetailPage() {
 
         {filteredRegs.length === 0 ? (
           <div className="text-center py-12 text-slate-500 text-sm">
-            Không tìm thấy vận động viên nào phù hợp với từ khóa tìm kiếm.
+            Nhập hoặc quét mã check-in để tra cứu vận động viên thuộc giải đấu này.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
@@ -239,7 +250,7 @@ export function StaffContestDetailPage() {
               <Button type="button" variant="ghost" onClick={() => setShowScanDialog(false)} className="text-slate-400">
                 Hủy
               </Button>
-              <Button type="submit" disabled={checkInMutation.isPending} className="bg-orange-600 hover:bg-orange-700 font-bold">
+              <Button type="submit" disabled={lookupMutation.isPending || checkInMutation.isPending} className="bg-orange-600 hover:bg-orange-700 font-bold">
                 Xác nhận
               </Button>
             </div>

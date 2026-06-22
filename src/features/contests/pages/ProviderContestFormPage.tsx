@@ -54,7 +54,7 @@ export function ProviderContestFormPage() {
     queryFn: async () => {
       // Fetch cafes scope managed
       const res = await api.get<{ data: any[] }>("/v1/cafes", {
-        params: { limit: 100 },
+        params: { scope: "managed", status: "ACTIVE", limit: 100 },
       });
       return res.data;
     },
@@ -133,6 +133,33 @@ export function ProviderContestFormPage() {
 
     if (selectedCafes.length === 0) {
       toast.error("Vui lòng chọn ít nhất 1 cơ sở tham gia tổ chức!");
+      return;
+    }
+
+    if (Number(capacity) <= 0) {
+      toast.error("Sức chứa phải lớn hơn 0.");
+      return;
+    }
+
+    if (Number(entryFee) < 0) {
+      toast.error("Lệ phí không được âm.");
+      return;
+    }
+
+    const starts = new Date(startsAt);
+    const ends = new Date(endsAt);
+    const regOpens = new Date(regOpensAt);
+    const regCloses = new Date(regClosesAt);
+    if (ends <= starts) {
+      toast.error("Thời gian kết thúc phải sau thời gian bắt đầu.");
+      return;
+    }
+    if (regCloses <= regOpens) {
+      toast.error("Thời gian đóng đăng ký phải sau thời gian mở đăng ký.");
+      return;
+    }
+    if (regCloses > starts) {
+      toast.error("Thời gian đóng đăng ký không được sau thời gian bắt đầu giải.");
       return;
     }
 

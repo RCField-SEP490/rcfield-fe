@@ -44,9 +44,10 @@ export function ContestListPage() {
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>({});
 
   // Query contests
+  const contestListParams = { upcoming: true, status: "OPEN", notify_within_hours: 72 };
   const { data: contestsEnvelope, isLoading } = useQuery({
-    queryKey: contestQueryKeys.list(),
-    queryFn: () => contestsApi.listContests(),
+    queryKey: contestQueryKeys.list(contestListParams),
+    queryFn: () => contestsApi.listContests(contestListParams),
   });
 
   // Query track types
@@ -102,7 +103,9 @@ export function ContestListPage() {
     if (!alertContest) return;
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const target = new Date(alertContest.starts_at).getTime();
+      const target = new Date(
+        alertContest.is_registration_open ? alertContest.registration_closes_at : alertContest.registration_opens_at
+      ).getTime();
       const difference = target - now;
 
       if (difference <= 0) {

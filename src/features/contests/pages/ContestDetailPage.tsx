@@ -68,11 +68,11 @@ export function ContestDetailPage() {
     enabled: !!contestId,
   });
 
-  // Query registrations
-  const { data: registrations = [] } = useQuery({
-    queryKey: contestQueryKeys.registrations(contestId),
-    queryFn: () => contestsApi.getContestRegistrations(contestId!),
-    enabled: !!contestId,
+  // Query only the current user's registration. Full registration lists are provider-only.
+  const { data: myRegistrations = [] } = useQuery({
+    queryKey: contestQueryKeys.myRegistrations(contestId),
+    queryFn: () => contestsApi.getMyContestRegistrations(contestId!),
+    enabled: !!contestId && isAuthenticated,
   });
 
   // Query leaderboard
@@ -94,13 +94,13 @@ export function ContestDetailPage() {
 
   // Mutations
   const registerMutation = useMutation({
-    mutationFn: (body: { vehicle_source: "BYOC" | "RENTAL"; metadata?: any }) =>
+    mutationFn: (body: { vehicle_source: "BYOC"; metadata?: any }) =>
       contestsApi.registerContest(contestId!, body),
     onSuccess: () => {
       toast.success("Đăng ký tham gia giải đấu thành công!");
       setShowRegDialog(false);
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations(contestId) });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại!";
@@ -110,7 +110,7 @@ export function ContestDetailPage() {
 
   const cancelMutation = useMutation({
     mutationFn: (body: { reason: string }) => {
-      const myReg = registrations.find((r) => r.user_id === user?.id && r.status !== "CANCELLED");
+      const myReg = myRegistrations.find((r) => r.status !== "CANCELLED");
       if (!myReg) throw new Error("Không tìm thấy thông tin đăng ký");
       return contestsApi.cancelRegistration(myReg.id, body);
     },
@@ -119,7 +119,7 @@ export function ContestDetailPage() {
       setShowCancelDialog(false);
       setCancelReason("");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations(contestId) });
     },
     onError: (err: any) => {
       const msg = err.response?.data?.message || "Hủy đăng ký thất bại.";
@@ -129,7 +129,7 @@ export function ContestDetailPage() {
 
   // Check if current user is registered
   const myRegistration = user
-    ? registrations.find((r) => r.user_id === user.id && r.status !== "CANCELLED")
+    ? myRegistrations.find((r) => r.status !== "CANCELLED")
     : null;
 
   // Render Bracket Tree (Static fallback generator based on players or matches)
@@ -494,7 +494,7 @@ export function ContestDetailPage() {
                 <div>
                   <span className="text-[10px] text-slate-500 uppercase block font-semibold">Sức chứa giải</span>
                   <span className="text-sm text-slate-200 font-bold">
-                    {registrations.length} / {contest.capacity} vận động viên đã đăng ký
+                    {contest.registration_summary?.active ?? 0} / {contest.capacity} vận động viên đã đăng ký
                   </span>
                 </div>
                 <div>
@@ -590,8 +590,9 @@ export function ContestDetailPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setVehicleSource("RENTAL")}
-                  className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${vehicleSource === "RENTAL" ? "bg-orange-600 border-orange-500 text-white" : "border-slate-800 bg-slate-950 text-slate-400 hover:text-white"}`}
+                  disabled
+                  title="Thuê xe cần chọn xe cụ thể và sẽ được mở ở bước tiếp theo"
+                  className="py-2 px-3 rounded-lg border text-sm font-bold transition-all border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
                 >
                   Thuê xe tại cơ sở
                 </button>
@@ -618,7 +619,7 @@ export function ContestDetailPage() {
             <Button
               onClick={() =>
                 registerMutation.mutate({
-                  vehicle_source: vehicleSource,
+                  vehicle_source: "BYOC",
                   metadata: { note: vehicleNote },
                 })
               }

@@ -29,10 +29,16 @@ export function StaffContestsPage() {
   const { assignedCafeId } = useStaffOperations();
   const [search, setSearch] = useState("");
   const [onlyMyBranch, setOnlyMyBranch] = useState(true);
+  const useCafeContestEndpoint = onlyMyBranch && !!assignedCafeId;
 
   const { data: contestsEnvelope, isLoading } = useQuery({
-    queryKey: contestQueryKeys.list(),
-    queryFn: () => contestsApi.listContests(),
+    queryKey: useCafeContestEndpoint
+      ? ["staff-cafe-contests", assignedCafeId]
+      : contestQueryKeys.list({ upcoming: true }),
+    queryFn: () =>
+      useCafeContestEndpoint
+        ? contestsApi.getCafeContests(assignedCafeId!, { upcoming: true, limit: 100 })
+        : contestsApi.listContests({ upcoming: true, limit: 100 }),
   });
 
   const contestsList = contestsEnvelope?.data || [];
