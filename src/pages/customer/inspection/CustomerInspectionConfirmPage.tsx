@@ -1,10 +1,7 @@
-import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router"
-import { 
-  mockCustomerBookingDetails, 
-  type MockSessionDetail,
-  type MockInspection 
-} from "@/shared/data/customer-operational-mock-data"
+import { useState, useEffect, useCallback } from "react"
+import { useParams, useNavigate, useSearchParams } from "react-router"
+import { type MockSessionDetail, type MockInspection } from "@/shared/data/customer-operational-mock-data"
+import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -24,9 +21,13 @@ import { toast } from "sonner"
 export function CustomerInspectionConfirmPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const targetInspectionId = searchParams.get("inspectionId")
 
   const [session, setSession] = useState<MockSessionDetail | null>(null)
   const [inspection, setInspection] = useState<MockInspection | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [loadError, setLoadError] = useState<string>("")
   
   // Timer countdown: 15 minutes checking in
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60)
@@ -36,26 +37,49 @@ export function CustomerInspectionConfirmPage() {
   const [disagreeText, setDisagreeText] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  useEffect(() => {
-    // Find session across mock bookings
-    let foundSession: MockSessionDetail | null = null
-    for (const b of mockCustomerBookingDetails) {
-      const s = b.sessions.find(item => item.sessionId === sessionId)
-      if (s) {
-        foundSession = s
-        break
-      }
+  const loadSession = useCallback(async (silent = false) => {
+    if (!sessionId) {
+      setIsLoading(false)
+      return
     }
+    if (!silent) setIsLoading(true)
+    setLoadError("")
+    try {
+      const detail = await customerSessionApi.getSessionDetail(sessionId)
+      const pendingInspection =
+        detail.inspections.find((item) => item.inspectionId === targetInspectionId) ??
+        detail.inspections.find((item) => !item.customerConfirmed && item.type === "CHECK_OUT") ??
+        detail.inspections.find((item) => !item.customerConfirmed && item.type === "CHECK_IN") ??
+        detail.inspections[detail.inspections.length - 1] ??
+        null
 
-    if (foundSession) {
-      setSession(foundSession)
-      // Get the check-in inspection
-      const insp = foundSession.inspections.find(i => i.type === "CHECK_IN")
-      if (insp) {
-        setInspection(insp)
-      }
+      setSession(detail)
+      setInspection(pendingInspection)
+      setActivePhotoIdx(0)
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined
+      setLoadError(message ?? "Không thể tải biên bản kiểm xe.")
+      setSession(null)
+      setInspection(null)
+    } finally {
+      if (!silent) setIsLoading(false)
     }
-  }, [sessionId])
+  }, [sessionId, targetInspectionId])
+
+  useEffect(() => {
+    void loadSession()
+  }, [loadSession])
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      void loadSession(true)
+    }
+    window.addEventListener("refresh-session-detail", handleRefresh)
+    return () => window.removeEventListener("refresh-session-detail", handleRefresh)
+  }, [loadSession])
 
   // Countdown clock simulation
   useEffect(() => {
@@ -71,13 +95,25 @@ export function CustomerInspectionConfirmPage() {
     return () => clearInterval(timer)
   }, [])
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full text-center p-8 space-y-4">
+          <Clock className="h-12 w-12 text-orange-500 mx-auto animate-pulse" />
+          <h2 className="text-xl font-bold text-slate-900">Đang tải biên bản kiểm xe</h2>
+          <p className="text-sm text-slate-500">Hệ thống đang lấy dữ liệu mới nhất từ quầy staff.</p>
+        </Card>
+      </div>
+    )
+  }
+
   if (!session || !inspection) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <Card className="max-w-md w-full text-center p-8 space-y-4">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-bold text-slate-900">Không tìm thấy phiên bàn giao xe</h2>
-          <p className="text-sm text-slate-500">Mã phiên {sessionId} không tồn tại hoặc thủ tục bàn giao xe chưa được staff khởi tạo.</p>
+          <p className="text-sm text-slate-500">{loadError || `Mã phiên ${sessionId} không tồn tại hoặc thủ tục bàn giao xe chưa được staff khởi tạo.`}</p>
           <Button onClick={() => navigate("/customer/bookings")} className="w-full bg-slate-900 text-white rounded-xl">
             Quay lại Lịch đặt sân
           </Button>
@@ -93,33 +129,56 @@ export function CustomerInspectionConfirmPage() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
+  const isCheckoutInspection = inspection.type === "CHECK_OUT"
+
   // Approve vehicle handler
-  const handleApprove = () => {
+  const handleApprove = async () => {
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
-      toast.success("Xác nhận bàn giao xe thành công!", {
-        description: "Phiên chơi của bạn đã chính thức bắt đầu. Chúc bạn chơi vui vẻ!"
+    try {
+      await customerSessionApi.confirmInspection(session.sessionId, inspection.inspectionId, { agreed: true })
+      toast.success(isCheckoutInspection ? "Xác nhận trả xe thành công!" : "Xác nhận bàn giao xe thành công!", {
+        description: isCheckoutInspection
+          ? "Phiên chơi đã được đóng sau khi đối chiếu biên bản."
+          : "Phiên chơi của bạn đã chính thức bắt đầu. Chúc bạn chơi vui vẻ!"
       })
       navigate(`/customer/sessions/${session.sessionId}`)
-    }, 1200)
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined
+      toast.error(message ?? "Không thể gửi xác nhận biên bản.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Reject / Disagree handler
-  const handleDisagree = () => {
+  const handleDisagree = async () => {
     if (!disagreeText.trim()) {
       toast.error("Vui lòng nhập lý do từ chối bàn giao xe.")
       return
     }
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      await customerSessionApi.confirmInspection(session.sessionId, inspection.inspectionId, {
+        agreed: false,
+        disagreementNote: disagreeText.trim(),
+      })
       toast.warning("Đã gửi phản hồi sai lệch cho nhân viên quầy!", {
         description: "Staff phụ trách sẽ kiểm tra lại xe và liên hệ trực tiếp với bạn ngay."
       })
       setDisagreeMode(false)
       navigate(`/customer/bookings`)
-    }, 1200)
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined
+      toast.error(message ?? "Không thể gửi phản hồi sai lệch.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const activePhoto = inspection.photos[activePhotoIdx]
@@ -133,10 +192,10 @@ export function CustomerInspectionConfirmPage() {
           <div className="space-y-1">
             <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              Quy Trình Serious Inspection (Bàn giao xe)
+              {isCheckoutInspection ? "Quy Trình Serious Inspection (Trả xe)" : "Quy Trình Serious Inspection (Bàn giao xe)"}
             </span>
             <h1 className="text-xl font-black text-slate-950">
-              Kiểm Tra Tình Trạng Nhận Xe
+              {isCheckoutInspection ? "Kiểm Tra Tình Trạng Trả Xe" : "Kiểm Tra Tình Trạng Nhận Xe"}
             </h1>
             <p className="text-xs text-slate-500 font-semibold">Phiên chơi: <strong className="text-slate-800">{session.sessionId}</strong> • Nhân viên bàn giao: <strong className="text-slate-800">{session.staffName}</strong></p>
           </div>
@@ -155,7 +214,7 @@ export function CustomerInspectionConfirmPage() {
         <div className="bg-orange-500/5 border border-orange-200/50 p-4 rounded-xl text-xs font-semibold text-orange-950 flex gap-2">
           <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>Lưu ý:</strong> Vui lòng xem kỹ 4 góc ảnh chụp thực tế dưới đây. Bất kỳ vết nứt, gãy hay trầy xước không được báo trước sẽ được coi là phát sinh trong phiên chơi của bạn và có thể bị phạt khấu trừ cọc khi checkout.
+            <strong>Lưu ý:</strong> Vui lòng xem kỹ các góc ảnh chụp thực tế dưới đây. Bất kỳ điểm sai lệch nào cần được phản hồi ngay để staff kiểm tra lại trước khi tiếp tục quy trình.
           </p>
         </div>
 
@@ -166,15 +225,19 @@ export function CustomerInspectionConfirmPage() {
           <div className="space-y-3.5">
             <Card className="border-slate-200/80 shadow-sm overflow-hidden bg-white relative">
               <div className="aspect-video w-full bg-slate-950 relative flex items-center justify-center group overflow-hidden">
-                <img 
-                  src={activePhoto.url} 
-                  alt={`Góc ${activePhoto.direction}`} 
-                  className="max-h-full max-w-full object-contain transform transition-transform duration-500 group-hover:scale-105"
-                />
+                {activePhoto?.url ? (
+                  <img 
+                    src={activePhoto.url} 
+                    alt={`Góc ${activePhoto.direction}`} 
+                    className="max-h-full max-w-full object-contain transform transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="text-xs font-bold text-white/60">Chưa có ảnh kiểm xe</div>
+                )}
                 
                 {/* Image Overlay Corner */}
                 <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-white text-[10px] font-black tracking-widest uppercase">
-                  GÓC: {activePhoto.direction}
+                  GÓC: {activePhoto?.direction ?? "N/A"}
                 </div>
 
                 <button 
@@ -188,7 +251,7 @@ export function CustomerInspectionConfirmPage() {
               {/* Notes for active photo */}
               <div className="p-4 bg-slate-50 border-t border-slate-100 text-xs font-medium text-slate-700">
                 <span className="block text-[9px] text-slate-400 font-black uppercase">Ghi chú ảnh của Staff</span>
-                <p className="text-slate-900 mt-1">{activePhoto.notes || "Không có ghi chú hư hại nào."}</p>
+                <p className="text-slate-900 mt-1">{activePhoto?.notes || "Không có ghi chú hư hại nào."}</p>
               </div>
 
               {/* Navigation controls overlay inside card footer */}
@@ -198,13 +261,14 @@ export function CustomerInspectionConfirmPage() {
                   size="sm"
                   className="h-8 rounded-lg text-xs"
                   onClick={() => setActivePhotoIdx(prev => prev === 0 ? inspection.photos.length - 1 : prev - 1)}
+                  disabled={inspection.photos.length === 0}
                 >
                   <ChevronLeft className="h-4 w-4 mr-0.5" />
                   Góc trước
                 </Button>
                 
                 <span className="text-[11px] font-extrabold text-slate-400 self-center">
-                  Góc {activePhotoIdx + 1} / {inspection.photos.length}
+                  Góc {inspection.photos.length === 0 ? 0 : activePhotoIdx + 1} / {inspection.photos.length}
                 </span>
 
                 <Button
@@ -212,6 +276,7 @@ export function CustomerInspectionConfirmPage() {
                   size="sm"
                   className="h-8 rounded-lg text-xs"
                   onClick={() => setActivePhotoIdx(prev => prev === inspection.photos.length - 1 ? 0 : prev + 1)}
+                  disabled={inspection.photos.length === 0}
                 >
                   Góc sau
                   <ChevronRight className="h-4 w-4 ml-0.5" />
@@ -283,7 +348,7 @@ export function CustomerInspectionConfirmPage() {
                   className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs h-12 rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <CheckCircle2 className="h-4 w-4 text-orange-400" />
-                  Tôi đồng ý tình trạng xe & Bắt đầu chơi
+                  {isCheckoutInspection ? "Tôi đồng ý biên bản trả xe & Hoàn tất phiên" : "Tôi đồng ý tình trạng xe & Bắt đầu chơi"}
                 </Button>
 
                 <Button
@@ -292,7 +357,7 @@ export function CustomerInspectionConfirmPage() {
                   className="w-full border-red-200 hover:bg-red-50 text-red-600 font-extrabold text-xs h-12 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <XCircle className="h-4 w-4" />
-                  Tôi phát hiện lỗi sai lệch / Từ chối nhận
+                  {isCheckoutInspection ? "Tôi phát hiện sai lệch / Từ chối trả xe" : "Tôi phát hiện lỗi sai lệch / Từ chối nhận"}
                 </Button>
               </div>
             ) : (
@@ -350,12 +415,16 @@ export function CustomerInspectionConfirmPage() {
           </button>
           
           <div className="max-w-4xl w-full h-[80vh] flex items-center justify-center relative">
-            <img src={activePhoto.url} alt="" className="max-h-full max-w-full object-contain" />
+            {activePhoto?.url ? (
+              <img src={activePhoto.url} alt="" className="max-h-full max-w-full object-contain" />
+            ) : (
+              <div className="text-sm font-bold text-white/70">Chưa có ảnh kiểm xe</div>
+            )}
             
             {/* Info overlay */}
             <div className="absolute bottom-4 left-4 right-4 bg-black/60 border border-white/10 backdrop-blur-md p-4 rounded-xl text-white space-y-1 text-center">
-              <span className="text-[10px] font-black text-orange-400 tracking-wider uppercase">GÓC CHỤP: {activePhoto.direction}</span>
-              <p className="text-xs font-semibold text-white/90">{activePhoto.notes || "Ảnh chất lượng cao kiểm tra chi tiết thiết bị."}</p>
+              <span className="text-[10px] font-black text-orange-400 tracking-wider uppercase">GÓC CHỤP: {activePhoto?.direction ?? "N/A"}</span>
+              <p className="text-xs font-semibold text-white/90">{activePhoto?.notes || "Ảnh chất lượng cao kiểm tra chi tiết thiết bị."}</p>
             </div>
           </div>
         </div>
