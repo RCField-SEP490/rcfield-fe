@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,6 +16,8 @@ import {
   Award,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import type { ContestClassPayload, ContestRewardPayload } from "../api/contests.api";
+import { getContestErrorMessage } from "../lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
@@ -99,6 +101,7 @@ export function ProviderContestDetailPage() {
   const rewards = rewardsEnvelope?.data || [];
   const contestClasses = bracketData?.classes || [];
   const primaryClass = contestClasses[0];
+  const selectedCafeId = targetCafeId || contest?.participating_cafes?.[0]?.id || "";
   const registrationMap = useMemo(
     () => new Map(registrations.map((registration) => [registration.id, registration])),
     [registrations]
@@ -116,14 +119,6 @@ export function ProviderContestDetailPage() {
     [bracketData?.matches, registrationMap]
   );
 
-  // Default target cafe to the first participating cafe
-  useEffect(() => {
-    const firstCafeId = contest?.participating_cafes?.[0]?.id;
-    if (firstCafeId && !targetCafeId) {
-      setTargetCafeId(firstCafeId);
-    }
-  }, [contest, targetCafeId]);
-
   // Mutations
   const openContestMutation = useMutation({
     mutationFn: () => contestsApi.openContest(contestId!),
@@ -131,8 +126,8 @@ export function ProviderContestDetailPage() {
       toast.success("Giải đấu đã được mở đăng ký!");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Lỗi mở đăng ký.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi mở đăng ký."));
     },
   });
 
@@ -142,8 +137,8 @@ export function ProviderContestDetailPage() {
       toast.success("Giải đấu đã bị hủy bỏ.");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Lỗi hủy giải đấu.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi hủy giải đấu."));
     },
   });
 
@@ -154,13 +149,13 @@ export function ProviderContestDetailPage() {
       toast.success("Check-in vận động viên thành công!");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Check-in thất bại.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Check-in thất bại."));
     },
   });
 
   const createClassMutation = useMutation({
-    mutationFn: (body: any) => contestsApi.createContestClass(contestId!, body),
+    mutationFn: (body: ContestClassPayload) => contestsApi.createContestClass(contestId!, body),
     onSuccess: () => {
       toast.success("Tạo nhóm đua (Class) thành công!");
       setShowClassDialog(false);
@@ -170,13 +165,13 @@ export function ProviderContestDetailPage() {
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.classes(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Lỗi tạo Class.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi tạo Class."));
     },
   });
 
   const createRewardMutation = useMutation({
-    mutationFn: (body: any) => contestsApi.createContestReward(contestId!, body),
+    mutationFn: (body: ContestRewardPayload) => contestsApi.createContestReward(contestId!, body),
     onSuccess: () => {
       toast.success("Thêm phần thưởng thành công!");
       setShowRewardDialog(false);
@@ -184,8 +179,8 @@ export function ProviderContestDetailPage() {
       setRewardDesc("");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.rewards(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Lỗi thêm giải thưởng.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi thêm giải thưởng."));
     },
   });
 
@@ -199,8 +194,8 @@ export function ProviderContestDetailPage() {
       toast.success("Công bố bảng xếp hạng thành công!");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.leaderboard(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Lỗi công bố bảng xếp hạng.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi công bố bảng xếp hạng."));
     },
   });
 
@@ -210,8 +205,8 @@ export function ProviderContestDetailPage() {
     onSuccess: () => {
       toast.success("Phát thưởng thành công cho các tay đua đứng top!");
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Lỗi phát thưởng.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi phát thưởng."));
     },
   });
 
@@ -286,8 +281,8 @@ export function ProviderContestDetailPage() {
       toast.success("Đã dựng bracket 8 người từ danh sách check-in.");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
     },
-    onError: (err: any) => {
-      toast.error(err.message || err.response?.data?.message || "Lỗi dựng bracket.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi dựng bracket."));
     },
   });
 
@@ -304,7 +299,7 @@ export function ProviderContestDetailPage() {
       return;
     }
 
-    checkInMutation.mutate({ regId: targetReg.id, cafeId: targetCafeId });
+    checkInMutation.mutate({ regId: targetReg.id, cafeId: selectedCafeId });
     setShowScanDialog(false);
     setManualCode("");
   };
@@ -329,8 +324,8 @@ export function ProviderContestDetailPage() {
         queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
         toast.success("Đã ghi nhận kết quả và đẩy winner sang vòng tiếp theo.");
       })
-      .catch((err: any) => {
-        toast.error(err.response?.data?.message || "Lỗi ghi nhận kết quả trận đấu.");
+      .catch((err: unknown) => {
+        toast.error(getContestErrorMessage(err, "Lỗi ghi nhận kết quả trận đấu."));
       });
   };
 
@@ -767,7 +762,7 @@ export function ProviderContestDetailPage() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Chọn chi nhánh check-in</label>
               <select
-                value={targetCafeId}
+                value={selectedCafeId}
                 onChange={(e) => setTargetCafeId(e.target.value)}
                 className="bg-slate-950 border border-slate-850 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none w-full"
               >
@@ -971,7 +966,7 @@ export function ProviderContestDetailPage() {
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Loại quà tặng</label>
                 <select
                   value={rewardType}
-                  onChange={(e: any) => setRewardType(e.target.value)}
+                  onChange={(e) => setRewardType(e.target.value as typeof rewardType)}
                   className="bg-slate-950 border border-slate-855 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none w-full h-[40px]"
                 >
                   <option value="TROPHY">Cúp & Huy chương</option>

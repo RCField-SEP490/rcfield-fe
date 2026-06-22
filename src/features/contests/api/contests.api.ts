@@ -20,13 +20,83 @@ export interface ApiEnvelope<T> {
     total?: number;
     page?: number;
     limit?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
+}
+
+export interface ContestListParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  upcoming?: boolean;
+  notify_within_hours?: number;
+}
+
+export interface ContestWritePayload {
+  name?: string;
+  description?: string;
+  track_type_id?: string;
+  starts_at?: string;
+  ends_at?: string;
+  registration_opens_at?: string;
+  registration_closes_at?: string;
+  capacity?: number;
+  entry_fee?: number;
+  banner_image_url?: string;
+  participating_cafe_ids?: string[];
+  config?: Record<string, unknown>;
+}
+
+export interface ContestClassPayload {
+  code: string;
+  name: string;
+  capacity: number;
+  rules?: Record<string, unknown>;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface ContestRoundPayload {
+  contest_class_id: string;
+  round_type: "PRACTICE" | "QUALIFYING" | "FINAL";
+  round_no: number;
+  name: string;
+  rules?: Record<string, unknown>;
+}
+
+export interface ContestHeatPayload {
+  heat_no: number;
+  config?: Record<string, unknown>;
+}
+
+export interface ContestRewardPayload {
+  contest_class_id?: string;
+  title: string;
+  description: string;
+  reward_type: string;
+  position: number;
+  quantity: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface BracketMatchPayload {
+  contest_round_id?: string;
+  match_no: number;
+  competitor_a_registration_id?: string | null;
+  competitor_b_registration_id?: string | null;
+  next_match_id?: string | null;
+  next_slot?: "A" | "B" | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ContestResult {
+  id: string;
+  [key: string]: unknown;
 }
 
 export const contestQueryKeys = {
   all: ["contests"] as const,
-  list: (params?: any) => [...contestQueryKeys.all, "list", params ?? {}] as const,
+  list: (params?: ContestListParams) => [...contestQueryKeys.all, "list", params ?? {}] as const,
   detail: (id?: string) => [...contestQueryKeys.all, "detail", id] as const,
   registrations: (id?: string) => [...contestQueryKeys.all, "registrations", id] as const,
   myRegistrations: (id?: string) => [...contestQueryKeys.all, "my-registrations", id] as const,
@@ -92,7 +162,7 @@ export const contestsApi = {
     body: {
       vehicle_source: "BYOC" | "RENTAL";
       vehicle_id?: string;
-      metadata?: { note?: string; [key: string]: any };
+      metadata?: { note?: string; [key: string]: unknown };
     }
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contests/${contestId}/register`, body);
@@ -108,12 +178,12 @@ export const contestsApi = {
   },
 
   // --- Provider / Staff Management API ---
-  createContest: async (body: any): Promise<Contest> => {
+  createContest: async (body: ContestWritePayload): Promise<Contest> => {
     const res = await api.post<ApiEnvelope<Contest>>("/v1/contests", body);
     return res.data.data;
   },
 
-  updateContest: async (id: string, body: any): Promise<Contest> => {
+  updateContest: async (id: string, body: ContestWritePayload): Promise<Contest> => {
     const res = await api.patch<ApiEnvelope<Contest>>(`/v1/contests/${id}`, body);
     return res.data.data;
   },
@@ -152,7 +222,7 @@ export const contestsApi = {
   },
 
   // --- Competition Flow API ---
-  createContestClass: async (contestId: string, body: any): Promise<ContestClass> => {
+  createContestClass: async (contestId: string, body: ContestClassPayload): Promise<ContestClass> => {
     const res = await api.post<ApiEnvelope<ContestClass>>(`/v1/contests/${contestId}/classes`, body);
     return res.data.data;
   },
@@ -162,7 +232,7 @@ export const contestsApi = {
     return res.data.data;
   },
 
-  createContestRound: async (contestId: string, body: any): Promise<ContestRound> => {
+  createContestRound: async (contestId: string, body: ContestRoundPayload): Promise<ContestRound> => {
     const res = await api.post<ApiEnvelope<ContestRound>>(`/v1/contests/${contestId}/rounds`, body);
     return res.data.data;
   },
@@ -187,7 +257,7 @@ export const contestsApi = {
     return res.data.data;
   },
 
-  createContestHeat: async (roundId: string, body: any): Promise<ContestHeat> => {
+  createContestHeat: async (roundId: string, body: ContestHeatPayload): Promise<ContestHeat> => {
     const res = await api.post<ApiEnvelope<ContestHeat>>(`/v1/contest-rounds/${roundId}/heats`, body);
     return res.data.data;
   },
@@ -203,25 +273,25 @@ export const contestsApi = {
       result_type: "TIME_ATTACK" | "RACE_FINAL";
       results: ContestResultItem[];
     }
-  ): Promise<any> => {
-    const res = await api.post<ApiEnvelope<any>>(`/v1/contest-heats/${heatId}/results`, body);
+  ): Promise<ContestResult> => {
+    const res = await api.post<ApiEnvelope<ContestResult>>(`/v1/contest-heats/${heatId}/results`, body);
     return res.data.data;
   },
 
-  verifyResult: async (resultId: string): Promise<any> => {
-    const res = await api.post<ApiEnvelope<any>>(`/v1/contest-results/${resultId}/verify`, {});
+  verifyResult: async (resultId: string): Promise<ContestResult> => {
+    const res = await api.post<ApiEnvelope<ContestResult>>(`/v1/contest-results/${resultId}/verify`, {});
     return res.data.data;
   },
 
   publishLeaderboard: async (
     contestId: string,
     body: { contest_class_id?: string; scope?: "OVERALL" }
-  ): Promise<any> => {
-    const res = await api.post<ApiEnvelope<any>>(`/v1/contests/${contestId}/leaderboard/publish`, body);
+  ): Promise<unknown> => {
+    const res = await api.post<ApiEnvelope<unknown>>(`/v1/contests/${contestId}/leaderboard/publish`, body);
     return res.data.data;
   },
 
-  createContestReward: async (contestId: string, body: any): Promise<ContestReward> => {
+  createContestReward: async (contestId: string, body: ContestRewardPayload): Promise<ContestReward> => {
     const res = await api.post<ApiEnvelope<ContestReward>>(`/v1/contests/${contestId}/rewards`, body);
     return res.data.data;
   },
@@ -229,20 +299,20 @@ export const contestsApi = {
   issueRewards: async (
     contestId: string,
     body: { contest_class_id?: string }
-  ): Promise<any> => {
-    const res = await api.post<ApiEnvelope<any>>(`/v1/contests/${contestId}/rewards/issue`, body);
+  ): Promise<unknown> => {
+    const res = await api.post<ApiEnvelope<unknown>>(`/v1/contests/${contestId}/rewards/issue`, body);
     return res.data.data;
   },
 
   // --- Bracket Knockout Flow API ---
-  createBracketMatch: async (roundId: string, body: any): Promise<BracketMatch> => {
+  createBracketMatch: async (roundId: string, body: BracketMatchPayload): Promise<BracketMatch> => {
     const res = await api.post<ApiEnvelope<BracketMatch>>(`/v1/contest-rounds/${roundId}/bracket-matches`, body);
     return res.data.data;
   },
 
   decideBracketWinner: async (
     matchId: string,
-    body: { winner_registration_id: string; metadata?: { score?: string; [key: string]: any } }
+    body: { winner_registration_id: string; metadata?: { score?: string; [key: string]: unknown } }
   ): Promise<BracketMatch> => {
     const res = await api.post<ApiEnvelope<BracketMatch>>(`/v1/contest-bracket-matches/${matchId}/decide`, body);
     return res.data.data;

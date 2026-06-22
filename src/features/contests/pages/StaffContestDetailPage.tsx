@@ -10,6 +10,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import { getContestErrorMessage } from "../lib/errors";
 import { useStaffOperations } from "@/pages/staff/context/StaffOperationContext";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -49,8 +50,8 @@ export function StaffContestDetailPage() {
           : [registration, ...prev];
       });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Check-in thất bại.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Check-in thất bại."));
     },
   });
 
@@ -69,8 +70,8 @@ export function StaffContestDetailPage() {
       }
       checkInMutation.mutate(registration.id);
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Mã check-in không hợp lệ.");
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Mã check-in không hợp lệ."));
     },
   });
 

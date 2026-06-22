@@ -20,6 +20,11 @@ import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 
+interface TrackTypeOption {
+  id: string;
+  name: string;
+}
+
 function formatDateTime(dateStr: string) {
   try {
     const d = new Date(dateStr);
@@ -41,7 +46,17 @@ export function ContestListPage() {
   const [search, setSearch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedTrackType, setSelectedTrackType] = useState<string>("all");
-  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>({});
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>(() => {
+    const dismissed: Record<string, boolean> = {};
+    if (typeof localStorage === "undefined") return dismissed;
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith("contest_popup_dismissed:")) {
+        const id = key.replace("contest_popup_dismissed:", "");
+        dismissed[id] = true;
+      }
+    });
+    return dismissed;
+  });
 
   // Query contests
   const contestListParams = { upcoming: true, status: "OPEN", notify_within_hours: 72 };
@@ -57,19 +72,6 @@ export function ContestListPage() {
   });
 
   const contestsList = contestsEnvelope?.data || [];
-
-  // Load dismissed popups
-  useEffect(() => {
-    const keys = Object.keys(localStorage);
-    const dismissed: Record<string, boolean> = {};
-    keys.forEach((key) => {
-      if (key.startsWith("contest_popup_dismissed:")) {
-        const id = key.replace("contest_popup_dismissed:", "");
-        dismissed[id] = true;
-      }
-    });
-    setDismissedAnnouncements(dismissed);
-  }, []);
 
   const dismissAnnouncement = (id: string) => {
     localStorage.setItem(`contest_popup_dismissed:${id}`, "true");
@@ -222,7 +224,7 @@ export function ContestListPage() {
               className="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-3 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer min-w-[150px] w-full sm:w-auto"
             >
               <option value="all">Mọi loại đường đua</option>
-              {trackTypes.map((type: any) => (
+              {(trackTypes as TrackTypeOption[]).map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name}
                 </option>
@@ -321,7 +323,7 @@ export function ContestListPage() {
                   <div className="p-6 flex flex-col flex-1">
                     <div className="mb-2">
                       <Badge variant="secondary" className="bg-orange-500/10 text-orange-400 border border-orange-500/20 text-[10px] font-bold tracking-wide uppercase px-2 py-0.5">
-                        {trackTypes.find((t: any) => t.id === contest.track_type_id)?.name || "Đường đua RC"}
+                        {(trackTypes as TrackTypeOption[]).find((t) => t.id === contest.track_type_id)?.name || "Đường đua RC"}
                       </Badge>
                     </div>
 

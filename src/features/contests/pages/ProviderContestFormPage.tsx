@@ -1,14 +1,30 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trophy, Calendar, ArrowLeft, Save, Building } from "lucide-react";
 import { contestsApi } from "../api/contests.api";
+import type { ContestWritePayload } from "../api/contests.api";
+import { getContestErrorMessage } from "../lib/errors";
 import { trackTypeApi } from "@/features/cafes/api/cafe.api";
 import { api } from "@/shared/lib/axios";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { toast } from "sonner";
+
+interface ManagedCafeOption {
+  id: string;
+  name: string;
+  city?: string;
+  district?: string;
+}
+
+interface TrackTypeOption {
+  id: string;
+  name: string;
+  code: string;
+}
 
 // Helper to format ISO to datetime-local value
 function toLocalDatetimeString(isoString?: string) {
@@ -53,7 +69,7 @@ export function ProviderContestFormPage() {
     queryKey: ["provider-managed-cafes"],
     queryFn: async () => {
       // Fetch cafes scope managed
-      const res = await api.get<{ data: any[] }>("/v1/cafes", {
+      const res = await api.get<{ data: ManagedCafeOption[] }>("/v1/cafes", {
         params: { scope: "managed", status: "ACTIVE", limit: 100 },
       });
       return res.data;
@@ -91,29 +107,27 @@ export function ProviderContestFormPage() {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (body: any) => contestsApi.createContest(body),
+    mutationFn: (body: ContestWritePayload) => contestsApi.createContest(body),
     onSuccess: (data) => {
       toast.success("Tạo giải đấu nháp thành công!");
       queryClient.invalidateQueries({ queryKey: ["contests"] });
       navigate(`/provider/contests/${data.id}`);
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || "Lỗi tạo giải đấu.";
-      toast.error(msg);
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi tạo giải đấu."));
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (body: any) => contestsApi.updateContest(contestId!, body),
+    mutationFn: (body: ContestWritePayload) => contestsApi.updateContest(contestId!, body),
     onSuccess: () => {
       toast.success("Cập nhật thông tin giải đấu thành công!");
       queryClient.invalidateQueries({ queryKey: ["contests"] });
       queryClient.invalidateQueries({ queryKey: ["contest-detail", contestId] });
       navigate(`/provider/contests/${contestId}`);
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || "Lỗi cập nhật giải đấu.";
-      toast.error(msg);
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi cập nhật giải đấu."));
     },
   });
 
@@ -230,7 +244,7 @@ export function ProviderContestFormPage() {
               required
             >
               <option value="">Chọn loại đường đua...</option>
-              {trackTypes.map((type: any) => (
+              {(trackTypes as TrackTypeOption[]).map((type) => (
                 <option key={type.id} value={type.id}>
                   {type.name} ({type.code})
                 </option>

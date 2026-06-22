@@ -33,7 +33,7 @@ export interface Contest {
   banner_image_url?: string;
   config?: {
     bracket_size?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   participating_cafes: ParticipatingCafe[];
   registration_summary: RegistrationSummary;
@@ -53,7 +53,7 @@ export interface ContestRegistration {
   check_in_code: string;
   metadata?: {
     note?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   user?: {
     id: string;
@@ -74,7 +74,7 @@ export interface ContestClass {
   capacity: number;
   rules?: {
     format?: 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
-    [key: string]: any;
+    [key: string]: unknown;
   };
   display_order: number;
   is_active: boolean;
@@ -91,7 +91,7 @@ export interface ContestRound {
   name: string;
   rules?: {
     bracket?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -101,7 +101,7 @@ export interface ContestHeat {
   heat_no: number;
   config?: {
     lane_count?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   entries?: ContestHeatEntry[];
 }
@@ -151,7 +151,7 @@ export interface ContestReward {
   is_published: boolean;
   metadata?: {
     voucher_code?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -186,7 +186,7 @@ export interface BracketMatch {
   metadata?: {
     stage?: string;
     score?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   // Optional client-side mappings
   competitorA?: ContestRegistration;

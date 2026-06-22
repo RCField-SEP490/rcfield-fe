@@ -15,6 +15,7 @@ import {
   Medal,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import { getContestErrorMessage } from "../lib/errors";
 import { useAuthStore } from "@/features/auth/stores/auth.store";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
@@ -101,7 +102,7 @@ export function ContestDetailPage() {
 
   // Mutations
   const registerMutation = useMutation({
-    mutationFn: (body: { vehicle_source: "BYOC"; metadata?: any }) =>
+    mutationFn: (body: { vehicle_source: "BYOC"; metadata?: { note?: string } }) =>
       contestsApi.registerContest(contestId!, body),
     onSuccess: () => {
       toast.success("Đăng ký tham gia giải đấu thành công!");
@@ -109,9 +110,8 @@ export function ContestDetailPage() {
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations(contestId) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || "Đăng ký thất bại. Vui lòng thử lại!";
-      toast.error(msg);
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Đăng ký thất bại. Vui lòng thử lại!"));
     },
   });
 
@@ -128,9 +128,8 @@ export function ContestDetailPage() {
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations(contestId) });
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || "Hủy đăng ký thất bại.";
-      toast.error(msg);
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Hủy đăng ký thất bại."));
     },
   });
 
