@@ -12,6 +12,10 @@ import { formatCurrency } from "@/shared/lib/format"
 import { useBooking, useCancelBooking } from "@/features/booking/hooks/use-booking"
 import type { BookingResponse, BookingStatus, PaymentComponentType } from "@/features/booking/types/booking.types"
 import { toast } from "sonner"
+import { useQueryClient } from "@tanstack/react-query"
+import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { staffApi } from "@/features/staff/api/staff.api"
 
 const TIER_LABELS: Record<string, string> = {
   STANDARD: "Tiêu chuẩn",
@@ -107,10 +111,107 @@ export function BookingDetailPage() {
   const { data: booking, isLoading } = useBooking(bookingId)
   const cancelMutation = useCancelBooking()
   const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const queryClient = useQueryClient()
+  const role = useAuthStore((s) => s.role)
+  const [confirmingRefund, setConfirmingRefund] = useState(false)
 
-  const componentsTotal = booking?.payment_components?.reduce((sum, c) => sum + Number(c.amount), 0) ?? 0
-  const snapshotTotal = (booking?.snapshot as Record<string, unknown> | null)?.total_charged as number | undefined
-  const total = componentsTotal > 0 ? componentsTotal : (snapshotTotal ?? 0)
+  const handleConfirmRefund = async () => {
+    if (!bookingId) return
+    try {
+      setConfirmingRefund(true)
+      await staffApi.confirmRefund(bookingId)
+      toast.success("Đã xác nhận hoàn tiền thủ công thành công")
+      void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(bookingId) })
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể xác nhận hoàn tiền")
+    } finally {
+      setConfirmingRefund(false)
+    }
+  }
+
+  const [payingAdditional, setPayingAdditional] = useState(false)
+
+  const handlePayAdditionalFees = async () => {
+    if (!bookingId) return
+    try {
+      setPayingAdditional(true)
+      const res = await bookingApi.createCheckoutAdditionalPayment(bookingId)
+      if (res.payment_url) {
+        toast.info("Đang chuyển hướng sang cổng thanh toán VNPAY...")
+        window.location.href = res.payment_url
+      } else {
+        toast.success("Thanh toán thành công (Bypass)")
+        void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(bookingId) })
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể khởi tạo thanh toán")
+    } finally {
+      setPayingAdditional(false)
+    }
+  }
+
+  const snapshot = booking?.snapshot as Record<string, any> | null
+  const snapshotSlotFee = Number(snapshot?.slot_fee_total ?? snapshot?.slot_fee ?? 0)
+  const snapshotRentalFee = Number(
+    snapshot?.vehicles?.reduce((sum: number, v: any) => sum + Number(v.rental_fee), 0) ??
+    snapshot?.rental_fee ??
+    0
+  )
+  const snapshotDeposit = Number(
+    snapshot?.vehicles?.reduce((sum: number, v: any) => sum + Number(v.security_deposit), 0) ??
+    snapshot?.deposit_amount ??
+    0
+  )
+  const snapshotFnbPreorder = Number(snapshot?.fnb_total ?? snapshot?.fnb_preorder_fee ?? 0)
+
+  const slotFee = Number(booking?.payment_components?.find((c) => c.type === "SLOT_FEE")?.amount ?? snapshotSlotFee)
+  const rentalFee = Number(booking?.payment_components?.find((c) => c.type === "RENTAL_FEE")?.amount ?? snapshotRentalFee)
+  const depositComponent = booking?.payment_components?.find((c) => c.type === "SECURITY_DEPOSIT")
+  const depositAmount = Number(depositComponent?.amount ?? snapshotDeposit)
+  const fnbPreorderFee = Number(
+    booking?.payment_components?.find(
+      (c) =>
+        (c.type === "FB_PREORDER" || c.type === "FNB_PREORDER") &&
+        (c.status === "HELD" || c.status === "REFUNDED")
+    )?.amount ?? snapshotFnbPreorder
+  )
+
+  // On-site incurred service components (F&B/extension/damage that are NOT prepaid HELD)
+  // Exclude: SLOT_FEE, RENTAL_FEE, SECURITY_DEPOSIT, and any FNB_PREORDER with status HELD/REFUNDED (prepaid)
+  const onsiteComponents = booking?.payment_components?.filter((c) =>
+    !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(c.type) &&
+    !((c.type === "FNB_PREORDER" || c.type === "FB_PREORDER") && (c.status === "HELD" || c.status === "REFUNDED"))
+  ) || []
+
+
+  // Damage charge component specifically (for deposit reconciliation)
+  const damageComponent = onsiteComponents.find((c) => c.type === "DAMAGE_CHARGE")
+  const damageCharge = Number(damageComponent?.amount ?? 0)
+
+  // ── Best Practice: Deposit ONLY offsets vehicle damage ──
+  const depositConsumedByDamage = Math.min(depositAmount, damageCharge)
+  const depositRefundAmount = depositAmount - depositConsumedByDamage
+  const damageExceedingDeposit = Math.max(0, damageCharge - depositAmount)
+
+  // Counter bill = F&B onsite + Extension + damage exceeding deposit
+  const counterComponents = onsiteComponents.filter((c) => c.type !== "DAMAGE_CHARGE")
+  const totalCounterServiceBill = counterComponents.reduce((sum, c) => sum + Number(c.amount), 0)
+  const totalCounterBill = totalCounterServiceBill + damageExceedingDeposit
+
+  const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING")
+
+  const refundComponents = booking?.payment_components?.filter(
+    (c) => c.status === "PENDING_REFUND" || c.status === "REFUNDED"
+  ) || []
+  const hasRefund = refundComponents.length > 0
+  const isRefundPending = refundComponents.some((c) => c.status === "PENDING_REFUND")
+  const totalRefundAmount = refundComponents.reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
+
+  const refundSlotFee = refundComponents.filter(c => c.type === "SLOT_FEE").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
+  const refundRentalFee = refundComponents.filter(c => c.type === "RENTAL_FEE").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
+  const refundDeposit = refundComponents.filter(c => c.type === "SECURITY_DEPOSIT").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
+  const refundFnb = refundComponents.filter(c => c.type === "FNB_PREORDER" || c.type === "FB_PREORDER").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
+
   const statusInfo = booking ? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING) : null
 
   const handleCancelConfirm = () => {
@@ -156,8 +257,29 @@ export function BookingDetailPage() {
           <span>Đơn đặt #{booking.id.substring(0, 8).toUpperCase()}</span>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <main className="space-y-4">
+            {booking.session && (
+              <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm rounded-xl">
+                <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                      <Clock3 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900">Phiên chơi đang diễn ra</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Giờ kết thúc dự kiến: {new Date(booking.session.plannedEndAt).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-5">
+                    <Link to={`/customer/sessions/${booking.session.id}`}>Vào phiên chơi</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Header card */}
             <Card className="rounded-xl shadow-sm">
               <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -380,33 +502,216 @@ export function BookingDetailPage() {
 
             <Card className="rounded-xl shadow-sm">
               <CardHeader>
-                <CardTitle>Thanh toán</CardTitle>
+                <CardTitle>Chi tiết thanh toán</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {booking.payment_components.length > 0 ? (
-                  booking.payment_components.map((c) => (
-                    <div key={c.id} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">{formatComponentType(c.type)}</span>
-                      <span className="font-medium">{formatCurrency(Number(c.amount))}</span>
+              <CardContent className="space-y-4">
+                {/* 1. Prepaid online */}
+                <div className="space-y-2 pb-2 border-b border-dashed">
+                  <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block">
+                    1. Đã thanh toán (VNPAY)
+                  </span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Phí lịch sân (Slot Fee)</span>
+                    <span className="font-medium">{formatCurrency(slotFee)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Phí thuê xe (Rental Fee)</span>
+                    <span className="font-medium">{formatCurrency(rentalFee)}</span>
+                  </div>
+                  {fnbPreorderFee > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">F&B trả trước (Preordered)</span>
+                      <span className="font-medium">{formatCurrency(fnbPreorderFee)}</span>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">Chưa có thông tin thanh toán.</p>
-                )}
-                <PackageUsedBadge snapshot={booking.snapshot} />
-                <Separator />
-                <div className="flex items-center justify-between text-lg font-semibold">
-                  <span>Tổng cộng</span>
-                  <span>{formatCurrency(total)}</span>
+                  )}
                 </div>
-                {booking.status === "CONFIRMED" && (
+
+                {/* 2. Vehicle Deposit Refund (Asset protection only) */}
+                {depositAmount > 0 && (
+                  <div className="space-y-2 pb-2 border-b border-dashed">
+                    <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">
+                      2. Tiền cọc xe (Deposit Refund)
+                    </span>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tiền cọc đã giữ:</span>
+                      <span className="font-medium">{formatCurrency(depositAmount)}</span>
+                    </div>
+                    {damageCharge > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Khấu trừ đền bù hư hỏng xe:</span>
+                        <span className="font-medium text-rose-600">−{formatCurrency(depositConsumedByDamage)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm border-t pt-1.5 mt-1">
+                      <span className="text-blue-700 font-semibold">Tiền cọc hoàn lại (Deposit Refund):</span>
+                      <span className="font-bold text-emerald-600">{formatCurrency(depositRefundAmount)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Counter service bill (if any onsite fees) */}
+                {(counterComponents.length > 0 || damageExceedingDeposit > 0) && (
+                  <div className="space-y-2 pb-2 border-b border-dashed">
+                    <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
+                      3. Chi phí dịch vụ tại quầy
+                    </span>
+                    {counterComponents.map((c) => (
+                      <div key={c.id} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{formatComponentType(c.type)}</span>
+                        <span className="font-medium">+{formatCurrency(Number(c.amount))}</span>
+                      </div>
+                    ))}
+                    {damageExceedingDeposit > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Đền bù hư hỏng vượt cọc:</span>
+                        <span className="font-medium text-rose-600">+{formatCurrency(damageExceedingDeposit)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm border-t pt-1.5 mt-1">
+                      <span className="text-muted-foreground font-semibold">Tổng dịch vụ tại quầy:</span>
+                      <span className="font-bold text-[#ea580c]">{formatCurrency(totalCounterBill)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Real-time settlement status (independent transactions) */}
+                {(depositAmount > 0 || totalCounterBill > 0) && booking.status === "COMPLETED" && (
+                  <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
+                      Quyết toán thực tế tại quầy
+                    </span>
+                    {depositRefundAmount > 0 && (
+                      <div className="flex justify-between text-xs text-slate-600 border-b border-dashed border-slate-200 pb-1.5 mb-1.5">
+                        <span className="font-semibold text-slate-700">1. Hoàn trả cọc xe (Deposit Refund):</span>
+                        <span className="font-bold text-emerald-600">{formatCurrency(depositRefundAmount)}</span>
+                      </div>
+                    )}
+                    {totalCounterBill > 0 && (
+                      <div className="flex justify-between text-xs text-slate-600">
+                        <span className="font-semibold text-slate-700">2. Thanh toán dịch vụ (On-site Bill):</span>
+                        <span className="font-bold text-[#ea580c]">{formatCurrency(totalCounterBill)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <PackageUsedBadge snapshot={booking.snapshot} />
+
+                {/* Status indicators */}
+                {!isPaid && totalCounterBill > 0 ? (
+                  <div className="space-y-3">
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 leading-relaxed font-medium">
+                      ⚠️ <strong>Chờ thanh toán phát sinh:</strong> Vui lòng thanh toán <strong>{formatCurrency(totalCounterBill)}</strong> phí dịch vụ phát sinh để hoàn tất phiên chơi.
+                    </div>
+                    {role === "customer" && (
+                      <Button
+                        onClick={handlePayAdditionalFees}
+                        disabled={payingAdditional}
+                        className="w-full bg-[#ea580c] hover:bg-[#ea580c]/90 text-white font-extrabold text-xs h-10 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]"
+                      >
+                        {payingAdditional ? (
+                          "Đang khởi tạo thanh toán..."
+                        ) : (
+                          <>
+                            💰 Thanh toán dịch vụ qua VNPAY
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                ) : totalCounterBill > 0 && isPaid ? (
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 font-bold text-center">
+                    ✅ Đã thanh toán đầy đủ dịch vụ tại quầy
+                  </div>
+                ) : booking.status === "CONFIRMED" ? (
                   <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Đã thanh toán qua VNPAY</div>
-                )}
-                {booking.status === "PENDING" && (
+                ) : booking.status === "PENDING" ? (
                   <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">Chờ thanh toán</div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
+
+            {hasRefund && (
+              <Card className="rounded-xl shadow-sm border border-emerald-100 bg-emerald-50/10">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                    <RotateCcw className="h-4 w-4 text-emerald-600" />
+                    Thông tin hoàn tiền
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5 text-xs">
+                    {refundSlotFee > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Hoàn phí lịch sân (Slot Fee):</span>
+                        <span className="font-semibold">{formatCurrency(refundSlotFee)}</span>
+                      </div>
+                    )}
+                    {refundRentalFee > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Hoàn phí thuê xe (Rental Fee):</span>
+                        <span className="font-semibold">{formatCurrency(refundRentalFee)}</span>
+                      </div>
+                    )}
+                    {refundDeposit > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Hoàn tiền cọc xe (Deposit):</span>
+                        <span className="font-semibold">{formatCurrency(refundDeposit)}</span>
+                      </div>
+                    )}
+                    {refundFnb > 0 && (
+                      <div className="flex justify-between text-slate-600">
+                        <span>Hoàn F&B đặt trước:</span>
+                        <span className="font-semibold">{formatCurrency(refundFnb)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between font-extrabold text-slate-800 text-sm">
+                      <span>Tổng tiền hoàn:</span>
+                      <span className="text-emerald-600">{formatCurrency(totalRefundAmount)}</span>
+                    </div>
+                  </div>
+
+                  {isRefundPending ? (
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-850">
+                        <Clock3 className="h-3.5 w-3.5 text-amber-600" />
+                        Đang chờ hoàn tiền tại quầy
+                      </div>
+                      <p className="text-[10px] text-amber-700 leading-relaxed font-semibold">
+                        Giao dịch hoàn tiền đang được nhân viên xử lý thủ công (tiền mặt/chuyển khoản) tại quầy.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg bg-emerald-100/70 border border-emerald-200 p-3 space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        Đã hoàn tiền thành công
+                      </div>
+                      <p className="text-[10px] text-emerald-700 leading-relaxed font-semibold">
+                        Nhân viên đã xác nhận hoàn trả đầy đủ {formatCurrency(totalRefundAmount)} cho quý khách tại quầy.
+                      </p>
+                    </div>
+                  )}
+
+                  {isRefundPending && role === "staff" && (
+                    <Button
+                      onClick={handleConfirmRefund}
+                      disabled={confirmingRefund}
+                      className="w-full bg-[#ea580c] hover:bg-[#ea580c]/90 text-white font-extrabold text-xs h-10 rounded-xl flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      {confirmingRefund ? (
+                        "Đang xử lý..."
+                      ) : (
+                        <>
+                          <CheckCircle2 className="h-4 w-4" />
+                          Xác nhận đã hoàn tiền
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {["PENDING", "CONFIRMED"].includes(booking.status) && (
               <>
