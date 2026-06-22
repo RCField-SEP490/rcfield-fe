@@ -33,7 +33,7 @@ export default function StaffDashboardPage() {
   } = useStaffOperations()
 
   const [activeCafe, setActiveCafe] = useState<BackendCafe | null>(null)
-  const [simulatedCode, setSimulatedCode] = useState("")
+  const [scanCode, setScanCode] = useState("")
 
   const { data: todayBookings = [] } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),
@@ -64,18 +64,17 @@ export default function StaffDashboardPage() {
     }
   }, [assignedCafeId])
 
-  // QR scanner simulation logic
-  const handleQRSimulate = (e: React.FormEvent) => {
+  const handleQRSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!simulatedCode.trim()) return
+    if (!scanCode.trim()) return
 
-    const trimmed = simulatedCode.trim().toUpperCase()
+    const trimmed = scanCode.trim().toUpperCase()
     const match = bookings.find(
-      (b) => b.shortCode.toUpperCase() === trimmed || b.bookingId === simulatedCode.trim()
+      (b) => b.shortCode.toUpperCase() === trimmed || b.bookingId === scanCode.trim()
     )
 
     if (!match) {
-      toast.error(`Mã đặt lịch "${simulatedCode}" không tồn tại trong hôm nay!`)
+      toast.error(`Mã đặt lịch "${scanCode}" không tồn tại trong hôm nay!`)
       return
     }
 
@@ -101,20 +100,12 @@ export default function StaffDashboardPage() {
       return
     }
 
-    // Start Check-in flow
-    startCheckIn(match.bookingId)
-    toast.success(`Quét mã QR ${match.shortCode} thành công!`)
-    setTimeout(() => {
-      const stored = localStorage.getItem(`rcfield:staff_operations:bookings:${localStorage.getItem("rcfield:auth") ? JSON.parse(localStorage.getItem("rcfield:auth")!).user?.id : "anonymous"}`)
-      if (stored) {
-        const parsedBookings = JSON.parse(stored)
-        const updatedMatch = parsedBookings.find((b: any) => b.bookingId === match.bookingId)
-        const newSessionId = updatedMatch?.sessions?.[0]?.sessionId
-        if (newSessionId) {
-          navigate(`/staff/sessions/${newSessionId}`)
-        }
-      }
-    }, 500)
+    const startedSession = await startCheckIn(match.bookingId)
+    const newSessionId = startedSession?.sessionId ?? startedSession?.id
+    if (newSessionId) {
+      toast.success(`Quét mã QR ${match.shortCode} thành công!`)
+      navigate(`/staff/sessions/${newSessionId}`)
+    }
   }
 
   // 1. Unassigned cafe guard fallback (layout guard handles most, but safe fallback here)
@@ -184,12 +175,12 @@ export default function StaffDashboardPage() {
             <h3 className="font-bold text-[#1c1b1b] text-base">Quét mã QR Check-In</h3>
           </div>
 
-          <form onSubmit={handleQRSimulate} className="flex gap-2">
+          <form onSubmit={handleQRSubmit} className="flex gap-2">
             <input
               type="text"
               placeholder="Nhập mã đặt lịch hoặc Shortcode (Ví dụ: RCF-8829)"
-              value={simulatedCode}
-              onChange={(e) => setSimulatedCode(e.target.value)}
+              value={scanCode}
+              onChange={(e) => setScanCode(e.target.value)}
               className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c] placeholder-[#a09e9d] transition-all"
             />
             <StaffButton type="submit" variant="primary">

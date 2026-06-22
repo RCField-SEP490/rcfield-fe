@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useSearchParams, Link } from "react-router"
+import { useSearchParams, Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
   Search as SearchIcon,
@@ -31,6 +31,7 @@ import {
   StaffBadge,
   StaffButton,
 } from "./components/StaffUI"
+import type { CustomerBookingDetail } from "@/shared/data/customer-operational-mock-data"
 
 type TabType = "LIST" | "WALKIN"
 
@@ -50,8 +51,49 @@ function getSlotCountdown(startTime: string): { label: string; urgent: boolean }
   return { label, urgent: false }
 }
 
+function getBookingId(booking: any): string {
+  return booking.bookingId ?? booking.id
+}
+
+function getCustomerName(booking: any): string {
+  return booking.customerName ?? booking.plannedParticipants?.[0] ?? "Khách hàng"
+}
+
+function getCustomerPhone(booking: any): string | null {
+  return booking.customerPhone ?? null
+}
+
+function getSlotStart(booking: any): string {
+  return booking.startTime ?? booking.slotStart
+}
+
+function getSlotEnd(booking: any): string {
+  return booking.endTime ?? booking.slotEnd
+}
+
+function getPlayMode(booking: any): string {
+  return booking.mode ?? booking.playMode
+}
+
+function getTrackLabel(booking: any): string | null {
+  return booking.trackTypeName ?? booking.trackName ?? booking.trackType ?? null
+}
+
+function getParticipantCount(booking: any): number {
+  return booking.participantCount ?? booking.plannedParticipants?.length ?? 0
+}
+
+function getVehicleCount(booking: any): number {
+  return booking.vehicleCount ?? booking.plannedVehicles?.length ?? 0
+}
+
+function getFnbAmount(booking: any): number {
+  return Number(booking.fnbPreorderAmount ?? booking.fnbPreorderFee ?? 0)
+}
+
 export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const { assignedCafeId, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
 
   const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
@@ -202,6 +244,20 @@ export default function StaffTodayBookingsPage() {
     }
   }
 
+  const handleStartCheckIn = async (booking: CustomerBookingDetail | any) => {
+    const startedSession = await startCheckIn(getBookingId(booking))
+    const sessionId = startedSession?.sessionId ?? startedSession?.id
+    if (sessionId) {
+      navigate(`/staff/sessions/${sessionId}`)
+    }
+  }
+
+  const visibleBookings = displayBookings.filter((booking: any) => {
+    const matchSearch = searchTerm === "" || getCustomerName(booking).toLowerCase().includes(searchTerm.toLowerCase())
+    const matchStatus = statusFilter === "ALL" || booking.status === statusFilter
+    return matchSearch && matchStatus
+  })
+
   return (
     <div className="space-y-6">
       {/* 1. Page Header */}
@@ -265,6 +321,7 @@ export default function StaffTodayBookingsPage() {
                 { code: "ALL", label: "Tất cả" },
                 { code: "PENDING", label: "Chờ thanh toán" },
                 { code: "CONFIRMED", label: "Đã xác nhận" },
+                { code: "NO_SHOW", label: "Không đến" },
                 { code: "COMPLETED", label: "Hoàn thành" },
                 { code: "CANCELLED", label: "Đã hủy" },
               ].map((filter) => (
@@ -291,13 +348,19 @@ export default function StaffTodayBookingsPage() {
             </div>
           ) : (
             <div className="grid gap-4">
-              {displayBookings
-                .filter((b) => {
-                  const matchSearch = searchTerm === "" || b.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-                  const matchStatus = statusFilter === "ALL" || b.status === statusFilter
-                  return matchSearch && matchStatus
-                })
-                .map((b) => {
+              {visibleBookings
+                .map((b: any) => {
+                  const bookingId = getBookingId(b)
+                  const customerName = getCustomerName(b)
+                  const customerPhone = getCustomerPhone(b)
+                  const slotStart = getSlotStart(b)
+                  const slotEnd = getSlotEnd(b)
+                  const playMode = getPlayMode(b)
+                  const trackLabel = getTrackLabel(b)
+                  const participantCount = getParticipantCount(b)
+                  const vehicleCount = getVehicleCount(b)
+                  const fnbAmount = getFnbAmount(b)
+                  const activeSession = b.sessions?.find((session: any) => session.status !== "COMPLETED" && session.status !== "CANCELLED") ?? b.sessions?.[0]
                   const statusLabel: Record<string, string> = {
                     PENDING: "CHỜ THANH TOÁN",
                     CONFIRMED: "ĐÃ XÁC NHẬN",
@@ -311,21 +374,21 @@ export default function StaffTodayBookingsPage() {
                     : b.status === "CANCELLED" || b.status === "NO_SHOW" ? "neutral"
                     : "warning"
 
-                  const hasFnb = b.fnbPreorderAmount > 0
-                  const countdown = getSlotCountdown(b.startTime)
+                  const hasFnb = fnbAmount > 0
+                  const countdown = getSlotCountdown(slotStart)
 
                   return (
-                    <StaffCard key={b.id} className="space-y-3">
+                    <StaffCard key={bookingId} className="space-y-3">
                       {/* Row 1 — ID + status + detail link */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-[#a09e9d] font-mono font-bold">
-                            #{b.id.slice(0, 8).toUpperCase()}
+                            #{bookingId.slice(0, 8).toUpperCase()}
                           </span>
                           <StaffBadge variant={badgeVariant}>{statusLabel[b.status] ?? b.status}</StaffBadge>
                         </div>
                         <Link
-                          to={`/booking/${b.id}`}
+                          to={`/booking/${bookingId}`}
                           className="flex items-center justify-center size-7 rounded-lg border border-[#e5e2e1] bg-white hover:bg-[#fcf8f8] text-[#6b7280] hover:text-[#1c1b1b] transition-colors shrink-0"
                         >
                           <ChevronRight className="size-3.5" />
@@ -334,14 +397,14 @@ export default function StaffTodayBookingsPage() {
 
                       {/* Row 2 — Customer name + phone */}
                       <div className="flex items-start justify-between gap-3">
-                        <h4 className="text-base font-bold text-[#1c1b1b] leading-tight">{b.customerName}</h4>
-                        {b.customerPhone && (
+                        <h4 className="text-base font-bold text-[#1c1b1b] leading-tight">{customerName}</h4>
+                        {customerPhone && (
                           <a
-                            href={`tel:${b.customerPhone}`}
+                            href={`tel:${customerPhone}`}
                             className="flex items-center gap-1 text-xs font-semibold text-[#ea580c] shrink-0 hover:underline"
                           >
                             <Phone className="size-3" />
-                            {b.customerPhone}
+                            {customerPhone}
                           </a>
                         )}
                       </div>
@@ -351,9 +414,9 @@ export default function StaffTodayBookingsPage() {
                         <span className="flex items-center gap-1.5">
                           <Clock className="size-3.5 text-[#ea580c]/80 shrink-0" />
                           <span className="font-bold text-[#1c1b1b]">
-                            {new Date(b.startTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                            {new Date(slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
                             {" – "}
-                            {new Date(b.endTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                            {new Date(slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
                           </span>
                           {countdown && (
                             <span className={cn(
@@ -366,15 +429,15 @@ export default function StaffTodayBookingsPage() {
                             </span>
                           )}
                         </span>
-                        {b.trackTypeName && (
+                        {trackLabel && (
                           <span className="flex items-center gap-1.5">
                             <MapPin className="size-3.5 text-[#ea580c]/80 shrink-0" />
-                            {b.trackTypeName}
+                            {trackLabel}
                           </span>
                         )}
                         <span className="flex items-center gap-1.5">
                           <Tag className="size-3 text-[#ea580c]/70 shrink-0" />
-                          {b.mode === "BYOC" ? "Tự mang xe" : "Thuê xe"}
+                          {playMode === "BYOC" ? "Tự mang xe" : "Thuê xe"}
                         </span>
                       </div>
 
@@ -382,34 +445,39 @@ export default function StaffTodayBookingsPage() {
                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#f0eeee]">
                         <span className="flex items-center gap-1 rounded-md bg-[#f5f3f2] px-2 py-1 text-[11px] font-bold text-[#4c4a49]">
                           <Users className="size-3 text-[#6b7280]" />
-                          {b.participantCount} người chơi
+                          {participantCount} người chơi
                         </span>
-                        {b.mode !== "BYOC" && b.vehicleCount > 0 && (
+                        {playMode !== "BYOC" && vehicleCount > 0 && (
                           <span className="flex items-center gap-1 rounded-md bg-[#f5f3f2] px-2 py-1 text-[11px] font-bold text-[#4c4a49]">
                             <Car className="size-3 text-[#6b7280]" />
-                            {b.vehicleCount} xe thuê
+                            {vehicleCount} xe thuê
                           </span>
                         )}
                         {hasFnb && (
                           <span className="flex items-center gap-1 rounded-md bg-orange-50 border border-orange-200 px-2 py-1 text-[11px] font-bold text-orange-700">
                             <UtensilsCrossed className="size-3" />
-                            F&B đặt trước · {formatCurrency(b.fnbPreorderAmount)}
+                            F&B đặt trước · {formatCurrency(fnbAmount)}
                           </span>
                         )}
                         <div className="ml-auto">
-                          {b.status === "CONFIRMED" && (
-                            <StaffButton onClick={() => startCheckIn(b.id)} variant="primary" size="sm">
+                          {activeSession ? (
+                            <StaffButton onClick={() => navigate(`/staff/sessions/${activeSession.sessionId}`)} variant="outline" size="sm">
+                              Mở phiên
+                              <ArrowRight className="size-3.5" />
+                            </StaffButton>
+                          ) : b.status === "CONFIRMED" ? (
+                            <StaffButton onClick={() => handleStartCheckIn(b)} variant="primary" size="sm">
                               Check-In bàn giao
                               <ArrowRight className="size-3.5" />
                             </StaffButton>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </StaffCard>
                   )
                 })}
 
-              {displayBookings.length === 0 && (
+              {visibleBookings.length === 0 && (
                 <StaffCard className="py-12 text-center text-[#6b7280] space-y-2 border-dashed">
                   <p className="text-sm font-bold">Không có đơn đặt lịch nào hôm nay</p>
                   <p className="text-xs">

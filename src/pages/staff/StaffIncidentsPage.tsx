@@ -11,7 +11,7 @@ import {
 } from "./components/StaffUI"
 
 export default function StaffIncidentsPage() {
-  const { incidents, logIncident, resolveIncident, sessions } = useStaffOperations()
+  const { incidents, logIncident, resolveIncident, sessions, bookings } = useStaffOperations()
 
   // Form states
   const [showReportForm, setShowReportForm] = useState(false)
@@ -32,11 +32,12 @@ export default function StaffIncidentsPage() {
     setSelectedSessionId(sessId)
     if (!sessId) return
 
-    // Find session and associated booking
     const session = sessions.find((s) => s.sessionId === sessId)
+    const booking = bookings.find((b) => b.sessions?.some((s) => s.sessionId === sessId)) as any
+
     if (session) {
-      setCustomerName(session.participants[0]?.name || "Khách lẻ")
-      setCustomerPhone("0908xxxxxx") // Mock placeholder
+      setCustomerName(booking?.customerName || session.participants[0]?.name || booking?.plannedParticipants?.[0] || "Khách lẻ")
+      setCustomerPhone(booking?.customerPhone || "")
     }
   }
 

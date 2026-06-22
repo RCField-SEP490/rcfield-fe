@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Plus, ClipboardList, User, DollarSign, Filter, Car } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { toast } from "sonner"
@@ -34,16 +34,27 @@ export default function StaffMaintenancePage() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | "SCHEDULED" | "IN_PROGRESS" | "COMPLETED">("ALL")
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Static definition of fleet for simulation selection
-  const mockVehiclesList = [
-    { id: "V-MAZDA-RX7", name: "Mazda RX-7 FD3S Drift Special" },
-    { id: "V-NISSAN-GTR", name: "Nissan GT-R R35 Drift Spec" },
-    { id: "V-SUBARU-BRZ", name: "Subaru BRZ Custom Drift" },
-  ]
+  const vehicleOptions = useMemo(() => {
+    const namesById = new Map(maintenanceLogs.map((log) => [log.vehicleId, log.vehicleName]))
+    const vehicleIds = new Set([...Object.keys(fleetStates), ...maintenanceLogs.map((log) => log.vehicleId)])
+
+    return Array.from(vehicleIds)
+      .sort()
+      .map((id) => ({
+        id,
+        name:
+          namesById.get(id) ||
+          id
+            .replace(/^V-/, "")
+            .split("-")
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+            .join(" "),
+      }))
+  }, [fleetStates, maintenanceLogs])
 
   const handleVehicleSelect = (id: string) => {
     setVehicleId(id)
-    const match = mockVehiclesList.find((v) => v.id === id)
+    const match = vehicleOptions.find((v) => v.id === id)
     setVehicleName(match ? match.name : "")
   }
 
@@ -84,6 +95,7 @@ export default function StaffMaintenancePage() {
     const matchesSearch =
       log.vehicleName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.vehicleId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.logId.toLowerCase().includes(searchQuery.toLowerCase()) ||
       log.issueDescription.toLowerCase().includes(searchQuery.toLowerCase())
     return matchesStatus && matchesSearch
   })
@@ -119,7 +131,7 @@ export default function StaffMaintenancePage() {
           </p>
 
           <div className="space-y-3">
-            {mockVehiclesList.map((v) => {
+            {vehicleOptions.map((v) => {
               const liveStatus = fleetStates[v.id] || "AVAILABLE"
               
               // status badge mapping
@@ -167,6 +179,12 @@ export default function StaffMaintenancePage() {
                 </div>
               )
             })}
+
+            {vehicleOptions.length === 0 && (
+              <div className="rounded-lg border border-dashed border-[#e5e2e1] bg-white p-4 text-center text-xs font-semibold text-[#6b7280]">
+                Chưa có xe nào trong đội xe của ca trực.
+              </div>
+            )}
           </div>
         </StaffCard>
 
@@ -190,7 +208,7 @@ export default function StaffMaintenancePage() {
                       className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                     >
                       <option value="">-- Chọn xe từ kho --</option>
-                      {mockVehiclesList.map((v) => (
+                      {vehicleOptions.map((v) => (
                         <option key={v.id} value={v.id}>
                           {v.name} ({v.id})
                         </option>

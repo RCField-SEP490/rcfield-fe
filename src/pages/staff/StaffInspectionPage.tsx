@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useSearchParams, useNavigate } from "react-router"
+import { useParams, useSearchParams, useNavigate } from "react-router"
 import {
   Camera,
   ClipboardList,
@@ -18,11 +18,12 @@ import {
 
 export default function StaffInspectionPage() {
   const [searchParams] = useSearchParams()
+  const { sessionId: routeSessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const { sessions, bookings, submitInspection } = useStaffOperations()
 
   // Resolve query params
-  const sessionId = searchParams.get("sessionId")
+  const sessionId = routeSessionId ?? searchParams.get("sessionId")
   const type = searchParams.get("type") as "CHECK_IN" | "CHECK_OUT" | null
 
   // Find session and booking
@@ -96,23 +97,37 @@ export default function StaffInspectionPage() {
     )
   }
 
-  // Pre-load default mockup images upon click (for easy demo testing)
-  const loadMockupPhoto = (angle: "FRONT" | "BACK" | "LEFT" | "RIGHT") => {
-    const mockImages = {
-      FRONT: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
-      BACK: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=400",
-      LEFT: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=400",
-      RIGHT: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400",
+  const handlePhotoFileChange = (
+    angle: "FRONT" | "BACK" | "LEFT" | "RIGHT",
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn đúng định dạng ảnh.")
+      return
     }
-    setPhotoUrls((prev) => ({
-      ...prev,
-      [angle]: mockImages[angle],
-    }))
-    setPhotoNotes((prev) => ({
-      ...prev,
-      [angle]: `Đã chụp góc ${angle} - Không có hao tổn nghiêm trọng.`,
-    }))
-    toast.success(`Đã mô phỏng tải lên ảnh góc ${angle}`)
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ảnh kiểm xe không nên vượt quá 5MB.")
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const url = String(reader.result)
+      setPhotoUrls((prev) => ({
+        ...prev,
+        [angle]: url,
+      }))
+      setPhotoNotes((prev) => ({
+        ...prev,
+        [angle]: prev[angle] || `Ảnh kiểm xe góc ${angle}`,
+      }))
+      toast.success(`Đã thêm ảnh kiểm xe góc ${angle}.`)
+    }
+    reader.readAsDataURL(file)
   }
 
   // Toggle checklist checkboxes
@@ -224,9 +239,8 @@ export default function StaffInspectionPage() {
                     Hướng: {direction === "FRONT" ? "Trước" : direction === "BACK" ? "Sau" : direction === "LEFT" ? "Trái" : "Phải"}
                   </span>
 
-                  {/* Photo Box container */}
-                  <div
-                    onClick={() => loadMockupPhoto(direction)}
+                  <label
+                    htmlFor={`inspection-photo-${direction}`}
                     className={cn(
                       "aspect-video rounded-xl border border-dashed border-[#e5e2e1] bg-[#fcf8f8] flex flex-col items-center justify-center cursor-pointer hover:border-[#ea580c] hover:bg-[#fff3eb]/30 overflow-hidden relative group transition-all duration-200",
                       url && "border-solid border-[#e5e2e1]"
@@ -242,10 +256,17 @@ export default function StaffInspectionPage() {
                     ) : (
                       <>
                         <Camera className="size-5 text-[#6b7280] mb-1" />
-                        <span className="text-[10px] font-bold text-[#ea580c]">+ Tải ảnh lên</span>
+                        <span className="text-[10px] font-bold text-[#ea580c]">+ Thêm ảnh</span>
                       </>
                     )}
-                  </div>
+                    <input
+                      id={`inspection-photo-${direction}`}
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => handlePhotoFileChange(direction, event)}
+                    />
+                  </label>
 
                   {/* Note Input for Specific Angle */}
                   {url && (
