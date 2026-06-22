@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +21,7 @@ import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "sonner";
+import type { BracketMatch, ContestClass } from "../types";
 
 function formatDateTime(dateStr: string) {
   try {
@@ -51,7 +52,7 @@ export function ProviderContestDetailPage() {
 
   // Bracket Match Editor State
   const [showMatchDialog, setShowMatchDialog] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState<any>(null);
+  const [selectedMatch, setSelectedMatch] = useState<BracketMatch | null>(null);
   const [matchWinnerId, setMatchWinnerId] = useState("");
   const [matchScore, setMatchScore] = useState("");
 
@@ -89,7 +90,31 @@ export function ProviderContestDetailPage() {
     enabled: !!contestId,
   });
 
+  const { data: bracketData } = useQuery({
+    queryKey: contestQueryKeys.bracket(contestId),
+    queryFn: () => contestsApi.getContestBracket(contestId!),
+    enabled: !!contestId,
+  });
+
   const rewards = rewardsEnvelope?.data || [];
+  const contestClasses = bracketData?.classes || [];
+  const primaryClass = contestClasses[0];
+  const registrationMap = useMemo(
+    () => new Map(registrations.map((registration) => [registration.id, registration])),
+    [registrations]
+  );
+  const bracketMatches = useMemo(
+    () =>
+      (bracketData?.matches || [])
+        .map((match) => ({
+          ...match,
+          competitorA: match.competitorARegistrationId ? registrationMap.get(match.competitorARegistrationId) : undefined,
+          competitorB: match.competitorBRegistrationId ? registrationMap.get(match.competitorBRegistrationId) : undefined,
+          winner: match.winnerRegistrationId ? registrationMap.get(match.winnerRegistrationId) : undefined,
+        }))
+        .sort((a, b) => a.matchNo - b.matchNo),
+    [bracketData?.matches, registrationMap]
+  );
 
   // Default target cafe to the first participating cafe
   useEffect(() => {
@@ -142,6 +167,8 @@ export function ProviderContestDetailPage() {
       setClassCode("");
       setClassNameField("");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.classes(contestId) });
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || "Lỗi tạo Class.");
@@ -163,8 +190,11 @@ export function ProviderContestDetailPage() {
   });
 
   const publishLeaderboardMutation = useMutation({
-    mutationFn: (classId: string) =>
-      contestsApi.publishLeaderboard(contestId!, { contest_class_id: classId, scope: "OVERALL" }),
+    mutationFn: (contestClass?: ContestClass) =>
+      contestsApi.publishLeaderboard(
+        contestId!,
+        contestClass ? { contest_class_id: contestClass.id, scope: "OVERALL" } : { scope: "OVERALL" }
+      ),
     onSuccess: () => {
       toast.success("Công bố bảng xếp hạng thành công!");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.leaderboard(contestId) });
@@ -175,13 +205,89 @@ export function ProviderContestDetailPage() {
   });
 
   const issueRewardsMutation = useMutation({
-    mutationFn: (classId: string) =>
-      contestsApi.issueRewards(contestId!, { contest_class_id: classId }),
+    mutationFn: (contestClass?: ContestClass) =>
+      contestsApi.issueRewards(contestId!, contestClass ? { contest_class_id: contestClass.id } : {}),
     onSuccess: () => {
       toast.success("Phát thưởng thành công cho các tay đua đứng top!");
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || "Lỗi phát thưởng.");
+    },
+  });
+
+  const createBracketMutation = useMutation({
+    mutationFn: async () => {
+      const contestClass = primaryClass;
+      if (!contestClass) throw new Error("Vui lòng tạo Class trước khi dựng bracket.");
+      const checkedInPlayers = registrations.filter((r) => r.status === "CHECKED_IN").slice(0, 8);
+      if (checkedInPlayers.length < 8) {
+        throw new Error("Cần đủ 8 vận động viên đã check-in để dựng bracket 8 người.");
+      }
+
+      const finalRound = await contestsApi.createContestRound(contestId!, {
+        contest_class_id: contestClass.id,
+        round_type: "FINAL",
+        round_no: 3,
+        name: "Final",
+        rules: { bracket: true, stage: "FINAL" },
+      });
+      const finalMatch = await contestsApi.createBracketMatch(finalRound.id, {
+        match_no: 7,
+        metadata: { stage: "FINAL" },
+      });
+
+      const semiRound = await contestsApi.createContestRound(contestId!, {
+        contest_class_id: contestClass.id,
+        round_type: "QUALIFYING",
+        round_no: 2,
+        name: "Semi Final",
+        rules: { bracket: true, stage: "SEMI_FINAL" },
+      });
+      const semiOne = await contestsApi.createBracketMatch(semiRound.id, {
+        match_no: 5,
+        next_match_id: finalMatch.id,
+        next_slot: "A",
+        metadata: { stage: "SEMI_FINAL" },
+      });
+      const semiTwo = await contestsApi.createBracketMatch(semiRound.id, {
+        match_no: 6,
+        next_match_id: finalMatch.id,
+        next_slot: "B",
+        metadata: { stage: "SEMI_FINAL" },
+      });
+
+      const quarterRound = await contestsApi.createContestRound(contestId!, {
+        contest_class_id: contestClass.id,
+        round_type: "QUALIFYING",
+        round_no: 1,
+        name: "Quarter Final",
+        rules: { bracket: true, stage: "QUARTER_FINAL" },
+      });
+      const nextTargets = [
+        { next_match_id: semiOne.id, next_slot: "A" },
+        { next_match_id: semiOne.id, next_slot: "B" },
+        { next_match_id: semiTwo.id, next_slot: "A" },
+        { next_match_id: semiTwo.id, next_slot: "B" },
+      ] as const;
+      await Promise.all(
+        nextTargets.map((target, index) =>
+          contestsApi.createBracketMatch(quarterRound.id, {
+            match_no: index + 1,
+            competitor_a_registration_id: checkedInPlayers[index * 2].id,
+            competitor_b_registration_id: checkedInPlayers[index * 2 + 1].id,
+            next_match_id: target.next_match_id,
+            next_slot: target.next_slot,
+            metadata: { stage: "QUARTER_FINAL" },
+          })
+        )
+      );
+    },
+    onSuccess: () => {
+      toast.success("Đã dựng bracket 8 người từ danh sách check-in.");
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || err.response?.data?.message || "Lỗi dựng bracket.");
     },
   });
 
@@ -203,108 +309,29 @@ export function ProviderContestDetailPage() {
     setManualCode("");
   };
 
-  // Simulated Bracket state for local interactivity (Quarter Finals -> Semi Finals -> Finals)
-  const [localMatches, setLocalMatches] = useState<any[]>([]);
-  useEffect(() => {
-    // Scaffold initial matches for 8 checked-in players
-    const checkedInPlayers = registrations.filter((r) => r.status === "CHECKED_IN");
-    const scaffolded: any[] = [];
-    
-    // Create 4 Quarter-final matches
-    for (let i = 0; i < 4; i++) {
-      const idxA = i * 2;
-      const idxB = i * 2 + 1;
-      scaffolded.push({
-        id: `m-qf-${i + 1}`,
-        stage: "Tứ kết",
-        matchNo: i + 1,
-        competitorA: checkedInPlayers[idxA] || null,
-        competitorB: checkedInPlayers[idxB] || null,
-        winner: null,
-        score: "",
-        nextMatchId: `m-sf-${Math.floor(i / 2) + 1}`,
-        nextSlot: i % 2 === 0 ? "A" : "B",
-      });
-    }
-
-    // Create 2 Semi-final matches
-    scaffolded.push({
-      id: "m-sf-1",
-      stage: "Bán kết",
-      matchNo: 5,
-      competitorA: null,
-      competitorB: null,
-      winner: null,
-      score: "",
-      nextMatchId: "m-f-1",
-      nextSlot: "A",
-    });
-    scaffolded.push({
-      id: "m-sf-2",
-      stage: "Bán kết",
-      matchNo: 6,
-      competitorA: null,
-      competitorB: null,
-      winner: null,
-      score: "",
-      nextMatchId: "m-f-1",
-      nextSlot: "B",
-    });
-
-    // Create 1 Final match
-    scaffolded.push({
-      id: "m-f-1",
-      stage: "Chung kết",
-      matchNo: 7,
-      competitorA: null,
-      competitorB: null,
-      winner: null,
-      score: "",
-      nextMatchId: null,
-      nextSlot: null,
-    });
-
-    setLocalMatches(scaffolded);
-  }, [registrations]);
-
-  const handleMatchClick = (match: any) => {
+  const handleMatchClick = (match?: BracketMatch) => {
+    if (!match) return;
     setSelectedMatch(match);
-    setMatchWinnerId(match.winner?.id || "");
-    setMatchScore(match.score || "");
+    setMatchWinnerId(match.winnerRegistrationId || "");
+    setMatchScore(typeof match.metadata?.score === "string" ? match.metadata.score : "");
     setShowMatchDialog(true);
   };
 
   const handleSaveMatchResult = () => {
     if (!selectedMatch || !matchWinnerId) return;
-
-    const winnerReg = registrations.find((r) => r.id === matchWinnerId);
-
-    // Update match winner locally
-    const updated = localMatches.map((m) => {
-      if (m.id === selectedMatch.id) {
-        return { ...m, winner: winnerReg, score: matchScore };
-      }
-      return m;
-    });
-
-    // Automatically advance the winner to the next match
-    if (selectedMatch.nextMatchId) {
-      const slot = selectedMatch.nextSlot;
-      for (let i = 0; i < updated.length; i++) {
-        if (updated[i].id === selectedMatch.nextMatchId) {
-          if (slot === "A") {
-            updated[i].competitorA = winnerReg;
-          } else {
-            updated[i].competitorB = winnerReg;
-          }
-          break;
-        }
-      }
-    }
-
-    setLocalMatches(updated);
-    setShowMatchDialog(false);
-    toast.success(`Đã ghi nhận chiến thắng cho ${winnerReg?.user?.fullName || "tay đua"}`);
+    contestsApi
+      .decideBracketWinner(selectedMatch.id, {
+        winner_registration_id: matchWinnerId,
+        metadata: matchScore ? { score: matchScore } : undefined,
+      })
+      .then(() => {
+        setShowMatchDialog(false);
+        queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+        toast.success("Đã ghi nhận kết quả và đẩy winner sang vòng tiếp theo.");
+      })
+      .catch((err: any) => {
+        toast.error(err.response?.data?.message || "Lỗi ghi nhận kết quả trận đấu.");
+      });
   };
 
   if (isContestLoading) {
@@ -534,10 +561,17 @@ export function ProviderContestDetailPage() {
                 <Trophy size={18} className="text-orange-500" /> Sơ đồ & Kết quả loại trực tiếp (Single Elimination)
               </h3>
               <p className="text-[10px] text-slate-400 mt-0.5">
-                Bảng đấu loại trực tiếp tự động phân chia dựa trên 8 người chơi check-in đầu tiên. Click vào trận đấu để ghi nhận kết quả thắng thua!
+                Bảng đấu loại trực tiếp được lưu trên hệ thống. Click vào trận đấu để ghi nhận kết quả thắng thua!
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={() => createBracketMutation.mutate()}
+                disabled={createBracketMutation.isPending || bracketMatches.length > 0}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
+              >
+                <Plus size={14} className="mr-1" /> Dựng bracket 8 người
+              </Button>
               <Button
                 onClick={() => setShowClassDialog(true)}
                 variant="outline"
@@ -556,7 +590,7 @@ export function ProviderContestDetailPage() {
                 <div className="text-center font-bold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-1.5">
                   Tứ kết
                 </div>
-                {localMatches.slice(0, 4).map((m) => (
+                {bracketMatches.slice(0, 4).map((m) => (
                   <div
                     key={m.id}
                     onClick={() => handleMatchClick(m)}
@@ -564,7 +598,7 @@ export function ProviderContestDetailPage() {
                   >
                     <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold mb-2">
                       <span>Mã: {m.id}</span>
-                      <span className="text-orange-500">{m.score ? `Điểm: ${m.score}` : "Scheduled"}</span>
+                      <span className="text-orange-500">{m.metadata?.score ? `Điểm: ${m.metadata.score}` : m.status}</span>
                     </div>
                     <div className="space-y-1.5">
                       <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner?.id === m.competitorA?.id && m.winner ? "bg-orange-500/20 text-orange-400 font-semibold" : "text-slate-400"}`}>
@@ -585,7 +619,7 @@ export function ProviderContestDetailPage() {
                 <div className="text-center font-bold text-xs text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-1.5">
                   Bán kết
                 </div>
-                {localMatches.slice(4, 6).map((m) => (
+                {bracketMatches.slice(4, 6).map((m) => (
                   <div
                     key={m.id}
                     onClick={() => handleMatchClick(m)}
@@ -593,7 +627,7 @@ export function ProviderContestDetailPage() {
                   >
                     <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold mb-2">
                       <span>Mã: {m.id}</span>
-                      <span className="text-orange-500">{m.score ? `Điểm: ${m.score}` : "Scheduled"}</span>
+                      <span className="text-orange-500">{m.metadata?.score ? `Điểm: ${m.metadata.score}` : m.status}</span>
                     </div>
                     <div className="space-y-1.5">
                       <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner?.id === m.competitorA?.id && m.winner ? "bg-orange-500/20 text-orange-400 font-semibold" : "text-slate-400"}`}>
@@ -615,27 +649,32 @@ export function ProviderContestDetailPage() {
                   Chung kết
                 </div>
                 <div
-                  onClick={() => handleMatchClick(localMatches[6])}
+                  onClick={() => handleMatchClick(bracketMatches[6])}
                   className="bg-slate-950 border border-orange-500/30 hover:border-orange-500 rounded-xl p-4 cursor-pointer transition-all shadow-xl shadow-orange-600/5"
                 >
                   <div className="flex justify-between items-center text-[10px] text-orange-500 font-bold mb-3 border-b border-slate-800 pb-1.5">
                     <span>CUP CHAMPIONSHIP</span>
-                    <span>{localMatches[6]?.score ? `Điểm: ${localMatches[6].score}` : "Scheduled"}</span>
+                    <span>{bracketMatches[6]?.metadata?.score ? `Điểm: ${bracketMatches[6].metadata.score}` : bracketMatches[6]?.status || "Chưa có trận"}</span>
                   </div>
                   <div className="space-y-2">
-                    <div className={`flex justify-between items-center text-sm p-1 rounded ${localMatches[6]?.winner?.id === localMatches[6]?.competitorA?.id && localMatches[6]?.winner ? "bg-orange-500/20 text-orange-400 font-bold" : "text-slate-400"}`}>
-                      <span className="truncate max-w-[150px]">{localMatches[6]?.competitorA?.user?.fullName || "Chờ BXH Bán kết"}</span>
-                      <span className="font-mono">{localMatches[6]?.winner?.id === localMatches[6]?.competitorA?.id ? "🏆" : ""}</span>
+                    <div className={`flex justify-between items-center text-sm p-1 rounded ${bracketMatches[6]?.winner?.id === bracketMatches[6]?.competitorA?.id && bracketMatches[6]?.winner ? "bg-orange-500/20 text-orange-400 font-bold" : "text-slate-400"}`}>
+                      <span className="truncate max-w-[150px]">{bracketMatches[6]?.competitorA?.user?.fullName || "Chờ BXH Bán kết"}</span>
+                      <span className="font-mono">{bracketMatches[6]?.winner?.id === bracketMatches[6]?.competitorA?.id ? "W" : ""}</span>
                     </div>
-                    <div className={`flex justify-between items-center text-sm p-1 rounded ${localMatches[6]?.winner?.id === localMatches[6]?.competitorB?.id && localMatches[6]?.winner ? "bg-orange-500/20 text-orange-400 font-bold" : "text-slate-400"}`}>
-                      <span className="truncate max-w-[150px]">{localMatches[6]?.competitorB?.user?.fullName || "Chờ BXH Bán kết"}</span>
-                      <span className="font-mono">{localMatches[6]?.winner?.id === localMatches[6]?.competitorB?.id ? "🏆" : ""}</span>
+                    <div className={`flex justify-between items-center text-sm p-1 rounded ${bracketMatches[6]?.winner?.id === bracketMatches[6]?.competitorB?.id && bracketMatches[6]?.winner ? "bg-orange-500/20 text-orange-400 font-bold" : "text-slate-400"}`}>
+                      <span className="truncate max-w-[150px]">{bracketMatches[6]?.competitorB?.user?.fullName || "Chờ BXH Bán kết"}</span>
+                      <span className="font-mono">{bracketMatches[6]?.winner?.id === bracketMatches[6]?.competitorB?.id ? "W" : ""}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          {bracketMatches.length === 0 && (
+            <div className="text-center text-sm text-slate-500 py-8 border border-dashed border-slate-800 rounded-xl">
+              Chưa có bracket. Hãy tạo Class, check-in đủ 8 người chơi rồi bấm dựng bracket 8 người.
+            </div>
+          )}
         </div>
       )}
 
@@ -655,7 +694,7 @@ export function ProviderContestDetailPage() {
               <Button
                 onClick={() => {
                   if (confirm("Xác nhận công bố kết quả bảng xếp hạng chung cuộc lên trang chủ giải đấu?")) {
-                    publishLeaderboardMutation.mutate("default-class-id");
+                    publishLeaderboardMutation.mutate(primaryClass);
                   }
                 }}
                 disabled={publishLeaderboardMutation.isPending}
@@ -666,7 +705,7 @@ export function ProviderContestDetailPage() {
               <Button
                 onClick={() => {
                   if (confirm("Xác nhận phát hành voucher quà tặng & cúp điện tử cho các tay đua trong bảng xếp hạng?")) {
-                    issueRewardsMutation.mutate("default-class-id");
+                    issueRewardsMutation.mutate(primaryClass);
                   }
                 }}
                 disabled={issueRewardsMutation.isPending}
@@ -985,7 +1024,7 @@ export function ProviderContestDetailPage() {
                 type="button"
                 onClick={() =>
                   createRewardMutation.mutate({
-                    contest_class_id: "default-class-id",
+                    contest_class_id: primaryClass?.id,
                     title: rewardTitle,
                     description: rewardDesc,
                     reward_type: rewardType,

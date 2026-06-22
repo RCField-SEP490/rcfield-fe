@@ -89,8 +89,15 @@ export function ContestDetailPage() {
     enabled: !!contestId,
   });
 
+  const { data: bracketData } = useQuery({
+    queryKey: contestQueryKeys.bracket(contestId),
+    queryFn: () => contestsApi.getContestBracket(contestId!),
+    enabled: !!contestId,
+  });
+
   const standings = leaderboardEnvelope?.data?.standings || [];
   const rewards = rewardsEnvelope?.data || [];
+  const bracketRegistrations = bracketData?.registrations || [];
 
   // Mutations
   const registerMutation = useMutation({
@@ -134,20 +141,45 @@ export function ContestDetailPage() {
 
   // Render Bracket Tree (Static fallback generator based on players or matches)
   const renderBracket = () => {
-    // Generate dummy matches if bracket_matches are empty
-    // Supporting 8 players: QF (4 matches), SF (2 matches), Final (1 match)
-    const dummyMatches = [
-      // Quarter Finals
-      { id: "qf1", stage: "Tứ kết 1", playerA: "Nguyễn Văn Hùng", playerB: "Trần Anh Tuấn", scoreA: "2", scoreB: "1", winner: "Nguyễn Văn Hùng" },
-      { id: "qf2", stage: "Tứ kết 2", playerA: "Lê Minh Quốc", playerB: "Phạm Hải Đăng", scoreA: "0", scoreB: "2", winner: "Phạm Hải Đăng" },
-      { id: "qf3", stage: "Tứ kết 3", playerA: "Hoàng Đức Nam", playerB: "Vũ Tiến Đạt", scoreA: "2", scoreB: "0", winner: "Hoàng Đức Nam" },
-      { id: "qf4", stage: "Tứ kết 4", playerA: "Đỗ Gia Bảo", playerB: "Bùi Quốc Khánh", scoreA: "1", scoreB: "2", winner: "Bùi Quốc Khánh" },
-      // Semi Finals
-      { id: "sf1", stage: "Bán kết 1", playerA: "Nguyễn Văn Hùng", playerB: "Phạm Hải Đăng", scoreA: "1", scoreB: "2", winner: "Phạm Hải Đăng" },
-      { id: "sf2", stage: "Bán kết 2", playerA: "Hoàng Đức Nam", playerB: "Bùi Quốc Khánh", scoreA: "2", scoreB: "1", winner: "Hoàng Đức Nam" },
-      // Final
-      { id: "f1", stage: "Chung kết", playerA: "Phạm Hải Đăng", playerB: "Hoàng Đức Nam", scoreA: "3", scoreB: "2", winner: "Phạm Hải Đăng" },
-    ];
+    const registrationLabel = (registrationId?: string | null) => {
+      if (!registrationId) return "Chờ đấu thủ";
+      const registration = bracketRegistrations.find((item) => item.id === registrationId);
+      return registration?.user?.fullName || `VĐV ${registrationId.slice(0, 8)}`;
+    };
+    const dummyMatches = (bracketData?.matches || [])
+      .slice()
+      .sort((a, b) => a.matchNo - b.matchNo)
+      .map((match) => {
+        const scoreParts = typeof match.metadata?.score === "string" ? match.metadata.score.split("-") : [];
+        return {
+          id: match.id,
+          stage: String(match.metadata?.stage || `Trận ${match.matchNo}`),
+          playerA: registrationLabel(match.competitorARegistrationId),
+          playerB: registrationLabel(match.competitorBRegistrationId),
+          scoreA: scoreParts[0]?.trim() || "",
+          scoreB: scoreParts[1]?.trim() || "",
+          winner: registrationLabel(match.winnerRegistrationId),
+        };
+      });
+
+    if (dummyMatches.length === 0) {
+      return (
+        <div className="text-center py-12 text-slate-500 text-sm">
+          Sơ đồ thi đấu chưa được ban tổ chức công bố.
+        </div>
+      );
+    }
+    while (dummyMatches.length < 7) {
+      dummyMatches.push({
+        id: `pending-${dummyMatches.length + 1}`,
+        stage: "Chờ lịch đấu",
+        playerA: "Chờ đấu thủ",
+        playerB: "Chờ đấu thủ",
+        scoreA: "",
+        scoreB: "",
+        winner: "",
+      });
+    }
 
     return (
       <div className="overflow-x-auto py-8">

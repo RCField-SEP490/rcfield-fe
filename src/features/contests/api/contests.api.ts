@@ -215,7 +215,7 @@ export const contestsApi = {
 
   publishLeaderboard: async (
     contestId: string,
-    body: { contest_class_id: string; scope: "OVERALL" }
+    body: { contest_class_id?: string; scope?: "OVERALL" }
   ): Promise<any> => {
     const res = await api.post<ApiEnvelope<any>>(`/v1/contests/${contestId}/leaderboard/publish`, body);
     return res.data.data;
@@ -228,7 +228,7 @@ export const contestsApi = {
 
   issueRewards: async (
     contestId: string,
-    body: { contest_class_id: string }
+    body: { contest_class_id?: string }
   ): Promise<any> => {
     const res = await api.post<ApiEnvelope<any>>(`/v1/contests/${contestId}/rewards/issue`, body);
     return res.data.data;
