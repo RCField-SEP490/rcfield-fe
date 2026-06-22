@@ -40,17 +40,25 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tất cả" },
   { key: "PENDING", label: "Chờ thanh toán" },
   { key: "CONFIRMED", label: "Đã xác nhận" },
+  { key: "NO_SHOW", label: "Không đến" },
   { key: "COMPLETED", label: "Hoàn thành" },
   { key: "CANCELLED", label: "Đã hủy" },
 ]
 
 export function CustomerBookingsPage() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
+  const [currentPage, setCurrentPage] = useState(1)
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
   const [resumingId, setResumingId] = useState<string | null>(null)
 
+  const handleFilterChange = (filter: FilterKey) => {
+    setActiveFilter(filter)
+    setCurrentPage(1)
+  }
+
+  const PAGE_SIZE = 10
   const status = activeFilter === "all" ? undefined : activeFilter
-  const { data, isLoading } = useMyBookings({ status })
+  const { data, isLoading } = useMyBookings({ status, page: currentPage, limit: PAGE_SIZE })
   const cancelMutation = useCancelBooking()
   const checkoutMutation = useCreateCheckout()
 
@@ -73,6 +81,8 @@ export function CustomerBookingsPage() {
   }
 
   const bookings = data?.data ?? []
+  const totalBookings = data?.total ?? 0
+  const totalPages = Math.ceil(totalBookings / PAGE_SIZE)
 
   const handleCancelConfirm = () => {
     if (!cancelTarget) return
@@ -98,7 +108,7 @@ export function CustomerBookingsPage() {
         {FILTERS.map((f) => (
           <button
             key={f.key}
-            onClick={() => setActiveFilter(f.key)}
+            onClick={() => handleFilterChange(f.key)}
             className={`py-2 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${activeFilter === f.key ? "bg-slate-950 text-white shadow-md shadow-slate-900/20" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
           >
             {f.label}
@@ -115,80 +125,132 @@ export function CustomerBookingsPage() {
           <p className="text-xs text-slate-400 max-w-xs mx-auto">Bạn không có giao dịch đặt lịch nào khớp với bộ lọc đã chọn.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
-          {bookings.map((booking) => {
-            const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
-            const accent = ACCENT[booking.status] ?? "bg-slate-300"
-            const slotStart = new Date(booking.slotStart)
-            const slotEnd = new Date(booking.slotEnd)
-            const shortId = booking.id.substring(0, 8).toUpperCase()
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
+            {bookings.map((booking) => {
+              const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
+              const accent = ACCENT[booking.status] ?? "bg-slate-300"
+              const slotStart = new Date(booking.slotStart)
+              const slotEnd = new Date(booking.slotEnd)
+              const shortId = booking.id.substring(0, 8).toUpperCase()
+              const isPast = slotStart < new Date()
 
-            return (
-              <div key={booking.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/70 transition-colors">
-                <div className={cn("w-1 self-stretch rounded-full shrink-0", accent)} />
+              return (
+                <div key={booking.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/70 transition-colors">
+                  <div className={cn("w-1 self-stretch rounded-full shrink-0", accent)} />
 
-                <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1 items-center">
-                  {/* ID + status */}
-                  <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-0.5 sm:w-28">
-                    <span className="text-sm font-extrabold text-slate-900 font-mono">#{shortId}</span>
-                    <Badge className={cn("text-[10px] shrink-0", statusInfo.badge)}>{statusInfo.label}</Badge>
-                  </div>
+                  <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1 items-center">
+                    {/* ID + status */}
+                    <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-0.5 sm:w-28">
+                      <span className="text-sm font-extrabold text-slate-900 font-mono">#{shortId}</span>
+                      <Badge className={cn("text-[10px] shrink-0", statusInfo.badge)}>{statusInfo.label}</Badge>
+                    </div>
 
-                  {/* Date, time, mode */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-medium">
-                    <span className="font-semibold text-slate-800">
-                      {slotStart.toLocaleDateString("vi-VN")}
-                    </span>
-                    <span className="text-slate-400">
-                      {slotStart.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                      {" – "}
-                      {slotEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                    </span>
-                    <Badge className={cn("text-[10px] border-none font-bold", booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700")}>
-                      {booking.playMode === "RENTAL" ? "Thuê xe" : "Xe riêng"}
-                    </Badge>
-                    {booking.status === "PENDING" && booking.paymentExpiresAt && (
-                      <span className="flex items-center gap-1 text-amber-600 font-semibold">
-                        <Clock className="h-3 w-3" />
-                        HH: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    {/* Date, time, mode */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-medium">
+                      <span className="font-semibold text-slate-800 sm:w-24 shrink-0">
+                        {slotStart.toLocaleDateString("vi-VN")}
                       </span>
-                    )}
-                  </div>
+                      <span className="text-slate-400 sm:w-28 shrink-0">
+                        {slotStart.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                        {" – "}
+                        {slotEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      </span>
+                      <Badge className={cn("text-[10px] border-none font-bold shrink-0", booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700")}>
+                        {booking.playMode === "RENTAL" ? "Thuê xe" : "Xe riêng"}
+                      </Badge>
+                      {booking.status === "PENDING" && booking.paymentExpiresAt && (
+                        <span className="flex items-center gap-1 text-amber-600 font-semibold ml-2">
+                          <Clock className="h-3 w-3" />
+                          HH: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5 justify-end">
-                    {booking.status === "PENDING" && (
-                      <Button
-                        size="sm"
-                        className="h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg shadow-sm"
-                        onClick={() => handleResumePayment(booking.id)}
-                        disabled={resumingId === booking.id}
-                      >
-                        {resumingId === booking.id
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <><CreditCard className="h-3.5 w-3.5 mr-1" />Thanh toán</>}
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 justify-end">
+                      {booking.status === "PENDING" && !isPast && (
+                        <Button
+                          size="sm"
+                          className="h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg shadow-sm"
+                          onClick={() => handleResumePayment(booking.id)}
+                          disabled={resumingId === booking.id}
+                        >
+                          {resumingId === booking.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <><CreditCard className="h-3.5 w-3.5 mr-1" />Thanh toán</>}
+                        </Button>
+                      )}
+                      {(booking.status === "CONFIRMED" || booking.status === "PENDING") && !isPast && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => setCancelTarget(booking.id)}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button asChild size="sm" variant="ghost" className="h-8 px-2 text-slate-500 hover:text-slate-800">
+                        <Link to={`/customer/bookings/${booking.id}`}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
                       </Button>
-                    )}
-                    {(booking.status === "CONFIRMED" || booking.status === "PENDING") && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => setCancelTarget(booking.id)}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button asChild size="sm" variant="ghost" className="h-8 px-2 text-slate-500 hover:text-slate-800">
-                      <Link to={`/booking/${booking.id}`}>
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
+                    </div>
                   </div>
                 </div>
+              )
+            })}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
+              <p className="text-xs font-bold text-slate-500">
+                Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalBookings)} - {Math.min(currentPage * PAGE_SIZE, totalBookings)} trong số {totalBookings} đơn đặt lịch
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="h-8 rounded-lg text-xs font-bold border-slate-200 text-slate-600 hover:bg-zinc-50"
+                >
+                  Trang trước
+                </Button>
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const page = idx + 1
+                  const isCurrent = currentPage === page
+                  return (
+                    <Button
+                      key={page}
+                      variant={isCurrent ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={cn(
+                        "h-8 w-8 rounded-lg text-xs font-bold",
+                        isCurrent
+                          ? "bg-slate-900 text-white hover:bg-slate-850"
+                          : "border-slate-200 text-slate-600 hover:bg-zinc-50"
+                      )}
+                    >
+                      {page}
+                    </Button>
+                  )
+                })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="h-8 rounded-lg text-xs font-bold border-slate-200 text-slate-600 hover:bg-zinc-50"
+                >
+                  Trang sau
+                </Button>
               </div>
-            )
-          })}
+            </div>
+          )}
         </div>
       )}
 

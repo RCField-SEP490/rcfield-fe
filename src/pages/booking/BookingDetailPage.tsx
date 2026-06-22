@@ -108,12 +108,21 @@ function CancelDialog({
 export function BookingDetailPage() {
   const params = useParams()
   const bookingId = params.bookingId ?? params.id
-  const { data: booking, isLoading } = useBooking(bookingId)
+  const { data: booking, isLoading, error, isError } = useBooking(bookingId)
   const cancelMutation = useCancelBooking()
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const queryClient = useQueryClient()
   const role = useAuthStore((s) => s.role)
   const [confirmingRefund, setConfirmingRefund] = useState(false)
+
+  const backUrl =
+    role === "staff"
+      ? "/staff/today-bookings"
+      : role === "provider"
+      ? "/provider/bookings"
+      : role === "admin"
+      ? "/admin/dashboard"
+      : "/customer/bookings"
 
   const handleConfirmRefund = async () => {
     if (!bookingId) return
@@ -122,8 +131,9 @@ export function BookingDetailPage() {
       await staffApi.confirmRefund(bookingId)
       toast.success("Đã xác nhận hoàn tiền thủ công thành công")
       void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(bookingId) })
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể xác nhận hoàn tiền")
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || "Không thể xác nhận hoàn tiền")
     } finally {
       setConfirmingRefund(false)
     }
@@ -143,22 +153,23 @@ export function BookingDetailPage() {
         toast.success("Thanh toán thành công (Bypass)")
         void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(bookingId) })
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể khởi tạo thanh toán")
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || "Không thể khởi tạo thanh toán")
     } finally {
       setPayingAdditional(false)
     }
   }
 
-  const snapshot = booking?.snapshot as Record<string, any> | null
+  const snapshot = booking?.snapshot as Record<string, unknown> | null
   const snapshotSlotFee = Number(snapshot?.slot_fee_total ?? snapshot?.slot_fee ?? 0)
   const snapshotRentalFee = Number(
-    snapshot?.vehicles?.reduce((sum: number, v: any) => sum + Number(v.rental_fee), 0) ??
+    (snapshot?.vehicles as Array<Record<string, unknown>> | undefined)?.reduce((sum: number, v: Record<string, unknown>) => sum + Number(v.rental_fee ?? 0), 0) ??
     snapshot?.rental_fee ??
     0
   )
   const snapshotDeposit = Number(
-    snapshot?.vehicles?.reduce((sum: number, v: any) => sum + Number(v.security_deposit), 0) ??
+    (snapshot?.vehicles as Array<Record<string, unknown>> | undefined)?.reduce((sum: number, v: Record<string, unknown>) => sum + Number(v.security_deposit ?? 0), 0) ??
     snapshot?.deposit_amount ??
     0
   )
@@ -233,11 +244,21 @@ export function BookingDetailPage() {
     )
   }
 
-  if (!booking) {
+  if (isError || !booking) {
+    const errMsg = 
+      (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 
+      (error as Error)?.message || 
+      "Không tìm thấy dữ liệu hoặc không có quyền truy cập."
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Không tìm thấy đơn đặt lịch.</p>
-        <Button asChild variant="outline"><Link to="/customer/bookings">Quay lại</Link></Button>
+        <div className="text-center space-y-2">
+          <p className="text-red-500 font-bold">Không tìm thấy đơn đặt lịch</p>
+          <p className="text-xs text-slate-500 font-mono">ID: {bookingId ?? "Không có ID"}</p>
+          <p className="text-xs text-red-500 bg-red-50 px-4 py-2.5 rounded-xl border border-red-100 max-w-md mx-auto">
+            Chi tiết lỗi: {errMsg}
+          </p>
+        </div>
+        <Button asChild variant="outline"><Link to={backUrl}>Quay lại</Link></Button>
       </div>
     )
   }
@@ -252,14 +273,14 @@ export function BookingDetailPage() {
     <div className="min-h-screen bg-muted/30 px-4 py-6 md:px-6">
       <div className="mx-auto max-w-7xl space-y-4">
         <div className="text-sm text-muted-foreground">
-          <Link to="/customer/bookings" className="hover:text-foreground">Quay lại danh sách</Link>
+          <Link to={backUrl} className="hover:text-foreground">Quay lại danh sách</Link>
           <span className="mx-2">/</span>
           <span>Đơn đặt #{booking.id.substring(0, 8).toUpperCase()}</span>
         </div>
 
          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <main className="space-y-4">
-            {booking.session && (
+            {booking.session && ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(booking.session.status) && !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking.status) && (
               <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm rounded-xl">
                 <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
                   <div className="flex items-start gap-3">
@@ -267,14 +288,18 @@ export function BookingDetailPage() {
                       <Clock3 className="h-5 w-5" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-900">Phiên chơi đang diễn ra</h4>
+                      <h4 className="font-bold text-slate-900">
+                        {booking.session.status === "CHECKED_IN" ? "Phiên chơi chuẩn bị diễn ra" : "Phiên chơi đang diễn ra"}
+                      </h4>
                       <p className="text-xs text-slate-500 mt-0.5">
                         Giờ kết thúc dự kiến: {new Date(booking.session.plannedEndAt).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </div>
                   <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-5">
-                    <Link to={`/customer/sessions/${booking.session.id}`}>Vào phiên chơi</Link>
+                    <Link to={role === "staff" ? `/staff/sessions/${booking.session.id}` : `/customer/sessions/${booking.session.id}`}>
+                      Vào phiên chơi
+                    </Link>
                   </Button>
                 </CardContent>
               </Card>

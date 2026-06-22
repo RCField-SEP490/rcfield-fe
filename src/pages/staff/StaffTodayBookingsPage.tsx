@@ -360,7 +360,9 @@ export default function StaffTodayBookingsPage() {
                   const participantCount = getParticipantCount(b)
                   const vehicleCount = getVehicleCount(b)
                   const fnbAmount = getFnbAmount(b)
-                  const activeSession = b.sessions?.find((session: any) => session.status !== "COMPLETED" && session.status !== "CANCELLED") ?? b.sessions?.[0]
+                  const activeSession = !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(b.status)
+                    ? b.sessions?.find((session: any) => ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(session.status))
+                    : undefined
                   const statusLabel: Record<string, string> = {
                     PENDING: "CHỜ THANH TOÁN",
                     CONFIRMED: "ĐÃ XÁC NHẬN",

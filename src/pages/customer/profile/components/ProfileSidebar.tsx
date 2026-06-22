@@ -1,12 +1,16 @@
-import { CalendarCheck, CreditCard, Medal, ShieldCheck } from "lucide-react"
+import { Medal, ShieldCheck } from "lucide-react"
 import { demoCustomerProfile } from "@/features/customer-booking/data/customer-booking-demo"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { useMyBookings } from "@/features/booking/hooks/use-booking"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 
 export function ProfileSidebar() {
   const user = useAuthStore((state) => state.user)
+  const { data: bookingsData } = useMyBookings()
+  const bookingCount = bookingsData?.total ?? 0
+
   const progress = Math.round((demoCustomerProfile.points / (demoCustomerProfile.points + demoCustomerProfile.pointsToNextTier)) * 100)
   const fullName = user?.fullName ?? demoCustomerProfile.fullName
   const email = user?.email ?? demoCustomerProfile.email
@@ -34,7 +38,7 @@ export function ProfileSidebar() {
             </div>
             <div>
               <p className="text-muted-foreground">Số booking</p>
-              <p className="font-semibold">{demoCustomerProfile.bookingCount}</p>
+              <p className="font-semibold">{bookingCount}</p>
             </div>
           </div>
         </CardContent>
@@ -62,17 +66,6 @@ export function ProfileSidebar() {
           </div>
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" className="h-20 flex-col gap-2 bg-background">
-          <CalendarCheck className="h-5 w-5" />
-          Lịch sử booking
-        </Button>
-        <Button variant="outline" className="h-20 flex-col gap-2 bg-background">
-          <CreditCard className="h-5 w-5" />
-          Ví & thanh toán
-        </Button>
-      </div>
     </div>
   )
 }
