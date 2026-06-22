@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Trophy,
   Calendar,
-  Users,
   MapPin,
   Settings,
   ArrowLeft,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
 import type { ContestClassPayload, ContestRewardPayload } from "../api/contests.api";
+import { ParticipantManagementPanel } from "../components/ParticipantManagementPanel";
 import { getContestErrorMessage } from "../lib/errors";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -151,6 +151,20 @@ export function ProviderContestDetailPage() {
     },
     onError: (err: unknown) => {
       toast.error(getContestErrorMessage(err, "Check-in thất bại."));
+    },
+  });
+
+  const cancelRegistrationMutation = useMutation({
+    mutationFn: (args: { regId: string; reason: string }) =>
+      contestsApi.cancelRegistration(args.regId, { reason: args.reason }),
+    onSuccess: () => {
+      toast.success("Đã hủy đăng ký vận động viên.");
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+    },
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Hủy đăng ký thất bại."));
     },
   });
 
@@ -473,78 +487,16 @@ export function ProviderContestDetailPage() {
 
       {/* Tab: Registrations & Check-In */}
       {activeSubTab === "players" && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
-            <div>
-              <h3 className="font-bold text-slate-100 flex items-center gap-2">
-                <Users size={18} className="text-orange-500" /> Danh sách vận động viên đăng ký
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Xem chi tiết thông tin xe, transponder và thực hiện check-in cho người tham gia khi họ đến sân.
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowScanDialog(true)}
-              className="bg-orange-600 hover:bg-orange-700 font-bold text-white flex items-center gap-1.5 rounded-xl"
-            >
-              <QrCode size={18} /> Quét Check-in Thủ Công
-            </Button>
-          </div>
-
-          {registrations.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-sm">
-              Chưa có vận động viên nào đăng ký tham gia giải đấu này.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
-                    <th className="p-3">Họ Tên</th>
-                    <th className="p-3">Email</th>
-                    <th className="p-3">Nguồn Xe</th>
-                    <th className="p-3">Ghi Chú Xe</th>
-                    <th className="p-3">Mã Check-in</th>
-                    <th className="p-3">Trạng Thái</th>
-                    <th className="p-3 text-right">Hành Động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {registrations.map((reg) => (
-                    <tr key={reg.id} className="border-b border-slate-850 hover:bg-slate-900/40">
-                      <td className="p-3 font-bold text-slate-200">{reg.user?.fullName || "Vận động viên"}</td>
-                      <td className="p-3 text-slate-400">{reg.user?.email}</td>
-                      <td className="p-3">
-                        <Badge variant="secondary" className="bg-slate-900 text-slate-400 border border-slate-850 text-[10px]">
-                          {reg.vehicle_source}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-slate-400 truncate max-w-[150px]">{reg.metadata?.note || "-"}</td>
-                      <td className="p-3 font-mono font-bold text-orange-400">{reg.check_in_code}</td>
-                      <td className="p-3">
-                        <Badge className={`uppercase text-[9px] font-bold ${reg.status === "CHECKED_IN" ? "bg-green-500/10 text-green-400 border border-green-500/25" : "bg-orange-500/10 text-orange-400 border border-orange-500/25"}`}>
-                          {reg.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-right">
-                        {reg.status === "CONFIRMED" && (
-                          <Button
-                            size="sm"
-                            onClick={() => checkInMutation.mutate({ regId: reg.id, cafeId: targetCafeId })}
-                            disabled={checkInMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold h-7 text-[10px]"
-                          >
-                            Check-in
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <ParticipantManagementPanel
+          contest={contest}
+          registrations={registrations}
+          defaultCafeId={selectedCafeId}
+          actionPending={checkInMutation.isPending || cancelRegistrationMutation.isPending}
+          onCheckIn={(registrationId, cafeId) => checkInMutation.mutate({ regId: registrationId, cafeId })}
+          onCancel={(registrationId, reason) =>
+            cancelRegistrationMutation.mutate({ regId: registrationId, reason })
+          }
+        />
       )}
 
       {/* Tab: Knockout Brackets & Matches */}

@@ -21,7 +21,7 @@ export interface Contest {
   id: string;
   provider_id: string;
   name: string;
-  description: string;
+  description: string | null;
   track_type_id: string;
   starts_at: string;
   ends_at: string;
@@ -30,7 +30,7 @@ export interface Contest {
   capacity: number;
   entry_fee: number;
   status: ContestStatus;
-  banner_image_url?: string;
+  banner_image_url?: string | null;
   config?: {
     bracket_size?: number;
     [key: string]: unknown;
@@ -48,7 +48,8 @@ export interface ContestRegistration {
   user_id: string;
   participant_role_snapshot: string;
   vehicle_source: 'BYOC' | 'RENTAL';
-  vehicle_id?: string;
+  vehicle_id?: string | null;
+  customer_vehicle_id?: string | null;
   status: ContestRegistrationStatus;
   check_in_code: string;
   metadata?: {
@@ -59,11 +60,16 @@ export interface ContestRegistration {
     id: string;
     fullName: string;
     email: string;
-    avatarUrl?: string;
+    avatarUrl?: string | null;
   };
-  checked_in_cafe_id?: string;
-  checked_in_by?: string;
-  checked_in_at?: string;
+  checked_in_cafe_id?: string | null;
+  checked_in_by?: string | null;
+  checked_in_at?: string | null;
+  cancelled_by?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ContestClass {

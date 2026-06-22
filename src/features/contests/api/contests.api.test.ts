@@ -43,6 +43,20 @@ describe("contestsApi", () => {
     });
   });
 
+  it("checks in and cancels participant registrations", async () => {
+    await contestsApi.checkInParticipant("registration-1", { cafe_id: "cafe-1" });
+    await contestsApi.cancelRegistration("registration-1", { reason: "No show" });
+
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      "/v1/contest-registrations/registration-1/check-in",
+      { cafe_id: "cafe-1" },
+    );
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      "/v1/contest-registrations/registration-1/cancel",
+      { reason: "No show" },
+    );
+  });
+
   it("reads bracket resources used by FE reload", async () => {
     await contestsApi.listContestClasses("contest-1");
     await contestsApi.listContestRounds("contest-1");

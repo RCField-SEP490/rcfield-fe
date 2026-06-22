@@ -1,6 +1,7 @@
 import type {
   BracketMatch,
   Contest,
+  ParticipatingCafe,
   ContestRegistration,
   ContestRound,
   ContestStatus,
@@ -51,6 +52,105 @@ export function getContestStatusLabel(status: ContestStatus | string) {
     CANCELLED: "Đã hủy",
   };
   return labels[status] ?? status;
+}
+
+export function getRegistrationStatusLabel(status?: string | null) {
+  const labels: Record<string, string> = {
+    PENDING: "Chờ xác nhận",
+    CONFIRMED: "Đã xác nhận",
+    CHECKED_IN: "Đã check-in",
+    CANCELLED: "Đã hủy",
+  };
+  return status ? (labels[status] ?? status) : "--";
+}
+
+export function getVehicleSourceLabel(source?: string | null) {
+  const labels: Record<string, string> = {
+    BYOC: "Xe cá nhân",
+    RENTAL: "Xe thuê",
+  };
+  return source ? (labels[source] ?? source) : "--";
+}
+
+export function getParticipantRoleLabel(role?: string | null) {
+  const labels: Record<string, string> = {
+    CUSTOMER: "Customer",
+    PROVIDER: "Provider racer",
+    STAFF: "Staff",
+  };
+  return role ? (labels[role] ?? role) : "--";
+}
+
+export function registrationNote(registration?: ContestRegistration | null) {
+  const note = registration?.metadata?.note;
+  return typeof note === "string" && note.trim() ? note.trim() : "";
+}
+
+export function checkedInCafeName(
+  registration: Pick<ContestRegistration, "checked_in_cafe_id">,
+  cafes: Pick<ParticipatingCafe, "id" | "name">[],
+) {
+  if (!registration.checked_in_cafe_id) return "";
+  return cafes.find((cafe) => cafe.id === registration.checked_in_cafe_id)?.name ?? "Chi nhánh không xác định";
+}
+
+export function getRegistrationCounts(registrations: ContestRegistration[], capacity?: number) {
+  const counts = registrations.reduce(
+    (acc, registration) => {
+      acc.total += 1;
+      if (registration.status === "PENDING") acc.pending += 1;
+      if (registration.status === "CONFIRMED") acc.confirmed += 1;
+      if (registration.status === "CHECKED_IN") acc.checkedIn += 1;
+      if (registration.status === "CANCELLED") acc.cancelled += 1;
+      if (registration.vehicle_source === "BYOC") acc.byoc += 1;
+      if (registration.vehicle_source === "RENTAL") acc.rental += 1;
+      if (registration.status !== "CANCELLED") acc.active += 1;
+      return acc;
+    },
+    {
+      total: 0,
+      active: 0,
+      pending: 0,
+      confirmed: 0,
+      checkedIn: 0,
+      cancelled: 0,
+      byoc: 0,
+      rental: 0,
+      remaining: Math.max((capacity ?? 0) - registrations.filter((item) => item.status !== "CANCELLED").length, 0),
+    },
+  );
+  counts.remaining = Math.max((capacity ?? counts.active) - counts.active, 0);
+  return counts;
+}
+
+export interface RegistrationFilterState {
+  search: string;
+  status: "ALL" | "PENDING" | "CONFIRMED" | "CHECKED_IN" | "CANCELLED";
+  vehicleSource: "ALL" | "BYOC" | "RENTAL";
+  cafeId: "ALL" | string;
+}
+
+export function filterContestRegistrations(
+  registrations: ContestRegistration[],
+  filters: RegistrationFilterState,
+) {
+  const search = filters.search.trim().toLowerCase();
+  return registrations.filter((registration) => {
+    if (filters.status !== "ALL" && registration.status !== filters.status) return false;
+    if (filters.vehicleSource !== "ALL" && registration.vehicle_source !== filters.vehicleSource) return false;
+    if (filters.cafeId !== "ALL" && registration.checked_in_cafe_id !== filters.cafeId) return false;
+    if (!search) return true;
+
+    const fields = [
+      registrationName(registration),
+      registrationEmail(registration),
+      registration.check_in_code,
+      registration.vehicle_source,
+      registration.participant_role_snapshot,
+      registrationNote(registration),
+    ];
+    return fields.some((field) => field.toLowerCase().includes(search));
+  });
 }
 
 export function getRoundLabel(round?: ContestRound | null) {
