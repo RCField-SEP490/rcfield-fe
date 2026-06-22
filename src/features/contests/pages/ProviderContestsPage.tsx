@@ -54,33 +54,33 @@ export function ProviderContestsPage() {
   });
 
   return (
-    <div className="space-y-6 text-slate-100 p-6 max-w-7xl mx-auto">
+    <div className="space-y-6 text-[#1c1b1b] p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-            <Trophy className="text-orange-500" /> Quản Lý Giải Đấu
+          <h1 className="text-3xl font-extrabold text-[#1c1b1b] tracking-tight flex items-center gap-2">
+            <Trophy className="text-orange-600" /> Quản Lý Giải Đấu
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-[#6f6c6a] text-sm mt-1">
             Thiết lập, mở đăng ký, tổ chức chia bảng đấu và công bố kết quả giải đua xe RC.
           </p>
         </div>
         <Button
           onClick={() => navigate("/provider/contests/new")}
-          className="bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center gap-1.5 rounded-xl shadow-lg shadow-orange-600/15"
+          className="bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center gap-1.5 rounded-xl shadow-md"
         >
           <Plus size={18} /> Tạo giải đấu mới
         </Button>
       </div>
 
       {/* Toolbar Filters */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white border border-[#e5e2e1] p-4 rounded-xl shadow-sm">
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6f6c6a]" size={16} />
           <Input
             placeholder="Tìm kiếm giải đấu..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-slate-950 border-slate-800 text-slate-200 focus-visible:ring-orange-500"
+            className="pl-9 bg-[#fcf8f8] border-[#e5e2e1] text-[#1c1b1b] focus-visible:ring-orange-500"
           />
         </div>
 
@@ -89,7 +89,7 @@ export function ProviderContestsPage() {
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`py-1.5 px-4 rounded-lg text-xs font-bold capitalize transition-all shrink-0 ${activeFilter === filter ? "bg-orange-600 text-white" : "bg-slate-950 border border-slate-800 text-slate-400 hover:text-white"}`}
+              className={`py-1.5 px-4 rounded-lg text-xs font-bold capitalize transition-all shrink-0 ${activeFilter === filter ? "bg-orange-600 text-white shadow" : "bg-[#fcf8f8] border border-[#e5e2e1] text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
             >
               {filter === "all" ? "Tất cả" : filter === "draft" ? "Nháp" : filter === "active" ? "Đang hoạt động" : "Đã qua"}
             </button>
@@ -101,16 +101,16 @@ export function ProviderContestsPage() {
       {isLoading ? (
         <div className="text-center py-20 space-y-4">
           <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-400 text-sm">Đang tải danh sách giải đấu...</p>
+          <p className="text-[#6f6c6a] text-sm">Đang tải danh sách giải đấu...</p>
         </div>
       ) : filteredContests.length === 0 ? (
-        <div className="text-center py-20 bg-slate-900/30 rounded-2xl border border-dashed border-slate-800">
-          <Trophy size={48} className="mx-auto text-slate-600 mb-4 animate-pulse" />
-          <h3 className="text-xl font-bold text-slate-400 mb-1">Chưa có giải đấu nào</h3>
-          <p className="text-slate-500 text-sm mb-4">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-[#e5e2e1] shadow-sm">
+          <Trophy size={48} className="mx-auto text-slate-350 mb-4" />
+          <h3 className="text-xl font-bold text-[#6f6c6a] mb-1">Chưa có giải đấu nào</h3>
+          <p className="text-[#6f6c6a] text-sm mb-4">
             Bắt đầu tổ chức giải đấu đầu tiên của bạn ngay bây giờ!
           </p>
-          <Button onClick={() => navigate("/provider/contests/new")} className="bg-orange-600 hover:bg-orange-700 font-bold">
+          <Button onClick={() => navigate("/provider/contests/new")} className="bg-orange-600 hover:bg-orange-700 font-bold text-white">
             Tạo giải đấu ngay
           </Button>
         </div>
@@ -124,30 +124,30 @@ export function ProviderContestsPage() {
             return (
               <div
                 key={contest.id}
-                className="bg-slate-900/50 border border-slate-800 rounded-2xl p-6 flex flex-col hover:border-orange-500/30 transition-all shadow-lg hover:shadow-orange-500/5"
+                className="bg-white border border-[#e5e2e1] rounded-2xl p-6 flex flex-col hover:border-orange-500/35 transition-all shadow-sm"
               >
                 <div className="flex justify-between items-start gap-4 mb-4">
                   <div>
-                    <h3 className="text-lg font-bold text-slate-100 line-clamp-1">{contest.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1 font-medium">
+                    <h3 className="text-lg font-bold text-[#1c1b1b] line-clamp-1">{contest.name}</h3>
+                    <p className="text-xs text-[#6f6c6a] mt-1 font-medium">
                       Thời gian: {formatDateTime(contest.starts_at)}
                     </p>
                   </div>
-                  <Badge className={`uppercase text-[9px] font-bold ${contest.status === "OPEN" ? "bg-green-500/10 text-green-400 border border-green-500/20" : contest.status === "RUNNING" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-slate-800 text-slate-400 border border-slate-700"}`}>
+                  <Badge className={`uppercase text-[9px] font-bold ${contest.status === "OPEN" ? "bg-green-50 text-green-700 border border-green-200" : contest.status === "RUNNING" ? "bg-red-50 text-red-700 border border-red-200" : "bg-[#f6f3f2] text-[#6f6c6a] border border-[#e5e2e1]"}`}>
                     {contest.status}
                   </Badge>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs text-slate-400 mb-5">
+                <div className="grid grid-cols-2 gap-4 text-xs text-[#6f6c6a] mb-5">
                   <div className="space-y-1">
-                    <span className="text-[10px] text-slate-500 uppercase block font-semibold">Địa điểm tổ chức</span>
-                    <span className="font-bold text-slate-300 line-clamp-1">
+                    <span className="text-[10px] text-[#6f6c6a] uppercase block font-semibold">Địa điểm tổ chức</span>
+                    <span className="font-bold text-[#1c1b1b] line-clamp-1">
                       {contest.participating_cafes?.map((c) => c.name).join(", ") || "Chưa thiết lập"}
                     </span>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] text-slate-500 uppercase block font-semibold">Lệ phí giải</span>
-                    <span className="font-bold text-orange-400 font-mono">
+                    <span className="text-[10px] text-[#6f6c6a] uppercase block font-semibold">Lệ phí giải</span>
+                    <span className="font-bold text-orange-600 font-mono">
                       {contest.entry_fee === 0 ? "MIỄN PHÍ" : `${contest.entry_fee.toLocaleString()} đ`}
                     </span>
                   </div>
@@ -156,10 +156,10 @@ export function ProviderContestsPage() {
                 {/* Capacity progress */}
                 <div className="space-y-1.5 mb-6 mt-auto">
                   <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-slate-500 uppercase text-[9px]">Tay đua tham dự</span>
-                    <span className="text-slate-300">{registered}/{capacity}</span>
+                    <span className="text-[#6f6c6a] uppercase text-[9px]">Tay đua tham dự</span>
+                    <span className="text-[#1c1b1b]">{registered}/{capacity}</span>
                   </div>
-                  <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                  <div className="h-2 w-full bg-[#f6f3f2] rounded-full overflow-hidden border border-[#e5e2e1]">
                     <div
                       className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all"
                       style={{ width: `${percent}%` }}
@@ -167,14 +167,14 @@ export function ProviderContestsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 border-t border-slate-850 pt-4">
+                <div className="flex items-center justify-between gap-3 border-t border-[#e5e2e1] pt-4">
                   <Button
                     asChild
                     variant="outline"
-                    className="border-slate-800 bg-slate-950 hover:bg-slate-900 text-slate-300 hover:text-white"
+                    className="border-[#e5e2e1] bg-[#fcf8f8] hover:bg-[#f6f3f2] text-[#1c1b1b] hover:text-[#1c1b1b]"
                   >
                     <Link to={`/provider/contests/${contest.id}`}>
-                      <Settings size={14} className="mr-1.5" /> Quản lý giải
+                      <Settings size={14} className="mr-1.5 text-orange-600" /> Quản lý giải
                     </Link>
                   </Button>
                   
@@ -182,7 +182,7 @@ export function ProviderContestsPage() {
                     <Button
                       asChild
                       variant="ghost"
-                      className="text-orange-400 hover:text-orange-350 hover:bg-orange-500/5 font-bold"
+                      className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 font-bold"
                     >
                       <Link to={`/provider/contests/${contest.id}/edit`}>
                         <Edit size={14} className="mr-1.5" /> Chỉnh sửa
@@ -198,4 +198,5 @@ export function ProviderContestsPage() {
     </div>
   );
 }
+
 export default ProviderContestsPage;

@@ -55,36 +55,36 @@ export function StaffContestsPage() {
   });
 
   return (
-    <div className="space-y-6 text-slate-100 p-6 max-w-7xl mx-auto">
+    <div className="space-y-6 text-[#1c1b1b] p-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
-          <Trophy className="text-orange-500" /> Vận Hành Giải Đấu (Staff)
+        <h1 className="text-3xl font-extrabold text-[#1c1b1b] tracking-tight flex items-center gap-2">
+          <Trophy className="text-orange-600" /> Vận Hành Giải Đấu (Staff)
         </h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-[#6f6c6a] text-sm mt-1">
           Hỗ trợ check-in vận động viên tham dự sự kiện tại chi nhánh của bạn.
         </p>
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-md">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white border border-[#e5e2e1] p-4 rounded-xl shadow-sm">
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b8785]" size={16} />
           <Input
             placeholder="Tìm kiếm giải đấu..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-slate-950 border-slate-800 text-slate-250 focus-visible:ring-orange-500"
+            className="pl-9 bg-[#f6f3f2] border-[#e5e2e1] text-[#1c1b1b] placeholder-[#8b8785] focus-visible:ring-orange-500"
           />
         </div>
 
         <div className="flex items-center gap-4 w-full md:w-auto">
           {assignedCafeId && (
-            <label className="flex items-center gap-2 text-xs font-bold text-slate-350 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs font-bold text-[#6f6c6a] cursor-pointer">
               <input
                 type="checkbox"
                 checked={onlyMyBranch}
                 onChange={(e) => setOnlyMyBranch(e.target.checked)}
-                className="rounded text-orange-655 focus:ring-orange-550 border-slate-800"
+                className="rounded text-orange-600 focus:ring-orange-500 border-[#e5e2e1]"
               />
               Chỉ hiện giải đấu tại chi nhánh hiện tại
             </label>
@@ -96,13 +96,13 @@ export function StaffContestsPage() {
       {isLoading ? (
         <div className="text-center py-20">
           <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Đang tải danh sách giải đấu...</p>
+          <p className="text-[#6f6c6a] text-sm">Đang tải danh sách giải đấu...</p>
         </div>
       ) : filteredContests.length === 0 ? (
-        <div className="text-center py-20 bg-slate-900/30 rounded-2xl border border-dashed border-slate-800">
-          <Trophy size={44} className="mx-auto text-slate-600 mb-3 animate-pulse" />
-          <h3 className="text-lg font-bold text-slate-400">Không tìm thấy giải đấu nào</h3>
-          <p className="text-slate-500 text-xs mt-1">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-[#e5e2e1] shadow-sm">
+          <Trophy size={44} className="mx-auto text-orange-300 mb-3 animate-pulse" />
+          <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy giải đấu nào</h3>
+          <p className="text-[#6f6c6a] text-xs mt-1">
             Không có giải đấu nào phù hợp với bộ lọc hoặc từ khóa tìm kiếm của bạn.
           </p>
         </div>
@@ -115,35 +115,35 @@ export function StaffContestsPage() {
             return (
               <div
                 key={contest.id}
-                className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 flex flex-col hover:border-orange-500/25 transition-all shadow-md hover:shadow-lg"
+                className="bg-white border border-[#e5e2e1] rounded-2xl p-5 flex flex-col hover:border-orange-500/35 transition-all shadow-sm hover:shadow-md"
               >
                 <div className="flex justify-between items-start gap-4 mb-3">
-                  <h3 className="font-bold text-slate-200 text-base line-clamp-1">{contest.name}</h3>
-                  <Badge className={`uppercase text-[8px] font-bold shrink-0 ${contest.status === "OPEN" ? "bg-green-500/10 text-green-400 border border-green-500/20" : contest.status === "RUNNING" ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-slate-800 text-slate-400 border border-slate-700"}`}>
+                  <h3 className="font-bold text-[#1c1b1b] text-base line-clamp-1">{contest.name}</h3>
+                  <Badge className={`uppercase text-[8px] font-bold shrink-0 ${contest.status === "OPEN" ? "bg-green-500/10 text-green-700 border border-green-500/20" : contest.status === "RUNNING" ? "bg-red-500/10 text-red-700 border border-red-500/20" : "bg-[#f6f3f2] text-[#6f6c6a] border border-[#e5e2e1]"}`}>
                     {contest.status}
                   </Badge>
                 </div>
 
-                <div className="space-y-2 text-xs text-slate-400 mb-5">
+                <div className="space-y-2 text-xs text-[#6f6c6a] mb-5">
                   <div className="flex items-center gap-1.5">
-                    <Calendar size={13} className="text-orange-500/80" />
+                    <Calendar size={13} className="text-orange-600" />
                     <span>Khai mạc: {formatDateTime(contest.starts_at)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Users size={13} className="text-orange-500/80" />
+                    <Users size={13} className="text-orange-600" />
                     <span>VĐV đăng ký: {registered} / {capacity}</span>
                   </div>
                   {contest.participating_cafes?.length > 0 && (
                     <div className="flex items-start gap-1.5">
-                      <MapPin size={13} className="text-orange-500/80 shrink-0 mt-0.5" />
-                      <span className="line-clamp-1">
+                      <MapPin size={13} className="text-orange-600 shrink-0 mt-0.5" />
+                      <span className="line-clamp-1 text-[#1c1b1b]">
                         Cơ sở: {contest.participating_cafes.map((c) => c.name).join(", ")}
                       </span>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-auto border-t border-slate-850 pt-4 flex gap-3">
+                <div className="mt-auto border-t border-[#e5e2e1] pt-4 flex gap-3">
                   <Button
                     size="sm"
                     onClick={() => navigate(`/staff/contests/${contest.id}`)}

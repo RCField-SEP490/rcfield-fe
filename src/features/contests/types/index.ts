@@ -88,6 +88,10 @@ export interface ContestRound {
   contest_class_id: string;
   round_type: RoundType;
   round_no: number;
+  roundNo?: number;
+  roundType?: RoundType;
+  scheduled_at?: string;
+  scheduledAt?: string;
   name: string;
   rules?: {
     bracket?: boolean;

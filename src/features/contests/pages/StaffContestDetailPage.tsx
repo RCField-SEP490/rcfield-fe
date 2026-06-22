@@ -94,15 +94,19 @@ export function StaffContestDetailPage() {
     const code = r.check_in_code?.toLowerCase() || "";
     const term = search.toLowerCase();
 
-    return fullName.includes(term) || email.includes(term) || code.includes(term);
+    return (
+      fullName.includes(term) ||
+      email.includes(term) ||
+      code.includes(term)
+    );
   });
 
   if (isContestLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-400 text-sm">Đang tải chi tiết giải đấu...</p>
+          <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto animate-spin" />
+          <p className="text-[#6f6c6a] text-sm">Đang tải chi tiết giải đấu...</p>
         </div>
       </div>
     );
@@ -111,19 +115,19 @@ export function StaffContestDetailPage() {
   if (!contest) return null;
 
   return (
-    <div className="space-y-6 text-slate-100 p-6 max-w-6xl mx-auto">
+    <div className="space-y-6 text-[#1c1b1b] p-6 max-w-6xl mx-auto">
       {/* Header Info */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" className="text-slate-400 hover:text-white rounded-xl">
+          <Button asChild variant="ghost" className="text-[#6f6c6a] hover:text-[#1c1b1b] hover:bg-[#e5e2e1]/50 rounded-xl">
             <Link to="/staff/contests">
               <ArrowLeft size={16} />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-extrabold text-white line-clamp-1">{contest.name}</h1>
-            <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
-              <Calendar size={13} /> Khai mạc: {new Date(contest.starts_at).toLocaleString("vi-VN")}
+            <h1 className="text-2xl font-extrabold text-[#1c1b1b] line-clamp-1">{contest.name}</h1>
+            <p className="text-xs text-[#6f6c6a] mt-1 flex items-center gap-2">
+              <Calendar size={13} className="text-orange-600" /> Khai mạc: {new Date(contest.starts_at).toLocaleString("vi-VN")}
             </p>
           </div>
         </div>
@@ -138,11 +142,11 @@ export function StaffContestDetailPage() {
 
       {/* Warnings & Notices */}
       {!assignedCafeId && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3 text-amber-400">
-          <AlertCircle className="shrink-0" />
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 text-amber-800">
+          <AlertCircle className="shrink-0 text-amber-600" />
           <div>
             <h4 className="font-bold text-sm">Chi nhánh chưa được gán</h4>
-            <p className="text-xs mt-1 text-amber-200/80">
+            <p className="text-xs mt-1 text-amber-700">
               Bạn cần chọn một chi nhánh làm việc trong thanh bên trước khi có thể thực hiện check-in cho khách hàng.
             </p>
           </div>
@@ -150,37 +154,37 @@ export function StaffContestDetailPage() {
       )}
 
       {/* Main Registrations Control Panel */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
+      <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 space-y-6 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h3 className="font-bold text-slate-100 flex items-center gap-2">
-              <Users size={18} className="text-orange-500" /> Danh sách điểm danh Vận động viên
+            <h3 className="font-bold text-[#1c1b1b] flex items-center gap-2">
+              <Users size={18} className="text-orange-600" /> Danh sách điểm danh Vận động viên
             </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-[#6f6c6a] mt-0.5">
               Tổng số đăng ký: {contest.registration_summary?.active ?? 0} | Đã check-in: {contest.registration_summary?.checked_in ?? 0}
             </p>
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b8785]" size={14} />
             <Input
               placeholder="Tên, email hoặc mã check-in..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-slate-950 border-slate-800 text-xs text-slate-200"
+              className="pl-9 bg-[#f6f3f2] border-[#e5e2e1] text-xs text-[#1c1b1b] placeholder-[#8b8785]"
             />
           </div>
         </div>
 
         {filteredRegs.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-sm">
+          <div className="text-center py-12 text-[#6f6c6a] text-sm">
             Nhập hoặc quét mã check-in để tra cứu vận động viên thuộc giải đấu này.
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+          <div className="overflow-x-auto rounded-xl border border-[#e5e2e1] bg-[#fcf8f8]">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+                <tr className="bg-[#f6f3f2] border-b border-[#e5e2e1] text-[#6f6c6a] font-bold">
                   <th className="p-3">Họ Tên</th>
                   <th className="p-3">Email</th>
                   <th className="p-3">Mã Check-in</th>
@@ -192,14 +196,14 @@ export function StaffContestDetailPage() {
               </thead>
               <tbody>
                 {filteredRegs.map((reg) => (
-                  <tr key={reg.id} className="border-b border-slate-850 hover:bg-slate-900/40">
-                    <td className="p-3 font-bold text-slate-200">{reg.user?.fullName || "VĐV"}</td>
-                    <td className="p-3 text-slate-400">{reg.user?.email}</td>
-                    <td className="p-3 font-mono font-bold text-orange-400">{reg.check_in_code}</td>
-                    <td className="p-3">{reg.vehicle_source}</td>
-                    <td className="p-3 text-slate-400 truncate max-w-[120px]">{reg.metadata?.note || "-"}</td>
+                  <tr key={reg.id} className="border-b border-[#e5e2e1] hover:bg-white transition-colors">
+                    <td className="p-3 font-bold text-[#1c1b1b]">{reg.user?.fullName || "VĐV"}</td>
+                    <td className="p-3 text-[#6f6c6a]">{reg.user?.email}</td>
+                    <td className="p-3 font-mono font-bold text-orange-600">{reg.check_in_code}</td>
+                    <td className="p-3 text-[#1c1b1b]">{reg.vehicle_source}</td>
+                    <td className="p-3 text-[#6f6c6a] truncate max-w-[120px]">{reg.metadata?.note || "-"}</td>
                     <td className="p-3">
-                      <Badge className={`uppercase text-[9px] font-bold ${reg.status === "CHECKED_IN" ? "bg-green-500/10 text-green-400 border border-green-500/25" : "bg-orange-500/10 text-orange-400 border border-orange-500/25"}`}>
+                      <Badge className={`uppercase text-[9px] font-bold ${reg.status === "CHECKED_IN" ? "bg-green-500/10 text-green-700 border border-green-500/25" : "bg-orange-500/10 text-orange-700 border border-orange-500/25"}`}>
                         {reg.status}
                       </Badge>
                     </td>
@@ -225,33 +229,33 @@ export function StaffContestDetailPage() {
 
       {/* Manual Code Input Dialog */}
       <Dialog open={showScanDialog} onOpenChange={setShowScanDialog}>
-        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-200 max-w-md">
+        <DialogContent className="bg-white border border-[#e5e2e1] text-[#1c1b1b] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white font-extrabold flex items-center gap-1.5">
-              <QrCode className="text-orange-500" /> Nhập mã Check-in điểm danh
+            <DialogTitle className="text-[#1c1b1b] font-extrabold flex items-center gap-1.5">
+              <QrCode className="text-orange-600" /> Nhập mã Check-in điểm danh
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">
+            <DialogDescription className="text-[#6f6c6a] text-xs">
               Nhập mã check-in gồm các ký tự chữ hoặc số để ghi nhận vận động viên đã có mặt tại cơ sở.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleManualCheckInSubmit} className="space-y-4 py-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Mã check-in điểm danh</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">Mã check-in điểm danh</label>
               <Input
                 placeholder="Ví dụ: e4f84e38..."
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
-                className="bg-slate-950 border-slate-850 text-slate-200 font-mono tracking-widest text-center"
+                className="bg-[#f6f3f2] border-[#e5e2e1] text-[#1c1b1b] font-mono tracking-widest text-center"
                 required
               />
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="ghost" onClick={() => setShowScanDialog(false)} className="text-slate-400">
+              <Button type="button" variant="ghost" onClick={() => setShowScanDialog(false)} className="text-[#6f6c6a] hover:bg-[#f6f3f2]">
                 Hủy
               </Button>
-              <Button type="submit" disabled={lookupMutation.isPending || checkInMutation.isPending} className="bg-orange-600 hover:bg-orange-700 font-bold">
+              <Button type="submit" disabled={lookupMutation.isPending || checkInMutation.isPending} className="bg-orange-600 hover:bg-orange-700 font-bold text-white">
                 Xác nhận
               </Button>
             </div>

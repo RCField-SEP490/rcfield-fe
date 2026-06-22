@@ -163,7 +163,7 @@ export function ContestDetailPage() {
 
     if (dummyMatches.length === 0) {
       return (
-        <div className="text-center py-12 text-slate-500 text-sm">
+        <div className="text-center py-12 text-[#6f6c6a] text-sm">
           Sơ đồ thi đấu chưa được ban tổ chức công bố.
         </div>
       );
@@ -185,16 +185,16 @@ export function ContestDetailPage() {
         <div className="min-w-[800px] flex justify-between gap-4 px-4 items-center">
           {/* Quarter Finals Column */}
           <div className="flex flex-col gap-10 w-64">
-            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold text-center border-b border-slate-800 pb-2">Tứ kết</h4>
+            <h4 className="text-xs uppercase tracking-wider text-[#6f6c6a] font-bold text-center border-b border-[#e5e2e1] pb-2">Tứ kết</h4>
             {dummyMatches.slice(0, 4).map((m) => (
-              <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg relative">
-                <div className="text-[10px] text-orange-500 font-bold mb-1.5">{m.stage}</div>
+              <div key={m.id} className="bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl p-3 shadow-sm relative">
+                <div className="text-[10px] text-orange-600 font-bold mb-1.5">{m.stage}</div>
                 <div className="space-y-1.5">
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerA ? "bg-orange-500/10 text-orange-400 font-semibold" : "text-slate-400"}`}>
+                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerA ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
                     <span>{m.playerA}</span>
                     <span className="font-mono">{m.scoreA}</span>
                   </div>
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerB ? "bg-orange-500/10 text-orange-400 font-semibold" : "text-slate-400"}`}>
+                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerB ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
                     <span>{m.playerB}</span>
                     <span className="font-mono">{m.scoreB}</span>
                   </div>
@@ -204,23 +204,23 @@ export function ContestDetailPage() {
           </div>
 
           {/* Connectors QF -> SF */}
-          <div className="hidden lg:flex flex-col justify-around h-[400px] text-slate-700">
-            <span className="border-t-2 border-r-2 border-slate-800 h-28 w-6 rounded-tr-lg" />
-            <span className="border-b-2 border-r-2 border-slate-800 h-28 w-6 rounded-br-lg" />
+          <div className="hidden lg:flex flex-col justify-around h-[400px] text-[#e5e2e1]">
+            <span className="border-t-2 border-r-2 border-[#e5e2e1] h-28 w-6 rounded-tr-lg" />
+            <span className="border-b-2 border-r-2 border-[#e5e2e1] h-28 w-6 rounded-br-lg" />
           </div>
 
           {/* Semi Finals Column */}
           <div className="flex flex-col gap-32 w-64">
-            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold text-center border-b border-slate-800 pb-2">Bán kết</h4>
+            <h4 className="text-xs uppercase tracking-wider text-[#6f6c6a] font-bold text-center border-b border-[#e5e2e1] pb-2">Bán kết</h4>
             {dummyMatches.slice(4, 6).map((m) => (
-              <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg relative">
-                <div className="text-[10px] text-orange-500 font-bold mb-1.5">{m.stage}</div>
+              <div key={m.id} className="bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl p-3 shadow-sm relative">
+                <div className="text-[10px] text-orange-600 font-bold mb-1.5">{m.stage}</div>
                 <div className="space-y-1.5">
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerA ? "bg-orange-500/10 text-orange-400 font-semibold" : "text-slate-400"}`}>
+                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerA ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
                     <span>{m.playerA}</span>
                     <span className="font-mono">{m.scoreA}</span>
                   </div>
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerB ? "bg-orange-500/10 text-orange-400 font-semibold" : "text-slate-400"}`}>
+                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerB ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
                     <span>{m.playerB}</span>
                     <span className="font-mono">{m.scoreB}</span>
                   </div>
@@ -230,24 +230,24 @@ export function ContestDetailPage() {
           </div>
 
           {/* Connectors SF -> Final */}
-          <div className="hidden lg:flex flex-col justify-around h-[300px] text-slate-700">
-            <span className="border-t-2 border-r-2 border-slate-800 h-20 w-6 rounded-tr-lg" />
+          <div className="hidden lg:flex flex-col justify-around h-[300px] text-[#e5e2e1]">
+            <span className="border-t-2 border-r-2 border-[#e5e2e1] h-20 w-6 rounded-tr-lg" />
           </div>
 
           {/* Finals Column */}
           <div className="flex flex-col gap-10 w-64 justify-center">
-            <h4 className="text-xs uppercase tracking-wider text-slate-500 font-bold text-center border-b border-slate-800 pb-2">Chung kết</h4>
-            <div className="bg-slate-900 border border-orange-500/30 rounded-xl p-4 shadow-2xl relative shadow-orange-500/5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-md">
+            <h4 className="text-xs uppercase tracking-wider text-[#6f6c6a] font-bold text-center border-b border-[#e5e2e1] pb-2">Chung kết</h4>
+            <div className="bg-[#fcf8f8] border border-orange-500/40 rounded-xl p-4 shadow-md relative shadow-orange-600/5">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
                 <Trophy size={10} /> TRANH CÚP
               </div>
-              <div className="text-[10px] text-orange-500 font-bold mb-2 mt-1">Chung kết tổng</div>
+              <div className="text-[10px] text-orange-600 font-bold mb-2 mt-1">Chung kết tổng</div>
               <div className="space-y-2">
-                <div className={`flex justify-between items-center text-sm p-1.5 rounded ${dummyMatches[6].winner === dummyMatches[6].playerA ? "bg-orange-500/20 text-orange-400 font-bold" : "text-slate-400"}`}>
+                <div className={`flex justify-between items-center text-sm p-1.5 rounded ${dummyMatches[6].winner === dummyMatches[6].playerA ? "bg-orange-100 text-orange-600 font-bold" : "text-[#6f6c6a]"}`}>
                   <span>{dummyMatches[6].playerA}</span>
                   <span className="font-mono">{dummyMatches[6].scoreA}</span>
                 </div>
-                <div className={`flex justify-between items-center text-sm p-1.5 rounded ${dummyMatches[6].winner === dummyMatches[6].playerB ? "bg-orange-500/20 text-orange-400 font-bold" : "text-slate-400"}`}>
+                <div className={`flex justify-between items-center text-sm p-1.5 rounded ${dummyMatches[6].winner === dummyMatches[6].playerB ? "bg-orange-100 text-orange-600 font-bold" : "text-[#6f6c6a]"}`}>
                   <span>{dummyMatches[6].playerB}</span>
                   <span className="font-mono">{dummyMatches[6].scoreB}</span>
                 </div>
@@ -261,10 +261,10 @@ export function ContestDetailPage() {
 
   if (isContestLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-slate-400">Đang tải thông tin giải đấu...</p>
+          <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto animate-spin" />
+          <p className="text-[#6f6c6a]">Đang tải thông tin giải đấu...</p>
         </div>
       </div>
     );
@@ -272,14 +272,14 @@ export function ContestDetailPage() {
 
   if (!contest) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="text-center space-y-4 max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl">
+      <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] flex items-center justify-center p-4">
+        <div className="text-center space-y-4 max-w-md bg-white border border-[#e5e2e1] rounded-2xl p-8 shadow-sm">
           <ShieldAlert size={48} className="mx-auto text-red-500" />
           <h2 className="text-2xl font-bold">Giải đấu không tồn tại</h2>
-          <p className="text-slate-400 text-sm">
+          <p className="text-[#6f6c6a] text-sm">
             Sự kiện bạn đang tìm kiếm không tồn tại hoặc đã bị gỡ bỏ khỏi hệ thống.
           </p>
-          <Button asChild className="bg-orange-600 hover:bg-orange-700">
+          <Button asChild className="bg-orange-600 hover:bg-orange-700 text-white font-bold">
             <Link to="/contests">Quay lại danh sách</Link>
           </Button>
         </div>
@@ -291,38 +291,38 @@ export function ContestDetailPage() {
   const showRegisterButton = contest.status === "OPEN" && contest.is_registration_open && !myRegistration;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
+    <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] pb-20">
       {/* Hero Header Banner */}
-      <div className="relative h-64 md:h-96 bg-slate-900 overflow-hidden">
+      <div className="relative h-64 md:h-96 bg-[#f6f3f2] overflow-hidden border-b border-[#e5e2e1]">
         {contest.banner_image_url ? (
           <img
             src={contest.banner_image_url}
             alt={contest.name}
-            className="w-full h-full object-cover opacity-60"
+            className="w-full h-full object-cover opacity-80"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-slate-900 via-orange-950/40 to-slate-950" />
+          <div className="w-full h-full bg-gradient-to-r from-[#f6f3f2] via-orange-50 to-[#fcf8f8]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#fcf8f8] via-[#fcf8f8]/10 to-transparent" />
 
         {/* Floating Content */}
         <div className="absolute bottom-6 left-0 right-0">
           <div className="container mx-auto px-4 max-w-6xl">
             <Link
               to="/contests"
-              className="inline-flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-350 mb-4 transition-colors bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-sm border border-slate-800"
+              className="inline-flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 mb-4 transition-colors bg-white/80 px-3 py-1.5 rounded-full backdrop-blur-sm border border-[#e5e2e1]"
             >
               <ArrowLeft size={14} /> Quay lại giải đấu
             </Link>
-            <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight leading-tight mb-2">
+            <h1 className="text-2xl md:text-4xl font-extrabold text-[#1c1b1b] tracking-tight leading-tight mb-2">
               {contest.name}
             </h1>
             <div className="flex flex-wrap items-center gap-3">
-              <Badge className="bg-orange-500/10 text-orange-400 border border-orange-500/20 uppercase text-[10px] tracking-wide font-bold">
+              <Badge className="bg-orange-50 text-orange-600 border border-orange-200 uppercase text-[10px] tracking-wide font-bold">
                 {contest.status}
               </Badge>
-              <span className="text-slate-400 text-xs flex items-center gap-1">
-                <Calendar size={14} /> Bắt đầu: {formatDateTime(contest.starts_at)}
+              <span className="text-[#6f6c6a] text-xs flex items-center gap-1">
+                <Calendar size={14} className="text-orange-600" /> Bắt đầu: {formatDateTime(contest.starts_at)}
               </span>
             </div>
           </div>
@@ -334,28 +334,28 @@ export function ContestDetailPage() {
           {/* Main Info Columns */}
           <div className="lg:col-span-2 space-y-6">
             {/* Tabs Trigger */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-1.5 flex gap-2 overflow-x-auto">
+            <div className="bg-[#f6f3f2] border border-[#e5e2e1] rounded-xl p-1.5 flex gap-2 overflow-x-auto shadow-sm">
               <button
                 onClick={() => setActiveTab("overview")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "overview" ? "bg-orange-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "overview" ? "bg-orange-600 text-white shadow" : "text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
               >
                 Tổng quan
               </button>
               <button
                 onClick={() => setActiveTab("leaderboard")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "leaderboard" ? "bg-orange-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "leaderboard" ? "bg-orange-600 text-white shadow" : "text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
               >
                 Bảng xếp hạng
               </button>
               <button
                 onClick={() => setActiveTab("bracket")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "bracket" ? "bg-orange-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "bracket" ? "bg-orange-600 text-white shadow" : "text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
               >
                 Sơ đồ thi đấu
               </button>
               <button
                 onClick={() => setActiveTab("rewards")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "rewards" ? "bg-orange-600 text-white shadow" : "text-slate-400 hover:text-white"}`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all shrink-0 ${activeTab === "rewards" ? "bg-orange-600 text-white shadow" : "text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
               >
                 Phần thưởng
               </button>
@@ -363,30 +363,30 @@ export function ContestDetailPage() {
 
             {/* Overview Tab Content */}
             {activeTab === "overview" && (
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 space-y-6 shadow-xl backdrop-blur-sm">
+              <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 space-y-6 shadow-sm">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100 mb-3 flex items-center gap-2">
-                    <FileText size={18} className="text-orange-500" /> Giới thiệu giải đấu
+                  <h3 className="text-lg font-bold text-[#1c1b1b] mb-3 flex items-center gap-2">
+                    <FileText size={18} className="text-orange-600" /> Giới thiệu giải đấu
                   </h3>
-                  <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">
+                  <div className="text-[#6f6c6a] text-sm leading-relaxed whitespace-pre-line">
                     {contest.description || "Chưa có thông tin mô tả chi tiết."}
                   </div>
                 </div>
 
-                <div className="border-t border-slate-800 pt-6">
-                  <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-                    <MapPin size={18} className="text-orange-500" /> Các cơ sở tham gia tổ chức
+                <div className="border-t border-[#e5e2e1] pt-6">
+                  <h3 className="text-lg font-bold text-[#1c1b1b] mb-4 flex items-center gap-2">
+                    <MapPin size={18} className="text-orange-600" /> Các cơ sở tham gia tổ chức
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {contest.participating_cafes.map((cafe) => (
                       <div
                         key={cafe.id}
-                        className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-start gap-3 hover:border-slate-700 transition-colors"
+                        className="bg-[#fcf8f8] border border-[#e5e2e1] p-4 rounded-xl flex items-start gap-3 hover:border-orange-500/35 transition-colors"
                       >
-                        <MapPin className="text-orange-500 mt-0.5 shrink-0" size={16} />
+                        <MapPin className="text-orange-600 mt-0.5 shrink-0" size={16} />
                         <div>
-                          <h4 className="font-bold text-sm text-slate-100">{cafe.name}</h4>
-                          <p className="text-xs text-slate-400 mt-1">
+                          <h4 className="font-bold text-sm text-[#1c1b1b]">{cafe.name}</h4>
+                          <p className="text-xs text-[#6f6c6a] mt-1">
                             {cafe.district}, {cafe.city}
                           </p>
                         </div>
@@ -399,19 +399,19 @@ export function ContestDetailPage() {
 
             {/* Leaderboard Tab Content */}
             {activeTab === "leaderboard" && (
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-                <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-                  <Trophy size={18} className="text-orange-500" /> Bảng xếp hạng tay đua
+              <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-[#1c1b1b] mb-4 flex items-center gap-2">
+                  <Trophy size={18} className="text-orange-600" /> Bảng xếp hạng tay đua
                 </h3>
                 {standings.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500 text-sm">
+                  <div className="text-center py-12 text-[#6f6c6a] text-sm">
                     Bảng xếp hạng chưa được công bố. Kết quả sẽ được cập nhật sau khi bắt đầu đua.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+                  <div className="overflow-x-auto rounded-xl border border-[#e5e2e1] bg-[#fcf8f8]">
                     <table className="w-full text-left border-collapse text-sm">
                       <thead>
-                        <tr className="bg-slate-900 border-b border-slate-800 text-slate-400 font-bold">
+                        <tr className="bg-[#f6f3f2] border-b border-[#e5e2e1] text-[#6f6c6a] font-bold">
                           <th className="p-4 w-16">Hạng</th>
                           <th className="p-4">Tay đua</th>
                           <th className="p-4">Vòng chạy tốt nhất</th>
@@ -421,27 +421,27 @@ export function ContestDetailPage() {
                       </thead>
                       <tbody>
                         {standings.map((s, index) => (
-                          <tr key={index} className="border-b border-slate-850 hover:bg-slate-900/50">
+                          <tr key={index} className="border-b border-[#e5e2e1] hover:bg-white transition-colors">
                             <td className="p-4 font-mono font-bold">
                               {s.rank === 1 ? (
-                                <span className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded text-xs">🥇 1</span>
+                                <span className="bg-yellow-500/10 text-yellow-700 border border-yellow-500/30 px-2 py-0.5 rounded text-xs">🥇 1</span>
                               ) : s.rank === 2 ? (
-                                <span className="bg-slate-300/10 text-slate-350 border border-slate-350/30 px-2 py-0.5 rounded text-xs">🥈 2</span>
+                                <span className="bg-slate-300/10 text-[#6f6c6a] border border-[#e5e2e1] px-2 py-0.5 rounded text-xs">🥈 2</span>
                               ) : s.rank === 3 ? (
-                                <span className="bg-orange-500/10 text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded text-xs">🥉 3</span>
+                                <span className="bg-orange-500/10 text-orange-700 border border-orange-500/30 px-2 py-0.5 rounded text-xs">🥉 3</span>
                               ) : (
                                 s.rank
                               )}
                             </td>
                             <td className="p-4">
                               <div>
-                                <p className="font-bold text-slate-200">{s.fullName || "Tay đua RC"}</p>
-                                <p className="text-xs text-slate-500">{s.email}</p>
+                                <p className="font-bold text-[#1c1b1b]">{s.fullName || "Tay đua RC"}</p>
+                                <p className="text-xs text-[#6f6c6a]">{s.email}</p>
                               </div>
                             </td>
-                            <td className="p-4 font-mono">{formatDuration(s.best_lap_ms)}</td>
-                            <td className="p-4 font-mono">{formatDuration(s.total_time_ms)}</td>
-                            <td className="p-4 font-mono font-bold text-orange-400 text-right">
+                            <td className="p-4 font-mono text-[#1c1b1b]">{formatDuration(s.best_lap_ms)}</td>
+                            <td className="p-4 font-mono text-[#1c1b1b]">{formatDuration(s.total_time_ms)}</td>
+                            <td className="p-4 font-mono font-bold text-orange-600 text-right">
                               {s.points ?? 0}
                             </td>
                           </tr>
@@ -455,11 +455,11 @@ export function ContestDetailPage() {
 
             {/* Bracket Tab Content */}
             {activeTab === "bracket" && (
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-                <h3 className="text-lg font-bold text-slate-100 mb-2 flex items-center gap-2">
-                  <Trophy size={18} className="text-orange-500" /> Sơ đồ thi đấu loại trực tiếp
+              <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-[#1c1b1b] mb-2 flex items-center gap-2">
+                  <Trophy size={18} className="text-orange-600" /> Sơ đồ thi đấu loại trực tiếp
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">
+                <p className="text-xs text-[#6f6c6a] mb-6">
                   Cập nhật thời gian thực về các lượt thi đấu Knockout. Các tay đua chiến thắng sẽ tiến thẳng vào vòng trong.
                 </p>
                 {renderBracket()}
@@ -468,12 +468,12 @@ export function ContestDetailPage() {
 
             {/* Rewards Tab Content */}
             {activeTab === "rewards" && (
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
-                <h3 className="text-lg font-bold text-slate-100 mb-4 flex items-center gap-2">
-                  <Medal size={18} className="text-orange-500" /> Giải thưởng giải đấu
+              <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-[#1c1b1b] mb-4 flex items-center gap-2">
+                  <Medal size={18} className="text-orange-600" /> Giải thưởng giải đấu
                 </h3>
                 {rewards.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500 text-sm">
+                  <div className="text-center py-12 text-[#6f6c6a] text-sm">
                     Phần thưởng cho sự kiện này đang được cập nhật.
                   </div>
                 ) : (
@@ -481,24 +481,14 @@ export function ContestDetailPage() {
                     {rewards.map((reward) => (
                       <div
                         key={reward.id}
-                        className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex gap-4 hover:border-orange-500/20 transition-all shadow-md"
+                        className="bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl p-4 flex gap-4 hover:border-orange-500/35 transition-all shadow-sm"
                       >
-                        <div className="bg-orange-500/10 p-3 rounded-xl border border-orange-500/20 text-orange-400 self-start">
+                        <div className="bg-orange-50 p-3 rounded-xl border border-orange-200 text-orange-600 self-start">
                           <Trophy size={20} />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs uppercase text-orange-500 font-extrabold font-mono">
-                              HẠNG {reward.position}
-                            </span>
-                            {reward.quantity > 1 && (
-                              <Badge variant="secondary" className="text-[9px] bg-slate-900 border border-slate-850 px-1 py-0">
-                                Số lượng: {reward.quantity}
-                              </Badge>
-                            )}
-                          </div>
-                          <h4 className="font-extrabold text-sm text-slate-100">{reward.title}</h4>
-                          <p className="text-xs text-slate-400 mt-1">{reward.description}</p>
+                          <h4 className="font-bold text-sm text-[#1c1b1b]">{reward.title}</h4>
+                          <p className="text-xs text-[#6f6c6a] mt-1">{reward.description}</p>
                         </div>
                       </div>
                     ))}
@@ -510,27 +500,27 @@ export function ContestDetailPage() {
 
           {/* Right Action Sidebar Widget */}
           <div className="space-y-6">
-            <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-              <h3 className="text-lg font-extrabold text-slate-100 mb-4 pb-3 border-b border-slate-800">
+            <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 shadow-sm">
+              <h3 className="text-lg font-extrabold text-[#1c1b1b] mb-4 pb-3 border-b border-[#e5e2e1]">
                 THAM GIA SỰ KIỆN
               </h3>
 
               <div className="space-y-4 mb-6">
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Lệ phí giải</span>
-                  <span className="text-2xl font-black text-orange-400 font-mono">
+                  <span className="text-[10px] text-[#6f6c6a] uppercase block font-semibold">Lệ phí giải</span>
+                  <span className="text-2xl font-black text-orange-600 font-mono">
                     {contest.entry_fee === 0 ? "MIỄN PHÍ" : `${contest.entry_fee.toLocaleString()} đ`}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Sức chứa giải</span>
-                  <span className="text-sm text-slate-200 font-bold">
+                  <span className="text-[10px] text-[#6f6c6a] uppercase block font-semibold">Sức chứa giải</span>
+                  <span className="text-sm text-[#1c1b1b] font-bold">
                     {contest.registration_summary?.active ?? 0} / {contest.capacity} vận động viên đã đăng ký
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Hạn cuối đăng ký</span>
-                  <span className="text-xs text-slate-300 font-medium">
+                  <span className="text-[10px] text-[#6f6c6a] uppercase block font-semibold">Hạn cuối đăng ký</span>
+                  <span className="text-xs text-[#1c1b1b] font-medium">
                     {formatDateTime(contest.registration_closes_at)}
                   </span>
                 </div>
@@ -539,29 +529,29 @@ export function ContestDetailPage() {
               {/* Status Logic Rendering */}
               {myRegistration ? (
                 <div className="space-y-4">
-                  <div className="bg-green-500/10 border border-green-500/20 text-green-400 rounded-xl p-4 flex flex-col items-center text-center">
-                    <CheckCircle size={32} className="mb-2" />
+                  <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl p-4 flex flex-col items-center text-center">
+                    <CheckCircle size={32} className="mb-2 text-green-600" />
                     <h4 className="font-bold text-sm">Bạn đã đăng ký tham gia!</h4>
-                    <p className="text-[10px] text-green-200/70 mt-1">
+                    <p className="text-[10px] text-green-600/80 mt-1">
                       Hãy lưu lại mã QR check-in bên dưới để quét khi đến cơ sở đua xe.
                     </p>
 
-                    <div className="bg-white p-3 rounded-lg mt-4 shadow border border-slate-250 flex flex-col items-center">
-                      <QrCode size={120} className="text-slate-950" />
-                      <span className="font-mono text-xs font-bold text-slate-700 mt-2 block tracking-widest selection:bg-orange-200">
+                    <div className="bg-white p-3 rounded-lg mt-4 shadow border border-[#e5e2e1] flex flex-col items-center">
+                      <QrCode size={120} className="text-[#1c1b1b]" />
+                      <span className="font-mono text-xs font-bold text-[#1c1b1b] mt-2 block tracking-widest selection:bg-orange-200">
                         {myRegistration.check_in_code}
                       </span>
                     </div>
 
-                    <div className="text-[10px] text-slate-400 mt-3 uppercase tracking-wider font-mono">
-                      Trạng thái: <span className="font-bold text-orange-400">{myRegistration.status}</span>
+                    <div className="text-[10px] text-[#6f6c6a] mt-3 uppercase tracking-wider font-mono">
+                      Trạng thái: <span className="font-bold text-orange-600">{myRegistration.status}</span>
                     </div>
                   </div>
 
                   <Button
                     variant="outline"
                     onClick={() => setShowCancelDialog(true)}
-                    className="w-full border-red-500/25 hover:bg-red-500/10 text-red-400 hover:text-red-300 text-xs font-bold"
+                    className="w-full border-red-200 hover:bg-red-50 text-red-600 hover:text-red-700 text-xs font-bold bg-white"
                   >
                     Hủy đăng ký của tôi
                   </Button>
@@ -570,12 +560,12 @@ export function ContestDetailPage() {
                 showRegisterButton ? (
                   <Button
                     onClick={() => setShowRegDialog(true)}
-                    className="w-full bg-gradient-to-r from-orange-600 to-amber-500 hover:from-orange-700 hover:to-amber-600 text-white font-extrabold py-3 shadow-lg shadow-orange-600/10 rounded-xl"
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-3 shadow-md rounded-xl"
                   >
                     ĐĂNG KÝ NGAY
                   </Button>
                 ) : (
-                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl text-center text-xs text-slate-500">
+                  <div className="bg-[#f6f3f2] border border-[#e5e2e1] p-4 rounded-xl text-center text-xs text-[#6f6c6a]">
                     {isFull
                       ? "Giải đấu đã hết chỗ nhận đăng ký."
                       : "Cổng đăng ký chưa mở hoặc đã đóng cho giải đấu này."}
@@ -583,10 +573,10 @@ export function ContestDetailPage() {
                 )
               ) : (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-400 text-center">
+                  <p className="text-xs text-[#6f6c6a] text-center">
                     Bạn cần đăng nhập bằng tài khoản Customer để đăng ký tham gia sự kiện.
                   </p>
-                  <Button asChild className="w-full bg-orange-600 hover:bg-orange-700 font-bold">
+                  <Button asChild className="w-full bg-orange-600 hover:bg-orange-700 font-bold text-white">
                     <Link to="/auth/login">Đăng nhập</Link>
                   </Button>
                 </div>
@@ -598,24 +588,24 @@ export function ContestDetailPage() {
 
       {/* Registration Dialog */}
       <Dialog open={showRegDialog} onOpenChange={setShowRegDialog}>
-        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-200 max-w-md">
+        <DialogContent className="bg-white border border-[#e5e2e1] text-[#1c1b1b] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white font-extrabold flex items-center gap-2">
-              <Car className="text-orange-500" /> Đăng Ký Tham Gia Giải Đấu
+            <DialogTitle className="text-[#1c1b1b] font-extrabold flex items-center gap-2">
+              <Car className="text-orange-600" /> Đăng Ký Tham Gia Giải Đấu
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">
+            <DialogDescription className="text-[#6f6c6a] text-xs">
               Vui lòng điền thông tin cấu hình xe đua RC của bạn để đăng ký thi đấu.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Nguồn xe đua</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">Nguồn xe đua</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setVehicleSource("BYOC")}
-                  className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${vehicleSource === "BYOC" ? "bg-orange-600 border-orange-500 text-white" : "border-slate-800 bg-slate-950 text-slate-400 hover:text-white"}`}
+                  className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${vehicleSource === "BYOC" ? "bg-orange-600 border-orange-600 text-white" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
                 >
                   Xe cá nhân (BYOC)
                 </button>
@@ -623,7 +613,7 @@ export function ContestDetailPage() {
                   type="button"
                   disabled
                   title="Thuê xe cần chọn xe cụ thể và sẽ được mở ở bước tiếp theo"
-                  className="py-2 px-3 rounded-lg border text-sm font-bold transition-all border-slate-800 bg-slate-950 text-slate-600 cursor-not-allowed"
+                  className="py-2 px-3 rounded-lg border text-sm font-bold transition-all border-[#e5e2e1] bg-[#f6f3f2] text-slate-350 cursor-not-allowed opacity-55"
                 >
                   Thuê xe tại cơ sở
                 </button>
@@ -631,20 +621,20 @@ export function ContestDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">
                 {vehicleSource === "BYOC" ? "Thông tin xe cá nhân" : "Ghi chú thuê xe"}
               </label>
               <Input
                 placeholder={vehicleSource === "BYOC" ? "Tên xe, Tỷ lệ (e.g. Drift Pro 1:10), ID transponder..." : "Ghi chú loại xe hoặc cấu hình động cơ bạn mong muốn..."}
                 value={vehicleNote}
                 onChange={(e) => setVehicleNote(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-slate-200"
+                className="bg-white border-[#e5e2e1] text-[#1c1b1b] focus:border-orange-500"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-800 pt-4">
-            <Button variant="ghost" onClick={() => setShowRegDialog(false)} className="text-slate-400">
+          <div className="flex justify-end gap-3 border-t border-[#e5e2e1] pt-4">
+            <Button variant="ghost" onClick={() => setShowRegDialog(false)} className="text-[#6f6c6a] hover:bg-[#f6f3f2]">
               Hủy
             </Button>
             <Button
@@ -655,7 +645,7 @@ export function ContestDetailPage() {
                 })
               }
               disabled={registerMutation.isPending}
-              className="bg-orange-600 hover:bg-orange-700 font-bold"
+              className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
             >
               {registerMutation.isPending ? "Đang xử lý..." : "Xác nhận đăng ký"}
             </Button>
@@ -665,28 +655,28 @@ export function ContestDetailPage() {
 
       {/* Cancellation Dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-200 max-w-md">
+        <DialogContent className="bg-white border border-[#e5e2e1] text-[#1c1b1b] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white font-extrabold flex items-center gap-2">
-              <AlertCircle className="text-red-500" /> Xác Nhận Hủy Đăng Ký
+            <DialogTitle className="text-[#1c1b1b] font-extrabold flex items-center gap-2">
+              <AlertCircle className="text-red-600" /> Xác Nhận Hủy Đăng Ký
             </DialogTitle>
-            <DialogDescription className="text-slate-400 text-xs">
+            <DialogDescription className="text-[#6f6c6a] text-xs">
               Bạn có chắc chắn muốn hủy đăng ký tham gia giải đấu này? Hành động này không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2 py-4">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Lý do hủy bỏ</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">Lý do hủy bỏ</label>
             <Input
               placeholder="Nhập lý do của bạn..."
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              className="bg-slate-950 border-slate-800 text-slate-200"
+              className="bg-white border-[#e5e2e1] text-[#1c1b1b] focus:border-orange-500"
             />
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-800 pt-4">
-            <Button variant="ghost" onClick={() => setShowCancelDialog(false)} className="text-slate-400">
+          <div className="flex justify-end gap-3 border-t border-[#e5e2e1] pt-4">
+            <Button variant="ghost" onClick={() => setShowCancelDialog(false)} className="text-[#6f6c6a] hover:bg-[#f6f3f2]">
               Quay lại
             </Button>
             <Button

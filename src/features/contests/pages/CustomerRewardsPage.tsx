@@ -45,19 +45,19 @@ export function CustomerRewardsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-955 text-slate-100 pb-20">
+    <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b] pb-20">
       {/* Hero header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-orange-950/40 border-b border-slate-850 py-16 px-4">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_-20%,rgba(249,115,22,0.12),rgba(255,255,255,0))]" />
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#fcf8f8] via-[#f5efe9] to-orange-50 border-b border-[#e5e2e1] py-16 px-4">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_-20%,rgba(234,88,12,0.08),rgba(255,255,255,0))]" />
         
         <div className="container mx-auto text-center relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-500/20 bg-orange-500/5 text-orange-400 text-xs font-semibold uppercase tracking-wider mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-500/20 bg-orange-500/10 text-orange-600 text-xs font-semibold uppercase tracking-wider mb-4">
             <Gift size={14} /> Quà tặng & Vinh danh
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
+          <h1 className="text-3xl md:text-5xl font-extrabold text-[#1c1b1b] tracking-tight mb-4">
             PHẦN THƯỞNG CỦA BẠN
           </h1>
-          <p className="text-slate-400 text-sm leading-relaxed max-w-lg mx-auto">
+          <p className="text-[#6f6c6a] text-sm leading-relaxed max-w-lg mx-auto">
             Xem lịch sử nhận giải, lấy mã voucher ưu đãi của bạn khi đứng top trong các bảng xếp hạng giải đấu của RCField.
           </p>
         </div>
@@ -67,16 +67,16 @@ export function CustomerRewardsPage() {
         {isLoading ? (
           <div className="text-center py-20">
             <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-slate-450 text-sm">Đang tải danh sách phần thưởng...</p>
+            <p className="text-[#6f6c6a] text-sm">Đang tải danh sách phần thưởng...</p>
           </div>
         ) : claimsList.length === 0 ? (
-          <div className="text-center py-20 bg-slate-900/20 rounded-2xl border border-dashed border-slate-850">
-            <Trophy size={48} className="mx-auto text-slate-700 mb-4" />
-            <h3 className="text-lg font-bold text-slate-400">Bạn chưa có giải thưởng nào</h3>
-            <p className="text-slate-500 text-xs mt-1 max-w-md mx-auto">
+          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-[#e5e2e1] shadow-sm">
+            <Trophy size={48} className="mx-auto text-orange-300 mb-4" />
+            <h3 className="text-lg font-bold text-[#1c1b1b]">Bạn chưa có giải thưởng nào</h3>
+            <p className="text-[#6f6c6a] text-xs mt-1 max-w-md mx-auto">
               Tham gia các giải đua xe RC đang mở cổng đăng ký, thi đấu đạt thứ hạng cao để giành các phần quà và cúp vinh danh giá trị!
             </p>
-            <Button asChild className="bg-orange-600 hover:bg-orange-700 font-bold mt-6">
+            <Button asChild className="bg-orange-600 hover:bg-orange-700 text-white font-bold mt-6">
               <Link to="/contests">Khám phá giải đấu</Link>
             </Button>
           </div>
@@ -88,13 +88,13 @@ export function CustomerRewardsPage() {
               return (
                 <div
                   key={claim.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col md:flex-row hover:border-orange-500/20 transition-all shadow-md"
+                  className="bg-white border border-[#e5e2e1] rounded-2xl overflow-hidden flex flex-col md:flex-row hover:border-orange-500/35 transition-all shadow-sm"
                 >
                   {/* Left coupon banner style */}
                   <div className="bg-gradient-to-br from-orange-600 via-orange-700 to-red-700 p-6 flex flex-col justify-between items-center text-center text-white md:w-48 shrink-0 relative">
                     <div className="absolute top-0 bottom-0 -right-2 flex flex-col justify-around text-slate-950 pointer-events-none hidden md:flex">
                       {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} className="w-4 h-4 bg-slate-950 rounded-full" />
+                        <div key={i} className="w-4 h-4 bg-[#fcf8f8] rounded-full" />
                       ))}
                     </div>
                     
@@ -116,32 +116,32 @@ export function CustomerRewardsPage() {
                   <div className="p-6 flex-1 flex flex-col justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-                        <span className="text-xs text-orange-400 font-extrabold uppercase tracking-wide">
+                        <span className="text-xs text-orange-600 font-extrabold uppercase tracking-wide">
                           {claim.reward?.reward_type || "VOUCHER"}
                         </span>
-                        <Badge className={`uppercase text-[9px] font-bold ${claim.status === "CLAIMED" ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-orange-500/10 text-orange-400 border border-orange-500/20"}`}>
+                        <Badge className={`uppercase text-[9px] font-bold ${claim.status === "CLAIMED" ? "bg-green-500/10 text-green-700 border border-green-500/20" : "bg-orange-500/10 text-orange-700 border border-orange-500/20"}`}>
                           {claim.status}
                         </Badge>
                       </div>
 
-                      <h3 className="text-xl font-bold text-slate-100 mb-1">
+                      <h3 className="text-xl font-bold text-[#1c1b1b] mb-1">
                         {claim.reward?.title || "Phần thưởng tay đua"}
                       </h3>
-                      <p className="text-xs text-slate-400 mb-3">
+                      <p className="text-xs text-[#6f6c6a] mb-3">
                         {claim.reward?.description || "Chúc mừng bạn đã hoàn thành xuất sắc chặng đua."}
                       </p>
                       
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center gap-1.5 text-xs text-[#8b8785]">
                         <Calendar size={13} />
                         <span>Ngày trao giải: {formatDateTime(claim.claimed_at || claim.created_at || claim.issued_at)}</span>
                       </div>
                     </div>
 
                     {/* Code claim box */}
-                    <div className="bg-slate-950 border border-slate-850 p-3 rounded-xl flex items-center justify-between gap-4">
+                    <div className="bg-[#f6f3f2] border border-[#e5e2e1] p-3 rounded-xl flex items-center justify-between gap-4">
                       <div>
-                        <span className="text-[9px] text-slate-500 uppercase block font-semibold">Mã ưu đãi của bạn</span>
-                        <span className="font-mono text-sm font-bold text-slate-350 tracking-wider">
+                        <span className="text-[9px] text-[#8b8785] uppercase block font-semibold">Mã ưu đãi của bạn</span>
+                        <span className="font-mono text-sm font-bold text-[#1c1b1b] tracking-wider">
                           {code}
                         </span>
                       </div>
@@ -149,9 +149,9 @@ export function CustomerRewardsPage() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleCopy(code, claim.id)}
-                        className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                        className="h-8 w-8 p-0 text-[#6f6c6a] hover:text-[#1c1b1b] hover:bg-[#e5e2e1]/50"
                       >
-                        {copiedId === claim.id ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                        {copiedId === claim.id ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
                       </Button>
                     </div>
                   </div>
