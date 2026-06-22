@@ -25,13 +25,14 @@ function buildWsUrl(): string | null {
   return `${wsBase}/ws?token=${encodeURIComponent(token)}`
 }
 
-export function useWebSocket(onMessage: (msg: WsMessage) => void): void {
+export function useWebSocket(onMessage: (msg: WsMessage) => void, enabled = true): void {
   const handlerRef = useRef(onMessage)
   handlerRef.current = onMessage
 
+  const url = enabled ? buildWsUrl() : null
+
   useEffect(() => {
-    const url = buildWsUrl()
-    if (!url) return
+    if (!enabled || !url) return
 
     let ws: WebSocket
     let reconnectTimer: ReturnType<typeof setTimeout>
@@ -59,5 +60,5 @@ export function useWebSocket(onMessage: (msg: WsMessage) => void): void {
       clearTimeout(reconnectTimer)
       ws?.close()
     }
-  }, [])
+  }, [enabled, url])
 }
