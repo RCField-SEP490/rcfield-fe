@@ -10,6 +10,7 @@ import { AppLogo } from "@/shared/components/AppLogo"
 import { cn } from "@/shared/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Button } from "@/shared/ui/button"
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +94,7 @@ export function PublicHeader() {
           </nav>
 
           <div className="hidden items-center gap-2 lg:flex">
+            {isAuthenticated && user && <NotificationBell />}
             {isAuthenticated && user ? (
               <UserMenu user={user} onLogout={handleLogout} />
             ) : (
@@ -107,16 +109,19 @@ export function PublicHeader() {
             )}
           </div>
 
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="rounded-xl hover:bg-slate-100 lg:hidden"
-            aria-label="Mở menu"
-            onClick={() => setIsOpen((current) => !current)}
-          >
-            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          <div className="flex items-center gap-1.5 lg:hidden">
+            {isAuthenticated && user && <NotificationBell />}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="rounded-xl hover:bg-slate-100"
+              aria-label="Mở menu"
+              onClick={() => setIsOpen((current) => !current)}
+            >
+              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
 
         {isOpen && (

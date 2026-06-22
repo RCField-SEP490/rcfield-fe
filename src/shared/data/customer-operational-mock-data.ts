@@ -95,6 +95,7 @@ export interface CustomerBookingDetail {
   discountAmount: number;
   totalAmount: number;
   paymentStatus: "UNPAID" | "PAID" | "REFUNDED";
+  payment_components?: any[];
   plannedParticipants: string[];
   plannedVehicles: string[];
   sessions: MockSessionDetail[];
