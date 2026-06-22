@@ -1,12 +1,13 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { Trophy, Gift, Award, Calendar, Copy, Check, ArrowRight } from "lucide-react";
-import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import { Trophy, Gift, Award, Calendar, Copy, Check } from "lucide-react";
+import { contestsApi } from "../api/contests.api";
 import { useAuthStore } from "@/features/auth/stores/auth.store";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { toast } from "sonner";
+import type { ContestRewardClaim } from "../types";
 
 function formatDateTime(dateStr: string) {
   try {
@@ -30,11 +31,11 @@ export function CustomerRewardsPage() {
 
   const { data: claimsEnvelope, isLoading } = useQuery({
     queryKey: ["customer-reward-claims"],
-    queryFn: () => contestsApi.getCustomerClaims(),
+    queryFn: () => contestsApi.getMyRewardClaims(),
     enabled: !!user,
   });
 
-  const claimsList = claimsEnvelope?.data || [];
+  const claimsList: ContestRewardClaim[] = claimsEnvelope?.data || [];
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -132,7 +133,7 @@ export function CustomerRewardsPage() {
                       
                       <div className="flex items-center gap-1.5 text-xs text-slate-500">
                         <Calendar size={13} />
-                        <span>Ngày trao giải: {formatDateTime(claim.claimed_at || claim.created_at)}</span>
+                        <span>Ngày trao giải: {formatDateTime(claim.claimed_at || claim.created_at || claim.issued_at)}</span>
                       </div>
                     </div>
 

@@ -162,6 +162,8 @@ export interface ContestRewardClaim {
   status: 'ISSUED' | 'CLAIMED' | 'EXPIRED';
   issued_at: string;
   claimed_at?: string;
+  created_at?: string;
+  code?: string;
   reward?: ContestReward;
   contest?: {
     id: string;

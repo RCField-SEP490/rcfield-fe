@@ -1,16 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import {
   Trophy,
-  Calendar,
-  Users,
   Plus,
   Search,
   Settings,
-  Eye,
   Edit,
-  Sliders,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
 import { Button } from "@/shared/ui/button";

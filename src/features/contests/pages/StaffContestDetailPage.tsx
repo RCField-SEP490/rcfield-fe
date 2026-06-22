@@ -1,15 +1,12 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Trophy,
   Calendar,
   Users,
   QrCode,
   ArrowLeft,
-  CheckCircle,
   Search,
-  Building,
   AlertCircle,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
@@ -36,7 +33,7 @@ export function StaffContestDetailPage() {
     enabled: !!contestId,
   });
 
-  const { data: registrations = [], isLoading: isRegsLoading } = useQuery({
+  const { data: registrations = [] } = useQuery({
     queryKey: contestQueryKeys.registrations(contestId),
     queryFn: () => contestsApi.getContestRegistrations(contestId!),
     enabled: !!contestId,

@@ -1,18 +1,15 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
   MapPin,
-  Users,
   Trophy,
-  Clock,
   ArrowLeft,
   ShieldAlert,
   Car,
   QrCode,
   CheckCircle,
-  HelpCircle,
   FileText,
   AlertCircle,
   Medal,
@@ -72,7 +69,7 @@ export function ContestDetailPage() {
   });
 
   // Query registrations
-  const { data: registrations = [], isLoading: isRegsLoading } = useQuery({
+  const { data: registrations = [] } = useQuery({
     queryKey: contestQueryKeys.registrations(contestId),
     queryFn: () => contestsApi.getContestRegistrations(contestId!),
     enabled: !!contestId,

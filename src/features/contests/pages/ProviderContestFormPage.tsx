@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Calendar, ArrowLeft, Save, Building, AlertCircle } from "lucide-react";
+import { Trophy, Calendar, ArrowLeft, Save, Building } from "lucide-react";
 import { contestsApi } from "../api/contests.api";
 import { trackTypeApi } from "@/features/cafes/api/cafe.api";
 import { api } from "@/shared/lib/axios";

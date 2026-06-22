@@ -1,4 +1,3 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Trophy, Calendar, Users, ArrowRight } from "lucide-react";

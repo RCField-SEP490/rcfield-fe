@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router";
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Trophy,
@@ -7,22 +7,15 @@ import {
   Users,
   MapPin,
   Settings,
-  ShieldAlert,
   ArrowLeft,
   Play,
   XCircle,
   QrCode,
   Plus,
-  Tv,
-  Trash2,
   Medal,
   Award,
-  CheckCircle,
-  Clock,
-  Sparkles,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
-import { useAuthStore } from "@/features/auth/stores/auth.store";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
@@ -47,9 +40,7 @@ function formatDateTime(dateStr: string) {
 
 export function ProviderContestDetailPage() {
   const { contestId } = useParams<{ contestId: string }>();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
   
   const [activeSubTab, setActiveSubTab] = useState<"general" | "players" | "brackets" | "rewards">("general");
 
@@ -86,7 +77,7 @@ export function ProviderContestDetailPage() {
     enabled: !!contestId,
   });
 
-  const { data: registrations = [], isLoading: isRegsLoading } = useQuery({
+  const { data: registrations = [] } = useQuery({
     queryKey: contestQueryKeys.registrations(contestId),
     queryFn: () => contestsApi.getContestRegistrations(contestId!),
     enabled: !!contestId,
@@ -102,8 +93,9 @@ export function ProviderContestDetailPage() {
 
   // Default target cafe to the first participating cafe
   useEffect(() => {
-    if (contest?.participating_cafes?.length > 0 && !targetCafeId) {
-      setTargetCafeId(contest.participating_cafes[0].id);
+    const firstCafeId = contest?.participating_cafes?.[0]?.id;
+    if (firstCafeId && !targetCafeId) {
+      setTargetCafeId(firstCafeId);
     }
   }, [contest, targetCafeId]);
 

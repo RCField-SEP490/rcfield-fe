@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import {
   Calendar,
   MapPin,
-  Users,
   Search,
   Bell,
   Trophy,
   Clock,
   ArrowRight,
   Sparkles,
-  CheckCircle,
   X,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
 import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api";
-import type { Contest } from "../types";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Card } from "@/shared/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 
 function formatDateTime(dateStr: string) {
