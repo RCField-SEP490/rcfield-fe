@@ -1,68 +1,95 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
-import { Bell, CalendarDays, Search, Sparkles, Trophy, Users, X } from "lucide-react";
+import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useNavigate } from "react-router"
+import { Bell, CalendarDays, Sparkles, Trophy, Users, X } from "lucide-react"
 
-import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import { contestsApi, contestQueryKeys } from "../api/contests.api"
 import {
   ContestEventCard,
   ContestMetric,
+  ContestSearchInput,
+  ContestSelectFilter,
   ContestStatusBadge,
-} from "../components/TournamentPrimitives";
-import { capacityPercent, formatContestDateTime } from "../lib/tournament";
-import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
+  ContestToolbar,
+  type ContestFilterOption,
+} from "../components/TournamentPrimitives"
+import { capacityPercent, formatContestDateTime } from "../lib/tournament"
+import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { Button } from "@/shared/ui/button"
 
 interface TrackTypeOption {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 
+type ContestListStatusFilter =
+  | "all"
+  | "open"
+  | "closed"
+  | "running"
+  | "completed"
+
+const contestStatusOptions: readonly ContestFilterOption<ContestListStatusFilter>[] =
+  [
+    { value: "all", label: "Mọi trạng thái" },
+    { value: "open", label: "Mở đăng ký" },
+    { value: "closed", label: "Đóng đăng ký" },
+    { value: "running", label: "Đang thi đấu" },
+    { value: "completed", label: "Hoàn tất" },
+  ]
+
 export function ContestListPage() {
-  const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedTrackType, setSelectedTrackType] = useState("all");
-  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<Record<string, boolean>>(() => {
-    const dismissed: Record<string, boolean> = {};
-    if (typeof localStorage === "undefined") return dismissed;
+  const navigate = useNavigate()
+  const [search, setSearch] = useState("")
+  const [selectedStatus, setSelectedStatus] =
+    useState<ContestListStatusFilter>("all")
+  const [selectedTrackType, setSelectedTrackType] = useState("all")
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<
+    Record<string, boolean>
+  >(() => {
+    const dismissed: Record<string, boolean> = {}
+    if (typeof localStorage === "undefined") return dismissed
     Object.keys(localStorage).forEach((key) => {
       if (key.startsWith("contest_popup_dismissed:")) {
-        dismissed[key.replace("contest_popup_dismissed:", "")] = true;
+        dismissed[key.replace("contest_popup_dismissed:", "")] = true
       }
-    });
-    return dismissed;
-  });
+    })
+    return dismissed
+  })
 
-  const contestListParams = { upcoming: true, notify_within_hours: 72 };
+  const contestListParams = { upcoming: true, notify_within_hours: 72 }
   const { data: contestsEnvelope, isLoading } = useQuery({
     queryKey: contestQueryKeys.list(contestListParams),
     queryFn: () => contestsApi.listContests(contestListParams),
-  });
+  })
 
   const { data: trackTypes = [] } = useQuery({
     queryKey: trackTypeQueryKeys.all,
     queryFn: () => trackTypeApi.listAll(),
-  });
+  })
 
-  const contestsList = contestsEnvelope?.data || [];
-  const featuredContest = contestsList.find(
-    (contest) => contest.should_notify && !dismissedAnnouncements[contest.id]
-  ) || contestsList[0];
+  const contestsList = contestsEnvelope?.data || []
+  const featuredContest =
+    contestsList.find(
+      (contest) => contest.should_notify && !dismissedAnnouncements[contest.id],
+    ) || contestsList[0]
 
   const filteredContests = contestsList.filter((contest) => {
-    const matchesSearch = contest.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = contest.name
+      .toLowerCase()
+      .includes(search.toLowerCase())
     const matchesStatus =
-      selectedStatus === "all" || contest.status.toLowerCase() === selectedStatus.toLowerCase();
-    const matchesTrack = selectedTrackType === "all" || contest.track_type_id === selectedTrackType;
-    return matchesSearch && matchesStatus && matchesTrack;
-  });
+      selectedStatus === "all" ||
+      contest.status.toLowerCase() === selectedStatus.toLowerCase()
+    const matchesTrack =
+      selectedTrackType === "all" || contest.track_type_id === selectedTrackType
+    return matchesSearch && matchesStatus && matchesTrack
+  })
 
   const dismissAnnouncement = (id: string) => {
-    localStorage.setItem(`contest_popup_dismissed:${id}`, "true");
-    setDismissedAnnouncements((prev) => ({ ...prev, [id]: true }));
-  };
+    localStorage.setItem(`contest_popup_dismissed:${id}`, "true")
+    setDismissedAnnouncements((prev) => ({ ...prev, [id]: true }))
+  }
 
   return (
     <div className="min-h-screen bg-[#fcf8f8] text-[#1c1b1b]">
@@ -77,13 +104,29 @@ export function ContestListPage() {
               Giải đấu RCField
             </h1>
             <p className="mt-3 text-sm font-semibold leading-relaxed text-[#5d5f5f] md:text-base">
-              Theo dõi lịch thi đấu, bảng xếp hạng, bracket và đăng ký tham gia các giải đua xe RC tại các chi nhánh.
+              Theo dõi lịch thi đấu, bảng xếp hạng, bracket và đăng ký tham gia
+              các giải đua xe RC tại các chi nhánh.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:w-[520px]">
-            <ContestMetric label="Giải mở" value={contestsList.filter((c) => c.status === "OPEN").length} icon={<Sparkles />} />
-            <ContestMetric label="VĐV đăng ký" value={contestsList.reduce((sum, c) => sum + (c.registration_summary?.active ?? 0), 0)} icon={<Users />} />
-            <ContestMetric label="Sắp diễn ra" value={contestsList.length} icon={<CalendarDays />} />
+            <ContestMetric
+              label="Giải mở"
+              value={contestsList.filter((c) => c.status === "OPEN").length}
+              icon={<Sparkles />}
+            />
+            <ContestMetric
+              label="VĐV đăng ký"
+              value={contestsList.reduce(
+                (sum, c) => sum + (c.registration_summary?.active ?? 0),
+                0,
+              )}
+              icon={<Users />}
+            />
+            <ContestMetric
+              label="Sắp diễn ra"
+              value={contestsList.length}
+              icon={<CalendarDays />}
+            />
           </div>
         </header>
 
@@ -111,13 +154,23 @@ export function ContestListPage() {
                   {featuredContest.name}
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm font-semibold leading-relaxed text-[#5d5f5f]">
-                  Khai mạc {formatContestDateTime(featuredContest.starts_at)}. Đăng ký trước{" "}
-                  {formatContestDateTime(featuredContest.registration_closes_at)} để giữ suất thi đấu.
+                  Khai mạc {formatContestDateTime(featuredContest.starts_at)}.
+                  Đăng ký trước{" "}
+                  {formatContestDateTime(
+                    featuredContest.registration_closes_at,
+                  )}{" "}
+                  để giữ suất thi đấu.
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <ContestMetric label="Sức chứa" value={`${capacityPercent(featuredContest)}%`} />
-                <ContestMetric label="Đã đăng ký" value={`${featuredContest.registration_summary?.active ?? 0}/${featuredContest.capacity}`} />
+                <ContestMetric
+                  label="Sức chứa"
+                  value={`${capacityPercent(featuredContest)}%`}
+                />
+                <ContestMetric
+                  label="Đã đăng ký"
+                  value={`${featuredContest.registration_summary?.active ?? 0}/${featuredContest.capacity}`}
+                />
                 <Button
                   type="button"
                   onClick={() => navigate(`/contests/${featuredContest.id}`)}
@@ -130,54 +183,48 @@ export function ContestListPage() {
           </section>
         ) : null}
 
-        <section className="rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
-          <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#747878]" />
-              <Input
-                placeholder="Tìm kiếm giải đấu..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="h-11 rounded-lg border-[#e5e2e1] bg-[#fcf8f8] pl-10 text-sm font-semibold text-[#1c1b1b] focus-visible:ring-orange-500"
-              />
-            </div>
-            <select
+        <ContestToolbar>
+          <div className="grid w-full gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+            <ContestSearchInput value={search} onChange={setSearch} />
+            <ContestSelectFilter
+              ariaLabel="Lọc trạng thái giải đấu"
               value={selectedStatus}
-              onChange={(event) => setSelectedStatus(event.target.value)}
-              className="h-11 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] px-3 text-sm font-bold text-[#444748] outline-none focus:border-orange-500"
-            >
-              <option value="all">Mọi trạng thái</option>
-              <option value="open">Mở đăng ký</option>
-              <option value="closed">Đóng đăng ký</option>
-              <option value="running">Đang thi đấu</option>
-              <option value="completed">Hoàn tất</option>
-            </select>
-            <select
+              onChange={setSelectedStatus}
+              options={contestStatusOptions}
+            />
+            <ContestSelectFilter
+              ariaLabel="Lọc loại đường đua"
               value={selectedTrackType}
-              onChange={(event) => setSelectedTrackType(event.target.value)}
-              className="h-11 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] px-3 text-sm font-bold text-[#444748] outline-none focus:border-orange-500"
-            >
-              <option value="all">Mọi loại đường đua</option>
-              {(trackTypes as TrackTypeOption[]).map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedTrackType}
+              options={[
+                { value: "all", label: "Mọi loại đường đua" },
+                ...(trackTypes as TrackTypeOption[]).map((type) => ({
+                  value: type.id,
+                  label: type.name,
+                })),
+              ]}
+            />
           </div>
-        </section>
+        </ContestToolbar>
 
         {isLoading ? (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-80 animate-pulse rounded-xl border border-[#e5e2e1] bg-white" />
+              <div
+                key={item}
+                className="h-80 animate-pulse rounded-xl border border-[#e5e2e1] bg-white"
+              />
             ))}
           </div>
         ) : filteredContests.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[#c4c7c8] bg-white px-4 py-16 text-center">
             <Trophy className="mx-auto size-10 text-[#a09e9d]" />
-            <h3 className="mt-3 text-lg font-black text-[#1c1b1b]">Không tìm thấy giải đấu</h3>
-            <p className="mt-1 text-sm font-semibold text-[#747878]">Hãy thử đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+            <h3 className="mt-3 text-lg font-black text-[#1c1b1b]">
+              Không tìm thấy giải đấu
+            </h3>
+            <p className="mt-1 text-sm font-semibold text-[#747878]">
+              Hãy thử đổi bộ lọc hoặc từ khóa tìm kiếm.
+            </p>
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -192,7 +239,7 @@ export function ContestListPage() {
         )}
       </div>
     </div>
-  );
+  )
 }
 
-export default ContestListPage;
+export default ContestListPage

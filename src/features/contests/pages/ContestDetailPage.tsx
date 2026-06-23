@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,7 +15,10 @@ import {
   Medal,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
+import { ContestBracketPanel } from "../components/TournamentPrimitives";
 import { getContestErrorMessage } from "../lib/errors";
+import { recordContestUiEvent } from "../lib/monitoring";
+import { enrichBracketMatches } from "../lib/tournament";
 import { useAuthStore } from "@/features/auth/stores/auth.store";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
@@ -98,20 +101,26 @@ export function ContestDetailPage() {
 
   const standings = leaderboardEnvelope?.data?.standings || [];
   const rewards = rewardsEnvelope?.data || [];
-  const bracketRegistrations = bracketData?.registrations || [];
+  const publicBracketMatches = useMemo(
+    () => enrichBracketMatches(bracketData?.matches || [], bracketData?.registrations || []),
+    [bracketData?.matches, bracketData?.registrations]
+  );
 
   // Mutations
   const registerMutation = useMutation({
     mutationFn: (body: { vehicle_source: "BYOC"; metadata?: { note?: string } }) =>
       contestsApi.registerContest(contestId!, body),
     onSuccess: () => {
+      recordContestUiEvent("customer.registration.create.success", { contestId });
       toast.success("Đăng ký tham gia giải đấu thành công!");
       setShowRegDialog(false);
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations(contestId) });
     },
     onError: (err: unknown) => {
-      toast.error(getContestErrorMessage(err, "Đăng ký thất bại. Vui lòng thử lại!"));
+      const message = getContestErrorMessage(err, "Đăng ký thất bại. Vui lòng thử lại!");
+      recordContestUiEvent("customer.registration.create.error", { contestId, metadata: { message } });
+      toast.error(message);
     },
   });
 
@@ -122,6 +131,7 @@ export function ContestDetailPage() {
       return contestsApi.cancelRegistration(myReg.id, body);
     },
     onSuccess: () => {
+      recordContestUiEvent("customer.registration.cancel.success", { contestId });
       toast.success("Đã hủy đăng ký tham gia.");
       setShowCancelDialog(false);
       setCancelReason("");
@@ -129,7 +139,9 @@ export function ContestDetailPage() {
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations(contestId) });
     },
     onError: (err: unknown) => {
-      toast.error(getContestErrorMessage(err, "Hủy đăng ký thất bại."));
+      const message = getContestErrorMessage(err, "Hủy đăng ký thất bại.");
+      recordContestUiEvent("customer.registration.cancel.error", { contestId, metadata: { message } });
+      toast.error(message);
     },
   });
 
@@ -137,127 +149,6 @@ export function ContestDetailPage() {
   const myRegistration = user
     ? myRegistrations.find((r) => r.status !== "CANCELLED")
     : null;
-
-  // Render Bracket Tree (Static fallback generator based on players or matches)
-  const renderBracket = () => {
-    const registrationLabel = (registrationId?: string | null) => {
-      if (!registrationId) return "Chờ đấu thủ";
-      const registration = bracketRegistrations.find((item) => item.id === registrationId);
-      return registration?.user?.fullName || `VĐV ${registrationId.slice(0, 8)}`;
-    };
-    const dummyMatches = (bracketData?.matches || [])
-      .slice()
-      .sort((a, b) => a.matchNo - b.matchNo)
-      .map((match) => {
-        const scoreParts = typeof match.metadata?.score === "string" ? match.metadata.score.split("-") : [];
-        return {
-          id: match.id,
-          stage: String(match.metadata?.stage || `Trận ${match.matchNo}`),
-          playerA: registrationLabel(match.competitorARegistrationId),
-          playerB: registrationLabel(match.competitorBRegistrationId),
-          scoreA: scoreParts[0]?.trim() || "",
-          scoreB: scoreParts[1]?.trim() || "",
-          winner: registrationLabel(match.winnerRegistrationId),
-        };
-      });
-
-    if (dummyMatches.length === 0) {
-      return (
-        <div className="text-center py-12 text-[#6f6c6a] text-sm">
-          Sơ đồ thi đấu chưa được ban tổ chức công bố.
-        </div>
-      );
-    }
-    while (dummyMatches.length < 7) {
-      dummyMatches.push({
-        id: `pending-${dummyMatches.length + 1}`,
-        stage: "Chờ lịch đấu",
-        playerA: "Chờ đấu thủ",
-        playerB: "Chờ đấu thủ",
-        scoreA: "",
-        scoreB: "",
-        winner: "",
-      });
-    }
-
-    return (
-      <div className="overflow-x-auto py-8">
-        <div className="min-w-[800px] flex justify-between gap-4 px-4 items-center">
-          {/* Quarter Finals Column */}
-          <div className="flex flex-col gap-10 w-64">
-            <h4 className="text-xs uppercase tracking-wider text-[#6f6c6a] font-bold text-center border-b border-[#e5e2e1] pb-2">Tứ kết</h4>
-            {dummyMatches.slice(0, 4).map((m) => (
-              <div key={m.id} className="bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl p-3 shadow-sm relative">
-                <div className="text-[10px] text-orange-600 font-bold mb-1.5">{m.stage}</div>
-                <div className="space-y-1.5">
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerA ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
-                    <span>{m.playerA}</span>
-                    <span className="font-mono">{m.scoreA}</span>
-                  </div>
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerB ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
-                    <span>{m.playerB}</span>
-                    <span className="font-mono">{m.scoreB}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Connectors QF -> SF */}
-          <div className="hidden lg:flex flex-col justify-around h-[400px] text-[#e5e2e1]">
-            <span className="border-t-2 border-r-2 border-[#e5e2e1] h-28 w-6 rounded-tr-lg" />
-            <span className="border-b-2 border-r-2 border-[#e5e2e1] h-28 w-6 rounded-br-lg" />
-          </div>
-
-          {/* Semi Finals Column */}
-          <div className="flex flex-col gap-32 w-64">
-            <h4 className="text-xs uppercase tracking-wider text-[#6f6c6a] font-bold text-center border-b border-[#e5e2e1] pb-2">Bán kết</h4>
-            {dummyMatches.slice(4, 6).map((m) => (
-              <div key={m.id} className="bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl p-3 shadow-sm relative">
-                <div className="text-[10px] text-orange-600 font-bold mb-1.5">{m.stage}</div>
-                <div className="space-y-1.5">
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerA ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
-                    <span>{m.playerA}</span>
-                    <span className="font-mono">{m.scoreA}</span>
-                  </div>
-                  <div className={`flex justify-between items-center text-xs p-1 rounded ${m.winner === m.playerB ? "bg-orange-50 text-orange-600 font-semibold" : "text-[#6f6c6a]"}`}>
-                    <span>{m.playerB}</span>
-                    <span className="font-mono">{m.scoreB}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Connectors SF -> Final */}
-          <div className="hidden lg:flex flex-col justify-around h-[300px] text-[#e5e2e1]">
-            <span className="border-t-2 border-r-2 border-[#e5e2e1] h-20 w-6 rounded-tr-lg" />
-          </div>
-
-          {/* Finals Column */}
-          <div className="flex flex-col gap-10 w-64 justify-center">
-            <h4 className="text-xs uppercase tracking-wider text-[#6f6c6a] font-bold text-center border-b border-[#e5e2e1] pb-2">Chung kết</h4>
-            <div className="bg-[#fcf8f8] border border-orange-500/40 rounded-xl p-4 shadow-md relative shadow-orange-600/5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                <Trophy size={10} /> TRANH CÚP
-              </div>
-              <div className="text-[10px] text-orange-600 font-bold mb-2 mt-1">Chung kết tổng</div>
-              <div className="space-y-2">
-                <div className={`flex justify-between items-center text-sm p-1.5 rounded ${dummyMatches[6].winner === dummyMatches[6].playerA ? "bg-orange-100 text-orange-600 font-bold" : "text-[#6f6c6a]"}`}>
-                  <span>{dummyMatches[6].playerA}</span>
-                  <span className="font-mono">{dummyMatches[6].scoreA}</span>
-                </div>
-                <div className={`flex justify-between items-center text-sm p-1.5 rounded ${dummyMatches[6].winner === dummyMatches[6].playerB ? "bg-orange-100 text-orange-600 font-bold" : "text-[#6f6c6a]"}`}>
-                  <span>{dummyMatches[6].playerB}</span>
-                  <span className="font-mono">{dummyMatches[6].scoreB}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   if (isContestLoading) {
     return (
@@ -455,15 +346,10 @@ export function ContestDetailPage() {
 
             {/* Bracket Tab Content */}
             {activeTab === "bracket" && (
-              <div className="bg-white border border-[#e5e2e1] rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-[#1c1b1b] mb-2 flex items-center gap-2">
-                  <Trophy size={18} className="text-orange-600" /> Sơ đồ thi đấu loại trực tiếp
-                </h3>
-                <p className="text-xs text-[#6f6c6a] mb-6">
-                  Cập nhật thời gian thực về các lượt thi đấu Knockout. Các tay đua chiến thắng sẽ tiến thẳng vào vòng trong.
-                </p>
-                {renderBracket()}
-              </div>
+              <ContestBracketPanel
+                rounds={bracketData?.rounds || []}
+                matches={publicBracketMatches}
+              />
             )}
 
             {/* Rewards Tab Content */}

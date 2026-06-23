@@ -23,6 +23,19 @@ giai dau chuyen nghiep qua lon.
   - DTO nullable hon cho `description`, `banner_image_url`, `vehicle_id`, `customer_vehicle_id`,
     `checked_in_*`, `cancelled_*`, `user`.
   - Helper tinh count/filter/status label nam trong `src/features/contests/lib/tournament.ts`.
+- Hard-code cleanup trong phase nay:
+  - Public contest detail khong con pad bracket bang match gia `pending-*`; chi render `rounds/matches`
+    that tu BE hoac empty state.
+  - Provider bracket board render dong theo `rounds/matches`, khong con phu thuoc array index
+    `0..6` hay mac dinh luon co quarter/semi/final.
+  - Form Provider chi cho cau hinh bracket 4 hoac 8 nguoi trong current phase. Bracket 16+
+    duoc dua sang backend generator phase sau.
+- Monitoring/log current phase:
+  - FE phat event noi bo `rcfield:contest-monitor` va `performance.mark("contest:<event>")`
+    cho cac action dang ky, huy, check-in, dung bracket, nhap ket qua, publish BXH, reward.
+  - BE ghi business log source `ContestAudit` tai service sau khi write thanh cong:
+    contest create/open/update/cancel, registration create/check-in/cancel, class/round/heat,
+    bracket match create/decide, submit/verify result, publish leaderboard, create/issue reward.
 - Validation:
   - FE Contest build/test/lint scoped phai pass.
 
@@ -84,7 +97,10 @@ Can lam:
 
 ### 4. Manual heat-based flow
 
-Khong nen hard-code knockout 8 nguoi. Provider can config:
+Khong nen hard-code knockout 8 nguoi. Current phase chi dung FE manual generator 4/8 de demo
+scope nho. Phase sau can backend generator that de tao bracket/heat nhat quan theo config.
+
+Provider can config:
 
 ```json
 {
@@ -102,6 +118,11 @@ Y nghia:
 - Mot duong dua co the chay 2, 4 hoac nhieu xe tuy capacity track.
 - `drivers_per_heat` chi la gioi han van hanh moi heat, khong phai tong capacity contest.
 - Staff tao heat thu cong, add checked-in participants vao heat, nhap result.
+- Neu format la `KNOCKOUT`, BE nen co endpoint generator:
+  - Input: `contest_class_id`, `bracket_size`, `seed_strategy`, optional registration ids.
+  - Validate registration da `CHECKED_IN`.
+  - Tao rounds/matches trong mot transaction.
+  - Ho tro 4/8 truoc, 16+ sau neu can demo lon hon.
 
 ### 5. Result audit va leaderboard traceability
 

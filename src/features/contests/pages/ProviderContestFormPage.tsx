@@ -100,7 +100,8 @@ export function ProviderContestFormPage() {
       setRegClosesAt(toLocalDatetimeString(contestData.registration_closes_at));
       setSelectedCafes((contestData.participating_cafes || []).map((c) => c.id));
       if (contestData.config?.bracket_size) {
-        setBracketSize(contestData.config.bracket_size);
+        const savedBracketSize = Number(contestData.config.bracket_size);
+        setBracketSize(savedBracketSize === 4 || savedBracketSize === 8 ? savedBracketSize : 8);
       }
     }
   }, [isEdit, contestData]);
@@ -349,8 +350,10 @@ export function ProviderContestFormPage() {
               >
                 <option value={4}>4 tay đua (Bán kết & Chung kết)</option>
                 <option value={8}>8 tay đua (Tứ kết, Bán kết & Chung kết)</option>
-                <option value={16}>16 tay đua (Vòng 16, Tứ kết, Bán kết & Chung kết)</option>
               </select>
+              <p className="text-[10px] font-semibold text-slate-500">
+                Bracket 16+ cần backend generator và sẽ được tách sang phase sau.
+              </p>
             </div>
           </div>
         </div>

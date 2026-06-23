@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react"
 import {
   Car,
   CheckCircle2,
@@ -7,14 +7,14 @@ import {
   Mail,
   MapPin,
   QrCode,
-  Search,
   ShieldCheck,
   UserRound,
   Users,
   XCircle,
-} from "lucide-react";
+} from "lucide-react"
 
-import type { Contest, ContestRegistration } from "../types";
+import type { Contest, ContestRegistration } from "../types"
+import { ContestSearchInput } from "./TournamentPrimitives"
 import {
   checkedInCafeName,
   filterContestRegistrations,
@@ -27,20 +27,26 @@ import {
   registrationName,
   registrationNote,
   type RegistrationFilterState,
-} from "../lib/tournament";
-import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
-import { cn } from "@/shared/lib/utils";
+} from "../lib/tournament"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog"
+import { Input } from "@/shared/ui/input"
+import { cn } from "@/shared/lib/utils"
 
 interface ParticipantManagementPanelProps {
-  contest: Contest;
-  registrations: ContestRegistration[];
-  defaultCafeId: string;
-  actionPending?: boolean;
-  onCheckIn: (registrationId: string, cafeId: string) => void;
-  onCancel: (registrationId: string, reason: string) => void;
+  contest: Contest
+  registrations: ContestRegistration[]
+  defaultCafeId: string
+  actionPending?: boolean
+  onCheckIn: (registrationId: string, cafeId: string) => void
+  onCancel: (registrationId: string, reason: string) => void
 }
 
 const statusTone: Record<string, string> = {
@@ -48,7 +54,7 @@ const statusTone: Record<string, string> = {
   CONFIRMED: "border-orange-500/25 bg-orange-500/10 text-orange-300",
   CHECKED_IN: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
   CANCELLED: "border-red-500/25 bg-red-500/10 text-red-300",
-};
+}
 
 export function ParticipantManagementPanel({
   contest,
@@ -63,49 +69,55 @@ export function ParticipantManagementPanel({
     status: "ALL",
     vehicleSource: "ALL",
     cafeId: "ALL",
-  });
-  const [selectedRegistration, setSelectedRegistration] = useState<ContestRegistration | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<ContestRegistration | null>(null);
-  const [cancelReason, setCancelReason] = useState("");
+  })
+  const [selectedRegistration, setSelectedRegistration] =
+    useState<ContestRegistration | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<ContestRegistration | null>(
+    null,
+  )
+  const [cancelReason, setCancelReason] = useState("")
 
   const counts = useMemo(
     () => getRegistrationCounts(registrations, contest.capacity),
     [contest.capacity, registrations],
-  );
+  )
   const filteredRegistrations = useMemo(
     () => filterContestRegistrations(registrations, filters),
     [filters, registrations],
-  );
-  const selectedCafeId = defaultCafeId || contest.participating_cafes[0]?.id || "";
+  )
+  const selectedCafeId =
+    defaultCafeId || contest.participating_cafes[0]?.id || ""
 
   const updateFilter = <K extends keyof RegistrationFilterState>(
     key: K,
     value: RegistrationFilterState[K],
   ) => {
-    setFilters((current) => ({ ...current, [key]: value }));
-  };
+    setFilters((current) => ({ ...current, [key]: value }))
+  }
 
   const openCancelDialog = (registration: ContestRegistration) => {
-    setCancelTarget(registration);
-    setCancelReason("");
-  };
+    setCancelTarget(registration)
+    setCancelReason("")
+  }
 
   const submitCancel = () => {
-    if (!cancelTarget || !cancelReason.trim()) return;
-    onCancel(cancelTarget.id, cancelReason.trim());
-    setCancelTarget(null);
-    setCancelReason("");
-  };
+    if (!cancelTarget || !cancelReason.trim()) return
+    onCancel(cancelTarget.id, cancelReason.trim())
+    setCancelTarget(null)
+    setCancelReason("")
+  }
 
   return (
     <section className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
       <div className="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h3 className="flex items-center gap-2 font-bold text-slate-100">
-            <Users size={18} className="text-orange-500" /> Quản lý người tham gia
+            <Users size={18} className="text-orange-500" /> Quản lý người tham
+            gia
           </h3>
           <p className="mt-1 text-xs font-medium text-slate-400">
-            Theo dõi đăng ký, xe, check-in và thao tác vận hành trong ngày thi đấu.
+            Theo dõi đăng ký, xe, check-in và thao tác vận hành trong ngày thi
+            đấu.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -117,29 +129,51 @@ export function ParticipantManagementPanel({
 
       <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-7">
         <ParticipantMetric label="Tổng" value={counts.total} icon={<Users />} />
-        <ParticipantMetric label="Confirmed" value={counts.confirmed} icon={<ShieldCheck />} />
-        <ParticipantMetric label="Check-in" value={counts.checkedIn} icon={<CheckCircle2 />} />
-        <ParticipantMetric label="Đã hủy" value={counts.cancelled} icon={<XCircle />} />
+        <ParticipantMetric
+          label="Confirmed"
+          value={counts.confirmed}
+          icon={<ShieldCheck />}
+        />
+        <ParticipantMetric
+          label="Check-in"
+          value={counts.checkedIn}
+          icon={<CheckCircle2 />}
+        />
+        <ParticipantMetric
+          label="Đã hủy"
+          value={counts.cancelled}
+          icon={<XCircle />}
+        />
         <ParticipantMetric label="BYOC" value={counts.byoc} icon={<Car />} />
-        <ParticipantMetric label="Rental" value={counts.rental} icon={<Car />} />
-        <ParticipantMetric label="Còn chỗ" value={counts.remaining} icon={<Clock />} />
+        <ParticipantMetric
+          label="Rental"
+          value={counts.rental}
+          icon={<Car />}
+        />
+        <ParticipantMetric
+          label="Còn chỗ"
+          value={counts.remaining}
+          icon={<Clock />}
+        />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_160px_160px_200px]">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
-          <Input
-            aria-label="Tìm người tham gia"
-            placeholder="Tìm tên, email, mã check-in, ghi chú..."
-            value={filters.search}
-            onChange={(event) => updateFilter("search", event.target.value)}
-            className="h-10 border-slate-800 bg-slate-950 pl-9 text-sm text-slate-100 placeholder:text-slate-500"
-          />
-        </div>
+        <ContestSearchInput
+          ariaLabel="Tìm người tham gia"
+          placeholder="Tìm tên, email, mã check-in, ghi chú..."
+          value={filters.search}
+          onChange={(value) => updateFilter("search", value)}
+          inputClassName="h-10 border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500 focus-visible:ring-orange-500"
+        />
         <select
           aria-label="Lọc trạng thái"
           value={filters.status}
-          onChange={(event) => updateFilter("status", event.target.value as RegistrationFilterState["status"])}
+          onChange={(event) =>
+            updateFilter(
+              "status",
+              event.target.value as RegistrationFilterState["status"],
+            )
+          }
           className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm font-semibold text-slate-200 outline-none"
         >
           <option value="ALL">Mọi trạng thái</option>
@@ -152,7 +186,10 @@ export function ParticipantManagementPanel({
           aria-label="Lọc nguồn xe"
           value={filters.vehicleSource}
           onChange={(event) =>
-            updateFilter("vehicleSource", event.target.value as RegistrationFilterState["vehicleSource"])
+            updateFilter(
+              "vehicleSource",
+              event.target.value as RegistrationFilterState["vehicleSource"],
+            )
           }
           className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm font-semibold text-slate-200 outline-none"
         >
@@ -198,19 +235,31 @@ export function ParticipantManagementPanel({
             </thead>
             <tbody>
               {filteredRegistrations.map((registration) => (
-                <tr key={registration.id} className="border-b border-slate-900 hover:bg-slate-900/55">
+                <tr
+                  key={registration.id}
+                  className="border-b border-slate-900 hover:bg-slate-900/55"
+                >
                   <td className="px-4 py-3">
-                    <div className="font-extrabold text-slate-100">{registrationName(registration)}</div>
+                    <div className="font-extrabold text-slate-100">
+                      {registrationName(registration)}
+                    </div>
                     <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500">
                       <Mail className="size-3" />
-                      <span className="truncate">{registrationEmail(registration) || "--"}</span>
+                      <span className="truncate">
+                        {registrationEmail(registration) || "--"}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 font-semibold text-slate-300">
-                    {getParticipantRoleLabel(registration.participant_role_snapshot)}
+                    {getParticipantRoleLabel(
+                      registration.participant_role_snapshot,
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant="secondary" className="border border-slate-800 bg-slate-900 text-[10px] text-slate-300">
+                    <Badge
+                      variant="secondary"
+                      className="border border-slate-800 bg-slate-900 text-[10px] text-slate-300"
+                    >
                       {getVehicleSourceLabel(registration.vehicle_source)}
                     </Badge>
                   </td>
@@ -222,10 +271,15 @@ export function ParticipantManagementPanel({
                   </td>
                   <td className="px-4 py-3 text-slate-400">
                     <div className="max-w-[180px] truncate font-semibold">
-                      {checkedInCafeName(registration, contest.participating_cafes) || "-"}
+                      {checkedInCafeName(
+                        registration,
+                        contest.participating_cafes,
+                      ) || "-"}
                     </div>
                     <div className="mt-1 text-[10px] text-slate-600">
-                      {registration.checked_in_at ? formatContestDateTime(registration.checked_in_at) : ""}
+                      {registration.checked_in_at
+                        ? formatContestDateTime(registration.checked_in_at)
+                        : ""}
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -246,14 +300,17 @@ export function ParticipantManagementPanel({
                         <Button
                           type="button"
                           size="sm"
-                          onClick={() => onCheckIn(registration.id, selectedCafeId)}
+                          onClick={() =>
+                            onCheckIn(registration.id, selectedCafeId)
+                          }
                           disabled={actionPending || !selectedCafeId}
                           className="h-8 bg-emerald-600 px-3 text-[10px] font-bold text-white hover:bg-emerald-700"
                         >
                           Check-in
                         </Button>
                       ) : null}
-                      {registration.status === "PENDING" || registration.status === "CONFIRMED" ? (
+                      {registration.status === "PENDING" ||
+                      registration.status === "CONFIRMED" ? (
                         <Button
                           type="button"
                           size="sm"
@@ -278,7 +335,7 @@ export function ParticipantManagementPanel({
         contest={contest}
         registration={selectedRegistration}
         onOpenChange={(open) => {
-          if (!open) setSelectedRegistration(null);
+          if (!open) setSelectedRegistration(null)
         }}
       />
 
@@ -286,22 +343,28 @@ export function ParticipantManagementPanel({
         open={Boolean(cancelTarget)}
         onOpenChange={(open) => {
           if (!open) {
-            setCancelTarget(null);
-            setCancelReason("");
+            setCancelTarget(null)
+            setCancelReason("")
           }
         }}
       >
         <DialogContent className="border-slate-800 bg-slate-900 text-slate-100">
           <DialogHeader>
-            <DialogTitle className="font-extrabold">Hủy đăng ký người tham gia</DialogTitle>
+            <DialogTitle className="font-extrabold">
+              Hủy đăng ký người tham gia
+            </DialogTitle>
             <DialogDescription className="text-slate-400">
               Ghi lý do để đội vận hành có thể đối soát sau sự kiện.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-sm">
-              <div className="font-bold text-slate-100">{registrationName(cancelTarget ?? undefined)}</div>
-              <div className="mt-1 text-xs text-slate-500">{registrationEmail(cancelTarget ?? undefined)}</div>
+              <div className="font-bold text-slate-100">
+                {registrationName(cancelTarget ?? undefined)}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                {registrationEmail(cancelTarget ?? undefined)}
+              </div>
             </div>
             <Input
               aria-label="Lý do hủy đăng ký"
@@ -315,8 +378,8 @@ export function ParticipantManagementPanel({
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  setCancelTarget(null);
-                  setCancelReason("");
+                  setCancelTarget(null)
+                  setCancelReason("")
                 }}
                 className="text-slate-400"
               >
@@ -335,10 +398,18 @@ export function ParticipantManagementPanel({
         </DialogContent>
       </Dialog>
     </section>
-  );
+  )
 }
 
-function ParticipantMetric({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
+function ParticipantMetric({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: number
+  icon: ReactNode
+}) {
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
       <div className="flex items-center justify-between gap-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
@@ -347,15 +418,20 @@ function ParticipantMetric({ label, value, icon }: { label: string; value: numbe
       </div>
       <div className="mt-3 text-2xl font-black text-slate-100">{value}</div>
     </div>
-  );
+  )
 }
 
 function RegistrationStatusBadge({ status }: { status: string }) {
   return (
-    <Badge className={cn("border text-[9px] font-extrabold uppercase tracking-wide", statusTone[status] ?? statusTone.PENDING)}>
+    <Badge
+      className={cn(
+        "border text-[9px] font-extrabold uppercase tracking-wide",
+        statusTone[status] ?? statusTone.PENDING,
+      )}
+    >
       {getRegistrationStatusLabel(status)}
     </Badge>
-  );
+  )
 }
 
 function ParticipantDetailDialog({
@@ -363,16 +439,17 @@ function ParticipantDetailDialog({
   registration,
   onOpenChange,
 }: {
-  contest: Contest;
-  registration: ContestRegistration | null;
-  onOpenChange: (open: boolean) => void;
+  contest: Contest
+  registration: ContestRegistration | null
+  onOpenChange: (open: boolean) => void
 }) {
   return (
     <Dialog open={Boolean(registration)} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl border-slate-800 bg-slate-900 text-slate-100">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-extrabold">
-            <UserRound className="size-5 text-orange-400" /> Chi tiết người tham gia
+            <UserRound className="size-5 text-orange-400" /> Chi tiết người tham
+            gia
           </DialogTitle>
           <DialogDescription className="text-slate-400">
             Thông tin dùng để đối soát check-in, xe và trạng thái đăng ký.
@@ -383,12 +460,18 @@ function ParticipantDetailDialog({
           <div className="grid gap-4 md:grid-cols-[1fr_260px]">
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                <div className="text-lg font-black text-slate-100">{registrationName(registration)}</div>
-                <div className="mt-1 text-sm font-medium text-slate-500">{registrationEmail(registration) || "--"}</div>
+                <div className="text-lg font-black text-slate-100">
+                  {registrationName(registration)}
+                </div>
+                <div className="mt-1 text-sm font-medium text-slate-500">
+                  {registrationEmail(registration) || "--"}
+                </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <RegistrationStatusBadge status={registration.status} />
                   <Badge className="border border-slate-800 bg-slate-900 text-slate-300">
-                    {getParticipantRoleLabel(registration.participant_role_snapshot)}
+                    {getParticipantRoleLabel(
+                      registration.participant_role_snapshot,
+                    )}
                   </Badge>
                   <Badge className="border border-slate-800 bg-slate-900 text-slate-300">
                     {getVehicleSourceLabel(registration.vehicle_source)}
@@ -397,16 +480,40 @@ function ParticipantDetailDialog({
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <DetailItem label="Vehicle ID" value={registration.vehicle_id || "--"} />
-                <DetailItem label="Customer vehicle ID" value={registration.customer_vehicle_id || "--"} />
-                <DetailItem label="Ghi chú xe" value={registrationNote(registration) || "--"} />
+                <DetailItem
+                  label="Vehicle ID"
+                  value={registration.vehicle_id || "--"}
+                />
+                <DetailItem
+                  label="Customer vehicle ID"
+                  value={registration.customer_vehicle_id || "--"}
+                />
+                <DetailItem
+                  label="Ghi chú xe"
+                  value={registrationNote(registration) || "--"}
+                />
                 <DetailItem
                   label="Cafe check-in"
-                  value={checkedInCafeName(registration, contest.participating_cafes) || "--"}
+                  value={
+                    checkedInCafeName(
+                      registration,
+                      contest.participating_cafes,
+                    ) || "--"
+                  }
                 />
-                <DetailItem label="Check-in lúc" value={formatContestDateTime(registration.checked_in_at)} />
-                <DetailItem label="Hủy lúc" value={formatContestDateTime(registration.cancelled_at)} />
-                <DetailItem label="Lý do hủy" value={registration.cancellation_reason || "--"} wide />
+                <DetailItem
+                  label="Check-in lúc"
+                  value={formatContestDateTime(registration.checked_in_at)}
+                />
+                <DetailItem
+                  label="Hủy lúc"
+                  value={formatContestDateTime(registration.cancelled_at)}
+                />
+                <DetailItem
+                  label="Lý do hủy"
+                  value={registration.cancellation_reason || "--"}
+                  wide
+                />
               </div>
             </div>
 
@@ -419,25 +526,51 @@ function ParticipantDetailDialog({
                 Mã check-in
               </div>
               <div className="mt-5 space-y-3 text-left">
-                <TimelineItem label="Tạo đăng ký" value={formatContestDateTime(registration.created_at)} />
-                <TimelineItem label="Check-in" value={formatContestDateTime(registration.checked_in_at)} />
-                <TimelineItem label="Cập nhật cuối" value={formatContestDateTime(registration.updated_at)} />
+                <TimelineItem
+                  label="Tạo đăng ký"
+                  value={formatContestDateTime(registration.created_at)}
+                />
+                <TimelineItem
+                  label="Check-in"
+                  value={formatContestDateTime(registration.checked_in_at)}
+                />
+                <TimelineItem
+                  label="Cập nhật cuối"
+                  value={formatContestDateTime(registration.updated_at)}
+                />
               </div>
             </div>
           </div>
         ) : null}
       </DialogContent>
     </Dialog>
-  );
+  )
 }
 
-function DetailItem({ label, value, wide }: { label: string; value: string; wide?: boolean }) {
+function DetailItem({
+  label,
+  value,
+  wide,
+}: {
+  label: string
+  value: string
+  wide?: boolean
+}) {
   return (
-    <div className={cn("rounded-lg border border-slate-800 bg-slate-950 p-3", wide && "sm:col-span-2")}>
-      <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="mt-1 break-words text-sm font-semibold text-slate-200">{value}</div>
+    <div
+      className={cn(
+        "rounded-lg border border-slate-800 bg-slate-950 p-3",
+        wide && "sm:col-span-2",
+      )}
+    >
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 break-words text-sm font-semibold text-slate-200">
+        {value}
+      </div>
     </div>
-  );
+  )
 }
 
 function TimelineItem({ label, value }: { label: string; value: string }) {
@@ -449,17 +582,20 @@ function TimelineItem({ label, value }: { label: string; value: string }) {
         <div className="mt-0.5 text-slate-500">{value}</div>
       </div>
     </div>
-  );
+  )
 }
 
 function EmptyParticipantState() {
   return (
     <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950 px-4 py-12 text-center">
       <Users className="mx-auto size-10 text-slate-600" />
-      <h4 className="mt-3 text-sm font-extrabold text-slate-200">Chưa có người tham gia</h4>
+      <h4 className="mt-3 text-sm font-extrabold text-slate-200">
+        Chưa có người tham gia
+      </h4>
       <p className="mx-auto mt-1 max-w-md text-xs font-semibold leading-relaxed text-slate-500">
-        Khi contest được mở đăng ký, danh sách tay đua, trạng thái check-in và thông tin xe sẽ xuất hiện tại đây.
+        Khi contest được mở đăng ký, danh sách tay đua, trạng thái check-in và
+        thông tin xe sẽ xuất hiện tại đây.
       </p>
     </div>
-  );
+  )
 }
