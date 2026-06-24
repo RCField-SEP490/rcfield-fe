@@ -2,6 +2,14 @@ import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+} from "recharts"
+import {
   Play,
   ClipboardList,
   QrCode,
@@ -139,6 +147,32 @@ export default function StaffDashboardPage() {
   const pendingInspections = sessions.filter((s) => s.status === "CHECKED_IN" || s.status === "CHECKING_OUT")
   const activeFnbCount = fnbOrdersReal.filter((o) => o.status === "PENDING" || o.status === "CONFIRMED").length
 
+  // Thống kê Booking theo trạng thái cho biểu đồ
+  const bookingStatusCounts = todayBookings.reduce((acc: Record<string, number>, b) => {
+    acc[b.status] = (acc[b.status] || 0) + 1
+    return acc
+  }, {})
+
+  const bookingChartData = [
+    { name: "Chờ thanh toán", value: bookingStatusCounts["PENDING"] || 0, color: "#f59e0b" },
+    { name: "Đã xác nhận", value: bookingStatusCounts["CONFIRMED"] || 0, color: "#3b82f6" },
+    { name: "Hoàn thành", value: bookingStatusCounts["COMPLETED"] || 0, color: "#10b981" },
+    { name: "Đã hủy", value: bookingStatusCounts["CANCELLED"] || 0, color: "#ef4444" },
+    { name: "Vắng mặt", value: bookingStatusCounts["NO_SHOW"] || 0, color: "#6b7280" },
+  ].filter((item) => item.value > 0)
+
+  // Thống kê đơn F&B cho biểu đồ Donut
+  const fnbStatusCounts = fnbOrdersReal.reduce((acc: Record<string, number>, o) => {
+    acc[o.status] = (acc[o.status] || 0) + 1
+    return acc
+  }, {})
+
+  const fnbChartData = [
+    { name: "Chờ xử lý", value: fnbStatusCounts["PENDING"] || 0, color: "#f59e0b" },
+    { name: "Đã xác nhận", value: fnbStatusCounts["CONFIRMED"] || 0, color: "#3b82f6" },
+    { name: "Đã phục vụ", value: fnbStatusCounts["DELIVERED"] || 0, color: "#10b981" },
+  ].filter((item) => item.value > 0)
+
   return (
     <div className="space-y-6">
       {/* 1. Header Area */}
@@ -216,6 +250,79 @@ export default function StaffDashboardPage() {
           >
             + Lập đơn chơi trực tiếp
           </StaffButton>
+        </StaffCard>
+      </div>
+
+      {/* 4.5 Thống kê Hoạt động & Biểu đồ */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Biểu đồ Booking */}
+        <StaffCard className="p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-[#1c1b1b] text-base mb-1">Trạng thái đặt lịch hôm nay</h3>
+            <p className="text-xs text-[#6b7280] mb-4">Biểu đồ phân bổ trạng thái booking</p>
+          </div>
+          {bookingChartData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-xs text-[#6b7280] italic">
+              Chưa có dữ liệu đặt lịch hôm nay
+            </div>
+          ) : (
+            <div className="h-48 w-full flex items-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={bookingChartData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={65}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {bookingChartData.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} đơn`, "Số lượng"]} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </StaffCard>
+
+        {/* Biểu đồ F&B Donut */}
+        <StaffCard className="p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-[#1c1b1b] text-base mb-1">Chuẩn bị món F&B hôm nay</h3>
+            <p className="text-xs text-[#6b7280] mb-4">Biểu đồ phân bổ trạng thái chuẩn bị món ăn & nước uống</p>
+          </div>
+          {fnbChartData.length === 0 ? (
+            <div className="h-48 flex items-center justify-center text-xs text-[#6b7280] italic">
+              Chưa có đơn F&B nào hôm nay
+            </div>
+          ) : (
+            <div className="h-48 w-full flex items-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={fnbChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={65}
+                    paddingAngle={3}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {fnbChartData.map((entry, idx) => (
+                      <Cell key={idx} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} đơn`, "Số lượng"]} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </StaffCard>
       </div>
 

@@ -131,7 +131,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         toast.success(`Đặt lịch mới${data.cafeName ? ` — ${data.cafeName}` : ""}`, {
           description: slotLabel || undefined,
         })
-        void queryClient.invalidateQueries({ queryKey: ["providerBookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
       }
     },
     [queryClient],
