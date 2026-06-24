@@ -204,6 +204,7 @@ export function CreateBookingPage() {
       fnbTotal,
       numSlots,
       playerCount: participants,
+      slotDurationMinutes: cafe.slotDurationMinutes ?? 60,
     })
     if (selectedPackageId) {
       return components.map((c) => {
@@ -494,6 +495,7 @@ function buildPaymentComponents({
   fnbTotal,
   numSlots = 1,
   playerCount = 1,
+  slotDurationMinutes = 60,
 }: {
   mode: BookingMode
   planId: string
@@ -502,6 +504,7 @@ function buildPaymentComponents({
   fnbTotal: number
   numSlots?: number
   playerCount?: number
+  slotDurationMinutes?: number
 }): PaymentComponentLine[] {
   const baseSlotFee = mode === "hourly"
     ? slotFeeRate * numSlots
@@ -516,7 +519,9 @@ function buildPaymentComponents({
 
   if (selectedVehicles.length > 0) {
     const rentalPerHour = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
-    const rentalTotal = rentalPerHour * numSlots
+    // Rental fee is prorated to actual slot duration, not per-slot as 1 hour
+    const totalDurationHours = numSlots * (slotDurationMinutes / 60)
+    const rentalTotal = Math.round(rentalPerHour * totalDurationHours)
     const depositTotal = selectedVehicles.reduce((sum, v) => sum + (v.securityDeposit ?? 0), 0)
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })

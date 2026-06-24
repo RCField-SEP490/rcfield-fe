@@ -16,6 +16,7 @@ import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe, CafeImage, CafeStatus, CafeUpsertBody } from "@/features/cafes/types"
 import { CafePricingTab } from "@/pages/provider/components/CafePricingTab"
+import { ChannelSettingsTab } from "@/pages/provider/components/ChannelSettingsTab"
 import { ProviderCafeForm } from "@/pages/provider/components/ProviderCafeForm"
 import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
 import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
@@ -109,6 +110,7 @@ export function ProviderCafeDetailPage() {
     | "menu"
     | "packages"
     | "promotions"
+    | "channel"
 
 
   if (isLoading) {
@@ -253,6 +255,7 @@ export function ProviderCafeDetailPage() {
           {tab === "promotions" && (
             <ProviderPromotionsPage cafeId={cafe.id} />
           )}
+          {tab === "channel" && <ChannelSettingsTab cafeId={cafe.id} />}
         </div>
       </div>
     </ProviderShell>
