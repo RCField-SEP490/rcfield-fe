@@ -1,6 +1,5 @@
 import { Link } from "react-router"
 import { useState, useEffect, useCallback, useMemo } from "react"
-import type { ReactNode } from "react"
 import {
   ArrowRight,
   BarChart3,
@@ -39,8 +38,6 @@ import { useQuery } from "@tanstack/react-query"
 import { routePaths } from "@/app/router/route-paths"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
-import type { ProviderTone } from "@/pages/provider/data"
-import { tonePill } from "@/pages/provider/components/ProviderPrimitives"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { toast } from "sonner"
@@ -490,7 +487,8 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     tick={{ fontSize: 10 }}
                   />
                   <Tooltip
-                    formatter={(v: number, n: string) => [formatCurrency(v), n]}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    formatter={(v: any, n: any) => [formatCurrency(Number(v || 0)), String(n || "")]}
                     contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
                   />
                   <Legend
@@ -591,7 +589,8 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(v: number) => formatCurrency(v)}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    formatter={(v: any) => formatCurrency(Number(v || 0))}
                     contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
                   />
                   <Legend
@@ -662,7 +661,8 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     tick={{ fontSize: 10, fontWeight: 700 }}
                   />
                   <Tooltip
-                    formatter={(v: number) => formatCurrency(v)}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    formatter={(v: any) => formatCurrency(Number(v || 0))}
                     contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
                   />
                   <Bar dataKey="totalRevenue" name="Doanh thu" fill="#ea580c" radius={[0, 4, 4, 0]} maxBarSize={22} />

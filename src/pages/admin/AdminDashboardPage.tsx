@@ -59,13 +59,9 @@ export function AdminDashboardPage() {
   const rows = recentCafes.map((cafe) => [
     <span key={cafe.id} className="font-mono text-xs text-[#747878]">{cafe.id}</span>,
     <div key={cafe.name} className="flex items-center gap-2">
-      {cafe.logo ? (
-        <img src={cafe.logo} alt={cafe.name} className="size-6 rounded-md object-cover border border-[#e5e2e1]" />
-      ) : (
-        <div className="size-6 rounded-md bg-[#f6f3f2] flex items-center justify-center border border-[#e5e2e1]">
-          <Building2 className="size-3 text-[#747878]" />
-        </div>
-      )}
+      <div className="size-6 rounded-md bg-[#f6f3f2] flex items-center justify-center border border-[#e5e2e1]">
+        <Building2 className="size-3 text-[#747878]" />
+      </div>
       <span className="font-bold text-[#1c1b1b]">{cafe.name}</span>
     </div>,
     <div key={cafe.providerName}>
@@ -160,7 +156,8 @@ export function AdminDashboardPage() {
                 <XAxis dataKey="name" stroke="#747878" tickLine={false} axisLine={false} />
                 <YAxis stroke="#747878" tickLine={false} axisLine={false} />
                 <Tooltip
-                  formatter={(value: number | string) => [`${Number(value).toLocaleString()} ₫`, "Doanh thu"]}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any) => [`${Number(value || 0).toLocaleString()} ₫`, "Doanh thu"]}
                   contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e5e2e1", borderRadius: "8px", fontWeight: "bold" }}
                 />
                 <Bar dataKey="revenue" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={45} />
