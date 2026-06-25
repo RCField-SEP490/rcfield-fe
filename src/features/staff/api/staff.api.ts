@@ -109,8 +109,8 @@ export const staffApi = {
     return res.data.data
   },
 
-  getTodayBookings: async (): Promise<TodayBookingItem[]> => {
-    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/today-bookings")
+  getTodayBookings: async (): Promise<any[]> => {
+    const res = await api.get<{ success: boolean; data: any[] }>("/v1/staff/today-bookings")
     return res.data.data
   },
 
@@ -136,6 +136,64 @@ export const staffApi = {
     password: string,
   ): Promise<{ access_token: string; refresh_token: string; user: { id: string; email: string; fullName: string; role: string; cafeId: string | null } }> => {
     const res = await api.post("/v1/auth/staff-invite/activate", { token, password })
+    return res.data.data
+  },
+
+  checkIn: async (bookingId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/check-in`)
+    return res.data.data
+  },
+
+  getSessionDetail: async (sessionId: string): Promise<any> => {
+    const res = await api.get<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}`)
+    return res.data.data
+  },
+
+  submitInspection: async (sessionId: string, data: any): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/inspections`, data)
+    return res.data.data
+  },
+
+  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee: number }): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/extensions`, data)
+    return res.data.data
+  },
+
+  addSessionFnbOrder: async (sessionId: string, data: { items: { name: string; qty: number; price: number }[] }): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/fnb-orders`, data)
+    return res.data.data
+  },
+
+  swapSessionVehicle: async (
+    sessionId: string,
+    data: { oldVehicleId: string; newVehicleId: string; oldVehicleNewStatus: string }
+  ): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/swap-vehicle`, data)
+    return res.data.data
+  },
+
+  simulateClientCheckIn: async (sessionId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/simulate-check-in-response`)
+    return res.data.data
+  },
+
+  simulateClientCheckOut: async (sessionId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/simulate-check-out-response`)
+    return res.data.data
+  },
+
+  simulateClientExtension: async (sessionId: string, data: { approved: boolean }): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/simulate-extension-response`, data)
+    return res.data.data
+  },
+
+  settlePendingPayments: async (bookingId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/settle-pending-payments`)
+    return res.data.data
+  },
+
+  confirmRefund: async (bookingId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/confirm-refund`)
     return res.data.data
   },
 }

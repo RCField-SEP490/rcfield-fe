@@ -1,10 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router"
-import { 
-  mockCustomerBookingDetails, 
-  type MockSessionDetail,
-  type MockExtensionProposal 
-} from "@/shared/data/customer-operational-mock-data"
+import { type MockSessionDetail, type MockExtensionProposal } from "@/shared/data/customer-operational-mock-data"
+import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
 import { 
   Clock, 
   Sparkles, 
@@ -26,27 +23,51 @@ export function CustomerExtensionResponsePage() {
   const [session, setSession] = useState<MockSessionDetail | null>(null)
   const [proposal, setProposal] = useState<MockExtensionProposal | null>(null)
   const [timeLeft, setTimeLeft] = useState<number>(10 * 60) // 10 minutes countdown
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [loadError, setLoadError] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  useEffect(() => {
-    let foundSession: MockSessionDetail | null = null
-    for (const b of mockCustomerBookingDetails) {
-      const s = b.sessions.find(item => item.sessionId === sessionId)
-      if (s) {
-        foundSession = s
-        break
-      }
+  const loadSession = useCallback(async (silent = false) => {
+    if (!sessionId) {
+      setIsLoading(false)
+      return
     }
+    if (!silent) setIsLoading(true)
+    setLoadError("")
+    try {
+      const detail = await customerSessionApi.getSessionDetail(sessionId)
+      const pendingProposal = detail.extensionProposal?.status === "PENDING" ? detail.extensionProposal : null
 
-    if (foundSession && foundSession.extensionProposal) {
-      setSession(foundSession)
-      setProposal(foundSession.extensionProposal)
-      
-      const expiry = new Date(foundSession.extensionProposal.expiresAt).getTime()
-      const remaining = Math.max(0, Math.floor((expiry - Date.now()) / 1000))
-      setTimeLeft(remaining)
+      setSession(detail)
+      setProposal(pendingProposal)
+      if (pendingProposal) {
+        const expiry = new Date(pendingProposal.expiresAt).getTime()
+        setTimeLeft(Math.max(0, Math.floor((expiry - Date.now()) / 1000)))
+      }
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined
+      setLoadError(message ?? "Không thể tải đề xuất gia hạn.")
+      setSession(null)
+      setProposal(null)
+    } finally {
+      if (!silent) setIsLoading(false)
     }
   }, [sessionId])
+
+  useEffect(() => {
+    void loadSession()
+  }, [loadSession])
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      void loadSession(true)
+    }
+    window.addEventListener("refresh-session-detail", handleRefresh)
+    return () => window.removeEventListener("refresh-session-detail", handleRefresh)
+  }, [loadSession])
 
   // Count down
   useEffect(() => {
@@ -63,13 +84,25 @@ export function CustomerExtensionResponsePage() {
     return () => clearInterval(timer)
   }, [timeLeft])
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full text-center p-8 space-y-4">
+          <Clock className="h-12 w-12 text-orange-500 mx-auto animate-pulse" />
+          <h2 className="text-xl font-bold text-slate-900">Đang tải đề xuất gia hạn</h2>
+          <p className="text-sm text-slate-500">Hệ thống đang lấy yêu cầu mới nhất từ staff.</p>
+        </Card>
+      </div>
+    )
+  }
+
   if (!session || !proposal) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <Card className="max-w-md w-full text-center p-8 space-y-4">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-bold text-slate-900">Không tìm thấy đề xuất gia hạn</h2>
-          <p className="text-sm text-slate-500">Đề xuất gia hạn cho phiên {sessionId} không tồn tại hoặc đã hết hạn.</p>
+          <p className="text-sm text-slate-500">{loadError || `Đề xuất gia hạn cho phiên ${sessionId} không tồn tại hoặc đã hết hạn.`}</p>
           <Button onClick={() => navigate("/customer/bookings")} className="w-full bg-slate-900 text-white rounded-xl">
             Quay lại Lịch đặt sân
           </Button>
@@ -90,10 +123,10 @@ export function CustomerExtensionResponsePage() {
   }
 
   // Handle Action
-  const handleAction = (approve: boolean) => {
+  const handleAction = async (approve: boolean) => {
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    try {
+      await customerSessionApi.respondExtension(session.sessionId, approve)
       if (approve) {
         toast.success("Đã đồng ý gia hạn phiên chơi!", {
           description: `Thời gian chơi của bạn đã được cộng thêm ${proposal.extraMinutes} phút thành công.`
@@ -104,7 +137,15 @@ export function CustomerExtensionResponsePage() {
         })
       }
       navigate(`/customer/sessions/${session.sessionId}`)
-    }, 1200)
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : undefined
+      toast.error(message ?? "Không thể gửi phản hồi gia hạn.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

@@ -1,5 +1,8 @@
 import { useNavigate } from "react-router"
+import { useQuery } from "@tanstack/react-query"
 import { routePaths } from "@/app/router/route-paths"
+import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
+import type { SubscriptionPlan, PlanName } from "@/features/subscriptions/types"
 import {
   Building2,
   CalendarCheck,
@@ -13,8 +16,47 @@ import {
   Users2
 } from "lucide-react"
 
+const PLAN_DISPLAY: Record<PlanName, { label: string; cta: string; badge?: string }> = {
+  TRIAL:   { label: "Dùng thử (Trial)",        cta: "Trải nghiệm ngay" },
+  STARTER: { label: "Khởi nghiệp (Starter)",   cta: "Đăng ký gói" },
+  GROWTH:  { label: "Tăng trưởng (Growth)",    cta: "Đăng ký gói", badge: "Phổ biến" },
+  PRO:     { label: "Chuyên nghiệp (Pro)",     cta: "Liên hệ hợp tác" },
+}
+
+function getFeatures(plan: SubscriptionPlan): string[] {
+  const features: string[] = []
+  features.push(
+    plan.branchLimit <= 0
+      ? "Không giới hạn Chi nhánh"
+      : `${plan.branchLimit} Chi nhánh hoạt động`
+  )
+  features.push(`${plan.aiQuotaPerMonth.toLocaleString("vi-VN")} tin nhắn Chatbot AI/tháng`)
+  if (plan.channelLimit <= 0) {
+    features.push("Không giới hạn tích hợp Fanpage Facebook")
+  } else if (plan.channelLimit === 1) {
+    features.push("Hỗ trợ tích hợp 1 Fanpage Facebook")
+  } else if (plan.channelLimit > 1) {
+    features.push(`Hỗ trợ tích hợp ${plan.channelLimit} Fanpage Facebook`)
+  }
+  return features
+}
+
+function formatPrice(plan: SubscriptionPlan): { price: string; period: string } {
+  if (plan.isTrial) return { price: "0đ", period: "30 ngày đầu" }
+  return {
+    price: `${Math.round(plan.pricePerMonth).toLocaleString("vi-VN")}đ`,
+    period: "tháng",
+  }
+}
+
 export function PartnerLandingPage() {
   const navigate = useNavigate()
+
+  const { data: plans, isLoading: plansLoading } = useQuery({
+    queryKey: ["subscription-plans-public"],
+    queryFn: () => subscriptionApi.listSubscriptionPlans(),
+    staleTime: 10 * 60 * 1000,
+  })
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800 antialiased pt-20">
@@ -105,47 +147,25 @@ export function PartnerLandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {/* Free Trial */}
-            <PricingCard
-              name="Dùng thử (Trial)"
-              price="0đ"
-              period="30 ngày đầu"
-              features={["1 Chi nhánh hoạt động", "Cấu hình tối đa 5 xe rental", "100 tin nhắn Chatbot AI/tháng", "Báo cáo doanh thu cơ bản"]}
-              ctaText="Trải nghiệm ngay"
-              onClick={() => navigate(routePaths.providerRegister)}
-            />
-
-            {/* Starter Plan */}
-            <PricingCard
-              name="Khởi nghiệp (Starter)"
-              price="199.000đ"
-              period="tháng"
-              features={["1 Chi nhánh hoạt động", "Cấu hình tối đa 10 xe rental", "500 tin nhắn Chatbot AI/tháng", "Báo cáo doanh thu & đối soát"]}
-              ctaText="Đăng ký gói"
-              onClick={() => navigate(routePaths.providerRegister)}
-            />
-
-            {/* Growth Plan */}
-            <PricingCard
-              name="Tăng trưởng (Growth)"
-              price="499.000đ"
-              period="tháng"
-              badge="Phổ biến"
-              features={["3 Chi nhánh hoạt động", "Cấu hình tối đa 25 xe rental", "2.000 tin nhắn Chatbot AI/tháng", "Hỗ trợ tích hợp Fanpage Facebook"]}
-              ctaText="Đăng ký gói"
-              highlight
-              onClick={() => navigate(routePaths.providerRegister)}
-            />
-
-            {/* Pro Plan */}
-            <PricingCard
-              name="Chuyên nghiệp (Pro)"
-              price="999.000đ"
-              period="tháng"
-              features={["Không giới hạn Chi nhánh", "Không giới hạn xe rental", "10.000 tin nhắn Chatbot AI/tháng", "Hỗ trợ riêng biệt 24/7 & API tích hợp"]}
-              ctaText="Liên hệ hợp tác"
-              onClick={() => navigate(routePaths.providerRegister)}
-            />
+            {plansLoading
+              ? Array.from({ length: 4 }).map((_, i) => <PricingCardSkeleton key={i} />)
+              : (plans ?? []).map((plan) => {
+                  const display = PLAN_DISPLAY[plan.name] ?? { label: plan.name, cta: "Đăng ký" }
+                  const { price, period } = formatPrice(plan)
+                  return (
+                    <PricingCard
+                      key={plan.id}
+                      name={display.label}
+                      price={price}
+                      period={period}
+                      features={getFeatures(plan)}
+                      ctaText={display.cta}
+                      badge={display.badge}
+                      highlight={!!display.badge}
+                      onClick={() => navigate(routePaths.providerRegister)}
+                    />
+                  )
+                })}
           </div>
         </div>
       </section>
@@ -195,6 +215,22 @@ function FeatureCard({ icon, title, desc }: { icon: React.ReactNode; title: stri
       </div>
       <h3 className="text-base font-bold text-slate-900 mb-2">{title}</h3>
       <p className="text-xs text-slate-500 leading-relaxed">{desc}</p>
+    </div>
+  )
+}
+
+function PricingCardSkeleton() {
+  return (
+    <div className="bg-white rounded-3xl p-8 border border-slate-100 flex flex-col gap-4 animate-pulse">
+      <div className="h-5 w-36 bg-slate-100 rounded-lg" />
+      <div className="h-8 w-24 bg-slate-100 rounded-lg" />
+      <div className="h-[1px] bg-slate-100" />
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-4 bg-slate-100 rounded-lg" />
+        ))}
+      </div>
+      <div className="h-10 bg-slate-100 rounded-xl mt-auto" />
     </div>
   )
 }

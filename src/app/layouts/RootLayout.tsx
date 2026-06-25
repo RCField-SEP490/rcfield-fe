@@ -105,7 +105,12 @@ function AuthInitializer() {
   return null
 }
 
+import { useSessionNotifications } from "@/features/customer-session/hooks/useSessionNotifications"
+
 export function RootLayout() {
+  const role = useAuthStore((state) => state.role)
+  useSessionNotifications(role === "customer")
+
   return (
     <>
       <AuthInitializer />

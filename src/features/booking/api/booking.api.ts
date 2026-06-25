@@ -72,6 +72,13 @@ export const bookingApi = {
     return res.data.data
   },
 
+  createCheckoutAdditionalPayment: async (bookingId: string): Promise<CheckoutResponse> => {
+    const res = await api.post<ApiEnvelope<CheckoutResponse>>(
+      `/v1/bookings/${bookingId}/checkout-additional-payment`,
+    )
+    return res.data.data
+  },
+
   cancelBooking: async (bookingId: string, reason?: string): Promise<BookingResponse> => {
     const res = await api.post<ApiEnvelope<BookingResponse>>(
       `/v1/bookings/${bookingId}/cancel`,

@@ -70,8 +70,8 @@ const providerNavGroups: NavGroup[] = [
     heading: "Hệ thống",
     items: [
       { label: "Gói đăng ký", icon: ShieldCheck, to: routePaths.providerSubscriptions },
-      { label: "Kênh Messenger", icon: Share2, to: routePaths.providerChannels },
-      { label: "Cấu hình", icon: Settings, to: routePaths.providerConfiguration },
+      // { label: "Kênh Messenger", icon: Share2, to: routePaths.providerChannels },
+      // { label: "Cấu hình", icon: Settings, to: routePaths.providerConfiguration },
     ],
   },
 ]
@@ -227,6 +227,22 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               >
                 <MessageSquare className="size-3.5" />
                 Widget Chat
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchParams({ tab: "channel" })
+                  if (isMobile) setMobileMenuOpen(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "channel"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Share2 className="size-3.5" />
+                Kênh Messenger
               </button>
             </div>
           )}

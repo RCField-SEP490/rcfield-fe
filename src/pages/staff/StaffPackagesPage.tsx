@@ -32,8 +32,7 @@ export default function StaffPackagesPage() {
     setSearchedCustomer(found || null)
   }
 
-  // Pre-fill query buttons for easy demo checking
-  const handleQuickDemoSearch = (phone: string) => {
+  const handleQuickCustomerSearch = (phone: string) => {
     setSearchQuery(phone)
     const found = customerPackages.find((p) => p.phone === phone)
     setSearchedCustomer(found || null)
@@ -48,17 +47,17 @@ export default function StaffPackagesPage() {
         subtitle="Tra cứu nhanh thời hạn thẻ, số dư tài khoản ví và các gói combo của người chơi"
       />
 
-      {/* 2. QUICK DEMO PICKERS */}
+      {/* 2. QUICK CUSTOMER PICKERS */}
       <StaffCard className="p-4 space-y-3">
         <span className="text-[10px] uppercase tracking-wider text-[#6b7280] font-bold flex items-center gap-1.5">
           <HelpCircle className="size-3.5 text-[#ea580c]" />
-          Danh sách khách hàng mẫu (Chọn để tra nhanh):
+          Khách hàng gần đây (chọn để tra nhanh):
         </span>
         <div className="flex flex-wrap gap-2">
           {customerPackages.map((p) => (
             <button
               key={p.phone}
-              onClick={() => handleQuickDemoSearch(p.phone)}
+              onClick={() => handleQuickCustomerSearch(p.phone)}
               className="text-[11px] font-bold border border-[#e5e2e1] bg-[#fcf8f8] hover:border-[#ea580c] hover:bg-[#fff3eb] rounded-lg px-3 py-1.5 transition-all text-[#4c4a49]"
             >
               {p.fullName} ({p.phone})

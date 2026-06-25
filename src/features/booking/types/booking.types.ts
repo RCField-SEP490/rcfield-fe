@@ -17,7 +17,14 @@ export type PaymentComponentType =
   | 'DAMAGE_CHARGE'
   | 'PLATFORM_FEE'
 
-export type PaymentComponentStatus = 'PENDING' | 'HELD' | 'CAPTURED' | 'REFUNDED' | 'DISBURSED'
+export type PaymentComponentStatus =
+  | 'PENDING'
+  | 'HELD'
+  | 'CAPTURED'
+  | 'REFUNDED'
+  | 'DISBURSED'
+  | 'PENDING_REFUND'
+  | 'PARTIALLY_REFUNDED'
 
 export interface PaymentComponentResponse {
   id: string
@@ -26,6 +33,8 @@ export interface PaymentComponentResponse {
   amount: number
   status: PaymentComponentStatus
   bookingVehicleId: string | null
+  refundedAmount?: number
+  refundedAt?: string | null
 }
 
 export interface AvailableVehicle {
@@ -104,6 +113,13 @@ export interface BookingResponse {
   fnb_order: FnbOrder | null
   cafe: { name: string; address: string; city: string } | null
   track_type_name: string | null
+  session: {
+    id: string
+    status: string
+    plannedEndAt: string
+    actualStartAt: string
+    actualEndAt: string | null
+  } | null
 }
 
 export interface BookingListItem {
@@ -118,6 +134,12 @@ export interface BookingListItem {
   checkInCode: string | null
   createdAt: string
   updatedAt: string
+  session: {
+    id: string
+    status: string
+    plannedEndAt: string
+    actualStartAt: string | null
+  } | null
 }
 
 export interface BookingListResponse {
@@ -152,6 +174,7 @@ export interface CreateBookingBody {
   fnb_items: FnbItemBody[]
   promotion_code?: string
   track_type_id?: string
+  track_config_id?: string
   customer_package_id?: string
 }
 
@@ -184,6 +207,7 @@ export interface CheckAvailabilityParams {
   slot_end: string
   play_mode: BookingPlayMode
   track_type_id?: string
+  track_config_id?: string
 }
 
 export interface ListMyBookingsParams {

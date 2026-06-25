@@ -107,6 +107,10 @@ const providerGuardRoute = (element: ReactNode) => (
   </RoleGuard>
 )
 
+function CustomerRealtimeLayout() {
+  return <PublicLayout />
+}
+
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -157,7 +161,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <RoleGuard allowedRoles={["customer"]}>
-              <PublicLayout />
+              <CustomerRealtimeLayout />
             </RoleGuard>
           </ProtectedRoute>
         ),

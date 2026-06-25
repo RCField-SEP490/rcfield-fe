@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Bell, CheckCheck, X } from "lucide-react"
+import { useNavigate } from "react-router"
+import { bookingApi } from "@/features/booking/api/booking.api"
+import { staffApi } from "@/features/staff/api/staff.api"
 import { cn } from "@/shared/lib/utils"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { notificationApi } from "../api/notification.api"
@@ -17,6 +20,15 @@ const TYPE_ICONS: Record<string, string> = {
   SUBSCRIPTION_ACTIVATED: "🎉",
   PAYMENT_REQUEST_CONFIRMED: "💳",
   PAYMENT_REQUEST_REJECTED: "❌",
+  SESSION_CHECKIN_INSPECTION: "📋",
+  SESSION_CHECKOUT_INSPECTION: "🔑",
+  SESSION_EXTENSION_PROPOSED: "⏳",
+  SESSION_FNB_ORDER_ADDED: "🍔",
+  CUSTOMER_CHECKIN_CONFIRMED: "✅",
+  CUSTOMER_CHECKOUT_CONFIRMED: "🔑",
+  CUSTOMER_INSPECTION_DISPUTED: "⚠️",
+  CUSTOMER_EXTENSION_APPROVED: "⏰",
+  CUSTOMER_EXTENSION_REJECTED: "❌",
 }
 
 function timeAgo(dateStr: string): string {
@@ -69,6 +81,89 @@ export function NotificationBell() {
   const notifications = data?.data ?? []
   const unreadCount = data?.unreadCount ?? 0
 
+  const navigate = useNavigate()
+
+  const handleNotificationClick = async (n: Notification) => {
+    if (!n.readAt) markReadMutation.mutate(n.id)
+    setOpen(false)
+
+    if (n.type === "SESSION_CHECKIN_INSPECTION" || n.type === "SESSION_CHECKOUT_INSPECTION") {
+      try {
+        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
+        const activeBooking = bookingsRes.data.find(
+          (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
+        )
+        if (activeBooking) {
+          const detail = await bookingApi.getBooking(activeBooking.id)
+          if (detail.session) {
+            navigate(`/customer/inspections/${detail.session.id}`)
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi điều hướng biên bản:", err)
+      }
+    } else if (n.type === "SESSION_EXTENSION_PROPOSED") {
+      try {
+        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
+        const activeBooking = bookingsRes.data.find((b) => b.status === "CONFIRMED")
+        if (activeBooking) {
+          const detail = await bookingApi.getBooking(activeBooking.id)
+          if (detail.session) {
+            navigate(`/customer/extension-response/${detail.session.id}`)
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi điều hướng gia hạn:", err)
+      }
+    } else if (n.type === "SESSION_FNB_ORDER_ADDED") {
+      try {
+        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
+        const activeBooking = bookingsRes.data.find(
+          (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
+        )
+        if (activeBooking) {
+          const detail = await bookingApi.getBooking(activeBooking.id)
+          if (detail.session) {
+            navigate(`/customer/sessions/${detail.session.id}`)
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi điều hướng gọi món:", err)
+      }
+    } else if (
+      n.type === "CUSTOMER_CHECKIN_CONFIRMED" ||
+      n.type === "CUSTOMER_CHECKOUT_CONFIRMED" ||
+      n.type === "CUSTOMER_INSPECTION_DISPUTED" ||
+      n.type === "CUSTOMER_EXTENSION_APPROVED" ||
+      n.type === "CUSTOMER_EXTENSION_REJECTED"
+    ) {
+      try {
+        const match = n.message.match(/phiên chơi ([a-f0-9]{8})/i)
+        const prefix = match ? match[1] : null
+
+        const bookings = await staffApi.getTodayBookings()
+        let targetSessionId: string | null = null
+        for (const b of bookings) {
+          if (b.sessions) {
+            for (const s of b.sessions) {
+              if (prefix && s.sessionId.startsWith(prefix)) {
+                targetSessionId = s.sessionId
+                break
+              }
+            }
+          }
+          if (targetSessionId) break
+        }
+
+        if (targetSessionId) {
+          navigate(`/staff/sessions/${targetSessionId}`)
+        }
+      } catch (err) {
+        console.error("Lỗi điều hướng phiên chơi cho staff:", err)
+      }
+    }
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -114,9 +209,7 @@ export function NotificationBell() {
                     "w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors",
                     !n.readAt && "bg-orange-50/60",
                   )}
-                  onClick={() => {
-                    if (!n.readAt) markReadMutation.mutate(n.id)
-                  }}
+                  onClick={() => handleNotificationClick(n)}
                 >
                   <div className="flex items-start gap-2.5">
                     <span className="text-base leading-none mt-0.5">{TYPE_ICONS[n.type] ?? "🔔"}</span>

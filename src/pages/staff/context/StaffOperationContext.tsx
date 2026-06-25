@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
+import { staffApi } from "@/features/staff/api/staff.api"
 import {
   type CustomerBookingDetail,
   type MockSessionDetail,
-  type MockInspection,
   type InspectionPhoto,
   type ChecklistItem,
 } from "@/shared/data/customer-operational-mock-data"
@@ -57,7 +59,8 @@ export interface StaffOperationContextType {
     plannedVehicles: string[]
     selectedVehicles: { vehicleId: string; name: string; imageUrl?: string }[]
   }) => boolean
-  startCheckIn: (bookingId: string) => void
+  refreshData: () => Promise<void>
+  startCheckIn: (bookingId: string) => Promise<any | null>
   submitInspection: (
     sessionId: string,
     type: "CHECK_IN" | "CHECK_OUT",
@@ -69,9 +72,6 @@ export interface StaffOperationContextType {
     swappedVehiclesState?: { vehicleId: string; status: keyof typeof VehicleStatus }[]
   ) => void
   proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number) => void
-  simulateClientExtensionResponse: (sessionId: string, approved: boolean) => void
-  simulateClientCheckInResponse: (sessionId: string) => void
-  simulateClientCheckOutResponse: (sessionId: string) => void
   addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => void
   updateFnbOrderStatus: (orderId: string, status: FnbOrder["status"]) => void
   swapSessionVehicle: (
@@ -106,6 +106,7 @@ export function useStaffOperations() {
 }
 
 export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const role = useAuthStore((state) => state.role)
   const userId = user?.id || "anonymous"
@@ -140,44 +141,104 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
   // Compute all sessions across bookings
   const sessions = bookings.flatMap((b) => b.sessions || [])
 
-  // Sync state with localStorage
-  useEffect(() => {
-    const storedBookings = localStorage.getItem(bookingsKey)
-    const storedFnb = localStorage.getItem(fnbOrdersKey)
-    const storedFleet = localStorage.getItem(fleetKey)
-    const storedIncidents = localStorage.getItem(incidentsKey)
-    const storedMaintenance = localStorage.getItem(maintenanceKey)
-    const storedByoc = localStorage.getItem(byocKey)
+  const fetchData = useCallback(async () => {
+    try {
+      const todayBookings = await staffApi.getTodayBookings()
+      setBookings(todayBookings)
 
-    if (storedBookings) {
-      setBookings(JSON.parse(storedBookings))
-    } else {
-      setBookings(initialMockBookings)
-      localStorage.setItem(bookingsKey, JSON.stringify(initialMockBookings))
-    }
-
-    if (storedFnb) {
-      setFnbOrders(JSON.parse(storedFnb))
-    } else {
-      const initialFnb: FnbOrder[] = []
-      initialMockBookings.forEach((b) => {
-        b.sessions?.forEach((s) => {
-          s.fnbOrders?.forEach((order, idx) => {
-            initialFnb.push({
+      // Sync active F&B orders
+      const extractedFnb: FnbOrder[] = []
+      todayBookings.forEach((b: any) => {
+        b.sessions?.forEach((s: any) => {
+          s.fnbOrders?.forEach((order: any) => {
+            extractedFnb.push({
               orderId: order.orderId,
               sessionId: s.sessionId,
               tableName: b.trackName,
               items: order.items,
               total: order.total,
-              status: "DELIVERED",
-              createdAt: new Date(Date.now() - (idx + 1) * 3600000).toISOString(),
+              status: "PENDING",
+              createdAt: new Date().toISOString(),
             })
           })
         })
       })
-      setFnbOrders(initialFnb)
-      localStorage.setItem(fnbOrdersKey, JSON.stringify(initialFnb))
+      setFnbOrders(extractedFnb)
+    } catch (err: any) {
+      console.error("Failed to load today bookings:", err)
     }
+  }, [])
+
+  useEffect(() => {
+    if (role === "staff") {
+      fetchData()
+    }
+  }, [role, fetchData])
+
+  const handleRealtimeMessage = useCallback(
+    (msg: WsMessage) => {
+      // Invalidate notifications query so the notification count/list updates immediately
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+
+      const data = msg.data as { sessionId?: string; type?: string; note?: string } | undefined
+
+      if (msg.event === "CUSTOMER_CHECKIN_CONFIRMED") {
+        toast.success("Khách đã xác nhận nhận xe", {
+          description: data?.sessionId ? `Phiên ${data.sessionId} đã chuyển sang ACTIVE.` : undefined,
+        })
+        void fetchData()
+        return
+      }
+
+      if (msg.event === "CUSTOMER_CHECKOUT_CONFIRMED") {
+        toast.success("Khách đã xác nhận trả xe", {
+          description: data?.sessionId ? `Phiên ${data.sessionId} đã hoàn tất.` : undefined,
+        })
+        void fetchData()
+        return
+      }
+
+      if (msg.event === "CUSTOMER_EXTENSION_APPROVED" || msg.event === "CUSTOMER_EXTENSION_REJECTED") {
+        if (msg.event === "CUSTOMER_EXTENSION_APPROVED") {
+          toast.success("Khách đã đồng ý gia hạn", {
+            description: data?.sessionId ? `Phiên ${data.sessionId} đã được cập nhật.` : undefined,
+          })
+        } else {
+          toast.warning("Khách đã từ chối gia hạn", {
+            description: data?.sessionId ? `Phiên ${data.sessionId} đã được cập nhật.` : undefined,
+          })
+        }
+        void fetchData()
+        return
+      }
+
+      if (msg.event === "CUSTOMER_INSPECTION_DISPUTED") {
+        toast.warning("Khách phản hồi sai lệch biên bản", {
+          description: data?.note || "Cần kiểm tra lại xe và lập biên bản mới.",
+        })
+        void fetchData()
+        return
+      }
+
+      if (msg.event === "CUSTOMER_PAYMENT_CONFIRMED") {
+        toast.success("Khách đã thanh toán phí phát sinh tại quầy", {
+          description: "Ca chơi đã cập nhật trạng thái quyết toán thành công.",
+        })
+        void fetchData()
+        return
+      }
+    },
+    [fetchData, queryClient],
+  )
+
+  useWebSocket(handleRealtimeMessage)
+
+  // Sync state with localStorage for other metrics (incidents, maintenance, byoc)
+  useEffect(() => {
+    const storedFleet = localStorage.getItem(fleetKey)
+    const storedIncidents = localStorage.getItem(incidentsKey)
+    const storedMaintenance = localStorage.getItem(maintenanceKey)
+    const storedByoc = localStorage.getItem(byocKey)
 
     if (storedFleet) {
       setFleetStates(JSON.parse(storedFleet))
@@ -212,7 +273,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       setByocRegistry(initialMockByocRegistry)
       localStorage.setItem(byocKey, JSON.stringify(initialMockByocRegistry))
     }
-  }, [userId, bookingsKey, fnbOrdersKey, fleetKey, incidentsKey, maintenanceKey, byocKey])
+  }, [userId, fleetKey, incidentsKey, maintenanceKey, byocKey])
 
   const setAssignedCafeId = useCallback((_cafeId: string | null) => {
     // No-op - derived directly from auth store profile
@@ -303,7 +364,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     setByocRegistry(initialMockByocRegistry)
     localStorage.setItem(byocKey, JSON.stringify(initialMockByocRegistry))
 
-    toast.success("Đã hoàn tác dữ liệu mô phỏng về mặc định thành công.")
+    toast.success("Đã khôi phục dữ liệu vận hành cục bộ về mặc định thành công.")
   }, [bookingsKey, fnbOrdersKey, fleetKey, incidentsKey, maintenanceKey, byocKey])
 
   const createWalkInBooking = useCallback((data: {
@@ -381,50 +442,19 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     return true
   }, [bookings, fleetStates, assignedCafeId, saveBookings, saveFleetStates])
 
-  const startCheckIn = useCallback((bookingId: string) => {
-    const updatedBookings = bookings.map((b) => {
-      if (b.bookingId === bookingId) {
-        if (b.status !== "CONFIRMED") {
-          toast.error("Chỉ có thể Check-In đơn đặt lịch có trạng thái CONFIRMED!")
-          return b
-        }
+  const startCheckIn = useCallback(async (bookingId: string) => {
+    try {
+      const data = await staffApi.checkIn(bookingId)
+      toast.success(`Đã khởi tạo quy trình Check-In cho session ${data.id || data.sessionId}. Cần làm kiểm xe.`)
+      await fetchData()
+      return data
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể Check-In")
+      return null
+    }
+  }, [fetchData])
 
-        const sessionId = `SS-${Math.floor(1000 + Math.random() * 9000)}`
-        const vehiclesList = b.plannedVehicles.map((pvName, index) => {
-          const matchedVehId = index === 0 ? "V-MAZDA-RX7" : `V-WALKIN-${index}-${Math.floor(Math.random() * 100)}`
-          return {
-            vehicleId: matchedVehId,
-            name: pvName,
-            type: b.playMode === "BYOC" ? ("BYOC" as const) : ("RENT" as const),
-            imageUrl: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400"
-          }
-        })
-
-        const newSession: MockSessionDetail = {
-          sessionId,
-          bookingId,
-          status: "CHECKED_IN",
-          staffName: user?.fullName || "Nhân viên trực ban",
-          plannedEnd: b.slotEnd,
-          participants: b.plannedParticipants.map((p) => ({ name: p, type: "PLAYER" })),
-          vehicles: vehiclesList,
-          inspections: [],
-        }
-
-        toast.success(`Đã khởi tạo quy trình Check-In cho session ${sessionId}. Cần làm kiểm xe.`)
-
-        return {
-          ...b,
-          sessions: [...(b.sessions || []), newSession]
-        }
-      }
-      return b
-    })
-
-    saveBookings(updatedBookings)
-  }, [bookings, user, saveBookings])
-
-  const submitInspection = useCallback((
+  const submitInspection = useCallback(async (
     sessionId: string,
     type: "CHECK_IN" | "CHECK_OUT",
     photos: InspectionPhoto[],
@@ -433,291 +463,64 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     damageFlagged: boolean,
     damageDetails?: { description: string; estimatedCost: number; damageMultiplier: number; finalCharge: number }
   ) => {
-    const updatedBookings = bookings.map((b) => {
-      const targetSessionIdx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (targetSessionIdx !== undefined && targetSessionIdx !== -1) {
-        const session = b.sessions[targetSessionIdx]
-        const inspectionId = `INS-${type}-${Math.floor(1000 + Math.random() * 9000)}`
+    try {
+      const formattedChecklist = checklist.map(item => ({
+        itemKey: item.id,
+        itemLabel: item.label,
+        status: item.checked ? "OK" : "BROKEN",
+        note: item.notes || ""
+      }))
+      const formattedPhotos = photos.map(p => ({
+        angle: p.direction,
+        url: p.url,
+        notes: p.notes,
+      }))
+      await staffApi.submitInspection(sessionId, {
+        type,
+        photos: formattedPhotos,
+        checklist: formattedChecklist,
+        staffNotes,
+        damageFlagged,
+        damageDetails
+      })
 
-        const newInspection: MockInspection = {
-          inspectionId,
-          type,
-          photos,
-          checklist,
-          staffNotes,
-          customerConfirmed: false,
-          damageFlagged,
-          damageDescription: damageDetails?.description,
-          estimatedCost: damageDetails?.estimatedCost,
-        }
-
-        const updatedInspections = [...(session.inspections || []), newInspection]
-        let updatedStatus = session.status
-        let updatedDamageClaim = session.damageClaim
-
-        if (type === "CHECK_IN") {
-          toast.success(`Gửi báo cáo Check-In kiểm xe thành công. Đang chờ khách hàng xác nhận.`)
+      if (type === "CHECK_IN") {
+        toast.success(`Gửi báo cáo Check-In kiểm xe thành công. Đang chờ khách hàng xác nhận.`)
+      } else {
+        if (damageFlagged && damageDetails) {
+          toast.warning(`Đã phát hiện hư hại xe! Đã lập hóa đơn phạt đền bù và gửi xác nhận cho khách hàng.`)
         } else {
-          updatedStatus = "CHECKING_OUT"
-          if (damageFlagged && damageDetails) {
-            updatedDamageClaim = {
-              claimId: `CLM-${Math.floor(1000 + Math.random() * 9000)}`,
-              description: damageDetails.description,
-              estimatedCost: damageDetails.estimatedCost,
-              damageMultiplier: damageDetails.damageMultiplier,
-              finalCharge: damageDetails.finalCharge,
-              checkInPhoto: session.inspections.find(i => i.type === "CHECK_IN")?.photos[0]?.url || "",
-              checkOutPhoto: photos[0]?.url || "",
-              status: "PENDING",
-              expiresAt: new Date(Date.now() + 24 * 3600000).toISOString(),
-            }
-            toast.warning(`Đã phát hiện hư hại xe! Đã lập hóa đơn phạt đền bù và gửi xác nhận cho khách hàng.`)
-          } else {
-            toast.success(`Hoàn tất kiểm xe Check-Out. Đang chờ khách xác nhận đóng phiên chạy.`)
-          }
-        }
-
-        const updatedSession = {
-          ...session,
-          status: updatedStatus,
-          inspections: updatedInspections,
-          damageClaim: updatedDamageClaim,
-        }
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[targetSessionIdx] = updatedSession
-
-        return {
-          ...b,
-          sessions: updatedSessions,
+          toast.success(`Hoàn tất kiểm xe Check-Out. Đang chờ khách xác nhận đóng phiên chạy.`)
         }
       }
-      return b
-    })
-
-    saveBookings(updatedBookings)
-  }, [bookings, saveBookings])
-
-  const simulateClientCheckInResponse = useCallback((sessionId: string) => {
-    let updatedFleet = { ...fleetStates }
-    const updatedBookings = bookings.map((b) => {
-      const idx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (idx !== undefined && idx !== -1) {
-        const session = b.sessions[idx]
-        const updatedInspections = session.inspections.map((insp) => {
-          if (insp.type === "CHECK_IN" && !insp.customerConfirmed) {
-            return { ...insp, customerConfirmed: true, customerConfirmedAt: new Date().toISOString() }
-          }
-          return insp
-        })
-
-        const updatedSession: MockSessionDetail = {
-          ...session,
-          status: "ACTIVE",
-          actualStart: new Date().toISOString(),
-          inspections: updatedInspections,
-        }
-
-        session.vehicles.forEach((v) => {
-          updatedFleet[v.vehicleId] = "IN_USE"
-        })
-
-        toast.success(`Khách hàng đã đồng ý biên bản bàn giao xe. Bắt đầu ca chạy!`)
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[idx] = updatedSession
-        return { ...b, sessions: updatedSessions }
-      }
-      return b
-    })
-
-    saveFleetStates(updatedFleet)
-    saveBookings(updatedBookings)
-  }, [bookings, fleetStates, saveBookings, saveFleetStates])
-
-  const simulateClientCheckOutResponse = useCallback((sessionId: string) => {
-    let updatedFleet = { ...fleetStates }
-    const updatedBookings = bookings.map((b) => {
-      const idx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (idx !== undefined && idx !== -1) {
-        const session = b.sessions[idx]
-        const updatedInspections = session.inspections.map((insp) => {
-          if (insp.type === "CHECK_OUT" && !insp.customerConfirmed) {
-            return { ...insp, customerConfirmed: true, customerConfirmedAt: new Date().toISOString() }
-          }
-          return insp
-        })
-
-        const updatedDamageClaim = session.damageClaim
-          ? ({ ...session.damageClaim, status: "CONFIRMED" as const } as const)
-          : undefined
-
-        const updatedSession: MockSessionDetail = {
-          ...session,
-          status: "COMPLETED",
-          actualEnd: new Date().toISOString(),
-          inspections: updatedInspections,
-          damageClaim: updatedDamageClaim,
-        }
-
-        session.vehicles.forEach((v) => {
-          if (session.damageClaim) {
-            updatedFleet[v.vehicleId] = "MAINTENANCE"
-          } else {
-            updatedFleet[v.vehicleId] = "AVAILABLE"
-          }
-        })
-
-        toast.success(`Khách hàng đã xác nhận thanh toán & biên bản Check-Out. Phiên chạy hoàn thành!`)
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[idx] = updatedSession
-
-        const allCompleted = updatedSessions.every((s) => s.status === "COMPLETED")
-        const newBookingStatus = allCompleted ? ("COMPLETED" as const) : b.status
-
-        return { ...b, status: newBookingStatus, sessions: updatedSessions }
-      }
-      return b
-    })
-
-    saveFleetStates(updatedFleet)
-    saveBookings(updatedBookings)
-  }, [bookings, fleetStates, saveBookings, saveFleetStates])
-
-  const proposeExtension = useCallback((sessionId: string, extraMinutes: number, additionalFee: number) => {
-    const updatedBookings = bookings.map((b) => {
-      const idx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (idx !== undefined && idx !== -1) {
-        const session = b.sessions[idx]
-        if (session.status !== "ACTIVE") {
-          toast.error("Chỉ đề xuất gia hạn khi phiên đang ACTIVE!")
-          return b
-        }
-
-        const proposalId = `PRP-${Math.floor(1000 + Math.random() * 9000)}`
-        const newPlannedEnd = new Date(new Date(session.plannedEnd).getTime() + extraMinutes * 60000).toISOString()
-
-        const extensionProposal = {
-          proposalId,
-          extraMinutes,
-          additionalFee,
-          newPlannedEnd,
-          expiresAt: new Date(Date.now() + 10 * 60000).toISOString(),
-          status: "PENDING" as const,
-        }
-
-        toast.success(`Đã gửi yêu cầu gia hạn thêm ${extraMinutes} phút đến khách hàng.`)
-
-        const updatedSession = {
-          ...session,
-          status: "EXTENDING" as const,
-          extensionProposal,
-        }
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[idx] = updatedSession
-        return { ...b, sessions: updatedSessions }
-      }
-      return b
-    })
-
-    saveBookings(updatedBookings)
-  }, [bookings, saveBookings])
-
-  const simulateClientExtensionResponse = useCallback((sessionId: string, approved: boolean) => {
-    const updatedBookings = bookings.map((b) => {
-      const idx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (idx !== undefined && idx !== -1) {
-        const session = b.sessions[idx]
-        const prop = session.extensionProposal
-
-        if (!prop || prop.status !== "PENDING") return b
-
-        let updatedSession = { ...session }
-
-        if (approved) {
-          updatedSession = {
-            ...session,
-            status: "ACTIVE" as const,
-            plannedEnd: prop.newPlannedEnd,
-            extensionProposal: {
-              ...prop,
-              status: "APPROVED" as const,
-            },
-          }
-          b.totalAmount += prop.additionalFee
-          b.slotCount += Math.ceil(prop.extraMinutes / 30)
-          toast.success(`Khách hàng ĐỒNG Ý gia hạn! Phiên chạy kéo dài đến ${new Date(prop.newPlannedEnd).toLocaleTimeString()}.`)
-        } else {
-          updatedSession = {
-            ...session,
-            status: "ACTIVE" as const,
-            extensionProposal: {
-              ...prop,
-              status: "REJECTED" as const,
-            },
-          }
-          toast.error(`Khách hàng TỪ CHỐI gia hạn ca chơi.`)
-        }
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[idx] = updatedSession
-        return { ...b, sessions: updatedSessions }
-      }
-      return b
-    })
-
-    saveBookings(updatedBookings)
-  }, [bookings, saveBookings])
-
-  const addFnbOrder = useCallback((sessionId: string, items: { name: string; qty: number; price: number }[]) => {
-    const orderId = `FNB-${Math.floor(1000 + Math.random() * 9000)}`
-    const total = items.reduce((sum, item) => sum + item.qty * item.price, 0)
-
-    let trackName = "Đường đua"
-    const updatedBookings = bookings.map((b) => {
-      const idx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (idx !== undefined && idx !== -1) {
-        trackName = b.trackName
-        const session = b.sessions[idx]
-        const newOrder = {
-          orderId,
-          items,
-          total,
-        }
-
-        const updatedFnb = [...(session.fnbOrders || []), newOrder]
-        const updatedSession = {
-          ...session,
-          fnbOrders: updatedFnb,
-        }
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[idx] = updatedSession
-        b.totalAmount += total
-
-        return { ...b, sessions: updatedSessions }
-      }
-      return b
-    })
-
-    const newGlobalOrder: FnbOrder = {
-      orderId,
-      sessionId,
-      tableName: trackName,
-      items,
-      total,
-      status: "PENDING",
-      createdAt: new Date().toISOString(),
+      await fetchData()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi báo cáo kiểm xe")
     }
+  }, [fetchData])
 
-    saveFnbOrders([newGlobalOrder, ...fnbOrders])
-    saveBookings(updatedBookings)
-    toast.success(`Đã thêm món F&B thành công cho phiên chạy!`)
-  }, [bookings, fnbOrders, saveBookings, saveFnbOrders])
+  const proposeExtension = useCallback(async (sessionId: string, extraMinutes: number, additionalFee: number) => {
+    try {
+      await staffApi.proposeExtension(sessionId, { extraMinutes, additionalFee })
+      toast.success(`Đã gửi yêu cầu gia hạn thêm ${extraMinutes} phút đến khách hàng.`)
+      await fetchData()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gửi đề xuất gia hạn")
+    }
+  }, [fetchData])
+
+  const addFnbOrder = useCallback(async (sessionId: string, items: { name: string; qty: number; price: number }[]) => {
+    try {
+      await staffApi.addSessionFnbOrder(sessionId, { items })
+      toast.success(`Đã thêm món F&B thành công cho phiên chạy!`)
+      await fetchData()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể gọi món F&B")
+    }
+  }, [fetchData])
 
   const updateFnbOrderStatus = useCallback((orderId: string, status: FnbOrder["status"]) => {
+    // Left as-is or mapped if needed
     const updatedOrders = fnbOrders.map((o) => {
       if (o.orderId === orderId) {
         return { ...o, status }
@@ -725,64 +528,27 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       return o
     })
     saveFnbOrders(updatedOrders)
-
-    if (status === "PREPARING") {
-      toast.info(`Đơn gọi món ${orderId} đang được chế biến...`)
-    } else if (status === "DELIVERED") {
-      toast.success(`Đơn gọi món ${orderId} đã phục vụ!`)
-    } else if (status === "CANCELLED") {
-      toast.warning(`Đã hủy đơn gọi món ${orderId}`)
-    }
   }, [fnbOrders, saveFnbOrders])
 
-  const swapSessionVehicle = useCallback((
+  const swapSessionVehicle = useCallback(async (
     sessionId: string,
     oldVehicleId: string,
     newVehicleId: string,
     oldVehicleNewStatus: keyof typeof VehicleStatus,
     newVehicleData: { name: string; imageUrl?: string }
   ) => {
-    let oldVehicleName = ""
-    const updatedBookings = bookings.map((b) => {
-      const idx = b.sessions?.findIndex((s) => s.sessionId === sessionId)
-      if (idx !== undefined && idx !== -1) {
-        const session = b.sessions[idx]
-        const updatedVehicles = session.vehicles.map((v) => {
-          if (v.vehicleId === oldVehicleId) {
-            oldVehicleName = v.name
-            return {
-              vehicleId: newVehicleId,
-              name: newVehicleData.name,
-              type: "RENT" as const,
-              imageUrl: newVehicleData.imageUrl,
-            }
-          }
-          return v
-        })
-
-        const updatedSession = {
-          ...session,
-          vehicles: updatedVehicles,
-        }
-
-        const updatedSessions = [...b.sessions]
-        updatedSessions[idx] = updatedSession
-        return { ...b, sessions: updatedSessions }
-      }
-      return b
-    })
-
-    saveBookings(updatedBookings)
-
-    const updatedFleet = {
-      ...fleetStates,
-      [oldVehicleId]: oldVehicleNewStatus,
-      [newVehicleId]: "IN_USE" as const,
+    try {
+      await staffApi.swapSessionVehicle(sessionId, {
+        oldVehicleId,
+        newVehicleId,
+        oldVehicleNewStatus
+      })
+      toast.success(`Đã đổi xe thành công từ xe cũ sang ${newVehicleData.name}`)
+      await fetchData()
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Không thể đổi xe")
     }
-    saveFleetStates(updatedFleet)
-
-    toast.success(`Đã đổi xe thành công từ ${oldVehicleName} sang ${newVehicleData.name}`)
-  }, [bookings, fleetStates, saveBookings, saveFleetStates])
+  }, [fetchData])
 
   // Incident log helpers
   const logIncident = useCallback((incident: Omit<StaffIncident, "incidentId" | "createdAt">) => {
@@ -887,12 +653,10 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         customerPackages,
         resetDemoData,
         createWalkInBooking,
+        refreshData: fetchData,
         startCheckIn,
         submitInspection,
         proposeExtension,
-        simulateClientExtensionResponse,
-        simulateClientCheckInResponse,
-        simulateClientCheckOutResponse,
         addFnbOrder,
         updateFnbOrderStatus,
         swapSessionVehicle,

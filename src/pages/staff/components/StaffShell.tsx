@@ -26,8 +26,8 @@ import { storageKeys } from "@/shared/lib/storage"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
-import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import { StaffAccountMenu } from "./StaffUI"
+import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 
 type NavItem = { label: string; icon: React.ComponentType<any>; path: string }
 type NavGroup = { heading: string; items: NavItem[] }
@@ -133,7 +133,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
     navigate(routePaths.login, { replace: true })
   }
 
-  const handleScanSubmit = (e: React.FormEvent) => {
+  const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!scanCode.trim()) return
 
@@ -151,11 +151,13 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
       return
     }
 
-    // Call startCheckIn
-    startCheckIn(matchedBooking.bookingId)
+    const startedSession = await startCheckIn(matchedBooking.bookingId)
+    const sessionId = startedSession?.sessionId ?? startedSession?.id
     setScannerOpen(false)
     setScanCode("")
-    navigate(`/staff/sessions/${matchedBooking.sessions?.[0]?.sessionId || `SS-NEW`}`)
+    if (sessionId) {
+      navigate(`/staff/sessions/${sessionId}`)
+    }
   }
 
   // Layout level access block for unassigned staff
@@ -401,7 +403,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                     {headerProps.action}
                   </div>
                 ) : null}
-                <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+                <div className="hidden items-center gap-4 border-l border-[#c4c7c8]/50 pl-3 md:flex">
                   <NotificationBell />
                   <StaffAccountMenu />
                 </div>
@@ -430,7 +432,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
 
             {/* Action controls */}
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 border-l border-[#c4c7c8]/50 pl-3">
+              <div className="flex items-center gap-4 border-l border-[#c4c7c8]/50 pl-3">
                 <NotificationBell />
                 <StaffAccountMenu />
               </div>
@@ -449,7 +451,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2 text-orange-600">
                 <QrCode className="size-5" />
-                <h3 className="font-bold text-[#1c1b1b]">Trình giả lập quét mã QR</h3>
+                <h3 className="font-bold text-[#1c1b1b]">Quét mã QR check-in</h3>
               </div>
               <button
                 onClick={() => setScannerOpen(false)}
@@ -477,8 +479,8 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-[11px] text-yellow-800 leading-relaxed flex gap-2">
                 <AlertTriangle className="size-5 shrink-0 text-yellow-600" />
                 <div>
-                  <span className="font-semibold block mb-0.5">Lưu ý kiểm thử:</span>
-                  Nhập một mã đặt lịch có sẵn ở ngày hôm nay (VD: <code className="bg-yellow-100 px-1 font-bold">RCF-8829</code> hoặc <code className="bg-yellow-100 px-1 font-bold">RCF-9021</code>) hoặc mã đặt lịch bạn vừa tạo trực tiếp.
+                  <span className="font-semibold block mb-0.5">Lưu ý vận hành:</span>
+                  Nhập shortcode hoặc mã đặt lịch của khách trong ngày. Sau khi check-in, hệ thống sẽ mở phiên để staff lập biên bản bàn giao xe.
                 </div>
               </div>
 
