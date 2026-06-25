@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useNavigate } from "react-router"
 import { toast } from "sonner"
 import {
   Bell,
@@ -19,7 +20,7 @@ import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { StaffShell } from "@/pages/staff/components/StaffShell"
 import { StaffHeader } from "@/pages/staff/components/StaffUI"
 import { StaffOperationContextProvider } from "@/pages/staff/context/StaffOperationContext"
-import { getMe, updateMe } from "@/features/auth/api/auth.api"
+import { getMe, updateMe, changePassword, logoutSession } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { uploadImage } from "@/features/uploads/api/upload.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
@@ -119,6 +120,61 @@ function ProfileContent() {
   const user = useAuthStore((state) => state.user)
   const role = useAuthStore((state) => state.role)
   const setUser = useAuthStore((state) => state.setUser)
+  const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+  const navigate = useNavigate()
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  })
+  const [resettingPassword, setResettingPassword] = useState(false)
+
+  const handleLogout = async () => {
+    const storedAuth = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
+    if (storedAuth) {
+      try {
+        const auth = JSON.parse(storedAuth) as { accessToken?: string; refreshToken?: string }
+        if (auth.accessToken && auth.refreshToken) {
+          await logoutSession(auth.accessToken, auth.refreshToken)
+        }
+      } catch {}
+    }
+    clearAuthenticated()
+    localStorage.removeItem(storageKeys.auth)
+    sessionStorage.removeItem(storageKeys.auth)
+    navigate("/login", { replace: true })
+  }
+
+  const handleResetPassword = async () => {
+    if (!passwordForm.currentPassword) {
+      toast.error("Vui lòng nhập mật khẩu hiện tại.")
+      return
+    }
+    if (passwordForm.newPassword.length < 6) {
+      toast.error("Mật khẩu mới phải có tối thiểu 6 ký tự.")
+      return
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+      toast.error("Mật khẩu mới nhập lại không khớp.")
+      return
+    }
+
+    setResettingPassword(true)
+    try {
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      })
+      toast.success("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.")
+      await handleLogout()
+    } catch (e: any) {
+      const msg = e.response?.data?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại."
+      toast.error(msg)
+    } finally {
+      setResettingPassword(false)
+    }
+  }
 
   const tabs = useMemo(() => {
     const roleKey = (role || "default") as keyof typeof profileTabsByRole
@@ -343,6 +399,42 @@ function ProfileContent() {
                 <div className="mt-4 flex justify-end border-t border-[#c4c7c8] pt-6 md:col-span-2">
                   <Button disabled={saving} type="button" onClick={() => void saveProfile()} className="rounded-lg bg-[#1c1b1b] px-6 text-white hover:bg-[#313030]">
                     {saving ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              </form>
+            </ProfileCard>
+
+            <ProfileCard title="Reset Password">
+              <form className="grid grid-cols-1 gap-6 md:grid-cols-2" onSubmit={(e) => { e.preventDefault(); void handleResetPassword(); }}>
+                <Field
+                  label="Mật khẩu hiện tại"
+                  id="currentPassword"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(value) => setPasswordForm((current) => ({ ...current, currentPassword: value }))}
+                  className="md:col-span-2"
+                />
+                <Field
+                  label="Mật khẩu mới"
+                  id="newPassword"
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(value) => setPasswordForm((current) => ({ ...current, newPassword: value }))}
+                />
+                <Field
+                  label="Nhập lại mật khẩu mới"
+                  id="confirmNewPassword"
+                  type="password"
+                  value={passwordForm.confirmNewPassword}
+                  onChange={(value) => setPasswordForm((current) => ({ ...current, confirmNewPassword: value }))}
+                />
+                <div className="mt-4 flex justify-end border-t border-[#c4c7c8] pt-6 md:col-span-2">
+                  <Button
+                    disabled={resettingPassword}
+                    type="submit"
+                    className="rounded-lg bg-[#1c1b1b] px-6 text-white hover:bg-[#313030]"
+                  >
+                    {resettingPassword ? "Đang xử lý..." : "Reset Password"}
                   </Button>
                 </div>
               </form>

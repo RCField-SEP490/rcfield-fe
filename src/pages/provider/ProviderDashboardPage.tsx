@@ -137,10 +137,10 @@ export function ProviderDashboardPage() {
   if (showOnboarding) {
     return (
       <ProviderShell>
-        <div className="mb-6">
-          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Thiết lập tài khoản</h2>
-          <p className="text-xs font-semibold text-slate-500 mt-1">Hoàn thành các bước hướng dẫn dưới đây để kích hoạt đầy đủ tính năng</p>
-        </div>
+        <ProviderPageHeader
+          title="Thiết lập tài khoản"
+          description="Hoàn thành các bước hướng dẫn dưới đây để kích hoạt đầy đủ tính năng"
+        />
 
         <OnboardingChecklist
           steps={steps}
@@ -500,7 +500,6 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     type="monotone"
                     dataKey="slotFee"
                     name="Phí sân"
-                    stackId="1"
                     stroke={CHART_COLORS.slotFee}
                     fill="url(#db-grad-slotFee)"
                     strokeWidth={hoveredSeries === "slotFee" ? 3.5 : 2}
@@ -513,7 +512,6 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     type="monotone"
                     dataKey="rentalFee"
                     name="Thuê xe"
-                    stackId="1"
                     stroke={CHART_COLORS.rentalFee}
                     fill="url(#db-grad-rentalFee)"
                     strokeWidth={hoveredSeries === "rentalFee" ? 3.5 : 2}
@@ -526,7 +524,6 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     type="monotone"
                     dataKey="fnbPreorder"
                     name="F&B"
-                    stackId="1"
                     stroke={CHART_COLORS.fnbPreorder}
                     fill="url(#db-grad-fnbPreorder)"
                     strokeWidth={hoveredSeries === "fnbPreorder" ? 3.5 : 2}
@@ -539,7 +536,6 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     type="monotone"
                     dataKey="securityDeposit"
                     name="Đặt cọc"
-                    stackId="1"
                     stroke={CHART_COLORS.securityDeposit}
                     fill="url(#db-grad-securityDeposit)"
                     strokeWidth={hoveredSeries === "securityDeposit" ? 3.5 : 2}

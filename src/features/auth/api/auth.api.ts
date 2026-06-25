@@ -199,6 +199,18 @@ export async function resetPasswordWithCode(payload: ResetPasswordRequest): Prom
   })
 }
 
+export type ChangePasswordRequest = {
+  currentPassword: string
+  newPassword: string
+}
+
+export async function changePassword(payload: ChangePasswordRequest): Promise<void> {
+  await api.post("/v1/auth/change-password", {
+    current_password: payload.currentPassword,
+    new_password: payload.newPassword,
+  })
+}
+
 export async function logoutSession(accessToken: string, refreshToken: string): Promise<void> {
   await api.post(
     "/v1/auth/logout",

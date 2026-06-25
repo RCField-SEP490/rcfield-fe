@@ -21,6 +21,7 @@ function AuthInitializer() {
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const setInitialized = useAuthStore((state) => state.setInitialized)
   const startImpersonation = useAuthStore((state) => state.startImpersonation)
+  const setUser = useAuthStore((state) => state.setUser)
 
   useEffect(() => {
     const raw =
@@ -41,6 +42,7 @@ function AuthInitializer() {
             registrationStatus?: string
             assignedCafeId?: string | null
           }
+          accessToken?: string
         }
         const normalizedRole = parsed.user?.role ? roleMap[parsed.user.role] : null
         if (parsed.user && normalizedRole) {
@@ -54,6 +56,30 @@ function AuthInitializer() {
             registrationStatus: parsed.user.registrationStatus,
             assignedCafeId: parsed.user.assignedCafeId,
           })
+
+          // Đồng bộ dữ liệu mới nhất từ server (avatar, fullName...) sau khi đọc localStorage
+          if (parsed.accessToken) {
+            import("@/features/auth/api/auth.api").then(({ getMe }) => {
+              getMe()
+                .then((profile) => {
+                  setUser({ ...profile, role: profile.role ?? normalizedRole })
+                  // Cập nhật lại localStorage với dữ liệu mới nhất
+                  const storage = localStorage.getItem(storageKeys.auth) ? localStorage : sessionStorage
+                  const currentRaw = storage.getItem(storageKeys.auth)
+                  if (currentRaw) {
+                    try {
+                      const currentParsed = JSON.parse(currentRaw) as Record<string, unknown>
+                      storage.setItem(storageKeys.auth, JSON.stringify({ ...currentParsed, user: profile }))
+                    } catch {
+                      // bỏ qua lỗi parse
+                    }
+                  }
+                })
+                .catch(() => {
+                  // Bỏ qua lỗi mạng — dữ liệu localStorage vẫn được dùng
+                })
+            })
+          }
         }
       } catch (err) {
         console.error("RootLayout AuthInitializer - error parsing storage:", err)
@@ -74,7 +100,7 @@ function AuthInitializer() {
     }
 
     setInitialized()
-  }, [setAuthenticated, setInitialized, startImpersonation])
+  }, [setAuthenticated, setInitialized, startImpersonation, setUser])
 
   return null
 }
