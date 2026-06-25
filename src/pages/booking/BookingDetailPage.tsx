@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
-  AlertTriangle, CalendarClock, Car, CheckCircle2, Clock3,
-  ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
+  AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, Clock3, Gamepad2,
+  ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Shield, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
@@ -10,12 +10,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Separator } from "@/shared/ui/separator"
 import { formatCurrency } from "@/shared/lib/format"
 import { useBooking, useCancelBooking } from "@/features/booking/hooks/use-booking"
+import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
+import { useQuery } from "@tanstack/react-query"
 import type { BookingResponse, BookingStatus, PaymentComponentType } from "@/features/booking/types/booking.types"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { staffApi } from "@/features/staff/api/staff.api"
+
+const DIRECTION_LABELS: Record<string, string> = {
+  FRONT: "Trước",
+  BACK: "Sau",
+  LEFT: "Trái",
+  RIGHT: "Phải",
+}
 
 const TIER_LABELS: Record<string, string> = {
   STANDARD: "Tiêu chuẩn",
@@ -139,6 +148,44 @@ export function BookingDetailPage() {
     }
   }
 
+  const sessionId = booking?.session?.id
+  const { data: sessionDetail } = useQuery({
+    queryKey: ["session-detail", sessionId],
+    queryFn: () => customerSessionApi.getSessionDetail(sessionId!),
+    enabled: !!sessionId,
+    staleTime: 60_000,
+  })
+  const checkInPhotos = sessionDetail?.inspections
+    ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
+    .flatMap((ins) => ins.photos) ?? []
+
+  const [secondsLeft, setSecondsLeft] = useState(0)
+  const [totalDuration, setTotalDuration] = useState(1)
+
+  useEffect(() => {
+    if (sessionDetail && (sessionDetail.status === "ACTIVE" || sessionDetail.status === "EXTENDING")) {
+      const plannedTime = new Date(sessionDetail.plannedEnd).getTime()
+      const actualStart = sessionDetail.actualStart ? new Date(sessionDetail.actualStart).getTime() : Date.now()
+      const now = Date.now()
+      setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
+      setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
+    } else {
+      setSecondsLeft(0)
+      setTotalDuration(1)
+    }
+  }, [sessionDetail])
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return
+    const interval = setInterval(() => {
+      setSecondsLeft(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [secondsLeft])
+
   const [payingAdditional, setPayingAdditional] = useState(false)
 
   const handlePayAdditionalFees = async () => {
@@ -223,7 +270,31 @@ export function BookingDetailPage() {
   const refundDeposit = refundComponents.filter(c => c.type === "SECURITY_DEPOSIT").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
   const refundFnb = refundComponents.filter(c => c.type === "FNB_PREORDER" || c.type === "FB_PREORDER").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
 
+  const isActiveSession = !!booking?.session &&
+    ["ACTIVE", "EXTENDING", "CHECKED_IN", "CHECKING_OUT"].includes(booking.session!.status) &&
+    !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking!.status)
+
+  // F&B on-site orders from session (paid at counter, not a payment_component)
+  const onsiteFnbTotal = (sessionDetail?.fnbOrders ?? [])
+    .filter(o => o.orderType === "ON_SITE")
+    .reduce((sum, o) => sum + Number(o.total ?? 0), 0)
+
+  // Total estimated counter bill = payment_component-tracked fees + on-site F&B
+  const totalEstimatedCounterBill = totalCounterBill + onsiteFnbTotal
+
   const statusInfo = booking ? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING) : null
+
+  const sessionBadgeOverride = booking?.session ? (() => {
+    switch (booking.session.status) {
+      case "CHECKED_IN": return { label: "Đang check-in", className: "bg-amber-100 text-amber-700" }
+      case "ACTIVE":     return { label: "Đang chơi",     className: "bg-orange-100 text-orange-700" }
+      case "EXTENDING":  return { label: "Đang gia hạn",  className: "bg-orange-100 text-orange-700" }
+      case "CHECKING_OUT": return { label: "Đang checkout", className: "bg-blue-100 text-blue-700" }
+      default: return null
+    }
+  })() : null
+
+  const displayStatusInfo = sessionBadgeOverride ?? statusInfo
 
   const handleCancelConfirm = () => {
     if (!booking) return
@@ -269,6 +340,9 @@ export function BookingDetailPage() {
   const paymentExpiry = booking.paymentExpiresAt ? new Date(booking.paymentExpiresAt) : null
   const playerCount = booking.participants.length || 1
 
+  const percentage = Math.min(100, Math.max(0, (secondsLeft / totalDuration) * 100))
+  const strokeDashoffset = 283 - (283 * percentage) / 100
+
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-6 md:px-6">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -281,28 +355,97 @@ export function BookingDetailPage() {
          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <main className="space-y-4">
             {booking.session && ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(booking.session.status) && !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking.status) && (
-              <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm rounded-xl">
-                <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
-                      <Clock3 className="h-5 w-5" />
+              (booking.session.status === "ACTIVE" || booking.session.status === "EXTENDING") ? (
+                <Card className="rounded-xl shadow-sm overflow-hidden border-orange-100">
+                  <div className="h-1 bg-gradient-to-r from-orange-500 to-orange-600" />
+                  <CardContent className="p-5">
+                    <div className="flex flex-col sm:flex-row items-center gap-5">
+                      {/* Circular Countdown */}
+                      <div className="relative h-36 w-36 flex-shrink-0 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="45" className="stroke-slate-100 fill-none" strokeWidth="6" />
+                          <circle
+                            cx="50" cy="50" r="45"
+                            className="stroke-orange-500 fill-none transition-all duration-1000 ease-linear"
+                            strokeWidth="6"
+                            strokeDasharray="283"
+                            strokeDashoffset={strokeDashoffset}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute flex flex-col items-center justify-center space-y-0.5">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CÒN LẠI</span>
+                          <span className="text-2xl font-black text-slate-950 tracking-tight tabular-nums">
+                            {secondsLeft > 0 ? formatCountdown(secondsLeft) : "00:00"}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-500">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            ĐANG CHƠI
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Session info */}
+                      <div className="flex-1 space-y-3 text-center sm:text-left">
+                        <div>
+                          <h4 className="font-black text-slate-950 text-base">Phiên chơi đang diễn ra</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {booking.session.status === "EXTENDING" ? "Phiên đang được gia hạn thêm" : "Phiên chơi đang hoạt động bình thường"}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-slate-50 rounded-lg p-2.5 text-left">
+                            <p className="text-slate-400 uppercase text-[9px] font-black tracking-wide">Giờ bắt đầu</p>
+                            <p className="font-bold text-slate-900 mt-0.5">
+                              {sessionDetail?.actualStart
+                                ? new Date(sessionDetail.actualStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+                                : "--:--"}
+                            </p>
+                          </div>
+                          <div className="bg-slate-50 rounded-lg p-2.5 text-left">
+                            <p className="text-slate-400 uppercase text-[9px] font-black tracking-wide">Kết thúc dự kiến</p>
+                            <p className="font-bold text-slate-900 mt-0.5">
+                              {sessionDetail?.plannedEnd
+                                ? new Date(sessionDetail.plannedEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+                                : new Date(booking.session.plannedEndAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                        {role === "staff" && (
+                          <Button asChild size="sm" className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-xs">
+                            <Link to={`/staff/sessions/${booking.session.id}`}>Quản lý phiên chơi</Link>
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900">
-                        {booking.session.status === "CHECKED_IN" ? "Phiên chơi chuẩn bị diễn ra" : "Phiên chơi đang diễn ra"}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Giờ kết thúc dự kiến: {new Date(booking.session.plannedEndAt).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-amber-200 bg-amber-50/50 shadow-sm rounded-xl">
+                  <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                        <Clock3 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-900">
+                          {booking.session.status === "CHECKED_IN" ? "Phiên chơi chuẩn bị diễn ra" : "Đang hoàn tất checkout"}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {booking.session.status === "CHECKED_IN"
+                            ? "Nhân viên đang hoàn tất thủ tục bàn giao xe"
+                            : "Vui lòng chờ nhân viên hoàn tất kiểm tra trả xe"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-5">
-                    <Link to={role === "staff" ? `/staff/sessions/${booking.session.id}` : `/customer/sessions/${booking.session.id}`}>
-                      Vào phiên chơi
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    {role === "staff" && (
+                      <Button asChild className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold px-5">
+                        <Link to={`/staff/sessions/${booking.session.id}`}>Quản lý phiên chơi</Link>
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              )
             )}
 
             {/* Header card */}
@@ -312,39 +455,91 @@ export function BookingDetailPage() {
                   <CardTitle className="text-3xl">Đơn đặt #{booking.id.substring(0, 8).toUpperCase()}</CardTitle>
                   <p className="mt-2 text-muted-foreground">Ngày tạo: {formatDateTime(new Date(booking.createdAt))}</p>
                 </div>
-                {statusInfo && (
-                  <Badge className={`${statusInfo.className} hover:${statusInfo.className}`}>{statusInfo.label}</Badge>
+                {displayStatusInfo && (
+                  <Badge className={`${displayStatusInfo.className} hover:${displayStatusInfo.className}`}>{displayStatusInfo.label}</Badge>
                 )}
               </CardHeader>
               <CardContent>
-                <div className="relative space-y-6 pl-8">
-                  <div className="absolute left-3 top-3 h-[calc(100%-24px)] w-px bg-border" />
-                  <TimelineItem
-                    icon={CheckCircle2}
-                    title="Đặt thành công"
-                    description={formatDateTime(new Date(booking.createdAt))}
-                    done={booking.status !== "PENDING"}
-                  />
-                  {booking.status === "PENDING" && paymentExpiry && (
-                    <TimelineItem
-                      icon={Clock3}
-                      title="Chờ thanh toán"
-                      description={`Hết hạn: ${formatDateTime(paymentExpiry)}`}
-                    />
-                  )}
-                  <TimelineItem
-                    icon={Clock3}
-                    title="Chờ check-in"
-                    description={`Dự kiến: ${slotLabel}`}
-                    done={["CHECKED_IN", "COMPLETED"].includes(booking.status)}
-                  />
-                  <TimelineItem
-                    icon={CalendarClock}
-                    title="Hoàn thành"
-                    description="Sau khi check-out"
-                    done={booking.status === "COMPLETED"}
-                  />
-                </div>
+                {(() => {
+                  const sess = booking.session
+                  const sessStatus = sess?.status
+
+                  // Check-in step
+                  const checkinDone = !!sess
+                  const checkinActive = sessStatus === "CHECKED_IN"
+                  const checkinTitle = !sess ? "Chờ check-in"
+                    : sessStatus === "CHECKED_IN" ? "Đang check-in"
+                    : "Đã check-in"
+                  const checkinDesc = !sess
+                    ? `Dự kiến: ${slotLabel}`
+                    : sessStatus === "CHECKED_IN"
+                    ? "Nhân viên đang xác nhận tình trạng xe bàn giao"
+                    : sess.actualStartAt
+                    ? `Bắt đầu lúc ${new Date(sess.actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+                    : "Đã hoàn tất check-in"
+
+                  // Playing step
+                  const showPlayStep = !!sess && sessStatus !== "CHECKED_IN"
+                  const playDone = sessStatus === "CHECKING_OUT" || booking.status === "COMPLETED"
+                  const playActive = sessStatus === "ACTIVE" || sessStatus === "EXTENDING"
+                  const playTitle = sessStatus === "EXTENDING" ? "Đang gia hạn"
+                    : sessStatus === "CHECKING_OUT" ? "Đang hoàn tất checkout"
+                    : sessStatus === "COMPLETED" || booking.status === "COMPLETED" ? "Đã kết thúc phiên chơi"
+                    : "Đang chơi"
+                  const playDesc = (sessStatus === "ACTIVE" || sessStatus === "EXTENDING")
+                    ? `Kết thúc dự kiến: ${new Date(sess!.plannedEndAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+                    : sessStatus === "CHECKING_OUT"
+                    ? "Nhân viên đang kiểm tra tình trạng xe trả"
+                    : sess?.actualEndAt
+                    ? `Kết thúc lúc ${new Date(sess.actualEndAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+                    : "Phiên chơi đã kết thúc"
+
+                  // Completion step
+                  const completedDesc = booking.status === "COMPLETED" && sess?.actualEndAt
+                    ? formatDateTime(new Date(sess.actualEndAt))
+                    : "Sau khi check-out hoàn tất"
+
+                  return (
+                    <div className="relative space-y-6 pl-8">
+                      <div className="absolute left-3 top-3 h-[calc(100%-24px)] w-px bg-border" />
+                      <TimelineItem
+                        icon={CheckCircle2}
+                        title="Đặt thành công"
+                        description={formatDateTime(new Date(booking.createdAt))}
+                        done={booking.status !== "PENDING"}
+                      />
+                      {booking.status === "PENDING" && paymentExpiry && (
+                        <TimelineItem
+                          icon={Clock3}
+                          title="Chờ thanh toán"
+                          description={`Hết hạn: ${formatDateTime(paymentExpiry)}`}
+                        />
+                      )}
+                      <TimelineItem
+                        icon={checkinDone ? CheckCircle2 : Clock3}
+                        title={checkinTitle}
+                        description={checkinDesc}
+                        done={checkinDone && !checkinActive}
+                        active={checkinActive}
+                      />
+                      {showPlayStep && (
+                        <TimelineItem
+                          icon={playDone ? CheckCircle2 : Gamepad2}
+                          title={playTitle}
+                          description={playDesc}
+                          done={playDone}
+                          active={playActive}
+                        />
+                      )}
+                      <TimelineItem
+                        icon={CalendarClock}
+                        title="Hoàn thành"
+                        description={completedDesc}
+                        done={booking.status === "COMPLETED"}
+                      />
+                    </div>
+                  )
+                })()}
               </CardContent>
             </Card>
 
@@ -507,6 +702,42 @@ export function BookingDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Check-in handover photos */}
+            {checkInPhotos.length > 0 && (
+              <Card className="rounded-xl shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Camera className="h-5 w-5" />
+                    Ảnh bàn giao xe (Check-in)
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Tình trạng xe tại thời điểm bàn giao — nhân viên chụp trước khi phiên chơi bắt đầu.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    {checkInPhotos.map((photo, idx) => (
+                      <div key={idx} className="overflow-hidden rounded-xl border border-border">
+                        <img
+                          src={photo.url}
+                          alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                          className="w-full aspect-video object-cover"
+                        />
+                        <div className="bg-muted/50 px-2.5 py-1.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            {DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                          </p>
+                          {photo.notes && (
+                            <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </main>
 
           <aside className="space-y-4">
@@ -526,132 +757,133 @@ export function BookingDetailPage() {
             )}
 
             <Card className="rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle>Chi tiết thanh toán</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Thanh toán</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* 1. Prepaid online */}
-                <div className="space-y-2 pb-2 border-b border-dashed">
-                  <span className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block">
-                    1. Đã thanh toán (VNPAY)
-                  </span>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Phí lịch sân (Slot Fee)</span>
-                    <span className="font-medium">{formatCurrency(slotFee)}</span>
+                {/* Block 1: VNPAY prepayment */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <span className="text-xs font-bold text-emerald-700">
+                      {booking.status === "PENDING" ? "Sẽ thanh toán qua VNPAY" : "Đã trả qua VNPAY"}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Phí thuê xe (Rental Fee)</span>
-                    <span className="font-medium">{formatCurrency(rentalFee)}</span>
-                  </div>
-                  {fnbPreorderFee > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">F&B trả trước (Preordered)</span>
-                      <span className="font-medium">{formatCurrency(fnbPreorderFee)}</span>
+                  <div className="pl-5 space-y-1.5">
+                    {slotFee > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Phí lịch sân</span>
+                        <span className="font-semibold tabular-nums">{formatCurrency(slotFee)}</span>
+                      </div>
+                    )}
+                    {rentalFee > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Phí thuê xe</span>
+                        <span className="font-semibold tabular-nums">{formatCurrency(rentalFee)}</span>
+                      </div>
+                    )}
+                    {fnbPreorderFee > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">F&B đặt trước</span>
+                        <span className="font-semibold tabular-nums">{formatCurrency(fnbPreorderFee)}</span>
+                      </div>
+                    )}
+                    {depositAmount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Tiền cọc xe</span>
+                        <span className="font-semibold tabular-nums">{formatCurrency(depositAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold border-t border-slate-100 pt-1.5">
+                      <span className="text-slate-800">Tổng đã trả</span>
+                      <span className="text-slate-900 tabular-nums">{formatCurrency(slotFee + rentalFee + fnbPreorderFee + depositAmount)}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
 
-                {/* 2. Vehicle Deposit Refund (Asset protection only) */}
-                {depositAmount > 0 && (
-                  <div className="space-y-2 pb-2 border-b border-dashed">
-                    <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">
-                      2. Tiền cọc xe (Deposit Refund)
-                    </span>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tiền cọc đã giữ:</span>
-                      <span className="font-medium">{formatCurrency(depositAmount)}</span>
+                {/* Block 2: End-of-session settlement (active or completed) */}
+                {(isActiveSession || booking.status === "COMPLETED") && (depositAmount > 0 || totalEstimatedCounterBill > 0) && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <Clock3 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                        <span className="text-xs font-bold text-slate-600">
+                          {isActiveSession ? "Khi kết thúc phiên" : "Quyết toán"}
+                        </span>
+                        {isActiveSession && <span className="text-[9px] text-slate-400">(ước tính)</span>}
+                      </div>
+                      <div className="pl-5 space-y-1.5">
+                        {depositRefundAmount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Hoàn cọc xe</span>
+                            <span className="font-semibold text-emerald-600 tabular-nums">+{formatCurrency(depositRefundAmount)}</span>
+                          </div>
+                        )}
+                        {depositConsumedByDamage > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Khấu trừ hư hỏng</span>
+                            <span className="font-semibold text-rose-600 tabular-nums">−{formatCurrency(depositConsumedByDamage)}</span>
+                          </div>
+                        )}
+                        {counterComponents.map((c) => (
+                          <div key={c.id} className="flex justify-between text-sm">
+                            <span className="text-slate-500">{formatComponentType(c.type)}</span>
+                            <span className="font-semibold text-orange-600 tabular-nums">+{formatCurrency(Number(c.amount))}</span>
+                          </div>
+                        ))}
+                        {onsiteFnbTotal > 0 && (
+                          <div className="flex justify-between text-sm items-start">
+                            <div>
+                              <span className="text-slate-500">F&B gọi tại quầy</span>
+                              <p className="text-[10px] text-slate-400 leading-tight">thanh toán tiền mặt</p>
+                            </div>
+                            <span className="font-semibold text-orange-600 tabular-nums">+{formatCurrency(onsiteFnbTotal)}</span>
+                          </div>
+                        )}
+                        {damageExceedingDeposit > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500">Hư hỏng vượt cọc</span>
+                            <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {damageCharge > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Khấu trừ đền bù hư hỏng xe:</span>
-                        <span className="font-medium text-rose-600">−{formatCurrency(depositConsumedByDamage)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm border-t pt-1.5 mt-1">
-                      <span className="text-blue-700 font-semibold">Tiền cọc hoàn lại (Deposit Refund):</span>
-                      <span className="font-bold text-emerald-600">{formatCurrency(depositRefundAmount)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. Counter service bill (if any onsite fees) */}
-                {(counterComponents.length > 0 || damageExceedingDeposit > 0) && (
-                  <div className="space-y-2 pb-2 border-b border-dashed">
-                    <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
-                      3. Chi phí dịch vụ tại quầy
-                    </span>
-                    {counterComponents.map((c) => (
-                      <div key={c.id} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{formatComponentType(c.type)}</span>
-                        <span className="font-medium">+{formatCurrency(Number(c.amount))}</span>
-                      </div>
-                    ))}
-                    {damageExceedingDeposit > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Đền bù hư hỏng vượt cọc:</span>
-                        <span className="font-medium text-rose-600">+{formatCurrency(damageExceedingDeposit)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm border-t pt-1.5 mt-1">
-                      <span className="text-muted-foreground font-semibold">Tổng dịch vụ tại quầy:</span>
-                      <span className="font-bold text-[#ea580c]">{formatCurrency(totalCounterBill)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Real-time settlement status (independent transactions) */}
-                {(depositAmount > 0 || totalCounterBill > 0) && booking.status === "COMPLETED" && (
-                  <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
-                    <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                      Quyết toán thực tế tại quầy
-                    </span>
-                    {depositRefundAmount > 0 && (
-                      <div className="flex justify-between text-xs text-slate-600 border-b border-dashed border-slate-200 pb-1.5 mb-1.5">
-                        <span className="font-semibold text-slate-700">1. Hoàn trả cọc xe (Deposit Refund):</span>
-                        <span className="font-bold text-emerald-600">{formatCurrency(depositRefundAmount)}</span>
-                      </div>
-                    )}
-                    {totalCounterBill > 0 && (
-                      <div className="flex justify-between text-xs text-slate-600">
-                        <span className="font-semibold text-slate-700">2. Thanh toán dịch vụ (On-site Bill):</span>
-                        <span className="font-bold text-[#ea580c]">{formatCurrency(totalCounterBill)}</span>
-                      </div>
-                    )}
-                  </div>
+                  </>
                 )}
 
                 <PackageUsedBadge snapshot={booking.snapshot} />
 
-                {/* Status indicators */}
+                {/* Status footer */}
                 {!isPaid && totalCounterBill > 0 ? (
                   <div className="space-y-3">
-                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 leading-relaxed font-medium">
-                      ⚠️ <strong>Chờ thanh toán phát sinh:</strong> Vui lòng thanh toán <strong>{formatCurrency(totalCounterBill)}</strong> phí dịch vụ phát sinh để hoàn tất phiên chơi.
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 font-medium leading-relaxed">
+                      Còn <strong>{formatCurrency(totalCounterBill)}</strong> phí phát sinh chưa thanh toán
                     </div>
                     {role === "customer" && (
                       <Button
                         onClick={handlePayAdditionalFees}
                         disabled={payingAdditional}
-                        className="w-full bg-[#ea580c] hover:bg-[#ea580c]/90 text-white font-extrabold text-xs h-10 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-[0.98]"
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
                       >
-                        {payingAdditional ? (
-                          "Đang khởi tạo thanh toán..."
-                        ) : (
-                          <>
-                            💰 Thanh toán dịch vụ qua VNPAY
-                          </>
-                        )}
+                        {payingAdditional ? "Đang khởi tạo..." : "Thanh toán qua VNPAY"}
                       </Button>
                     )}
                   </div>
                 ) : totalCounterBill > 0 && isPaid ? (
-                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 font-bold text-center">
-                    ✅ Đã thanh toán đầy đủ dịch vụ tại quầy
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-700 font-bold flex items-center gap-1.5 justify-center">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Đã thanh toán đầy đủ
                   </div>
-                ) : booking.status === "CONFIRMED" ? (
-                  <div className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">Đã thanh toán qua VNPAY</div>
                 ) : booking.status === "PENDING" ? (
-                  <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">Chờ thanh toán</div>
+                  <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-700 font-medium text-center">
+                    Chờ thanh toán
+                  </div>
+                ) : (booking.status === "CONFIRMED" || booking.status === "COMPLETED") ? (
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-600 font-bold py-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Đã thanh toán qua VNPAY
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
@@ -786,15 +1018,19 @@ function PackageUsedBadge({ snapshot }: { snapshot: Record<string, unknown> | nu
   )
 }
 
-function TimelineItem({ icon: Icon, title, description, done = false }: {
-  icon: typeof CheckCircle2; title: string; description: string; done?: boolean
+function TimelineItem({ icon: Icon, title, description, done = false, active = false }: {
+  icon: typeof CheckCircle2; title: string; description: string; done?: boolean; active?: boolean
 }) {
   return (
     <div className="relative">
-      <span className={`absolute -left-8 flex h-7 w-7 items-center justify-center rounded-full border bg-background ${done ? "text-emerald-600" : "text-muted-foreground"}`}>
+      <span className={`absolute -left-8 flex h-7 w-7 items-center justify-center rounded-full border bg-background ${
+        done ? "text-emerald-600 border-emerald-200" :
+        active ? "text-orange-500 border-orange-200 bg-orange-50" :
+        "text-muted-foreground"
+      }`}>
         <Icon className="h-4 w-4" />
       </span>
-      <p className="font-semibold">{title}</p>
+      <p className={`font-semibold ${active ? "text-orange-600" : ""}`}>{title}</p>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
     </div>
   )
@@ -824,6 +1060,16 @@ function formatComponentType(type: PaymentComponentType): string {
     PLATFORM_FEE: "Phí nền tảng",
   }
   return map[type] ?? type
+}
+
+function formatCountdown(totalSecs: number) {
+  const hours = Math.floor(totalSecs / 3600)
+  const mins = Math.floor((totalSecs % 3600) / 60)
+  const secs = totalSecs % 60
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
 }
 
 function formatTime(d: Date) {

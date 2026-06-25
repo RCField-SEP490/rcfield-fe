@@ -134,6 +134,12 @@ export interface BookingListItem {
   checkInCode: string | null
   createdAt: string
   updatedAt: string
+  session: {
+    id: string
+    status: string
+    plannedEndAt: string
+    actualStartAt: string | null
+  } | null
 }
 
 export interface BookingListResponse {

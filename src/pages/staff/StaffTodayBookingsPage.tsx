@@ -363,15 +363,26 @@ export default function StaffTodayBookingsPage() {
                   const activeSession = !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(b.status)
                     ? b.sessions?.find((session: any) => ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(session.status))
                     : undefined
-                  const statusLabel: Record<string, string> = {
+                  const sessionStatusLabel: Record<string, string> = {
+                    CHECKED_IN: "ĐANG CHECK-IN",
+                    ACTIVE: "ĐANG CHƠI",
+                    EXTENDING: "GIA HẠN",
+                    CHECKING_OUT: "ĐANG CHECKOUT",
+                  }
+                  const bookingStatusLabel: Record<string, string> = {
                     PENDING: "CHỜ THANH TOÁN",
                     CONFIRMED: "ĐÃ XÁC NHẬN",
                     NO_SHOW: "KHÔNG ĐẾN",
                     COMPLETED: "HOÀN THÀNH",
                     CANCELLED: "ĐÃ HỦY",
                   }
+                  const displayLabel = activeSession
+                    ? (sessionStatusLabel[activeSession.status] ?? activeSession.status)
+                    : (bookingStatusLabel[b.status] ?? b.status)
                   const badgeVariant =
-                    b.status === "CONFIRMED" ? "info"
+                    activeSession?.status === "ACTIVE" || activeSession?.status === "EXTENDING" ? "success"
+                    : activeSession?.status === "CHECKED_IN" || activeSession?.status === "CHECKING_OUT" ? "warning"
+                    : b.status === "CONFIRMED" ? "info"
                     : b.status === "COMPLETED" ? "success"
                     : b.status === "CANCELLED" || b.status === "NO_SHOW" ? "neutral"
                     : "warning"
@@ -387,7 +398,7 @@ export default function StaffTodayBookingsPage() {
                           <span className="text-xs text-[#a09e9d] font-mono font-bold">
                             #{bookingId.slice(0, 8).toUpperCase()}
                           </span>
-                          <StaffBadge variant={badgeVariant}>{statusLabel[b.status] ?? b.status}</StaffBadge>
+                          <StaffBadge variant={badgeVariant}>{displayLabel}</StaffBadge>
                         </div>
                         <Link
                           to={`/booking/${bookingId}`}

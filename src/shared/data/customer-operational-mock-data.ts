@@ -67,6 +67,8 @@ export interface MockSessionDetail {
   damageClaim?: MockDamageClaim;
   fnbOrders?: {
     orderId: string;
+    orderType?: string;
+    status?: string;
     items: { name: string; qty: number; price: number }[];
     total: number;
   }[];

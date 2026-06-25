@@ -5,21 +5,22 @@ import {
   type CustomerBookingDetail,
   type MockSessionDetail 
 } from "@/shared/data/customer-operational-mock-data"
-import { 
-  MapPin, 
-  Car, 
-  User, 
-  QrCode, 
-  Clock, 
-  AlertCircle, 
-  ArrowLeft, 
-  CheckCircle2, 
-  ExternalLink, 
+import {
+  MapPin,
+  Car,
+  User,
+  QrCode,
+  Clock,
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
   HelpCircle,
   Phone,
   Receipt,
   Sparkles,
-  Info
+  Info,
+  Camera
 } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -347,6 +348,55 @@ export function CustomerBookingDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Check-in Handover Photos */}
+            {(() => {
+              const checkInPhotos = booking.sessions
+                .flatMap(s => s.inspections)
+                .filter(ins => ins.type === "CHECK_IN" && ins.photos.length > 0)
+                .flatMap(ins => ins.photos)
+              if (checkInPhotos.length === 0) return null
+              const directionLabel: Record<string, string> = {
+                FRONT: "Trước",
+                BACK: "Sau",
+                LEFT: "Trái",
+                RIGHT: "Phải",
+              }
+              return (
+                <Card className="border-slate-200/80 shadow-sm bg-white">
+                  <CardHeader className="pb-3 border-b border-slate-100">
+                    <CardTitle className="text-sm font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-orange-500" />
+                      Ảnh bàn giao xe (Check-in)
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Ảnh tình trạng xe tại thời điểm bàn giao — được nhân viên chụp trước khi phiên chơi bắt đầu.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {checkInPhotos.map((photo, idx) => (
+                        <div key={idx} className="rounded-xl overflow-hidden border border-slate-100">
+                          <img
+                            src={photo.url}
+                            alt={`Ảnh ${directionLabel[photo.direction] ?? photo.direction}`}
+                            className="w-full aspect-video object-cover"
+                          />
+                          <div className="bg-slate-50 px-2.5 py-1.5">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                              {directionLabel[photo.direction] ?? photo.direction}
+                            </p>
+                            {photo.notes && (
+                              <p className="text-[11px] text-slate-600 mt-0.5 leading-tight">{photo.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })()}
 
           </div>
 

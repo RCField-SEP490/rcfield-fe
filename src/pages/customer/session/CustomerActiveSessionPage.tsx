@@ -334,34 +334,49 @@ export function CustomerActiveSessionPage() {
               <CardContent className="p-6">
                 {session.fnbOrders && session.fnbOrders.length > 0 ? (
                   <div className="space-y-4">
-                    {session.fnbOrders.map((order) => (
-                      <div key={order.orderId} className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 text-xs font-semibold text-slate-700">
-                        <div className="flex justify-between border-b border-slate-200 pb-2 mb-2 font-black text-slate-900">
-                          <span>Mã đơn F&B: {order.orderId}</span>
-                          <Badge className="bg-emerald-100 text-emerald-800 font-bold text-[9px] border-none">Đã phục vụ</Badge>
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                          {order.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between">
-                              <span className="text-slate-500">{item.name} <strong className="text-slate-800">x{item.qty}</strong></span>
-                              <span className="text-slate-800">{formatCurrency(item.price * item.qty)}</span>
-                            </div>
-                          ))}
-                        </div>
+                    {(session.fnbOrders as Array<{ orderId: string; orderType?: string; status?: string; items: { name: string; qty: number; price: number }[]; total: number }>).map((order) => {
+                      const isPreorder = order.orderType === "PRE_ORDER"
+                      const statusLabel = order.status === "DELIVERED" ? "Đã phục vụ"
+                        : order.status === "CONFIRMED" ? "Đang chuẩn bị"
+                        : "Chờ xác nhận"
+                      const statusClass = order.status === "DELIVERED"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-700"
+                      return (
+                        <div key={order.orderId} className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 text-xs font-semibold text-slate-700">
+                          <div className="flex justify-between border-b border-slate-200 pb-2 mb-2 font-black text-slate-900">
+                            <span className="flex items-center gap-1.5">
+                              {isPreorder ? (
+                                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-600 border border-blue-100">Đặt trước</span>
+                              ) : (
+                                <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[9px] font-bold text-orange-600 border border-orange-100">Tại quầy</span>
+                              )}
+                            </span>
+                            <Badge className={`${statusClass} font-bold text-[9px] border-none`}>{statusLabel}</Badge>
+                          </div>
 
-                        <div className="h-px bg-slate-200 my-2" />
-                        <div className="flex justify-between font-black text-slate-950">
-                          <span>Tổng F&B</span>
-                          <span>{formatCurrency(order.total)}</span>
+                          <div className="space-y-1.5">
+                            {order.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between">
+                                <span className="text-slate-500">{item.name} <strong className="text-slate-800">×{item.qty}</strong></span>
+                                <span className="text-slate-800">{formatCurrency(item.price * item.qty)}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="h-px bg-slate-200 my-2" />
+                          <div className="flex justify-between font-black text-slate-950">
+                            <span>Tổng</span>
+                            <span>{formatCurrency(order.total)}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-6 border border-dashed border-slate-200 rounded-xl space-y-1 text-xs">
                     <Coffee className="h-8 w-8 text-slate-300 mx-auto" />
-                    <p className="font-extrabold text-slate-900">Chưa đặt đồ ăn nước uống</p>
+                    <p className="font-extrabold text-slate-900">Chưa có đơn F&B</p>
                     <p className="text-[10px] text-slate-400 font-medium">Bạn có thể đặt món trực tiếp tại sân chơi bằng cách liên hệ với Staff.</p>
                   </div>
                 )}

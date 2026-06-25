@@ -128,8 +128,23 @@ export function CustomerBookingsPage() {
         <div className="space-y-4">
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
             {bookings.map((booking) => {
-              const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
-              const accent = ACCENT[booking.status] ?? "bg-slate-300"
+              const sessStatus = booking.session?.status
+              const sessionOverride: { label: string; badge: string } | null = sessStatus === "ACTIVE"
+                ? { label: "Đang chơi",      badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" }
+                : sessStatus === "EXTENDING"
+                ? { label: "Đang gia hạn",   badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" }
+                : sessStatus === "CHECKED_IN"
+                ? { label: "Đang check-in",  badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" }
+                : sessStatus === "CHECKING_OUT"
+                ? { label: "Đang checkout",  badge: "bg-blue-100 text-blue-800 border-none font-bold text-xs" }
+                : null
+              const statusInfo = sessionOverride ?? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING)
+              const accentOverride = sessStatus === "ACTIVE" || sessStatus === "EXTENDING"
+                ? "bg-orange-400"
+                : sessStatus === "CHECKED_IN" || sessStatus === "CHECKING_OUT"
+                ? "bg-amber-400"
+                : null
+              const accent = accentOverride ?? (ACCENT[booking.status] ?? "bg-slate-300")
               const slotStart = new Date(booking.slotStart)
               const slotEnd = new Date(booking.slotEnd)
               const shortId = booking.id.substring(0, 8).toUpperCase()
