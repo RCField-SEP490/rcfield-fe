@@ -38,7 +38,6 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { ProviderHeader, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -104,11 +103,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     operations: true,
     business: true,
   })
-  const user = useAuthStore((state) => state.user)
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const displayName = user?.fullName ?? "Provider"
-  const email = user?.email ?? "provider@rcfield.vn"
   const desktopNavRef = useRef<HTMLElement | null>(null)
   const mobileNavRef = useRef<HTMLElement | null>(null)
 
@@ -585,11 +581,3 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   )
 }
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(-2)
-    .toUpperCase()
-}
