@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/features/auth/stores/auth.store'
 import {
   customerPackageApi,
   customerPackageQueryKeys,
@@ -16,9 +17,11 @@ export function usePublicPackages(cafeId?: string) {
 }
 
 export function useMyPackages(params?: { status?: CustomerPackageStatus; cafe_id?: string }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return useQuery({
     queryKey: customerPackageQueryKeys.mine(params),
     queryFn: () => customerPackageApi.listMine(params),
+    enabled: isAuthenticated,
   })
 }
 

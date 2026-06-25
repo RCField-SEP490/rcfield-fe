@@ -129,6 +129,17 @@ export function CreateBookingPage() {
 
   const [pendingPlayMode, setPendingPlayMode] = useState<CustomerPlayMode | null>(null)
 
+  const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+  const { openHour, closeHour } = useMemo(() => {
+    const dayKey = DAY_KEYS[new Date(date).getDay()]
+    const hours = (cafe.operatingHours as Record<string, { open?: string; close?: string }> | undefined)?.[dayKey]
+    const parseHour = (t?: string) => (t ? parseInt(t.split(":")[0], 10) : undefined)
+    return {
+      openHour: parseHour(hours?.open) ?? 8,
+      closeHour: parseHour(hours?.close) ?? 22,
+    }
+  }, [date, cafe.operatingHours])
+
   const handlePlayModeChange = (mode: CustomerPlayMode) => {
     if (mode === "BYOC" && selectedVehicleIds.length > 0) {
       setPendingPlayMode("BYOC")
@@ -159,7 +170,7 @@ export function CreateBookingPage() {
       slot_start: slotStartForCheck,
       slot_end: slotEndForCheck,
       play_mode: 'BYOC',
-      ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
+      ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
     },
     !isMockId && !!date && !!time,
   )
@@ -204,6 +215,7 @@ export function CreateBookingPage() {
       fnbTotal,
       numSlots,
       playerCount: participants,
+      slotDurationMinutes: cafe.slotDurationMinutes ?? 60,
     })
     if (selectedPackageId) {
       return components.map((c) => {
@@ -267,7 +279,7 @@ export function CreateBookingPage() {
         fnb_items: Object.entries(fnbQuantities)
           .filter(([, qty]) => qty > 0)
           .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
-        ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
+        ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id, track_config_id: selectedTrackConfig.id } : {}),
         ...(selectedPackageId ? { customer_package_id: selectedPackageId } : {}),
       })
 
@@ -364,6 +376,8 @@ export function CreateBookingPage() {
               onPlayModeChange={handlePlayModeChange}
               effectivePricePerHour={isMockId ? undefined : effectivePricePerHour}
               pricingLabel={isMockId ? undefined : pricingLabel}
+              openHour={openHour}
+              closeHour={closeHour}
             />
           )}
           {currentStep === "participants" && (
@@ -494,6 +508,7 @@ function buildPaymentComponents({
   fnbTotal,
   numSlots = 1,
   playerCount = 1,
+  slotDurationMinutes = 60,
 }: {
   mode: BookingMode
   planId: string
@@ -502,6 +517,7 @@ function buildPaymentComponents({
   fnbTotal: number
   numSlots?: number
   playerCount?: number
+  slotDurationMinutes?: number
 }): PaymentComponentLine[] {
   const baseSlotFee = mode === "hourly"
     ? slotFeeRate * numSlots
@@ -516,7 +532,9 @@ function buildPaymentComponents({
 
   if (selectedVehicles.length > 0) {
     const rentalPerHour = selectedVehicles.reduce((sum, v) => sum + v.pricePerHour, 0)
-    const rentalTotal = rentalPerHour * numSlots
+    // Rental fee is prorated to actual slot duration, not per-slot as 1 hour
+    const totalDurationHours = numSlots * (slotDurationMinutes / 60)
+    const rentalTotal = Math.round(rentalPerHour * totalDurationHours)
     const depositTotal = selectedVehicles.reduce((sum, v) => sum + (v.securityDeposit ?? 0), 0)
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })

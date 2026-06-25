@@ -168,6 +168,7 @@ export interface CreateBookingBody {
   fnb_items: FnbItemBody[]
   promotion_code?: string
   track_type_id?: string
+  track_config_id?: string
   customer_package_id?: string
 }
 
@@ -200,6 +201,7 @@ export interface CheckAvailabilityParams {
   slot_end: string
   play_mode: BookingPlayMode
   track_type_id?: string
+  track_config_id?: string
 }
 
 export interface ListMyBookingsParams {

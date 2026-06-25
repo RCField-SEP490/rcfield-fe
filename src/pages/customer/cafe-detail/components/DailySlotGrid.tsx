@@ -32,9 +32,8 @@ type DailySlotGridProps = {
 function slotAvailabilityLabel(slot: DailySlot): string {
   if (slot.status === "booked") return "Hết"
   if (slot.status === "closed") return "Đóng"
-  if (slot.rentalCount > 0 && slot.byocRemaining > 0) return `${slot.rentalCount}xe·${slot.byocRemaining}B`
-  if (slot.rentalCount > 0) return `${slot.rentalCount} xe`
-  if (slot.byocRemaining > 0) return `BYOC ${slot.byocRemaining}`
+  const remaining = slot.rentalCount > 0 ? slot.rentalCount : slot.byocRemaining
+  if (remaining > 0) return `Còn ${remaining}`
   return "Hết"
 }
 
