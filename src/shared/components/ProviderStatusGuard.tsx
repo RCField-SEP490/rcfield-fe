@@ -34,9 +34,7 @@ export function ProviderStatusGuard({ children }: { children: React.ReactNode })
             setStatus(currentStatus)
             if (userRegistrationStatus !== currentStatus) {
               setAuthenticated("provider", {
-                id: userId,
-                fullName: user?.fullName || userEmail || "",
-                email: userEmail || "",
+                ...user!,
                 registrationStatus: currentStatus,
               })
             }

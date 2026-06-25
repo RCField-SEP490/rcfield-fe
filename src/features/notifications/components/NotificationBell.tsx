@@ -5,6 +5,7 @@ import { useNavigate } from "react-router"
 import { bookingApi } from "@/features/booking/api/booking.api"
 import { staffApi } from "@/features/staff/api/staff.api"
 import { cn } from "@/shared/lib/utils"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { notificationApi } from "../api/notification.api"
 import type { Notification } from "../types"
 
@@ -45,10 +46,14 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
+  const user = useAuthStore((state) => state.user)
+  const hasAccess = user?.role === "provider" || user?.role === "staff"
+
   const { data } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => notificationApi.list({ limit: 15 }),
-    refetchInterval: 30000,
+    refetchInterval: hasAccess ? 30000 : undefined,
+    enabled: !!hasAccess,
   })
 
   const markReadMutation = useMutation({
@@ -70,6 +75,8 @@ export function NotificationBell() {
     document.addEventListener("mousedown", handleClick)
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
+
+  if (!hasAccess) return null
 
   const notifications = data?.data ?? []
   const unreadCount = data?.unreadCount ?? 0

@@ -964,6 +964,86 @@ export function ProviderPromotionCopyPage() {
   )
 }
 
+function getPromotionFormInlineErrors(form: PromotionFormState) {
+  const errors: Record<string, string> = {}
+
+  if (!form.code.trim()) {
+    errors.code = "Vui lòng nhập mã ưu đãi"
+  }
+
+  if (!form.discountValue.trim()) {
+    errors.discountValue = "Vui lòng nhập giá trị giảm"
+  } else if (Number(form.discountValue) <= 0) {
+    errors.discountValue = "Giá trị giảm phải lớn hơn 0"
+  } else if (form.discountType === "PERCENT" && Number(form.discountValue) > 100) {
+    errors.discountValue = "Phần trăm giảm giá không thể lớn hơn 100"
+  }
+
+  if (form.maxDiscountAmount.trim() && Number(form.maxDiscountAmount) <= 0) {
+    errors.maxDiscountAmount = "Giảm tối đa phải lớn hơn 0"
+  }
+
+  if (form.minOrderAmount.trim() && Number(form.minOrderAmount) <= 0) {
+    errors.minOrderAmount = "Đơn tối thiểu phải lớn hơn 0"
+  }
+
+  if (form.maxUses.trim() && Number(form.maxUses) <= 0) {
+    errors.maxUses = "Tổng lượt dùng phải lớn hơn 0"
+  }
+
+  if (!form.maxUsesPerUser.trim()) {
+    errors.maxUsesPerUser = "Vui lòng nhập lượt dùng mỗi khách"
+  } else if (Number(form.maxUsesPerUser) <= 0) {
+    errors.maxUsesPerUser = "Lượt dùng mỗi khách phải lớn hơn 0"
+  }
+
+  if (!form.startDate) {
+    errors.startDate = "Vui lòng chọn ngày bắt đầu"
+  }
+
+  if (!form.startTime) {
+    errors.startTime = "Vui lòng chọn giờ bắt đầu"
+  }
+
+  if (form.scheduleMode !== "ONCE") {
+    if (!form.endDate) {
+      errors.endDate = "Vui lòng chọn ngày cuối áp dụng"
+    }
+    if (!form.endTime) {
+      errors.endTime = "Vui lòng chọn giờ kết thúc"
+    }
+  } else {
+    if (form.endDate && !form.endTime) {
+      errors.endTime = "Vui lòng chọn giờ kết thúc"
+    } else if (!form.endDate && form.endTime) {
+      errors.endDate = "Vui lòng chọn ngày kết thúc"
+    }
+  }
+
+  if (form.scheduleMode === "WEEKLY" && form.weekdays.length === 0) {
+    errors.weekdays = "Vui lòng chọn ít nhất một ngày trong tuần"
+  }
+
+  if (form.startDate && form.startTime) {
+    const startsAt = composeLocalDateTime(form.startDate, form.startTime)
+    if (Number.isNaN(startsAt.getTime())) {
+      errors.startDate = "Vui lòng chọn thời gian bắt đầu hợp lệ"
+    }
+
+    if (form.endDate && form.endTime) {
+      const expiresAt = composeLocalDateTime(form.endDate, form.endTime)
+      if (!Number.isNaN(expiresAt.getTime()) && !Number.isNaN(startsAt.getTime())) {
+        if (expiresAt.getTime() <= startsAt.getTime()) {
+          errors.endDate = "Thời gian kết thúc phải sau thời gian bắt đầu"
+          errors.endTime = "Thời gian kết thúc phải sau thời gian bắt đầu"
+        }
+      }
+    }
+  }
+
+  return errors
+}
+
 function PromotionForm({
   cafe,
   form,
@@ -981,6 +1061,9 @@ function PromotionForm({
   onCancel: () => void
   onSave: () => void
 }) {
+  const [showErrors, setShowErrors] = useState(false)
+  const errors = useMemo(() => getPromotionFormInlineErrors(form), [form])
+
   const setField = <K extends keyof PromotionFormState>(key: K, value: PromotionFormState[K]) => {
     onChange({ ...form, [key]: value })
   }
@@ -1005,6 +1088,17 @@ function PromotionForm({
     )
   }
 
+  const handleSaveClick = () => {
+    const hasErrors = Object.keys(errors).length > 0
+    if (hasErrors) {
+      setShowErrors(true)
+      const firstError = Object.values(errors)[0]
+      toast.error(firstError)
+      return
+    }
+    onSave()
+  }
+
   return (
     <Panel className="border-orange-200">
       <PanelTitle
@@ -1018,36 +1112,36 @@ function PromotionForm({
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Mã ưu đãi">
-          <Input value={form.code} onChange={(event) => setField("code", event.target.value.toUpperCase())} placeholder="EX: DRIFTNIGHT20" className="h-11 rounded-lg bg-white font-mono font-bold" />
+        <Field label="Mã ưu đãi" error={showErrors ? errors.code : undefined}>
+          <Input aria-invalid={showErrors && !!errors.code} value={form.code} onChange={(event) => setField("code", event.target.value.toUpperCase())} placeholder="EX: DRIFTNIGHT20" className="h-11 rounded-lg bg-white font-mono font-bold" />
         </Field>
-        <Field label="Phạm vi áp dụng">
-          <select value={form.applicableTo} onChange={(event) => setField("applicableTo", event.target.value as PromoApplicableTo)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold">
+        <Field label="Phạm vi áp dụng" error={showErrors ? errors.applicableTo : undefined}>
+          <select aria-invalid={showErrors && !!errors.applicableTo} value={form.applicableTo} onChange={(event) => setField("applicableTo", event.target.value as PromoApplicableTo)} className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.applicableTo && "border-destructive focus-visible:border-destructive")}>
             <option value="ALL">Tất cả booking</option>
             <option value="RENTAL">Thuê xe</option>
             <option value="BYOC">Mang xe cá nhân</option>
           </select>
         </Field>
-        <Field label="Loại giảm giá">
-          <select value={form.discountType} onChange={(event) => setField("discountType", event.target.value as DiscountType)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold">
+        <Field label="Loại giảm giá" error={showErrors ? errors.discountType : undefined}>
+          <select aria-invalid={showErrors && !!errors.discountType} value={form.discountType} onChange={(event) => setField("discountType", event.target.value as DiscountType)} className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.discountType && "border-destructive focus-visible:border-destructive")}>
             <option value="PERCENT">Phần trăm</option>
             <option value="FIXED">Số tiền cố định</option>
           </select>
         </Field>
-        <Field label={form.discountType === "PERCENT" ? "Giá trị giảm (%)" : "Giá trị giảm (VND)"}>
-          <Input type="number" min="0" value={form.discountValue} onChange={(event) => setField("discountValue", event.target.value)} className="h-11 rounded-lg bg-white" />
+        <Field label={form.discountType === "PERCENT" ? "Giá trị giảm (%)" : "Giá trị giảm (VND)"} error={showErrors ? errors.discountValue : undefined}>
+          <Input aria-invalid={showErrors && !!errors.discountValue} type="number" min="0" value={form.discountValue} onChange={(event) => setField("discountValue", event.target.value)} className="h-11 rounded-lg bg-white font-bold" />
         </Field>
-        <Field label="Giảm tối đa">
-          <Input type="number" min="0" value={form.maxDiscountAmount} onChange={(event) => setField("maxDiscountAmount", event.target.value)} placeholder="Bỏ trống nếu không giới hạn" className="h-11 rounded-lg bg-white" />
+        <Field label="Giảm tối đa" error={showErrors ? errors.maxDiscountAmount : undefined}>
+          <Input aria-invalid={showErrors && !!errors.maxDiscountAmount} type="number" min="0" value={form.maxDiscountAmount} onChange={(event) => setField("maxDiscountAmount", event.target.value)} placeholder="Bỏ trống nếu không giới hạn" className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Đơn tối thiểu">
-          <Input type="number" min="0" value={form.minOrderAmount} onChange={(event) => setField("minOrderAmount", event.target.value)} placeholder="Bỏ trống nếu không yêu cầu" className="h-11 rounded-lg bg-white" />
+        <Field label="Đơn tối thiểu" error={showErrors ? errors.minOrderAmount : undefined}>
+          <Input aria-invalid={showErrors && !!errors.minOrderAmount} type="number" min="0" value={form.minOrderAmount} onChange={(event) => setField("minOrderAmount", event.target.value)} placeholder="Bỏ trống nếu không yêu cầu" className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Tổng lượt dùng">
-          <Input type="number" min="1" value={form.maxUses} onChange={(event) => setField("maxUses", event.target.value)} placeholder="Không giới hạn" className="h-11 rounded-lg bg-white" />
+        <Field label="Tổng lượt dùng" error={showErrors ? errors.maxUses : undefined}>
+          <Input aria-invalid={showErrors && !!errors.maxUses} type="number" min="1" value={form.maxUses} onChange={(event) => setField("maxUses", event.target.value)} placeholder="Không giới hạn" className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Lượt dùng mỗi khách">
-          <Input type="number" min="1" value={form.maxUsesPerUser} onChange={(event) => setField("maxUsesPerUser", event.target.value)} className="h-11 rounded-lg bg-white" />
+        <Field label="Lượt dùng mỗi khách" error={showErrors ? errors.maxUsesPerUser : undefined}>
+          <Input aria-invalid={showErrors && !!errors.maxUsesPerUser} type="number" min="1" value={form.maxUsesPerUser} onChange={(event) => setField("maxUsesPerUser", event.target.value)} className="h-11 rounded-lg bg-white" />
         </Field>
         <div className="space-y-4 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 md:col-span-2">
           <div>
@@ -1057,7 +1151,7 @@ function PromotionForm({
             </p>
           </div>
 
-          <Field label="Kiểu thời gian">
+          <Field label="Kiểu thời gian" error={showErrors ? errors.scheduleMode : undefined}>
             <div className="grid gap-2 sm:grid-cols-3">
               {scheduleModeOptions.map((option) => (
                 <button
@@ -1078,22 +1172,22 @@ function PromotionForm({
           </Field>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Ngày bắt đầu">
-              <Input type="date" min={minStartDate} value={form.startDate} onChange={(event) => handleStartDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
+            <Field label="Ngày bắt đầu" error={showErrors ? errors.startDate : undefined}>
+              <Input aria-invalid={showErrors && !!errors.startDate} type="date" min={minStartDate} value={form.startDate} onChange={(event) => handleStartDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
-            <Field label="Giờ bắt đầu">
-              <Input type="time" value={form.startTime} onChange={(event) => setField("startTime", event.target.value)} className="h-11 rounded-lg bg-white" />
+            <Field label="Giờ bắt đầu" error={showErrors ? errors.startTime : undefined}>
+              <Input aria-invalid={showErrors && !!errors.startTime} type="time" value={form.startTime} onChange={(event) => setField("startTime", event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
-            <Field label={form.scheduleMode === "ONCE" ? "Ngày kết thúc" : "Ngày cuối áp dụng"}>
-              <Input type="date" min={minEndDate} value={form.endDate} onChange={(event) => handleEndDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
+            <Field label={form.scheduleMode === "ONCE" ? "Ngày kết thúc" : "Ngày cuối áp dụng"} error={showErrors ? errors.endDate : undefined}>
+              <Input aria-invalid={showErrors && !!errors.endDate} type="date" min={minEndDate} value={form.endDate} onChange={(event) => handleEndDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
-            <Field label={form.scheduleMode === "ONCE" ? "Giờ kết thúc" : "Giờ kết thúc mỗi lần"}>
-              <Input type="time" value={form.endTime} onChange={(event) => setField("endTime", event.target.value)} className="h-11 rounded-lg bg-white" />
+            <Field label={form.scheduleMode === "ONCE" ? "Giờ kết thúc" : "Giờ kết thúc mỗi lần"} error={showErrors ? errors.endTime : undefined}>
+              <Input aria-invalid={showErrors && !!errors.endTime} type="time" value={form.endTime} onChange={(event) => setField("endTime", event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
           </div>
 
           {form.scheduleMode === "WEEKLY" ? (
-            <Field label="Ngày trong tuần">
+            <Field label="Ngày trong tuần" error={showErrors ? errors.weekdays : undefined}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
                 {weekdayOptions.map((weekday) => (
                   <label
@@ -1119,8 +1213,8 @@ function PromotionForm({
           ) : null}
         </div>
         <div className="md:col-span-2">
-          <Field label="Mô tả">
-            <Textarea value={form.description} onChange={(event) => setField("description", event.target.value)} placeholder="Điều kiện áp dụng hoặc ghi chú nội bộ" className="min-h-24 rounded-lg bg-white" />
+          <Field label="Mô tả" error={showErrors ? errors.description : undefined}>
+            <Textarea aria-invalid={showErrors && !!errors.description} value={form.description} onChange={(event) => setField("description", event.target.value)} placeholder="Điều kiện áp dụng hoặc ghi chú nội bộ" className="min-h-24 rounded-lg bg-white" />
           </Field>
         </div>
         <div className="flex items-center justify-between rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-4 py-3 md:col-span-2">
@@ -1134,7 +1228,7 @@ function PromotionForm({
 
       <div className="mt-6 flex justify-end gap-3 border-t border-[#e5e2e1] pt-5">
         <Button variant="outline" onClick={onCancel} className="rounded-lg bg-white font-bold">Hủy</Button>
-        <Button disabled={saving} onClick={onSave} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+        <Button disabled={saving} onClick={handleSaveClick} className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           <Save className="mr-2 size-4" />
           {saving ? "Đang lưu..." : editing ? "Lưu thay đổi" : "Lưu ưu đãi"}
         </Button>
@@ -1263,11 +1357,16 @@ function CopyPromotionPanel({
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
   return (
     <div className="space-y-2">
-      <Label className="font-mono text-[11px] uppercase tracking-wider text-[#747878]">{label}</Label>
+      <Label className="font-sans text-xs font-bold uppercase tracking-wider text-[#1c1b1b]">{label}</Label>
       {children}
+      {error && (
+        <p className="text-xs font-bold text-red-600 animate-in fade-in slide-in-from-top-1 duration-200">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

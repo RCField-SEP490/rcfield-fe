@@ -24,17 +24,34 @@ import {
   AdminTable,
   CafeStatusBadge,
 } from "@/pages/admin/components/AdminPrimitives"
-import {
-  adminMetrics,
-  cafeGrowthData,
-  revenueBySaaSPlan,
-  activeSessionsLast7Days,
-  mockAdminCafes,
-} from "@/shared/data/admin-mock-data"
+import { useAdminDashboard } from "@/features/dashboard/hooks/useAdminDashboard"
 import { Button } from "@/shared/ui/button"
 
 export function AdminDashboardPage() {
-  const recentCafes = mockAdminCafes.slice(0, 4)
+  const { summary, isLoading } = useAdminDashboard()
+
+  if (isLoading) {
+    return (
+      <AdminShell>
+        <AdminHeader
+          title="Tổng quan Hệ thống"
+          description="Đang tải dữ liệu từ hệ thống..."
+        />
+        <div className="flex h-[400px] items-center justify-center">
+          <div className="flex flex-col items-center gap-2">
+            <div className="size-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
+            <p className="text-sm font-semibold text-[#747878]">Đang tải số liệu thống kê...</p>
+          </div>
+        </div>
+      </AdminShell>
+    )
+  }
+
+  const kpi = summary?.kpi
+  const cafeGrowth = summary?.cafeGrowth || []
+  const revenueByPlan = summary?.revenueByPlan || []
+  const activeSessionsTrend = summary?.activeSessionsTrend || []
+  const recentCafes = summary?.recentCafes || []
 
   // Columns for the recent onboarding table
   const columns = ["ID Cơ sở", "Tên cơ sở", "Chủ sở hữu", "Gói SaaS", "Trạng thái", "Ngày đăng ký"]
@@ -42,13 +59,9 @@ export function AdminDashboardPage() {
   const rows = recentCafes.map((cafe) => [
     <span key={cafe.id} className="font-mono text-xs text-[#747878]">{cafe.id}</span>,
     <div key={cafe.name} className="flex items-center gap-2">
-      {cafe.logo ? (
-        <img src={cafe.logo} alt={cafe.name} className="size-6 rounded-md object-cover border border-[#e5e2e1]" />
-      ) : (
-        <div className="size-6 rounded-md bg-[#f6f3f2] flex items-center justify-center border border-[#e5e2e1]">
-          <Building2 className="size-3 text-[#747878]" />
-        </div>
-      )}
+      <div className="size-6 rounded-md bg-[#f6f3f2] flex items-center justify-center border border-[#e5e2e1]">
+        <Building2 className="size-3 text-[#747878]" />
+      </div>
       <span className="font-bold text-[#1c1b1b]">{cafe.name}</span>
     </div>,
     <div key={cafe.providerName}>
@@ -70,30 +83,30 @@ export function AdminDashboardPage() {
       {/* Metrics Section */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <AdminMetricCard
-          label={adminMetrics.totalCafes.label}
-          value={adminMetrics.totalCafes.value}
-          helper={adminMetrics.totalCafes.helper}
+          label="Tổng số đối tác"
+          value={kpi?.totalCafes.value || "0"}
+          helper={kpi?.totalCafes.helper || ""}
           icon={<Building2 />}
           trend="up"
         />
         <AdminMetricCard
-          label={adminMetrics.totalUsers.label}
-          value={adminMetrics.totalUsers.value}
-          helper={adminMetrics.totalUsers.helper}
+          label="Tổng người dùng"
+          value={kpi?.totalUsers.value || "0"}
+          helper={kpi?.totalUsers.helper || ""}
           icon={<Users />}
           trend="up"
         />
         <AdminMetricCard
-          label={adminMetrics.monthlyRevenue.label}
-          value={adminMetrics.monthlyRevenue.value}
-          helper={adminMetrics.monthlyRevenue.helper}
+          label="Doanh thu nền tảng (Tháng này)"
+          value={kpi?.monthlyRevenue.value || "0 ₫"}
+          helper={kpi?.monthlyRevenue.helper || ""}
           icon={<DollarSign />}
           trend="up"
         />
         <AdminMetricCard
-          label={adminMetrics.activeSessions.label}
-          value={adminMetrics.activeSessions.value}
-          helper={adminMetrics.activeSessions.helper}
+          label="Phiên chơi đang hoạt động"
+          value={kpi?.activeSessions.value || "0"}
+          helper={kpi?.activeSessions.helper || ""}
           icon={<Play className="fill-current text-orange-500" />}
           trend="up"
         />
@@ -109,7 +122,7 @@ export function AdminDashboardPage() {
           />
           <div className="h-[280px] w-full text-xs">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={cafeGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={cafeGrowth} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e2e1" vertical={false} />
                 <XAxis dataKey="name" stroke="#747878" tickLine={false} axisLine={false} />
                 <YAxis stroke="#747878" tickLine={false} axisLine={false} />
@@ -134,16 +147,17 @@ export function AdminDashboardPage() {
         <AdminPanel className="lg:col-span-4">
           <AdminPanelTitle
             title="Doanh thu theo Gói SaaS"
-            subtitle="Phân bố tỷ lệ doanh thu ước tính"
+            subtitle="Phân bố tỷ lệ doanh thu thực tế từ đối tác"
           />
           <div className="h-[280px] w-full text-xs">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueBySaaSPlan} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={revenueByPlan} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e2e1" vertical={false} />
                 <XAxis dataKey="name" stroke="#747878" tickLine={false} axisLine={false} />
                 <YAxis stroke="#747878" tickLine={false} axisLine={false} />
                 <Tooltip
-                  formatter={(value: any) => [`${value.toLocaleString()} ₫`, "Doanh thu"]}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any) => [`${Number(value || 0).toLocaleString()} ₫`, "Doanh thu"]}
                   contentStyle={{ backgroundColor: "#ffffff", borderColor: "#e5e2e1", borderRadius: "8px", fontWeight: "bold" }}
                 />
                 <Bar dataKey="revenue" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={45} />
@@ -163,7 +177,7 @@ export function AdminDashboardPage() {
           />
           <div className="h-[260px] w-full text-xs">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={activeSessionsLast7Days} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={activeSessionsTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ea580c" stopOpacity={0.2} />
@@ -205,3 +219,4 @@ export function AdminDashboardPage() {
     </AdminShell>
   )
 }
+

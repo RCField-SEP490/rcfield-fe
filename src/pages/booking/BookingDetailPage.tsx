@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import {
   AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, Clock3, Gamepad2,
-  ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Shield, Users, UtensilsCrossed, XCircle,
+  ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
