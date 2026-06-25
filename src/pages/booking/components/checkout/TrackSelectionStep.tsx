@@ -345,6 +345,14 @@ function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[], playMo
     else if (remaining <= 2) status = "limited"
     else status = "available"
 
-    return { id: startTime, startTime, endTime, status, remaining, rentalCount, byocRemaining }
+    return {
+      id: startTime,
+      startTime,
+      endTime,
+      status,
+      remaining,
+      rentalCount: playMode === "BYOC" ? 0 : rentalCount,
+      byocRemaining: playMode === "RENTAL" ? 0 : byocRemaining,
+    }
   })
 }

@@ -129,6 +129,17 @@ export function CreateBookingPage() {
 
   const [pendingPlayMode, setPendingPlayMode] = useState<CustomerPlayMode | null>(null)
 
+  const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+  const { openHour, closeHour } = useMemo(() => {
+    const dayKey = DAY_KEYS[new Date(date).getDay()]
+    const hours = (cafe.operatingHours as Record<string, { open?: string; close?: string }> | undefined)?.[dayKey]
+    const parseHour = (t?: string) => (t ? parseInt(t.split(":")[0], 10) : undefined)
+    return {
+      openHour: parseHour(hours?.open) ?? 8,
+      closeHour: parseHour(hours?.close) ?? 22,
+    }
+  }, [date, cafe.operatingHours])
+
   const handlePlayModeChange = (mode: CustomerPlayMode) => {
     if (mode === "BYOC" && selectedVehicleIds.length > 0) {
       setPendingPlayMode("BYOC")
@@ -159,7 +170,7 @@ export function CreateBookingPage() {
       slot_start: slotStartForCheck,
       slot_end: slotEndForCheck,
       play_mode: 'BYOC',
-      ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
+      ...(selectedTrackConfig ? { track_config_id: selectedTrackConfig.id } : {}),
     },
     !isMockId && !!date && !!time,
   )
@@ -268,7 +279,7 @@ export function CreateBookingPage() {
         fnb_items: Object.entries(fnbQuantities)
           .filter(([, qty]) => qty > 0)
           .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
-        ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id } : {}),
+        ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id, track_config_id: selectedTrackConfig.id } : {}),
         ...(selectedPackageId ? { customer_package_id: selectedPackageId } : {}),
       })
 
@@ -365,6 +376,8 @@ export function CreateBookingPage() {
               onPlayModeChange={handlePlayModeChange}
               effectivePricePerHour={isMockId ? undefined : effectivePricePerHour}
               pricingLabel={isMockId ? undefined : pricingLabel}
+              openHour={openHour}
+              closeHour={closeHour}
             />
           )}
           {currentStep === "participants" && (
