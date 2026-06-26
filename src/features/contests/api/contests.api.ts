@@ -11,6 +11,8 @@ import type {
   ContestReward,
   ContestRewardClaim,
   BracketMatch,
+  ContestAuditLog,
+  ContestMetrics,
 } from "../types";
 
 export interface ApiEnvelope<T> {
@@ -106,6 +108,39 @@ export const contestQueryKeys = {
   leaderboard: (id?: string) => [...contestQueryKeys.all, "leaderboard", id] as const,
   rewards: (id?: string) => [...contestQueryKeys.all, "rewards", id] as const,
   rewardClaims: () => [...contestQueryKeys.all, "reward-claims"] as const,
+  auditLogs: (id?: string) => [...contestQueryKeys.all, "audit-logs", id] as const,
+  metrics: (id?: string) => [...contestQueryKeys.all, "metrics", id] as const,
+};
+
+const mapMatchDtoToBracketMatch = (dto: Record<string, any>): BracketMatch => {
+  const participants = (dto.participants as any[]) || [];
+  const pA = participants.find((p: any) => p.slot_no === 1 || p.slotNo === 1);
+  const pB = participants.find((p: any) => p.slot_no === 2 || p.slotNo === 2);
+  const winner = participants.find((p: any) => p.is_winner || p.isWinner);
+  const loser = participants.find((p: any) => (p.slot_no === 1 || p.slotNo === 1 || p.slot_no === 2 || p.slotNo === 2) && p.registration_id !== winner?.registration_id);
+  
+  const roundNo = dto.round_no ?? dto.roundNo ?? 1;
+  const contestRoundId = `round-${roundNo}`;
+
+  return {
+    id: dto.id,
+    contestId: dto.contest_id ?? dto.contestId,
+    contestRoundId,
+    matchNo: dto.match_no ?? dto.matchNo,
+    competitorARegistrationId: pA?.registration_id ?? pA?.registrationId ?? null,
+    competitorBRegistrationId: pB?.registration_id ?? pB?.registrationId ?? null,
+    winnerRegistrationId: winner?.registration_id ?? winner?.registrationId ?? null,
+    loserRegistrationId: loser?.registration_id ?? loser?.registrationId ?? null,
+    nextMatchId: dto.next_match_id ?? dto.nextMatchId,
+    nextSlot: (dto.match_no ?? dto.matchNo) % 2 !== 0 ? 'A' : 'B',
+    status: dto.status === 'READY' || dto.status === 'SCHEDULED' ? 'SCHEDULED' : 
+            dto.status === 'COMPLETED' ? 'COMPLETED' : 'CANCELLED',
+    metadata: {
+      stage: dto.name || `Round ${roundNo} Match ${dto.match_no ?? dto.matchNo}`,
+      score: winner ? `${winner.score ?? ''}` : undefined,
+      ...dto.metadata,
+    }
+  };
 };
 
 export const contestsApi = {
@@ -162,6 +197,7 @@ export const contestsApi = {
     body: {
       vehicle_source: "BYOC" | "RENTAL";
       vehicle_id?: string;
+      customer_vehicle_id?: string;
       metadata?: { note?: string; [key: string]: unknown };
     }
   ): Promise<ContestRegistration> => {
@@ -221,6 +257,21 @@ export const contestsApi = {
     return res.data.data;
   },
 
+  approveRegistration: async (
+    registrationId: string
+  ): Promise<ContestRegistration> => {
+    const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contest-registrations/${registrationId}/approve`, {});
+    return res.data.data;
+  },
+
+  rejectRegistration: async (
+    registrationId: string,
+    body: { reason: string }
+  ): Promise<ContestRegistration> => {
+    const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contest-registrations/${registrationId}/reject`, body);
+    return res.data.data;
+  },
+
   // --- Competition Flow API ---
   createContestClass: async (contestId: string, body: ContestClassPayload): Promise<ContestClass> => {
     const res = await api.post<ApiEnvelope<ContestClass>>(`/v1/contests/${contestId}/classes`, body);
@@ -248,13 +299,49 @@ export const contestsApi = {
     matches: BracketMatch[];
     registrations: ContestRegistration[];
   }> => {
-    const res = await api.get<ApiEnvelope<{
-      classes: ContestClass[];
-      rounds: ContestRound[];
-      matches: BracketMatch[];
-      registrations: ContestRegistration[];
-    }>>(`/v1/contests/${contestId}/bracket`);
-    return res.data.data;
+    // 1. Fetch matches from /v1/contests/${contestId}/matches
+    const resMatches = await api.get<ApiEnvelope<any[]>>(`/v1/contests/${contestId}/matches`);
+    const matchesDto = resMatches.data.data || [];
+
+    // 2. Map matches
+    const matches: BracketMatch[] = matchesDto.map(mapMatchDtoToBracketMatch);
+
+    // 3. Synthesize unique rounds
+    const roundNumbers = Array.from(new Set(matchesDto.map(m => m.round_no ?? m.roundNo ?? 1))).sort((a, b) => a - b);
+    const rounds: ContestRound[] = roundNumbers.map(roundNo => ({
+      id: `round-${roundNo}`,
+      contest_id: contestId,
+      contestId,
+      contest_class_id: 'default',
+      contestClassId: 'default',
+      round_no: roundNo,
+      roundNo,
+      name: roundNo === roundNumbers.length ? 'Final' : `Vòng ${roundNo}`,
+      round_type: roundNo === roundNumbers.length ? 'FINAL' : 'QUALIFYING',
+      roundType: roundNo === roundNumbers.length ? 'FINAL' : 'QUALIFYING',
+      rules: { bracket: true },
+      scheduled_at: undefined,
+      scheduledAt: undefined,
+    }));
+
+    // 4. Fetch registrations to enrich properly
+    const resRegs = await api.get<ApiEnvelope<ContestRegistration[]>>(`/v1/contests/${contestId}/registrations`);
+    const registrations = resRegs.data.data || [];
+
+    return {
+      classes: [{
+        id: 'default',
+        contest_id: contestId,
+        code: 'DEFAULT',
+        name: 'Mặc định',
+        capacity: 100,
+        display_order: 1,
+        is_active: true,
+      }],
+      rounds,
+      matches,
+      registrations
+    };
   },
 
   createContestHeat: async (roundId: string, body: ContestHeatPayload): Promise<ContestHeat> => {
@@ -315,6 +402,62 @@ export const contestsApi = {
     body: { winner_registration_id: string; metadata?: { score?: string; [key: string]: unknown } }
   ): Promise<BracketMatch> => {
     const res = await api.post<ApiEnvelope<BracketMatch>>(`/v1/contest-bracket-matches/${matchId}/decide`, body);
+    return res.data.data;
+  },
+
+  listAuditLogs: async (contestId: string): Promise<ContestAuditLog[]> => {
+    const res = await api.get<ApiEnvelope<ContestAuditLog[]>>(`/v1/contests/${contestId}/audit-logs`);
+    return res.data.data;
+  },
+
+  getMetrics: async (contestId: string): Promise<ContestMetrics> => {
+    const res = await api.get<ApiEnvelope<ContestMetrics>>(`/v1/contests/${contestId}/metrics`);
+    return res.data.data;
+  },
+
+  generateMatches: async (
+    contestId: string,
+    body: {
+      format?: "KNOCKOUT" | "MULTI_DRIVER_HEAT" | "TIME_ATTACK";
+      drivers_per_match?: number;
+      registration_ids: string[];
+      seeding_mode?: "MANUAL" | "RANDOM" | "CHECK_IN_ORDER" | "QUALIFYING_RANK";
+      advancement_rule?: Record<string, unknown>;
+      cafe_id?: string | null;
+      track_config_id?: string | null;
+    }
+  ): Promise<any[]> => {
+    const res = await api.post<ApiEnvelope<any[]>>(`/v1/contests/${contestId}/matches/generate`, body);
+    return res.data.data;
+  },
+
+  submitMatchResults: async (
+    matchId: string,
+    body: {
+      results: Array<{
+        registration_id: string;
+        finish_position?: number | null;
+        score?: number | null;
+        best_lap_ms?: number | null;
+        total_time_ms?: number | null;
+        is_winner?: boolean;
+        result_note?: string;
+      }>;
+      reason?: string;
+    }
+  ): Promise<any> => {
+    const res = await api.post<ApiEnvelope<any>>(`/v1/contest-matches/${matchId}/results`, body);
+    return res.data.data;
+  },
+
+  advanceMatch: async (
+    matchId: string,
+    body: {
+      next_match_id: string;
+      top_n?: number;
+    }
+  ): Promise<any> => {
+    const res = await api.post<ApiEnvelope<any>>(`/v1/contest-matches/${matchId}/advance`, body);
     return res.data.data;
   },
 };

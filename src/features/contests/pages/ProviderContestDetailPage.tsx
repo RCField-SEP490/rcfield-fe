@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,6 +13,10 @@ import {
   Plus,
   Medal,
   Award,
+  BarChart3,
+  Activity,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { contestsApi, contestQueryKeys } from "../api/contests.api";
 import type { ContestClassPayload, ContestRewardPayload } from "../api/contests.api";
@@ -26,6 +30,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "sonner";
 import type { BracketMatch, ContestClass } from "../types";
+import { trackConfigApi } from "@/features/cafes/api/cafe.api";
 
 function formatDateTime(dateStr: string) {
   try {
@@ -47,12 +52,27 @@ export function ProviderContestDetailPage() {
   const { contestId } = useParams<{ contestId: string }>();
   const queryClient = useQueryClient();
   
-  const [activeSubTab, setActiveSubTab] = useState<"general" | "players" | "brackets" | "rewards">("general");
+  const [activeSubTab, setActiveSubTab] = useState<"general" | "players" | "brackets" | "rewards" | "monitoring">("general");
 
   // Manual Check-In Simulator State
   const [showScanDialog, setShowScanDialog] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [targetCafeId, setTargetCafeId] = useState("");
+
+  // Staff Scoping & Match Filtering State
+  const [matchFilterCafeId, setMatchFilterCafeId] = useState<string>("all");
+  const [matchFilterStatus, setMatchFilterStatus] = useState<string>("all");
+
+  // Dynamic Match Generator State
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [generateFormat, setGenerateFormat] = useState<"KNOCKOUT" | "MULTI_DRIVER_HEAT" | "TIME_ATTACK">("KNOCKOUT");
+  const [generateDriversPerMatch, setGenerateDriversPerMatch] = useState<number>(2);
+  const [generateCafeId, setGenerateCafeId] = useState<string>("");
+  const [generateTrackConfigId, setGenerateTrackConfigId] = useState<string>("");
+  const [generateSeedingMode, setGenerateSeedingMode] = useState<"MANUAL" | "RANDOM" | "CHECK_IN_ORDER" | "QUALIFYING_RANK">("MANUAL");
+  const [trackConfigs, setTrackConfigs] = useState<any[]>([]);
+  const [loadingTrackConfigs, setLoadingTrackConfigs] = useState(false);
+  const [selectedRegIdsForGeneration, setSelectedRegIdsForGeneration] = useState<string[]>([]);
 
   // Bracket Match Editor State
   const [showMatchDialog, setShowMatchDialog] = useState(false);
@@ -100,6 +120,18 @@ export function ProviderContestDetailPage() {
     enabled: !!contestId,
   });
 
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: contestQueryKeys.auditLogs(contestId),
+    queryFn: () => contestsApi.listAuditLogs(contestId!),
+    enabled: !!contestId && activeSubTab === "monitoring",
+  });
+
+  const { data: metrics } = useQuery({
+    queryKey: contestQueryKeys.metrics(contestId),
+    queryFn: () => contestsApi.getMetrics(contestId!),
+    enabled: !!contestId && activeSubTab === "monitoring",
+  });
+
   const rewards = rewardsEnvelope?.data || [];
   const contestClasses = bracketData?.classes || [];
   const primaryClass = contestClasses[0];
@@ -114,10 +146,59 @@ export function ProviderContestDetailPage() {
     () => enrichBracketMatches(bracketData?.matches || [], registrations),
     [bracketData?.matches, registrations]
   );
+
+  const filteredBracketMatches = useMemo(() => {
+    return bracketMatches.filter((match) => {
+      // 1. Cafe filter
+      const matchCafeId = (match as any).cafeId || (match as any).cafe_id;
+      if (matchFilterCafeId !== "all" && matchCafeId !== matchFilterCafeId) {
+        return false;
+      }
+      // 2. Status filter
+      if (matchFilterStatus !== "all" && match.status !== matchFilterStatus) {
+        return false;
+      }
+      return true;
+    });
+  }, [bracketMatches, matchFilterCafeId, matchFilterStatus]);
+
   const bracketGroups = useMemo(
-    () => groupMatchesByRound(bracketMatches, bracketData?.rounds || []),
-    [bracketMatches, bracketData?.rounds]
+    () => groupMatchesByRound(filteredBracketMatches, bracketData?.rounds || []),
+    [filteredBracketMatches, bracketData?.rounds]
   );
+
+  useEffect(() => {
+    if (generateCafeId) {
+      setLoadingTrackConfigs(true);
+      trackConfigApi
+        .listTrackConfigs(generateCafeId)
+        .then((configs) => {
+          setTrackConfigs(configs || []);
+          setGenerateTrackConfigId(configs?.[0]?.id || "");
+        })
+        .catch((err) => {
+          console.error("Lỗi lấy cấu hình track:", err);
+          setTrackConfigs([]);
+          setGenerateTrackConfigId("");
+        })
+        .finally(() => {
+          setLoadingTrackConfigs(false);
+        });
+    } else {
+      setTrackConfigs([]);
+      setGenerateTrackConfigId("");
+    }
+  }, [generateCafeId]);
+
+  useEffect(() => {
+    if (showGenerateDialog) {
+      const checkedIn = registrations.filter((r) => r.status === "CHECKED_IN").map((r) => r.id);
+      setSelectedRegIdsForGeneration(checkedIn);
+      if (contest?.participating_cafes && contest.participating_cafes.length > 0) {
+        setGenerateCafeId(contest.participating_cafes[0].id || "");
+      }
+    }
+  }, [showGenerateDialog, registrations, contest]);
   const recordProviderContestEvent = (
     event: string,
     details: Parameters<typeof recordContestUiEvent>[1] = {},
@@ -162,6 +243,8 @@ export function ProviderContestDetailPage() {
       });
       toast.success("Check-in vận động viên thành công!");
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.auditLogs(contestId) });
     },
     onError: (err: unknown, args) => {
       const message = getContestErrorMessage(err, "Check-in thất bại.");
@@ -184,10 +267,57 @@ export function ProviderContestDetailPage() {
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.auditLogs(contestId) });
     },
     onError: (err: unknown, args) => {
       const message = getContestErrorMessage(err, "Hủy đăng ký thất bại.");
       recordProviderContestEvent("provider.registration.cancel.error", {
+        registrationId: args.regId,
+        metadata: { message },
+      });
+      toast.error(message);
+    },
+  });
+
+  const approveRegistrationMutation = useMutation({
+    mutationFn: (regId: string) => contestsApi.approveRegistration(regId),
+    onSuccess: (_, regId) => {
+      recordProviderContestEvent("provider.registration.approve.success", {
+        registrationId: regId,
+      });
+      toast.success("Đã phê duyệt đăng ký thành công!");
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.auditLogs(contestId) });
+    },
+    onError: (err: unknown, regId) => {
+      const message = getContestErrorMessage(err, "Phê duyệt thất bại.");
+      recordProviderContestEvent("provider.registration.approve.error", {
+        registrationId: regId,
+        metadata: { message },
+      });
+      toast.error(message);
+    },
+  });
+
+  const rejectRegistrationMutation = useMutation({
+    mutationFn: (args: { regId: string; reason: string }) =>
+      contestsApi.rejectRegistration(args.regId, { reason: args.reason }),
+    onSuccess: (_, args) => {
+      recordProviderContestEvent("provider.registration.reject.success", {
+        registrationId: args.regId,
+      });
+      toast.success("Đã từ chối đăng ký vận động viên.");
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.auditLogs(contestId) });
+    },
+    onError: (err: unknown, args) => {
+      const message = getContestErrorMessage(err, "Từ chối đăng ký thất bại.");
+      recordProviderContestEvent("provider.registration.reject.error", {
         registrationId: args.regId,
         metadata: { message },
       });
@@ -271,109 +401,33 @@ export function ProviderContestDetailPage() {
     },
   });
 
-  const createBracketMutation = useMutation({
+  const generateMatchesMutation = useMutation({
     mutationFn: async () => {
-      const contestClass = primaryClass;
-      if (!contestClass) throw new Error("Vui lòng tạo Class trước khi dựng bracket.");
-      if (!isSupportedBracketSize) {
-        throw new Error("Phase này chỉ hỗ trợ dựng bracket 4 hoặc 8 người. Bracket lớn hơn cần generator BE ở phase sau.");
+      if (selectedRegIdsForGeneration.length === 0) {
+        throw new Error("Vui lòng chọn ít nhất 1 vận động viên để xếp lịch.");
       }
-      const checkedInPlayers = registrations.filter((r) => r.status === "CHECKED_IN").slice(0, bracketSize);
-      if (checkedInPlayers.length < bracketSize) {
-        throw new Error(`Cần đủ ${bracketSize} vận động viên đã check-in để dựng bracket ${bracketSize} người.`);
-      }
-
-      const finalRound = await contestsApi.createContestRound(contestId!, {
-        contest_class_id: contestClass.id,
-        round_type: "FINAL",
-        round_no: bracketSize === 4 ? 2 : 3,
-        name: "Final",
-        rules: { bracket: true, stage: "FINAL" },
+      return contestsApi.generateMatches(contestId!, {
+        format: generateFormat,
+        drivers_per_match: generateDriversPerMatch,
+        registration_ids: selectedRegIdsForGeneration,
+        seeding_mode: generateSeedingMode,
+        cafe_id: generateCafeId || null,
+        track_config_id: generateTrackConfigId || null,
       });
-      const finalMatch = await contestsApi.createBracketMatch(finalRound.id, {
-        match_no: bracketSize === 4 ? 3 : 7,
-        metadata: { stage: "FINAL" },
-      });
-
-      const semiRound = await contestsApi.createContestRound(contestId!, {
-        contest_class_id: contestClass.id,
-        round_type: "QUALIFYING",
-        round_no: bracketSize === 4 ? 1 : 2,
-        name: "Semi Final",
-        rules: { bracket: true, stage: "SEMI_FINAL" },
-      });
-
-      if (bracketSize === 4) {
-        const semiTargets = [
-          { next_match_id: finalMatch.id, next_slot: "A" },
-          { next_match_id: finalMatch.id, next_slot: "B" },
-        ] as const;
-        await Promise.all(
-          semiTargets.map((target, index) =>
-            contestsApi.createBracketMatch(semiRound.id, {
-              match_no: index + 1,
-              competitor_a_registration_id: checkedInPlayers[index * 2].id,
-              competitor_b_registration_id: checkedInPlayers[index * 2 + 1].id,
-              next_match_id: target.next_match_id,
-              next_slot: target.next_slot,
-              metadata: { stage: "SEMI_FINAL" },
-            })
-          )
-        );
-        return bracketSize;
-      }
-
-      const semiOne = await contestsApi.createBracketMatch(semiRound.id, {
-        match_no: 5,
-        next_match_id: finalMatch.id,
-        next_slot: "A",
-        metadata: { stage: "SEMI_FINAL" },
-      });
-      const semiTwo = await contestsApi.createBracketMatch(semiRound.id, {
-        match_no: 6,
-        next_match_id: finalMatch.id,
-        next_slot: "B",
-        metadata: { stage: "SEMI_FINAL" },
-      });
-
-      const quarterRound = await contestsApi.createContestRound(contestId!, {
-        contest_class_id: contestClass.id,
-        round_type: "QUALIFYING",
-        round_no: 1,
-        name: "Quarter Final",
-        rules: { bracket: true, stage: "QUARTER_FINAL" },
-      });
-      const nextTargets = [
-        { next_match_id: semiOne.id, next_slot: "A" },
-        { next_match_id: semiOne.id, next_slot: "B" },
-        { next_match_id: semiTwo.id, next_slot: "A" },
-        { next_match_id: semiTwo.id, next_slot: "B" },
-      ] as const;
-      await Promise.all(
-        nextTargets.map((target, index) =>
-          contestsApi.createBracketMatch(quarterRound.id, {
-            match_no: index + 1,
-            competitor_a_registration_id: checkedInPlayers[index * 2].id,
-            competitor_b_registration_id: checkedInPlayers[index * 2 + 1].id,
-            next_match_id: target.next_match_id,
-            next_slot: target.next_slot,
-            metadata: { stage: "QUARTER_FINAL" },
-          })
-        )
-      );
-      return bracketSize;
     },
-    onSuccess: (createdBracketSize) => {
-      recordProviderContestEvent("provider.bracket.create.success", {
-        metadata: { bracketSize: createdBracketSize },
+    onSuccess: (generatedMatches) => {
+      recordProviderContestEvent("provider.bracket.generate.success", {
+        metadata: { matchCount: generatedMatches.length },
       });
-      toast.success(`Đã dựng bracket ${createdBracketSize} người từ danh sách check-in.`);
+      toast.success(`Đã tự động xếp ${generatedMatches.length} trận đấu thành công.`);
+      setShowGenerateDialog(false);
       queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) });
     },
     onError: (err: unknown) => {
-      const message = getContestErrorMessage(err, "Lỗi dựng bracket.");
-      recordProviderContestEvent("provider.bracket.create.error", {
-        metadata: { bracketSize, message },
+      const message = getContestErrorMessage(err, "Lỗi xếp lịch thi đấu.");
+      recordProviderContestEvent("provider.bracket.generate.error", {
+        metadata: { message },
       });
       toast.error(message);
     },
@@ -417,30 +471,61 @@ export function ProviderContestDetailPage() {
     );
   };
 
-  const handleSaveMatchResult = () => {
+  const handleSaveMatchResult = async () => {
     if (!selectedMatch || !matchWinnerId) return;
-    contestsApi
-      .decideBracketWinner(selectedMatch.id, {
-        winner_registration_id: matchWinnerId,
-        metadata: matchScore ? { score: matchScore } : undefined,
-      })
-      .then(() => {
-        recordProviderContestEvent("provider.bracket.match_result.success", {
-          matchId: selectedMatch.id,
-          metadata: { winnerRegistrationId: matchWinnerId },
-        });
-        setShowMatchDialog(false);
-        queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
-        toast.success("Đã ghi nhận kết quả và đẩy winner sang vòng tiếp theo.");
-      })
-      .catch((err: unknown) => {
-        const message = getContestErrorMessage(err, "Lỗi ghi nhận kết quả trận đấu.");
-        recordProviderContestEvent("provider.bracket.match_result.error", {
-          matchId: selectedMatch.id,
-          metadata: { winnerRegistrationId: matchWinnerId, message },
-        });
-        toast.error(message);
+    try {
+      const compAId = selectedMatch.competitorARegistrationId;
+      const compBId = selectedMatch.competitorBRegistrationId;
+      if (!compAId || !compBId) {
+        toast.error("Trận đấu chưa đủ tay đua tham gia để ghi nhận kết quả.");
+        return;
+      }
+
+      const scoreNum = Number(matchScore) || 0;
+
+      // 1. Submit match results to backend
+      await contestsApi.submitMatchResults(selectedMatch.id, {
+        results: [
+          {
+            registration_id: matchWinnerId,
+            finish_position: 1,
+            score: scoreNum,
+            is_winner: true,
+          },
+          {
+            registration_id: matchWinnerId === compAId ? compBId : compAId,
+            finish_position: 2,
+            score: 0,
+            is_winner: false,
+          },
+        ],
+        reason: "Ghi nhận kết quả trực tiếp từ bảng quản trị giải đấu",
       });
+
+      // 2. If nextMatchId exists, advance the winner to the next round
+      if (selectedMatch.nextMatchId) {
+        await contestsApi.advanceMatch(selectedMatch.id, {
+          next_match_id: selectedMatch.nextMatchId,
+          top_n: 1,
+        });
+      }
+
+      recordProviderContestEvent("provider.bracket.match_result.success", {
+        matchId: selectedMatch.id,
+        metadata: { winnerRegistrationId: matchWinnerId },
+      });
+      setShowMatchDialog(false);
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.bracket(contestId) });
+      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) });
+      toast.success("Đã ghi nhận kết quả và đẩy winner sang vòng tiếp theo thành công!");
+    } catch (err: unknown) {
+      const message = getContestErrorMessage(err, "Lỗi ghi nhận kết quả trận đấu.");
+      recordProviderContestEvent("provider.bracket.match_result.error", {
+        matchId: selectedMatch.id,
+        metadata: { winnerRegistrationId: matchWinnerId, message },
+      });
+      toast.error(message);
+    }
   };
 
   if (isContestLoading) {
@@ -528,6 +613,12 @@ export function ProviderContestDetailPage() {
         >
           Xếp hạng & Phần thưởng
         </button>
+        <button
+          onClick={() => setActiveSubTab("monitoring")}
+          className={`py-2 px-4 rounded-lg text-xs font-bold transition-all shrink-0 ${activeSubTab === "monitoring" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"}`}
+        >
+          Giám sát & Lịch sử vận hành
+        </button>
       </div>
 
       {/* Tab: General Settings Overview */}
@@ -591,10 +682,19 @@ export function ProviderContestDetailPage() {
           contest={contest}
           registrations={registrations}
           defaultCafeId={selectedCafeId}
-          actionPending={checkInMutation.isPending || cancelRegistrationMutation.isPending}
+          actionPending={
+            checkInMutation.isPending ||
+            cancelRegistrationMutation.isPending ||
+            approveRegistrationMutation.isPending ||
+            rejectRegistrationMutation.isPending
+          }
           onCheckIn={(registrationId, cafeId) => checkInMutation.mutate({ regId: registrationId, cafeId })}
           onCancel={(registrationId, reason) =>
             cancelRegistrationMutation.mutate({ regId: registrationId, reason })
+          }
+          onApprove={(registrationId) => approveRegistrationMutation.mutate(registrationId)}
+          onReject={(registrationId, reason) =>
+            rejectRegistrationMutation.mutate({ regId: registrationId, reason })
           }
         />
       )}
@@ -613,12 +713,11 @@ export function ProviderContestDetailPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => createBracketMutation.mutate()}
-                disabled={createBracketMutation.isPending || bracketMatches.length > 0 || !isSupportedBracketSize}
-                title={!isSupportedBracketSize ? "Bracket lớn hơn 8 người cần generator backend ở phase sau." : undefined}
+                onClick={() => setShowGenerateDialog(true)}
+                disabled={generateMatchesMutation.isPending}
                 className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
               >
-                <Plus size={14} className="mr-1" /> Dựng bracket {bracketSize} người
+                <Plus size={14} className="mr-1" /> Xếp lịch thi đấu
               </Button>
               <Button
                 onClick={() => setShowClassDialog(true)}
@@ -627,6 +726,42 @@ export function ProviderContestDetailPage() {
               >
                 <Plus size={14} className="mr-1" /> Tạo nhóm (Class)
               </Button>
+            </div>
+          </div>
+
+          {/* Staff Scoping UI/Filter Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-950 p-4 rounded-xl border border-slate-850 text-xs">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-slate-450 font-bold flex items-center gap-1">
+                <MapPin size={12} className="text-orange-500" /> Bộ lọc chi nhánh (Cafe)
+              </label>
+              <select
+                value={matchFilterCafeId}
+                onChange={(e) => setMatchFilterCafeId(e.target.value)}
+                className="bg-slate-900 border border-slate-850 text-slate-100 rounded-lg p-2 font-semibold outline-none focus:border-orange-500"
+              >
+                <option value="all">Tất cả chi nhánh</option>
+                {contest?.participating_cafes?.map((cafe: any) => (
+                  <option key={cafe.id} value={cafe.id}>
+                    {cafe.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-slate-450 font-bold flex items-center gap-1">
+                <Activity size={12} className="text-orange-500" /> Bộ lọc trạng thái trận đấu
+              </label>
+              <select
+                value={matchFilterStatus}
+                onChange={(e) => setMatchFilterStatus(e.target.value)}
+                className="bg-slate-900 border border-slate-850 text-slate-100 rounded-lg p-2 font-semibold outline-none focus:border-orange-500"
+              >
+                <option value="all">Tất cả trạng thái</option>
+                <option value="SCHEDULED">Chưa thi đấu (SCHEDULED)</option>
+                <option value="COMPLETED">Đã kết thúc (COMPLETED)</option>
+                <option value="CANCELLED">Đã hủy (CANCELLED)</option>
+              </select>
             </div>
           </div>
 
@@ -743,6 +878,144 @@ export function ProviderContestDetailPage() {
         </div>
       )}
 
+      {activeSubTab === "monitoring" && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Operational Metrics Section */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
+            <h3 className="font-bold text-slate-100 flex items-center gap-1.5 border-b border-slate-800 pb-3">
+              <BarChart3 size={18} className="text-orange-500" /> Thống kê vận hành (Real-time Metrics)
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Thống kê Vận động viên</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tổng Đăng ký</span>
+                    <span className="text-2xl font-extrabold text-orange-500 mt-2">{metrics?.registration_stats?.total ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đang chờ duyệt</span>
+                    <span className="text-2xl font-extrabold text-amber-500 mt-2">{metrics?.registration_stats?.pending ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đã xác nhận</span>
+                    <span className="text-2xl font-extrabold text-green-500 mt-2">{metrics?.registration_stats?.confirmed ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đã Check-in</span>
+                    <span className="text-2xl font-extrabold text-blue-500 mt-2">{metrics?.registration_stats?.checkedIn ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Đã Hủy bỏ</span>
+                    <span className="text-2xl font-extrabold text-red-500 mt-2">{metrics?.registration_stats?.cancelled ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Thống kê trận đấu Knockout</h4>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tổng trận đấu</span>
+                    <span className="text-2xl font-extrabold text-slate-200 mt-2">{metrics?.match_stats?.total ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Nháp (Draft)</span>
+                    <span className="text-2xl font-extrabold text-slate-400 mt-2">{metrics?.match_stats?.draft ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Sẵn sàng (Ready)</span>
+                    <span className="text-2xl font-extrabold text-yellow-500 mt-2">{metrics?.match_stats?.ready ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Hoàn thành</span>
+                    <span className="text-2xl font-extrabold text-green-500 mt-2">{metrics?.match_stats?.completed ?? 0}</span>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bị hủy</span>
+                    <span className="text-2xl font-extrabold text-red-500 mt-2">{metrics?.match_stats?.cancelled ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Audit Logs Section */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
+            <h3 className="font-bold text-slate-100 flex items-center gap-1.5 border-b border-slate-800 pb-3">
+              <Activity size={18} className="text-orange-500" /> Lịch sử thay đổi hệ thống (Audit Logs)
+            </h3>
+
+            {auditLogs.length === 0 ? (
+              <div className="text-center text-sm text-slate-500 py-8">
+                Không tìm thấy nhật ký thay đổi nào cho giải đấu này.
+              </div>
+            ) : (
+              <div className="relative pl-6 border-l-2 border-slate-800 space-y-6 ml-2">
+                {auditLogs.map((log) => {
+                  let eventLabel = log.eventType;
+                  if (log.eventType === "registration.created") eventLabel = "Đăng ký tham gia giải đấu";
+                  else if (log.eventType === "registration.confirmed") eventLabel = "Phê duyệt đăng ký tham gia";
+                  else if (log.eventType === "registration.checked_in") eventLabel = "Check-in vận động viên thành công";
+                  else if (log.eventType === "registration.cancelled") eventLabel = "Hủy đăng ký vận động viên";
+                  else if (log.eventType === "match.schedule_generated") eventLabel = "Tạo sơ đồ nhánh đấu Knockout";
+                  else if (log.eventType === "match.participants_updated") eventLabel = "Cập nhật tay đua tham gia trận đấu";
+                  else if (log.eventType === "match.result_submitted") eventLabel = "Ghi nhận kết quả trận đấu Knockout";
+                  else if (log.eventType === "match.advanced") eventLabel = "Vận động viên chiến thắng đi tiếp";
+                  else if (log.eventType === "leaderboard.published") eventLabel = "Công bố bảng xếp hạng chung cuộc";
+                  else if (log.eventType === "reward.created") eventLabel = "Thiết lập giải thưởng giải đấu";
+                  else if (log.eventType === "reward.issued") eventLabel = "Phát quà / cúp cho các tay đua";
+
+                  const isRegistration = log.eventType.startsWith("registration");
+                  const isMatch = log.eventType.startsWith("match");
+                  const isReward = log.eventType.startsWith("reward");
+
+                  return (
+                    <div key={log.id} className="relative">
+                      {/* Timeline dot */}
+                      <span className={`absolute -left-[31px] top-1.5 w-4 h-4 rounded-full border-2 bg-slate-900 ${
+                        isRegistration ? "border-blue-500" : isMatch ? "border-orange-500" : isReward ? "border-green-500" : "border-slate-500"
+                      }`} />
+
+                      <div className="bg-slate-950 border border-slate-850 p-4 rounded-xl space-y-2 hover:border-slate-800 transition-all">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold text-slate-100">{eventLabel}</span>
+                            <Badge variant="secondary" className="text-[9px] bg-slate-900 border border-slate-850 font-bold uppercase tracking-wider text-slate-400">
+                              {log.eventType}
+                            </Badge>
+                          </div>
+                          <span className="text-[10px] text-slate-500">{formatDateTime(log.createdAt)}</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                          <div>
+                            Tác nhân: <span className="font-bold text-slate-300">{log.actorRole || "N/A"}</span>
+                          </div>
+                          {log.reason && (
+                            <div>
+                              Lý do: <span className="text-red-400 font-semibold">"{log.reason}"</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {log.metadata && Object.keys(log.metadata).length > 0 && (
+                          <div className="text-[10px] bg-[#121315] border border-slate-850 p-2.5 rounded-lg text-slate-400 font-mono overflow-x-auto">
+                            <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider block mb-1">Dữ liệu sự kiện:</span>
+                            {JSON.stringify(log.metadata, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Scanner Simulator Dialog */}
       <Dialog open={showScanDialog} onOpenChange={setShowScanDialog}>
         <DialogContent className="bg-slate-900 border border-slate-800 text-slate-200 max-w-md">
@@ -854,6 +1127,204 @@ export function ProviderContestDetailPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Matches Dialog */}
+      <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+        <DialogContent className="bg-slate-900 border border-slate-800 text-slate-200 max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white font-extrabold flex items-center gap-1.5">
+              <Play className="text-orange-500" size={18} /> Tự động xếp lịch & trận đấu
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs">
+              Cấu hình các thông số và chọn vận động viên để xếp lịch thi đấu tự động.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4 text-xs font-semibold">
+            {/* Format & Drivers Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-slate-400 font-bold uppercase tracking-wider">Thể thức thi đấu</label>
+                <select
+                  value={generateFormat}
+                  onChange={(e: any) => {
+                    const fmt = e.target.value;
+                    setGenerateFormat(fmt);
+                    if (fmt === "KNOCKOUT") {
+                      setGenerateDriversPerMatch(2);
+                    }
+                  }}
+                  className="bg-slate-950 border border-slate-850 rounded-lg py-2 px-3 text-slate-205 focus:outline-none w-full font-bold"
+                >
+                  <option value="KNOCKOUT">Knockout (Đấu loại trực tiếp)</option>
+                  <option value="MULTI_DRIVER_HEAT">Multi-driver Heat (Chạy nhóm/lượt)</option>
+                  <option value="TIME_ATTACK">Time Attack (Đua tính giờ)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-slate-400 font-bold uppercase tracking-wider">Số xe mỗi trận/lượt</label>
+                <select
+                  value={generateDriversPerMatch}
+                  onChange={(e) => setGenerateDriversPerMatch(Number(e.target.value))}
+                  disabled={generateFormat === "KNOCKOUT"}
+                  className="bg-slate-950 border border-slate-855 rounded-lg py-2 px-3 text-slate-205 focus:outline-none w-full disabled:opacity-50 font-bold"
+                >
+                  <option value={2}>2 xe / trận</option>
+                  <option value={4}>4 xe / trận</option>
+                  <option value={6}>6 xe / trận</option>
+                  <option value={8}>8 xe / trận</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Branch & Track Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-slate-400 font-bold uppercase tracking-wider">Địa điểm thi đấu</label>
+                <select
+                  value={generateCafeId}
+                  onChange={(e) => setGenerateCafeId(e.target.value)}
+                  className="bg-slate-950 border border-slate-850 rounded-lg py-2 px-3 text-slate-202 focus:outline-none w-full font-bold"
+                >
+                  <option value="">Chọn chi nhánh...</option>
+                  {contest?.participating_cafes?.map((cafe: any) => (
+                    <option key={cafe.id} value={cafe.id}>
+                      {cafe.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                  Cấu hình sa bàn
+                  {loadingTrackConfigs && <span className="w-2.5 h-2.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />}
+                </label>
+                <select
+                  value={generateTrackConfigId}
+                  onChange={(e) => setGenerateTrackConfigId(e.target.value)}
+                  disabled={!generateCafeId || loadingTrackConfigs}
+                  className="bg-slate-950 border border-slate-850 rounded-lg py-2 px-3 text-slate-202 focus:outline-none w-full disabled:opacity-50 font-bold"
+                >
+                  <option value="">{trackConfigs.length === 0 ? "Không tìm thấy sa bàn" : "Chọn sa bàn..."}</option>
+                  {trackConfigs.map((config) => (
+                    <option key={config.id} value={config.id}>
+                      {config.name} ({config.trackType || config.track_type || "N/A"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Seeding Mode */}
+            <div className="space-y-1.5">
+              <label className="text-slate-400 font-bold uppercase tracking-wider">Cách xếp hạt giống / Bốc thăm</label>
+              <select
+                value={generateSeedingMode}
+                onChange={(e: any) => setGenerateSeedingMode(e.target.value)}
+                className="bg-slate-950 border border-slate-850 rounded-lg py-2 px-3 text-slate-202 focus:outline-none w-full font-bold"
+              >
+                <option value="MANUAL">Thủ công (Manual)</option>
+                <option value="RANDOM">Ngẫu nhiên (Random)</option>
+                <option value="CHECK_IN_ORDER">Theo thứ tự Check-in</option>
+                <option value="QUALIFYING_RANK">Theo thứ tự Vòng loại (Qualifying Rank)</option>
+              </select>
+            </div>
+
+            {/* Checked-in Participants List Checklist */}
+            <div className="space-y-2 border-t border-slate-850 pt-4">
+              <div className="flex justify-between items-center text-slate-350">
+                <span className="font-bold">Danh sách đã check-in ({registrations.filter(r => r.status === "CHECKED_IN").length})</span>
+                <span className="text-orange-500 font-mono text-[10px] bg-orange-500/10 px-2 py-0.5 rounded-full">
+                  Đang chọn: {selectedRegIdsForGeneration.length} VĐV
+                </span>
+              </div>
+
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const checkedInIds = registrations.filter(r => r.status === "CHECKED_IN").map(r => r.id);
+                    setSelectedRegIdsForGeneration(checkedInIds);
+                  }}
+                  className="bg-slate-950 border border-slate-850 hover:bg-slate-850 hover:text-white text-slate-400 px-2 py-1 rounded text-[10px] font-bold"
+                >
+                  Chọn tất cả
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRegIdsForGeneration([])}
+                  className="bg-slate-950 border border-slate-850 hover:bg-slate-850 hover:text-white text-slate-400 px-2 py-1 rounded text-[10px] font-bold"
+                >
+                  Bỏ chọn tất cả
+                </button>
+              </div>
+
+              <div className="bg-slate-950 border border-slate-850 rounded-xl p-3 max-h-48 overflow-y-auto space-y-1.5">
+                {registrations.filter(r => r.status === "CHECKED_IN").length === 0 ? (
+                  <div className="text-center text-slate-500 py-6 font-medium text-slate-600">Chưa có vận động viên nào check-in.</div>
+                ) : (
+                  registrations
+                    .filter(r => r.status === "CHECKED_IN")
+                    .map((reg) => {
+                      const isSelected = selectedRegIdsForGeneration.includes(reg.id);
+                      return (
+                        <div
+                          key={reg.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedRegIdsForGeneration(selectedRegIdsForGeneration.filter(id => id !== reg.id));
+                            } else {
+                              setSelectedRegIdsForGeneration([...selectedRegIdsForGeneration, reg.id]);
+                            }
+                          }}
+                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
+                            isSelected ? "bg-orange-500/10 text-orange-400" : "hover:bg-slate-900 text-slate-400"
+                          }`}
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={16} className="text-orange-500 shrink-0" />
+                          ) : (
+                            <Square size={16} className="text-slate-650 shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold truncate text-[11px] text-slate-200">
+                              {reg.user?.fullName || "VĐV Vô danh"}
+                            </p>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+                              ID: {reg.id.substring(0, 8)} • Xe: {reg.vehicle?.name || reg.customer_vehicle?.name || "Tự túc"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-850">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowGenerateDialog(false)}
+                className="text-slate-400 text-xs font-bold"
+              >
+                Hủy bỏ
+              </Button>
+              <Button
+                type="button"
+                onClick={() => generateMatchesMutation.mutate()}
+                disabled={generateMatchesMutation.isPending || selectedRegIdsForGeneration.length === 0}
+                className="bg-orange-600 hover:bg-orange-700 text-white text-xs font-extrabold flex items-center gap-1.5"
+              >
+                {generateMatchesMutation.isPending && <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                Xếp lịch ngay
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

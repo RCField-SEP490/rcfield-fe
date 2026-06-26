@@ -84,6 +84,8 @@ describe("ParticipantManagementPanel", () => {
         defaultCafeId="cafe-1"
         onCheckIn={vi.fn()}
         onCancel={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
       />,
     );
 
@@ -104,6 +106,8 @@ describe("ParticipantManagementPanel", () => {
         defaultCafeId="cafe-1"
         onCheckIn={vi.fn()}
         onCancel={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
       />,
     );
 
@@ -126,6 +130,8 @@ describe("ParticipantManagementPanel", () => {
         defaultCafeId="cafe-1"
         onCheckIn={onCheckIn}
         onCancel={onCancel}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
       />,
     );
 
@@ -140,6 +146,43 @@ describe("ParticipantManagementPanel", () => {
     expect(onCancel).toHaveBeenCalledWith("reg-1", "No show");
   });
 
+  it("calls approve and reject actions with selected registration", async () => {
+    const user = userEvent.setup();
+    const onApprove = vi.fn();
+    const onReject = vi.fn();
+    render(
+      <ParticipantManagementPanel
+        contest={contest}
+        registrations={[
+          {
+            id: "reg-4",
+            contest_id: "contest-1",
+            user_id: "user-4",
+            participant_role_snapshot: "CUSTOMER",
+            vehicle_source: "BYOC",
+            status: "PENDING",
+            check_in_code: "CHECK-PENDING",
+            metadata: { note: "Pending approval" },
+            user: { id: "user-4", fullName: "Danh Nguyen", email: "danh@example.com" },
+          },
+        ]}
+        defaultCafeId="cafe-1"
+        onCheckIn={vi.fn()}
+        onCancel={vi.fn()}
+        onApprove={onApprove}
+        onReject={onReject}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Duyệt" }));
+    expect(onApprove).toHaveBeenCalledWith("reg-4");
+
+    await user.click(screen.getByRole("button", { name: "Từ chối" }));
+    await user.type(screen.getByLabelText("Lý do từ chối đăng ký"), "Incompatible car");
+    await user.click(screen.getByRole("button", { name: "Xác nhận từ chối" }));
+    expect(onReject).toHaveBeenCalledWith("reg-4", "Incompatible car");
+  });
+
   it("renders empty state when there are no registrations", () => {
     render(
       <ParticipantManagementPanel
@@ -148,6 +191,8 @@ describe("ParticipantManagementPanel", () => {
         defaultCafeId="cafe-1"
         onCheckIn={vi.fn()}
         onCancel={vi.fn()}
+        onApprove={vi.fn()}
+        onReject={vi.fn()}
       />,
     );
 

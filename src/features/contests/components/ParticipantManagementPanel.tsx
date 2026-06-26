@@ -47,6 +47,8 @@ interface ParticipantManagementPanelProps {
   actionPending?: boolean
   onCheckIn: (registrationId: string, cafeId: string) => void
   onCancel: (registrationId: string, reason: string) => void
+  onApprove: (registrationId: string) => void
+  onReject: (registrationId: string, reason: string) => void
 }
 
 const statusTone: Record<string, string> = {
@@ -63,6 +65,8 @@ export function ParticipantManagementPanel({
   actionPending,
   onCheckIn,
   onCancel,
+  onApprove,
+  onReject,
 }: ParticipantManagementPanelProps) {
   const [filters, setFilters] = useState<RegistrationFilterState>({
     search: "",
@@ -76,6 +80,9 @@ export function ParticipantManagementPanel({
     null,
   )
   const [cancelReason, setCancelReason] = useState("")
+
+  const [rejectTarget, setRejectTarget] = useState<ContestRegistration | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
 
   const counts = useMemo(
     () => getRegistrationCounts(registrations, contest.capacity),
@@ -105,6 +112,18 @@ export function ParticipantManagementPanel({
     onCancel(cancelTarget.id, cancelReason.trim())
     setCancelTarget(null)
     setCancelReason("")
+  }
+
+  const openRejectDialog = (registration: ContestRegistration) => {
+    setRejectTarget(registration)
+    setRejectReason("")
+  }
+
+  const submitReject = () => {
+    if (!rejectTarget || !rejectReason.trim()) return
+    onReject(rejectTarget.id, rejectReason.trim())
+    setRejectTarget(null)
+    setRejectReason("")
   }
 
   return (
@@ -296,31 +315,53 @@ export function ParticipantManagementPanel({
                       >
                         <Eye className="size-3.5" />
                       </Button>
-                      {registration.status === "CONFIRMED" ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() =>
-                            onCheckIn(registration.id, selectedCafeId)
-                          }
-                          disabled={actionPending || !selectedCafeId}
-                          className="h-8 bg-emerald-600 px-3 text-[10px] font-bold text-white hover:bg-emerald-700"
-                        >
-                          Check-in
-                        </Button>
+                      {registration.status === "PENDING" ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => onApprove(registration.id)}
+                            disabled={actionPending}
+                            className="h-8 bg-emerald-600 px-3 text-[10px] font-bold text-white hover:bg-emerald-700"
+                          >
+                            Duyệt
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openRejectDialog(registration)}
+                            disabled={actionPending}
+                            className="h-8 border-red-500/30 bg-slate-950 px-3 text-[10px] font-bold text-red-300 hover:bg-red-500/10"
+                          >
+                            Từ chối
+                          </Button>
+                        </>
                       ) : null}
-                      {registration.status === "PENDING" ||
-                      registration.status === "CONFIRMED" ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openCancelDialog(registration)}
-                          disabled={actionPending}
-                          className="h-8 border-red-500/30 bg-slate-950 px-3 text-[10px] font-bold text-red-300 hover:bg-red-500/10"
-                        >
-                          Hủy
-                        </Button>
+                      {registration.status === "CONFIRMED" ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() =>
+                              onCheckIn(registration.id, selectedCafeId)
+                            }
+                            disabled={actionPending || !selectedCafeId}
+                            className="h-8 bg-emerald-600 px-3 text-[10px] font-bold text-white hover:bg-emerald-700"
+                          >
+                            Check-in
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openCancelDialog(registration)}
+                            disabled={actionPending}
+                            className="h-8 border-red-500/30 bg-slate-950 px-3 text-[10px] font-bold text-red-300 hover:bg-red-500/10"
+                          >
+                            Hủy
+                          </Button>
+                        </>
                       ) : null}
                     </div>
                   </td>
@@ -392,6 +433,65 @@ export function ParticipantManagementPanel({
                 className="bg-red-600 font-bold text-white hover:bg-red-700"
               >
                 Xác nhận hủy
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(rejectTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectTarget(null)
+            setRejectReason("")
+          }
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100">
+          <DialogHeader>
+            <DialogTitle className="font-extrabold">
+              Từ chối đăng ký người tham gia
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Ghi lý do từ chối đăng ký tham gia giải đấu này.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-sm">
+              <div className="font-bold text-slate-100">
+                {registrationName(rejectTarget ?? undefined)}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                {registrationEmail(rejectTarget ?? undefined)}
+              </div>
+            </div>
+            <Input
+              aria-label="Lý do từ chối đăng ký"
+              placeholder="Nhập lý do từ chối..."
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              className="border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setRejectTarget(null)
+                  setRejectReason("")
+                }}
+                className="text-slate-400"
+              >
+                Đóng
+              </Button>
+              <Button
+                type="button"
+                disabled={!rejectReason.trim() || actionPending}
+                onClick={submitReject}
+                className="bg-red-600 font-bold text-white hover:bg-red-700"
+              >
+                Xác nhận từ chối
               </Button>
             </div>
           </div>

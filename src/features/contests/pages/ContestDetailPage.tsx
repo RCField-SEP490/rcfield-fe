@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -25,6 +25,9 @@ import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { toast } from "sonner";
+import { customerVehicleApi, type CustomerVehicle } from "@/features/vehicles/api/customer-vehicle.api";
+import { vehicleApi } from "@/features/vehicles/api/vehicle.api";
+import type { VehicleUnit } from "@/features/vehicles/types";
 
 function formatDateTime(dateStr: string) {
   try {
@@ -65,6 +68,13 @@ export function ContestDetailPage() {
   const [vehicleNote, setVehicleNote] = useState("");
   const [cancelReason, setCancelReason] = useState("");
 
+  // Vehicle states for registration
+  const [customerVehicles, setCustomerVehicles] = useState<CustomerVehicle[]>([]);
+  const [rentalVehicles, setRentalVehicles] = useState<VehicleUnit[]>([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [selectedCustomerVehicleId, setSelectedCustomerVehicleId] = useState("");
+  const [selectedRentalVehicleId, setSelectedRentalVehicleId] = useState("");
+
   // Query detail
   const { data: contest, isLoading: isContestLoading } = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
@@ -78,6 +88,65 @@ export function ContestDetailPage() {
     queryFn: () => contestsApi.getMyContestRegistrations(contestId!),
     enabled: !!contestId && isAuthenticated,
   });
+
+  // Initialize vehicle source based on policy
+  useEffect(() => {
+    if (showRegDialog && contest) {
+      const policy = contest.vehicleRule?.vehicle_policy || contest.vehicle_policy || "MIXED";
+      if (policy === "BYOC_ONLY") {
+        setVehicleSource("BYOC");
+      } else if (policy === "RENTAL_ONLY") {
+        setVehicleSource("RENTAL");
+      } else {
+        setVehicleSource("BYOC");
+      }
+      setSelectedCustomerVehicleId("");
+      setSelectedRentalVehicleId("");
+      setVehicleNote("");
+    }
+  }, [showRegDialog, contest]);
+
+  // Load vehicles when registration dialog is opened
+  useEffect(() => {
+    if (showRegDialog && contest && isAuthenticated) {
+      const loadVehicles = async () => {
+        try {
+          setLoadingVehicles(true);
+          // Load customer vehicles
+          const cust = await customerVehicleApi.list();
+          setCustomerVehicles(cust.filter(v => v.status.toUpperCase() === "APPROVED" || v.status.toUpperCase() === "CONFIRMED"));
+
+          // Load rental vehicles from participating cafes
+          if (contest.participating_cafes) {
+            const nestedUnits = await Promise.all(
+              contest.participating_cafes.map(async (cafe) => {
+                try {
+                  return await vehicleApi.listUnits(cafe.id, { status: "AVAILABLE" });
+                } catch {
+                  return [];
+                }
+              })
+            );
+            const flatUnits = nestedUnits.flat();
+            // Filter by track compatibility if applicable
+            const compatible = flatUnits.filter(unit => {
+              if (!unit.catalog?.compatibleTrackTypes) return true;
+              return unit.catalog.compatibleTrackTypes.some(t => {
+                const trackId = typeof t === "string" ? t : (t as any).id;
+                return trackId === contest.track_type_id;
+              });
+            });
+            setRentalVehicles(compatible);
+          }
+        } catch (err) {
+          console.error("Error loading vehicles for contest registration:", err);
+        } finally {
+          setLoadingVehicles(false);
+        }
+      };
+      loadVehicles();
+    }
+  }, [showRegDialog, contest, isAuthenticated]);
 
   // Query leaderboard
   const { data: leaderboardEnvelope } = useQuery({
@@ -108,8 +177,12 @@ export function ContestDetailPage() {
 
   // Mutations
   const registerMutation = useMutation({
-    mutationFn: (body: { vehicle_source: "BYOC"; metadata?: { note?: string } }) =>
-      contestsApi.registerContest(contestId!, body),
+    mutationFn: (body: {
+      vehicle_source: "BYOC" | "RENTAL";
+      customer_vehicle_id?: string;
+      vehicle_id?: string;
+      metadata?: { note?: string };
+    }) => contestsApi.registerContest(contestId!, body),
     onSuccess: () => {
       recordContestUiEvent("customer.registration.create.success", { contestId });
       toast.success("Đăng ký tham gia giải đấu thành công!");
@@ -480,38 +553,109 @@ export function ContestDetailPage() {
               <Car className="text-orange-600" /> Đăng Ký Tham Gia Giải Đấu
             </DialogTitle>
             <DialogDescription className="text-[#6f6c6a] text-xs">
-              Vui lòng điền thông tin cấu hình xe đua RC của bạn để đăng ký thi đấu.
+              Vui lòng chọn phương tiện thi đấu và điền thông tin bổ sung nếu có.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">Nguồn xe đua</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setVehicleSource("BYOC")}
-                  className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${vehicleSource === "BYOC" ? "bg-orange-600 border-orange-600 text-white" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
-                >
-                  Xe cá nhân (BYOC)
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  title="Thuê xe cần chọn xe cụ thể và sẽ được mở ở bước tiếp theo"
-                  className="py-2 px-3 rounded-lg border text-sm font-bold transition-all border-[#e5e2e1] bg-[#f6f3f2] text-slate-350 cursor-not-allowed opacity-55"
-                >
-                  Thuê xe tại cơ sở
-                </button>
-              </div>
+              {(() => {
+                const policy = contest.vehicleRule?.vehicle_policy || contest.vehicle_policy || "MIXED";
+                if (policy === "BYOC_ONLY") {
+                  return (
+                    <div className="p-3 bg-orange-50 border border-orange-200 text-orange-850 rounded-xl text-xs font-bold text-center">
+                      Giải đấu này bắt buộc người chơi tự mang xe (BYOC)
+                    </div>
+                  );
+                }
+                if (policy === "RENTAL_ONLY") {
+                  return (
+                    <div className="p-3 bg-orange-50 border border-orange-200 text-orange-850 rounded-xl text-xs font-bold text-center">
+                      Giải đấu này chỉ cho phép sử dụng xe thuê của chi nhánh (RENTAL)
+                    </div>
+                  );
+                }
+                return (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setVehicleSource("BYOC")}
+                      className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${vehicleSource === "BYOC" ? "bg-orange-600 border-orange-600 text-white" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
+                    >
+                      Xe cá nhân (BYOC)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVehicleSource("RENTAL")}
+                      className={`py-2 px-3 rounded-lg border text-sm font-bold transition-all ${vehicleSource === "RENTAL" ? "bg-orange-600 border-orange-600 text-white" : "border-[#e5e2e1] bg-[#f6f3f2] text-[#6f6c6a] hover:text-[#1c1b1b]"}`}
+                    >
+                      Thuê xe tại cơ sở
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-left">
               <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">
-                {vehicleSource === "BYOC" ? "Thông tin xe cá nhân" : "Ghi chú thuê xe"}
+                {vehicleSource === "BYOC" ? "Chọn xe cá nhân của bạn" : "Chọn xe thuê tại cơ sở"}
+              </label>
+              {loadingVehicles ? (
+                <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
+                  <span className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                  Đang tải danh sách xe khả dụng...
+                </div>
+              ) : vehicleSource === "BYOC" ? (
+                customerVehicles.length === 0 ? (
+                  <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg font-semibold space-y-2">
+                    <p>Bạn chưa có xe cá nhân được duyệt trên hệ thống.</p>
+                    <Link to="/me/customer-vehicles" className="inline-block text-orange-600 hover:text-orange-700 font-extrabold underline">
+                      Đăng ký xe cá nhân ngay &rarr;
+                    </Link>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedCustomerVehicleId}
+                    onChange={(e) => setSelectedCustomerVehicleId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-[#e5e2e1] bg-white text-xs font-semibold focus:border-orange-500 focus:outline-none"
+                  >
+                    <option value="">-- Chọn phương tiện BYOC --</option>
+                    {customerVehicles.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} (Tỉ lệ: {v.scale} - Tần số: {v.frequency})
+                      </option>
+                    ))}
+                  </select>
+                )
+              ) : (
+                rentalVehicles.length === 0 ? (
+                  <div className="text-xs bg-red-50 border border-red-200 text-red-800 p-3 rounded-lg font-semibold">
+                    Không có xe thuê nào sẵn sàng hoặc tương thích với loại sân của giải đấu tại các chi nhánh tham gia.
+                  </div>
+                ) : (
+                  <select
+                    value={selectedRentalVehicleId}
+                    onChange={(e) => setSelectedRentalVehicleId(e.target.value)}
+                    className="w-full h-10 px-3 rounded-lg border border-[#e5e2e1] bg-white text-xs font-semibold focus:border-orange-500 focus:outline-none"
+                  >
+                    <option value="">-- Chọn xe thuê --</option>
+                    {rentalVehicles.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.catalog?.name} - {v.identifier} ({v.color})
+                      </option>
+                    ))}
+                  </select>
+                )
+              )}
+            </div>
+
+            <div className="space-y-1.5 text-left">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#6f6c6a]">
+                Ghi chú bổ sung (Tùy chọn)
               </label>
               <Input
-                placeholder={vehicleSource === "BYOC" ? "Tên xe, Tỷ lệ (e.g. Drift Pro 1:10), ID transponder..." : "Ghi chú loại xe hoặc cấu hình động cơ bạn mong muốn..."}
+                placeholder="Ghi chú thêm cấu hình hoặc lưu ý đặc biệt cho trọng tài..."
                 value={vehicleNote}
                 onChange={(e) => setVehicleNote(e.target.value)}
                 className="bg-white border-[#e5e2e1] text-[#1c1b1b] focus:border-orange-500"
@@ -524,13 +668,34 @@ export function ContestDetailPage() {
               Hủy
             </Button>
             <Button
-              onClick={() =>
-                registerMutation.mutate({
-                  vehicle_source: "BYOC",
-                  metadata: { note: vehicleNote },
-                })
+              onClick={() => {
+                if (vehicleSource === "BYOC") {
+                  if (!selectedCustomerVehicleId) {
+                    toast.error("Vui lòng chọn xe cá nhân của bạn!");
+                    return;
+                  }
+                  registerMutation.mutate({
+                    vehicle_source: "BYOC",
+                    customer_vehicle_id: selectedCustomerVehicleId,
+                    metadata: { note: vehicleNote },
+                  });
+                } else {
+                  if (!selectedRentalVehicleId) {
+                    toast.error("Vui lòng chọn xe thuê tại cơ sở!");
+                    return;
+                  }
+                  registerMutation.mutate({
+                    vehicle_source: "RENTAL",
+                    vehicle_id: selectedRentalVehicleId,
+                    metadata: { note: vehicleNote },
+                  });
+                }
+              }}
+              disabled={
+                registerMutation.isPending || 
+                (vehicleSource === "BYOC" && !selectedCustomerVehicleId) ||
+                (vehicleSource === "RENTAL" && !selectedRentalVehicleId)
               }
-              disabled={registerMutation.isPending}
               className="bg-orange-600 hover:bg-orange-700 text-white font-bold"
             >
               {registerMutation.isPending ? "Đang xử lý..." : "Xác nhận đăng ký"}

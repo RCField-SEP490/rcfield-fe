@@ -40,6 +40,11 @@ export interface Contest {
   remaining_capacity: number;
   is_registration_open: boolean;
   should_notify: boolean;
+  vehicle_policy?: 'RENTAL_ONLY' | 'BYOC_ONLY' | 'MIXED' | null;
+  vehicleRule?: {
+    vehicle_policy: 'RENTAL_ONLY' | 'BYOC_ONLY' | 'MIXED';
+    [key: string]: any;
+  } | null;
 }
 
 export interface ContestRegistration {
@@ -70,6 +75,16 @@ export interface ContestRegistration {
   cancellation_reason?: string | null;
   created_at?: string;
   updated_at?: string;
+  vehicle?: {
+    id: string;
+    name: string;
+    imageUrl?: string | null;
+  } | null;
+  customer_vehicle?: {
+    id: string;
+    name: string;
+    imageUrl?: string | null;
+  } | null;
 }
 
 export interface ContestClass {
@@ -202,4 +217,36 @@ export interface BracketMatch {
   competitorA?: ContestRegistration;
   competitorB?: ContestRegistration;
   winner?: ContestRegistration;
+}
+
+export interface ContestAuditLog {
+  id: string;
+  contestId: string;
+  registrationId: string | null;
+  matchId: string | null;
+  actorId: string | null;
+  actorRole: string | null;
+  eventType: string;
+  beforeJson: Record<string, unknown> | null;
+  afterJson: Record<string, unknown> | null;
+  reason: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface ContestMetrics {
+  registration_stats: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    checkedIn: number;
+    cancelled: number;
+  };
+  match_stats: {
+    total: number;
+    draft: number;
+    ready: number;
+    completed: number;
+    cancelled: number;
+  };
 }

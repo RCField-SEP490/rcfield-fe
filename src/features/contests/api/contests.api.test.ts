@@ -64,7 +64,8 @@ describe("contestsApi", () => {
 
     expect(mockedApi.get).toHaveBeenCalledWith("/v1/contests/contest-1/classes");
     expect(mockedApi.get).toHaveBeenCalledWith("/v1/contests/contest-1/rounds");
-    expect(mockedApi.get).toHaveBeenCalledWith("/v1/contests/contest-1/bracket");
+    expect(mockedApi.get).toHaveBeenCalledWith("/v1/contests/contest-1/matches");
+    expect(mockedApi.get).toHaveBeenCalledWith("/v1/contests/contest-1/registrations");
   });
 
   it("publishes leaderboard and issues rewards without fake class ids", async () => {
