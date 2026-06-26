@@ -97,13 +97,15 @@ function restoreProviderSidebarScroll(element: HTMLElement | null) {
 export function ProviderShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { cafeId } = useParams()
+  const { cafeId, contestId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get("tab") || "info"
   const [openGroups, setOpenGroups] = useState({
     config: true,
     operations: true,
     business: true,
+    contestOps: true,
+    contestResults: true,
   })
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -399,6 +401,77 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     )
   }
 
+  const renderContestSubMenu = (isMobile: boolean) => {
+    if (!contestId || !location.pathname.startsWith(`/provider/contests/${contestId}`)) return null
+    const contestTab = searchParams.get("tab") || "general"
+
+    const contestTabItem = (tabKey: string, label: string, TabIcon: ElementType) => (
+      <button
+        type="button"
+        onClick={() => {
+          navigate(`/provider/contests/${contestId}?tab=${tabKey}`)
+          if (isMobile) setMobileMenuOpen(false)
+        }}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+          contestTab === tabKey
+            ? "bg-orange-100/50 text-orange-700 font-extrabold"
+            : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+        )}
+      >
+        <TabIcon className="size-3.5" />
+        {label}
+      </button>
+    )
+
+    return (
+      <div className="mt-1.5 ml-6 pl-2 border-l border-[#e5e2e1] space-y-3">
+        {/* Nhóm: Vận hành */}
+        <div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setOpenGroups((prev) => ({ ...prev, contestOps: !prev.contestOps }))
+            }}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-extrabold text-[#747878] hover:bg-orange-50/50 hover:text-orange-700 transition-colors"
+          >
+            <span>VẬN HÀNH</span>
+            {openGroups.contestOps ? <ChevronDown className="size-3 text-[#747878]" /> : <ChevronRight className="size-3 text-[#747878]" />}
+          </button>
+          {openGroups.contestOps && (
+            <div className="mt-1 ml-1 space-y-0.5">
+              {contestTabItem("general", "Tổng quan", Settings)}
+              {contestTabItem("players", "Người tham gia", Users)}
+              {contestTabItem("brackets", "Sơ đồ đấu", Trophy)}
+            </div>
+          )}
+        </div>
+
+        {/* Nhóm: Kết quả */}
+        <div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              setOpenGroups((prev) => ({ ...prev, contestResults: !prev.contestResults }))
+            }}
+            className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-extrabold text-[#747878] hover:bg-orange-50/50 hover:text-orange-700 transition-colors"
+          >
+            <span>KẾT QUẢ</span>
+            {openGroups.contestResults ? <ChevronDown className="size-3 text-[#747878]" /> : <ChevronRight className="size-3 text-[#747878]" />}
+          </button>
+          {openGroups.contestResults && (
+            <div className="mt-1 ml-1 space-y-0.5">
+              {contestTabItem("rewards", "Giải thưởng", BadgePercent)}
+              {contestTabItem("monitoring", "Thống kê & Logs", BarChart3)}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const childList = Children.toArray(children)
   const headerChildren = childList.filter(
     (child) => isValidElement(child) && (child.type === ProviderHeader || child.type === ProviderPageHeader)
@@ -451,6 +524,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                         {item.label}
                       </Link>
                       {item.to === routePaths.providerCafes && renderSubMenu(false)}
+                      {item.to === routePaths.providerContests && renderContestSubMenu(false)}
                     </div>
                   )
                 })}
@@ -539,6 +613,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                             {item.label}
                           </Link>
                           {item.to === routePaths.providerCafes && renderSubMenu(true)}
+                          {item.to === routePaths.providerContests && renderContestSubMenu(true)}
                         </div>
                       )
                     })}

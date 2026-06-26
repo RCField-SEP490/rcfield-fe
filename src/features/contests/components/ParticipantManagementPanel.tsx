@@ -52,10 +52,10 @@ interface ParticipantManagementPanelProps {
 }
 
 const statusTone: Record<string, string> = {
-  PENDING: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-  CONFIRMED: "border-orange-500/25 bg-orange-500/10 text-orange-300",
-  CHECKED_IN: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
-  CANCELLED: "border-red-500/25 bg-red-500/10 text-red-300",
+  PENDING: "border-amber-200 bg-amber-50 text-amber-700",
+  CONFIRMED: "border-orange-200 bg-orange-50 text-orange-700",
+  CHECKED_IN: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  CANCELLED: "border-red-200 bg-red-50 text-red-700",
 }
 
 export function ParticipantManagementPanel({
@@ -127,21 +127,21 @@ export function ParticipantManagementPanel({
   }
 
   return (
-    <section className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
-      <div className="flex flex-col gap-4 border-b border-slate-800 pb-5 lg:flex-row lg:items-center lg:justify-between">
+    <section className="space-y-5 rounded-2xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-[#e5e2e1] pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h3 className="flex items-center gap-2 font-bold text-slate-100">
-            <Users size={18} className="text-orange-500" /> Quản lý người tham
+          <h3 className="flex items-center gap-2 font-bold text-[#1c1b1b]">
+            <Users size={18} className="text-orange-600" /> Quản lý người tham
             gia
           </h3>
-          <p className="mt-1 text-xs font-medium text-slate-400">
+          <p className="mt-1 text-xs font-medium text-[#6f6c6a]">
             Theo dõi đăng ký, xe, check-in và thao tác vận hành trong ngày thi
             đấu.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-[#747878]">
           <span>{filteredRegistrations.length} đang hiển thị</span>
-          <span className="h-1 w-1 rounded-full bg-slate-700" />
+          <span className="h-1 w-1 rounded-full bg-[#c4c7c8]" />
           <span>{counts.remaining} chỗ còn lại</span>
         </div>
       </div>
@@ -182,7 +182,7 @@ export function ParticipantManagementPanel({
           placeholder="Tìm tên, email, mã check-in, ghi chú..."
           value={filters.search}
           onChange={(value) => updateFilter("search", value)}
-          inputClassName="h-10 border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500 focus-visible:ring-orange-500"
+          inputClassName="h-10 border-[#e5e2e1] bg-[#f6f3f2] text-[#1c1b1b] placeholder:text-[#747878] focus-visible:ring-orange-500"
         />
         <select
           aria-label="Lọc trạng thái"
@@ -193,7 +193,7 @@ export function ParticipantManagementPanel({
               event.target.value as RegistrationFilterState["status"],
             )
           }
-          className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm font-semibold text-slate-200 outline-none"
+          className="h-10 rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-3 text-sm font-semibold text-[#1c1b1b] outline-none"
         >
           <option value="ALL">Mọi trạng thái</option>
           <option value="PENDING">Chờ xác nhận</option>
@@ -210,7 +210,7 @@ export function ParticipantManagementPanel({
               event.target.value as RegistrationFilterState["vehicleSource"],
             )
           }
-          className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm font-semibold text-slate-200 outline-none"
+          className="h-10 rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-3 text-sm font-semibold text-[#1c1b1b] outline-none"
         >
           <option value="ALL">Mọi loại xe</option>
           <option value="BYOC">BYOC</option>
@@ -220,7 +220,7 @@ export function ParticipantManagementPanel({
           aria-label="Lọc chi nhánh check-in"
           value={filters.cafeId}
           onChange={(event) => updateFilter("cafeId", event.target.value)}
-          className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm font-semibold text-slate-200 outline-none"
+          className="h-10 rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-3 text-sm font-semibold text-[#1c1b1b] outline-none"
         >
           <option value="ALL">Mọi chi nhánh</option>
           {contest.participating_cafes.map((cafe) => (
@@ -234,14 +234,14 @@ export function ParticipantManagementPanel({
       {registrations.length === 0 ? (
         <EmptyParticipantState />
       ) : filteredRegistrations.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950 px-4 py-10 text-center text-sm font-semibold text-slate-500">
+        <div className="rounded-xl border border-dashed border-[#c4c7c8] bg-[#fcf8f8] px-4 py-10 text-center text-sm font-semibold text-[#747878]">
           Không tìm thấy người tham gia khớp bộ lọc hiện tại.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+        <div className="overflow-x-auto rounded-xl border border-[#e5e2e1] bg-white">
           <table className="w-full min-w-[1120px] border-collapse text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-900 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-[#e5e2e1] bg-[#fcf8f8] text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
                 <th className="px-4 py-3">Người tham gia</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Xe</th>
@@ -256,20 +256,20 @@ export function ParticipantManagementPanel({
               {filteredRegistrations.map((registration) => (
                 <tr
                   key={registration.id}
-                  className="border-b border-slate-900 hover:bg-slate-900/55"
+                  className="border-b border-[#e5e2e1] hover:bg-[#fcf8f8]"
                 >
                   <td className="px-4 py-3">
-                    <div className="font-extrabold text-slate-100">
+                    <div className="font-extrabold text-[#1c1b1b]">
                       {registrationName(registration)}
                     </div>
-                    <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                    <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-[#747878]">
                       <Mail className="size-3" />
                       <span className="truncate">
                         {registrationEmail(registration) || "--"}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-semibold text-slate-300">
+                  <td className="px-4 py-3 font-semibold text-[#444748]">
                     {getParticipantRoleLabel(
                       registration.participant_role_snapshot,
                     )}
@@ -277,25 +277,25 @@ export function ParticipantManagementPanel({
                   <td className="px-4 py-3">
                     <Badge
                       variant="secondary"
-                      className="border border-slate-800 bg-slate-900 text-[10px] text-slate-300"
+                      className="border border-[#e5e2e1] bg-[#f6f3f2] text-[10px] text-[#444748]"
                     >
                       {getVehicleSourceLabel(registration.vehicle_source)}
                     </Badge>
                   </td>
-                  <td className="max-w-[180px] truncate px-4 py-3 font-medium text-slate-400">
+                  <td className="max-w-[180px] truncate px-4 py-3 font-medium text-[#6f6c6a]">
                     {registrationNote(registration) || "-"}
                   </td>
-                  <td className="px-4 py-3 font-mono text-[11px] font-bold text-orange-300">
+                  <td className="px-4 py-3 font-mono text-[11px] font-bold text-orange-600">
                     {registration.check_in_code}
                   </td>
-                  <td className="px-4 py-3 text-slate-400">
+                  <td className="px-4 py-3 text-[#6f6c6a]">
                     <div className="max-w-[180px] truncate font-semibold">
                       {checkedInCafeName(
                         registration,
                         contest.participating_cafes,
                       ) || "-"}
                     </div>
-                    <div className="mt-1 text-[10px] text-slate-600">
+                    <div className="mt-1 text-[10px] text-[#747878]">
                       {registration.checked_in_at
                         ? formatContestDateTime(registration.checked_in_at)
                         : ""}
@@ -311,7 +311,7 @@ export function ParticipantManagementPanel({
                         size="sm"
                         variant="outline"
                         onClick={() => setSelectedRegistration(registration)}
-                        className="h-8 border-slate-800 bg-slate-950 px-2 text-slate-300 hover:bg-slate-900"
+                        className="h-8 border-[#e5e2e1] bg-[#f6f3f2] px-2 text-[#444748] hover:bg-[#e5e2e1]"
                       >
                         <Eye className="size-3.5" />
                       </Button>
@@ -332,7 +332,7 @@ export function ParticipantManagementPanel({
                             variant="outline"
                             onClick={() => openRejectDialog(registration)}
                             disabled={actionPending}
-                            className="h-8 border-red-500/30 bg-slate-950 px-3 text-[10px] font-bold text-red-300 hover:bg-red-500/10"
+                            className="h-8 border-red-200 bg-white px-3 text-[10px] font-bold text-red-600 hover:bg-red-50"
                           >
                             Từ chối
                           </Button>
@@ -357,7 +357,7 @@ export function ParticipantManagementPanel({
                             variant="outline"
                             onClick={() => openCancelDialog(registration)}
                             disabled={actionPending}
-                            className="h-8 border-red-500/30 bg-slate-950 px-3 text-[10px] font-bold text-red-300 hover:bg-red-500/10"
+                            className="h-8 border-red-200 bg-white px-3 text-[10px] font-bold text-red-600 hover:bg-red-50"
                           >
                             Hủy
                           </Button>
@@ -389,21 +389,21 @@ export function ParticipantManagementPanel({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100">
+        <DialogContent className="border-[#e5e2e1] bg-white text-[#1c1b1b] max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-extrabold">
               Hủy đăng ký người tham gia
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-[#6f6c6a]">
               Ghi lý do để đội vận hành có thể đối soát sau sự kiện.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-sm">
-              <div className="font-bold text-slate-100">
+            <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 text-sm">
+              <div className="font-bold text-[#1c1b1b]">
                 {registrationName(cancelTarget ?? undefined)}
               </div>
-              <div className="mt-1 text-xs text-slate-500">
+              <div className="mt-1 text-xs text-[#747878]">
                 {registrationEmail(cancelTarget ?? undefined)}
               </div>
             </div>
@@ -412,7 +412,7 @@ export function ParticipantManagementPanel({
               placeholder="Nhập lý do hủy..."
               value={cancelReason}
               onChange={(event) => setCancelReason(event.target.value)}
-              className="border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500"
+              className="border-[#e5e2e1] bg-[#f6f3f2] text-[#1c1b1b] placeholder:text-[#747878]"
             />
             <div className="flex justify-end gap-2">
               <Button
@@ -422,7 +422,7 @@ export function ParticipantManagementPanel({
                   setCancelTarget(null)
                   setCancelReason("")
                 }}
-                className="text-slate-400"
+                className="text-[#6f6c6a]"
               >
                 Đóng
               </Button>
@@ -448,21 +448,21 @@ export function ParticipantManagementPanel({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100">
+        <DialogContent className="border-[#e5e2e1] bg-white text-[#1c1b1b] max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-extrabold">
               Từ chối đăng ký người tham gia
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-[#6f6c6a]">
               Ghi lý do từ chối đăng ký tham gia giải đấu này.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-sm">
-              <div className="font-bold text-slate-100">
+            <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 text-sm">
+              <div className="font-bold text-[#1c1b1b]">
                 {registrationName(rejectTarget ?? undefined)}
               </div>
-              <div className="mt-1 text-xs text-slate-500">
+              <div className="mt-1 text-xs text-[#747878]">
                 {registrationEmail(rejectTarget ?? undefined)}
               </div>
             </div>
@@ -471,7 +471,7 @@ export function ParticipantManagementPanel({
               placeholder="Nhập lý do từ chối..."
               value={rejectReason}
               onChange={(event) => setRejectReason(event.target.value)}
-              className="border-slate-800 bg-slate-950 text-slate-100 placeholder:text-slate-500"
+              className="border-[#e5e2e1] bg-[#f6f3f2] text-[#1c1b1b] placeholder:text-[#747878]"
             />
             <div className="flex justify-end gap-2">
               <Button
@@ -481,7 +481,7 @@ export function ParticipantManagementPanel({
                   setRejectTarget(null)
                   setRejectReason("")
                 }}
-                className="text-slate-400"
+                className="text-[#6f6c6a]"
               >
                 Đóng
               </Button>
@@ -511,12 +511,12 @@ function ParticipantMetric({
   icon: ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-      <div className="flex items-center justify-between gap-3 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+    <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+      <div className="flex items-center justify-between gap-3 text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
         <span>{label}</span>
         <span className="[&_svg]:size-4">{icon}</span>
       </div>
-      <div className="mt-3 text-2xl font-black text-slate-100">{value}</div>
+      <div className="mt-3 text-2xl font-black text-[#1c1b1b]">{value}</div>
     </div>
   )
 }
@@ -545,13 +545,13 @@ function ParticipantDetailDialog({
 }) {
   return (
     <Dialog open={Boolean(registration)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl border-slate-800 bg-slate-900 text-slate-100">
+      <DialogContent className="max-w-2xl border-[#e5e2e1] bg-white text-[#1c1b1b]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-extrabold">
-            <UserRound className="size-5 text-orange-400" /> Chi tiết người tham
+            <UserRound className="size-5 text-orange-600" /> Chi tiết người tham
             gia
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-[#6f6c6a]">
             Thông tin dùng để đối soát check-in, xe và trạng thái đăng ký.
           </DialogDescription>
         </DialogHeader>
@@ -559,21 +559,21 @@ function ParticipantDetailDialog({
         {registration ? (
           <div className="grid gap-4 md:grid-cols-[1fr_260px]">
             <div className="space-y-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                <div className="text-lg font-black text-slate-100">
+              <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+                <div className="text-lg font-black text-[#1c1b1b]">
                   {registrationName(registration)}
                 </div>
-                <div className="mt-1 text-sm font-medium text-slate-500">
+                <div className="mt-1 text-sm font-medium text-[#747878]">
                   {registrationEmail(registration) || "--"}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <RegistrationStatusBadge status={registration.status} />
-                  <Badge className="border border-slate-800 bg-slate-900 text-slate-300">
+                  <Badge className="border border-[#e5e2e1] bg-[#f6f3f2] text-[#444748]">
                     {getParticipantRoleLabel(
                       registration.participant_role_snapshot,
                     )}
                   </Badge>
-                  <Badge className="border border-slate-800 bg-slate-900 text-slate-300">
+                  <Badge className="border border-[#e5e2e1] bg-[#f6f3f2] text-[#444748]">
                     {getVehicleSourceLabel(registration.vehicle_source)}
                   </Badge>
                 </div>
@@ -617,12 +617,12 @@ function ParticipantDetailDialog({
               </div>
             </div>
 
-            <div className="rounded-xl border border-orange-500/20 bg-orange-500/5 p-4 text-center">
-              <QrCode className="mx-auto size-24 text-orange-300" />
-              <div className="mt-3 break-all rounded-lg border border-slate-800 bg-slate-950 p-3 font-mono text-xs font-black text-orange-200">
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 text-center">
+              <QrCode className="mx-auto size-24 text-orange-600" />
+              <div className="mt-3 break-all rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 font-mono text-xs font-black text-orange-700">
                 {registration.check_in_code}
               </div>
-              <div className="mt-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="mt-3 text-[10px] font-bold uppercase tracking-wider text-[#747878]">
                 Mã check-in
               </div>
               <div className="mt-5 space-y-3 text-left">
@@ -659,14 +659,14 @@ function DetailItem({
   return (
     <div
       className={cn(
-        "rounded-lg border border-slate-800 bg-slate-950 p-3",
+        "rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3",
         wide && "sm:col-span-2",
       )}
     >
-      <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
         {label}
       </div>
-      <div className="mt-1 break-words text-sm font-semibold text-slate-200">
+      <div className="mt-1 break-words text-sm font-semibold text-[#1c1b1b]">
         {value}
       </div>
     </div>
@@ -676,10 +676,10 @@ function DetailItem({
 function TimelineItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start gap-2 text-xs">
-      <MapPin className="mt-0.5 size-3.5 text-orange-400" />
+      <MapPin className="mt-0.5 size-3.5 text-orange-600" />
       <div>
-        <div className="font-bold text-slate-300">{label}</div>
-        <div className="mt-0.5 text-slate-500">{value}</div>
+        <div className="font-bold text-[#444748]">{label}</div>
+        <div className="mt-0.5 text-[#747878]">{value}</div>
       </div>
     </div>
   )
@@ -687,12 +687,12 @@ function TimelineItem({ label, value }: { label: string; value: string }) {
 
 function EmptyParticipantState() {
   return (
-    <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950 px-4 py-12 text-center">
-      <Users className="mx-auto size-10 text-slate-600" />
-      <h4 className="mt-3 text-sm font-extrabold text-slate-200">
+    <div className="rounded-xl border border-dashed border-[#c4c7c8] bg-[#fcf8f8] px-4 py-12 text-center">
+      <Users className="mx-auto size-10 text-[#c4c7c8]" />
+      <h4 className="mt-3 text-sm font-extrabold text-[#1c1b1b]">
         Chưa có người tham gia
       </h4>
-      <p className="mx-auto mt-1 max-w-md text-xs font-semibold leading-relaxed text-slate-500">
+      <p className="mx-auto mt-1 max-w-md text-xs font-semibold leading-relaxed text-[#747878]">
         Khi contest được mở đăng ký, danh sách tay đua, trạng thái check-in và
         thông tin xe sẽ xuất hiện tại đây.
       </p>
