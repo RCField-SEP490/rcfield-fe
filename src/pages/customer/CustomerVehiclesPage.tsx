@@ -101,8 +101,8 @@ export function CustomerVehiclesPage() {
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const norm = status.toLowerCase()
+  const getStatusBadge = (status?: string) => {
+    const norm = (status || "PENDING").toLowerCase()
     if (norm === "approved" || norm === "confirmed") {
       return (
         <Badge className="bg-emerald-500/10 text-emerald-700 border-none font-bold text-[10px] flex items-center gap-1">
@@ -218,7 +218,7 @@ export function CustomerVehiclesPage() {
                 </div>
               </CardContent>
 
-              {vh.status.toLowerCase() === "approved" && (
+              {vh.status?.toLowerCase() === "approved" && (
                 <CardFooter className="bg-slate-50 px-5 py-3 border-t border-slate-100 text-[10px] font-semibold text-slate-500">
                   <span>* Tay cầm Sanwa đã được gán kênh riêng tại Drift Town.</span>
                 </CardFooter>

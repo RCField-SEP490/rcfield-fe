@@ -1210,11 +1210,17 @@ export function ProviderContestDetailPage() {
                   className="bg-slate-950 border border-slate-850 rounded-lg py-2 px-3 text-slate-202 focus:outline-none w-full disabled:opacity-50 font-bold"
                 >
                   <option value="">{trackConfigs.length === 0 ? "Không tìm thấy sa bàn" : "Chọn sa bàn..."}</option>
-                  {trackConfigs.map((config) => (
-                    <option key={config.id} value={config.id}>
-                      {config.name} ({config.trackType || config.track_type || "N/A"})
-                    </option>
-                  ))}
+                  {trackConfigs.map((config) => {
+                    const typeObj = config.trackType || config.track_type;
+                    const typeLabel = typeof typeObj === "object" && typeObj
+                      ? (typeObj.name || typeObj.code || "N/A")
+                      : (typeObj || "N/A");
+                    return (
+                      <option key={config.id} value={config.id}>
+                        {config.name} ({typeLabel})
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
