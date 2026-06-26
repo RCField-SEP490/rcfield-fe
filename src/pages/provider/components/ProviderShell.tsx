@@ -29,6 +29,7 @@ import {
   BadgePercent,
   Car,
   Package,
+  Trophy,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -61,6 +62,7 @@ const providerNavGroups: NavGroup[] = [
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
       { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
+      { label: "Giải đấu", icon: Trophy, to: routePaths.providerContests },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],
   },

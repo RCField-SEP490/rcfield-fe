@@ -14,6 +14,7 @@ import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
 import { CafePackagesSection } from "./components/CafePackagesSection"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
+import { CafeContestsSection } from "./components/CafeContestsSection"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 
 export function CafeDetailPage() {
@@ -158,6 +159,7 @@ export function CafeDetailPage() {
               onSelectVehicle={setSelectedVehicleId}
             />
             <CafePackagesSection cafeId={resolvedCafe.id} />
+            <CafeContestsSection cafeId={resolvedCafe.id} />
             <CafeFnbSection
               menuItems={cafeMenu?.data ?? []}
               isLoading={menuLoading}
