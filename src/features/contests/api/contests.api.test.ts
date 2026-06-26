@@ -77,6 +77,16 @@ describe("contestsApi", () => {
     });
     expect(mockedApi.post).toHaveBeenCalledWith("/v1/contests/contest-1/rewards/issue", {});
   });
+  it("uploads a contest banner with multipart form data", async () => {
+    await contestsApi.uploadContestBanner("contest-1", new File(["banner"], "banner.png", { type: "image/png" }));
+
+    expect(mockedApi.post).toHaveBeenCalledWith(
+      "/v1/contests/contest-1/banner",
+      expect.any(FormData),
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+  });
+
   it("submits match result corrections through the stable correction endpoint", async () => {
     await contestsApi.correctMatchResults("match-1", {
       results: [{ registration_id: "registration-1", finish_position: 1, is_winner: true }],
@@ -91,4 +101,5 @@ describe("contestsApi", () => {
     });
   });
 });
+
 

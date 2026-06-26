@@ -198,6 +198,7 @@ export const contestsApi = {
       vehicle_source: "BYOC" | "RENTAL";
       vehicle_id?: string;
       customer_vehicle_id?: string;
+      booking_id?: string;
       metadata?: { note?: string; [key: string]: unknown };
     }
   ): Promise<ContestRegistration> => {
@@ -221,6 +222,20 @@ export const contestsApi = {
 
   updateContest: async (id: string, body: ContestWritePayload): Promise<Contest> => {
     const res = await api.patch<ApiEnvelope<Contest>>(`/v1/contests/${id}`, body);
+    return res.data.data;
+  },
+
+  uploadContestBanner: async (
+    contestId: string,
+    file: File,
+  ): Promise<{ banner_image_url: string; public_id?: string | null }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api.post<ApiEnvelope<{ banner_image_url: string; public_id?: string | null }>>(
+      `/v1/contests/${contestId}/banner`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
     return res.data.data;
   },
 
@@ -481,4 +496,7 @@ export const contestsApi = {
     return res.data.data;
   },
 };
+
+
+
 

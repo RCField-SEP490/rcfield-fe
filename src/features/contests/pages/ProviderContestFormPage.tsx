@@ -9,6 +9,7 @@ import { getContestErrorMessage } from "../lib/errors";
 import { trackTypeApi } from "@/features/cafes/api/cafe.api";
 import { api } from "@/shared/lib/axios";
 import { Button } from "@/shared/ui/button";
+import { ContestBannerField } from "../components/ContestBannerField";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { toast } from "sonner";
@@ -119,6 +120,7 @@ export function ProviderContestFormPage() {
     },
   });
 
+
   const updateMutation = useMutation({
     mutationFn: (body: ContestWritePayload) => contestsApi.updateContest(contestId!, body),
     onSuccess: () => {
@@ -129,6 +131,21 @@ export function ProviderContestFormPage() {
     },
     onError: (err: unknown) => {
       toast.error(getContestErrorMessage(err, "Lỗi cập nhật giải đấu."));
+    },
+  });
+
+  const uploadBannerMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!contestId) throw new Error("Contest draft is required before upload.");
+      return contestsApi.uploadContestBanner(contestId, file);
+    },
+    onSuccess: (data) => {
+      setBannerImageUrl(data.banner_image_url || "");
+      queryClient.invalidateQueries({ queryKey: ["contest-detail", contestId] });
+      toast.success("Upload banner giải đấu thành công!");
+    },
+    onError: (err: unknown) => {
+      toast.error(getContestErrorMessage(err, "Lỗi upload banner giải đấu."));
     },
   });
 
@@ -356,17 +373,13 @@ export function ProviderContestFormPage() {
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Đường dẫn ảnh bìa (Banner URL)</label>
-          <Input
-            placeholder="https://example.com/banner.jpg"
-            value={bannerImageUrl}
-            onChange={(e) => setBannerImageUrl(e.target.value)}
-            className="bg-slate-950 border-slate-800 text-slate-200"
-          />
-        </div>
+        </div>        <ContestBannerField
+          contestId={contestId}
+          value={bannerImageUrl}
+          onChange={setBannerImageUrl}
+          onUpload={(file) => uploadBannerMutation.mutateAsync(file).then(() => undefined)}
+          disabled={createMutation.isPending || updateMutation.isPending}
+        />
 
         {/* Participating cafes */}
         <div className="border-t border-slate-800 pt-6">
@@ -413,3 +426,8 @@ export function ProviderContestFormPage() {
   );
 }
 export default ProviderContestFormPage;
+
+
+
+
+
