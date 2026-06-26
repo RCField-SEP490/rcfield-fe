@@ -460,4 +460,25 @@ export const contestsApi = {
     const res = await api.post<ApiEnvelope<any>>(`/v1/contest-matches/${matchId}/advance`, body);
     return res.data.data;
   },
+
+  correctMatchResults: async (
+    matchId: string,
+    body: {
+      results: Array<{
+        registration_id: string;
+        finish_position?: number | null;
+        score?: number | null;
+        best_lap_ms?: number | null;
+        total_time_ms?: number | null;
+        is_winner?: boolean;
+        result_note?: string;
+      }>;
+      reason?: string;
+      force_cascade?: boolean;
+    }
+  ): Promise<any> => {
+    const res = await api.post<ApiEnvelope<any>>(`/v1/contest-matches/${matchId}/results/correct`, body);
+    return res.data.data;
+  },
 };
+

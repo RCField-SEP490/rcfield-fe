@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Play, CheckSquare, Square, MapPin } from "lucide-react"
+import { Play, CheckSquare, Square } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
 import {
@@ -335,3 +335,4 @@ export function ContestGenerateMatchesDialog({
     </Dialog>
   )
 }
+

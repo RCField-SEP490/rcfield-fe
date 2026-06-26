@@ -77,4 +77,18 @@ describe("contestsApi", () => {
     });
     expect(mockedApi.post).toHaveBeenCalledWith("/v1/contests/contest-1/rewards/issue", {});
   });
+  it("submits match result corrections through the stable correction endpoint", async () => {
+    await contestsApi.correctMatchResults("match-1", {
+      results: [{ registration_id: "registration-1", finish_position: 1, is_winner: true }],
+      reason: "Correct staff typo",
+      force_cascade: true,
+    });
+
+    expect(mockedApi.post).toHaveBeenCalledWith("/v1/contest-matches/match-1/results/correct", {
+      results: [{ registration_id: "registration-1", finish_position: 1, is_winner: true }],
+      reason: "Correct staff typo",
+      force_cascade: true,
+    });
+  });
 });
+

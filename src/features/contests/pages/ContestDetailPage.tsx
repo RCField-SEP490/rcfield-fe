@@ -114,7 +114,7 @@ export function ContestDetailPage() {
           setLoadingVehicles(true);
           // Load customer vehicles
           const cust = await customerVehicleApi.list();
-          setCustomerVehicles(cust.filter(v => v.status.toUpperCase() === "APPROVED" || v.status.toUpperCase() === "CONFIRMED"));
+          setCustomerVehicles(cust.filter((v) => v.status.toUpperCase() !== "ARCHIVED"));
 
           // Load rental vehicles from participating cafes
           if (contest.participating_cafes) {
@@ -609,7 +609,7 @@ export function ContestDetailPage() {
               ) : vehicleSource === "BYOC" ? (
                 customerVehicles.length === 0 ? (
                   <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-lg font-semibold space-y-2">
-                    <p>Bạn chưa có xe cá nhân được duyệt trên hệ thống.</p>
+                    <p>Bạn chưa có xe cá nhân trên hệ thống.</p>
                     <Link to="/me/customer-vehicles" className="inline-block text-orange-600 hover:text-orange-700 font-extrabold underline">
                       Đăng ký xe cá nhân ngay &rarr;
                     </Link>
@@ -744,3 +744,4 @@ export function ContestDetailPage() {
   );
 }
 export default ContestDetailPage;
+

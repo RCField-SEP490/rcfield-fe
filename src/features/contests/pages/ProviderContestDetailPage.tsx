@@ -1,6 +1,6 @@
 import { useParams, useSearchParams } from "react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Calendar } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { Link } from "react-router"
 import { toast } from "sonner"
 
@@ -12,7 +12,6 @@ import { ContestGeneralTab } from "../components/ContestGeneralTab"
 import { ContestBracketsTab } from "../components/ContestBracketsTab"
 import { ContestRewardsTab } from "../components/ContestRewardsTab"
 import { ContestMonitoringTab } from "../components/ContestMonitoringTab"
-import { ContestCheckInDialog } from "../components/ContestCheckInDialog"
 import { ParticipantManagementPanel } from "../components/ParticipantManagementPanel"
 import { Button } from "@/shared/ui/button"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -99,7 +98,7 @@ export function ProviderContestDetailPage() {
   ) => recordContestUiEvent(event, { contestId, ...details })
 
   // --- Invalidation Helper ---
-  const invalidate = (...keys: readonly (readonly string[])[]) => {
+  const invalidate = (...keys: readonly (readonly unknown[])[]) => {
     keys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }))
   }
 
@@ -317,18 +316,6 @@ export function ProviderContestDetailPage() {
     }
   }
 
-  // --- Manual Check-In Handler ---
-  const handleManualCheckIn = (code: string, cafeId: string) => {
-    const targetReg = registrations.find(
-      (r) => r.check_in_code === code && r.status === "CONFIRMED",
-    )
-    if (!targetReg) {
-      toast.error("Mã check-in không hợp lệ hoặc đã check-in trước đó!")
-      return
-    }
-    checkInMutation.mutate({ regId: targetReg.id, cafeId })
-  }
-
   // --- Render ---
   if (isLoading) {
     return (
@@ -464,3 +451,4 @@ export function ProviderContestDetailPage() {
 }
 
 export default ProviderContestDetailPage
+

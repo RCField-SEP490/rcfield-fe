@@ -1,5 +1,5 @@
 import { Link } from "react-router"
-import { Settings, MapPin, Calendar, Play, XCircle } from "lucide-react"
+import { Settings, MapPin, Play, XCircle } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
@@ -160,3 +160,4 @@ function InfoField({
     </div>
   )
 }
+

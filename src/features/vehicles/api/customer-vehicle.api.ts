@@ -34,21 +34,23 @@ interface ApiResponse<T> {
   data: T
 }
 
+const mapCustomerVehicle = (item: any): CustomerVehicle => ({
+  id: item.id,
+  customerId: item.customer_id ?? item.customerId,
+  name: item.name,
+  scale: item.scale,
+  chassisType: item.chassis_type ?? item.chassisType,
+  frequency: item.frequency,
+  status: item.status ?? "ACTIVE",
+  imageUrl: item.image_url ?? item.imageUrl,
+  createdAt: item.created_at ?? item.createdAt,
+  updatedAt: item.updated_at ?? item.updatedAt,
+})
+
 export const customerVehicleApi = {
   list: async (): Promise<CustomerVehicle[]> => {
     const res = await api.get<ApiResponse<any[]>>("/v1/me/customer-vehicles")
-    return res.data.data.map(item => ({
-      id: item.id,
-      customerId: item.customer_id,
-      name: item.name,
-      scale: item.scale,
-      chassisType: item.chassis_type,
-      frequency: item.frequency,
-      status: item.status,
-      imageUrl: item.image_url,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt
-    }))
+    return res.data.data.map(mapCustomerVehicle)
   },
 
   create: async (data: CreateCustomerVehicleDto): Promise<CustomerVehicle> => {
@@ -60,19 +62,7 @@ export const customerVehicleApi = {
       image_url: data.imageUrl || null,
     }
     const res = await api.post<ApiResponse<any>>("/v1/me/customer-vehicles", payload)
-    const item = res.data.data
-    return {
-      id: item.id,
-      customerId: item.customer_id,
-      name: item.name,
-      scale: item.scale,
-      chassisType: item.chassis_type,
-      frequency: item.frequency,
-      status: item.status,
-      imageUrl: item.image_url,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt
-    }
+    return mapCustomerVehicle(res.data.data)
   },
 
   update: async (id: string, data: UpdateCustomerVehicleDto): Promise<CustomerVehicle> => {
@@ -84,19 +74,7 @@ export const customerVehicleApi = {
       status: data.status,
     }
     const res = await api.patch<ApiResponse<any>>(`/v1/me/customer-vehicles/${id}`, payload)
-    const item = res.data.data
-    return {
-      id: item.id,
-      customerId: item.customer_id,
-      name: item.name,
-      scale: item.scale,
-      chassisType: item.chassis_type,
-      frequency: item.frequency,
-      status: item.status,
-      imageUrl: item.image_url,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt
-    }
+    return mapCustomerVehicle(res.data.data)
   },
 
   delete: async (id: string): Promise<void> => {
