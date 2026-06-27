@@ -208,7 +208,10 @@ export const contestsApi = {
 
   cancelRegistration: async (
     registrationId: string,
-    body: { reason: string }
+    body: {
+      reason: string;
+      reason_code?: 'TRACK_INCOMPATIBLE' | 'RULESET_INCOMPATIBLE' | 'UNVERIFIED_VEHICLE' | 'OTHER';
+    }
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contest-registrations/${registrationId}/cancel`, body);
     return res.data.data;
@@ -281,7 +284,10 @@ export const contestsApi = {
 
   rejectRegistration: async (
     registrationId: string,
-    body: { reason: string }
+    body: {
+      reason: string;
+      reason_code?: 'TRACK_INCOMPATIBLE' | 'RULESET_INCOMPATIBLE' | 'UNVERIFIED_VEHICLE' | 'OTHER';
+    }
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contest-registrations/${registrationId}/reject`, body);
     return res.data.data;
@@ -496,6 +502,7 @@ export const contestsApi = {
     return res.data.data;
   },
 };
+
 
 
 

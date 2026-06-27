@@ -199,7 +199,7 @@ export function ContestDetailPage() {
 
   const cancelMutation = useMutation({
     mutationFn: (body: { reason: string }) => {
-      const myReg = myRegistrations.find((r) => r.status !== "CANCELLED");
+      const myReg = activeRegistration;
       if (!myReg) throw new Error("Không tìm thấy thông tin đăng ký");
       return contestsApi.cancelRegistration(myReg.id, body);
     },
@@ -218,10 +218,17 @@ export function ContestDetailPage() {
     },
   });
 
-  // Check if current user is registered
-  const myRegistration = user
-    ? myRegistrations.find((r) => r.status !== "CANCELLED")
+  const latestRegistration = user ? myRegistrations[0] ?? null : null;
+  const activeRegistration = user
+    ? myRegistrations.find((r) => r.status !== "CANCELLED") ?? null
     : null;
+  const myRegistration = activeRegistration;
+  const rejectedByocRegistration =
+    latestRegistration?.status === "CANCELLED" &&
+    latestRegistration.vehicle_source === "BYOC" &&
+    latestRegistration.metadata?.review_reason_code
+      ? latestRegistration
+      : null;
 
   if (isContestLoading) {
     return (
@@ -523,6 +530,25 @@ export function ContestDetailPage() {
                   >
                     ĐĂNG KÝ NGAY
                   </Button>
+                ) : rejectedByocRegistration &&
+                  (contest.vehicleRule?.vehicle_policy || contest.vehicle_policy || "MIXED") === "MIXED" ? (
+                  <div className="space-y-3">
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl text-left text-xs text-amber-900">
+                      <div className="font-bold">Đăng ký BYOC của bạn đã bị từ chối.</div>
+                      <div className="mt-1 text-amber-800/90">
+                        {rejectedByocRegistration.cancellation_reason || "Xe cá nhân chưa phù hợp với thể lệ hoặc điều kiện đường đua."}
+                      </div>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setVehicleSource("RENTAL");
+                        setShowRegDialog(true);
+                      }}
+                      className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-3 shadow-md rounded-xl"
+                    >
+                      CHUYỂN SANG ĐĂNG KÝ XE THUÊ
+                    </Button>
+                  </div>
                 ) : (
                   <div className="bg-[#f6f3f2] border border-[#e5e2e1] p-4 rounded-xl text-center text-xs text-[#6f6c6a]">
                     {isFull
@@ -744,4 +770,5 @@ export function ContestDetailPage() {
   );
 }
 export default ContestDetailPage;
+
 

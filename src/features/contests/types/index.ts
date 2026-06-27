@@ -59,6 +59,8 @@ export interface ContestRegistration {
   check_in_code: string;
   metadata?: {
     note?: string;
+    review_reason_code?: 'TRACK_INCOMPATIBLE' | 'RULESET_INCOMPATIBLE' | 'UNVERIFIED_VEHICLE' | 'OTHER';
+    rental_recommended?: boolean;
     [key: string]: unknown;
   };
   user?: {
@@ -250,3 +252,4 @@ export interface ContestMetrics {
     cancelled: number;
   };
 }
+
