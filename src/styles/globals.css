@@ -203,6 +203,9 @@ html {
     @apply font-sans;
     scrollbar-gutter: stable;
   }
+  table, th, td {
+    font-family: 'Be Vietnam Pro', Inter, sans-serif !important;
+  }
 }
 
 @layer components {

@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   ExternalLink,
   HelpCircle,
-  Phone,
   Receipt,
   Info,
   Camera,
