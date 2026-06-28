@@ -33,6 +33,7 @@ export type Promotion = {
   scheduleEndTime: string | null
   scheduleWeekdays: string[]
   isActive: boolean
+  showOnCafePage: boolean
   createdAt: string
   updatedAt: string
 }
@@ -54,6 +55,7 @@ export type PromotionPayload = {
   schedule_end_time?: string | null
   schedule_weekdays?: string[]
   is_active?: boolean
+  show_on_cafe_page?: boolean
 }
 
 type ApiListResponse<T> = {
@@ -66,7 +68,23 @@ type ApiItemResponse<T> = {
   data: T
 }
 
+export type ActivePromotion = {
+  code: string
+  description: string | null
+  discount_type: DiscountType
+  discount_value: number
+  max_discount_amount: number | null
+  min_order_amount: number | null
+  applicable_to: PromoApplicableTo
+  expires_at: string | null
+}
+
 export const promotionApi = {
+  listActive: async (cafeId: string): Promise<ActivePromotion[]> => {
+    const res = await api.get<ApiListResponse<ActivePromotion>>(`/v1/cafes/${cafeId}/promotions/active`)
+    return res.data.data
+  },
+
   listProviderCafes: async (): Promise<ProviderCafe[]> => {
     const res = await api.get<ApiListResponse<ProviderCafe>>("/v1/cafes", {
       params: { limit: 100, scope: "managed" },

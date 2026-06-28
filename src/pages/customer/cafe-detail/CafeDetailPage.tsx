@@ -13,6 +13,7 @@ import { CafeDetailContent } from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
 import { CafePackagesSection } from "./components/CafePackagesSection"
+import { CafePromoBanner } from "./components/CafePromoBanner"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 
@@ -138,6 +139,7 @@ export function CafeDetailPage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-8">
             <CafeDetailHero cafe={cafe} />
+            <CafePromoBanner cafeId={resolvedCafe.id} />
             <div className="lg:hidden">
               <CafeBookingCard
                 cafe={cafe}

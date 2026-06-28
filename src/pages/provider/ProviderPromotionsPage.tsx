@@ -7,6 +7,7 @@ import {
   CalendarClock,
   Copy,
   Edit3,
+  HelpCircle,
   PauseCircle,
   Plus,
   Save,
@@ -66,6 +67,7 @@ type PromotionFormState = {
   endTime: string
   weekdays: string[]
   isActive: boolean
+  showOnCafePage: boolean
 }
 
 const defaultForm: PromotionFormState = {
@@ -85,6 +87,7 @@ const defaultForm: PromotionFormState = {
   endTime: "",
   weekdays: [],
   isActive: true,
+  showOnCafePage: true,
 }
 
 const scheduleModeOptions: Array<{ value: PromotionScheduleMode; label: string }> = [
@@ -115,6 +118,10 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
   const [selectedPromotionIds, setSelectedPromotionIds] = useState<string[]>([])
   const [deleteMode, setDeleteMode] = useState<"single" | "selected" | "all" | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editMode, setEditMode] = useState<"none" | "create" | "edit">("none")
+  const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null)
+  const [form, setForm] = useState<PromotionFormState>(defaultForm)
+  const [saving, setSaving] = useState(false)
 
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
   const copySourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
@@ -198,11 +205,47 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
   }, [selectedCafeId, propCafeId])
 
   const startCreate = () => {
-    navigate(`${routePaths.providerPromotionCreate}?cafeId=${selectedCafeId}`)
+    setEditMode("create")
+    setEditingPromotion(null)
+    setForm(defaultForm)
   }
 
   const startEdit = (promotion: Promotion) => {
-    navigate(`${routePaths.providerPromotionEdit.replace(":promotionId", promotion.id)}?cafeId=${selectedCafeId}`)
+    setEditMode("edit")
+    setEditingPromotion(promotion)
+    setForm(promotionToForm(promotion))
+  }
+
+  const cancelEdit = () => {
+    setEditMode("none")
+    setEditingPromotion(null)
+    setForm(defaultForm)
+  }
+
+  const savePromotion = async () => {
+    if (!selectedCafeId) return
+    const validationMessage = getPromotionFormError(form)
+    if (validationMessage) {
+      toast.error(validationMessage)
+      return
+    }
+    try {
+      setSaving(true)
+      if (editMode === "create") {
+        const saved = await promotionApi.create(selectedCafeId, toPayload(form))
+        setPromotions((prev) => [saved, ...prev])
+        toast.success("Đã tạo ưu đãi", { description: saved.code })
+      } else if (editMode === "edit" && editingPromotion) {
+        const saved = await promotionApi.update(selectedCafeId, editingPromotion.id, toPayload(form))
+        setPromotions((prev) => prev.map((p) => (p.id === saved.id ? saved : p)))
+        toast.success("Đã cập nhật ưu đãi", { description: saved.code })
+      }
+      cancelEdit()
+    } catch (error) {
+      toast.error("Không lưu được ưu đãi", { description: getErrorMessage(error) })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const startCopy = () => {
@@ -337,21 +380,35 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
         </Panel>
       )}
 
+      {editMode !== "none" && (
+        <PromotionForm
+          cafe={selectedCafe}
+          form={form}
+          editing={editingPromotion}
+          saving={saving}
+          onChange={setForm}
+          onCancel={cancelEdit}
+          onSave={() => void savePromotion()}
+        />
+      )}
+
       <Panel>
         <PanelTitle
           title={selectedCafe ? `Danh sách ưu đãi - ${selectedCafe.name}` : "Danh sách ưu đãi"}
           subtitle="Mỗi mã chỉ thuộc chi nhánh đang chọn. Dùng tắt hoạt động để giữ lịch sử lượt dùng."
           action={
-            <div className="flex flex-nowrap items-center gap-2">
-              <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                <Copy className="mr-2 size-4" />
-                Thêm từ chi nhánh
-              </Button>
-              <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
-                <Plus className="mr-2 size-4" />
-                Thêm mã
-              </Button>
-            </div>
+            editMode === "none" ? (
+              <div className="flex flex-nowrap items-center gap-2">
+                <Button disabled={!selectedCafeId || copySourceCafes.length === 0} variant="outline" onClick={startCopy} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
+                  <Copy className="mr-2 size-4" />
+                  Thêm từ chi nhánh
+                </Button>
+                <Button disabled={!selectedCafeId} variant="outline" onClick={startCreate} className="h-9 whitespace-nowrap rounded-lg bg-white font-bold">
+                  <Plus className="mr-2 size-4" />
+                  Thêm mã
+                </Button>
+              </div>
+            ) : null
           }
         />
 
@@ -1112,35 +1169,35 @@ function PromotionForm({
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Mã ưu đãi" error={showErrors ? errors.code : undefined}>
+        <Field label="Mã ưu đãi" error={showErrors ? errors.code : undefined} tooltip="Chuỗi ký tự khách nhập khi thanh toán để được giảm giá. Chỉ dùng chữ in hoa, số, dấu gạch ngang hoặc gạch dưới. Ví dụ: SUMMER20, DRIFT-10K">
           <Input aria-invalid={showErrors && !!errors.code} value={form.code} onChange={(event) => setField("code", event.target.value.toUpperCase())} placeholder="EX: DRIFTNIGHT20" className="h-11 rounded-lg bg-white font-mono font-bold" />
         </Field>
-        <Field label="Phạm vi áp dụng" error={showErrors ? errors.applicableTo : undefined}>
+        <Field label="Phạm vi áp dụng" error={showErrors ? errors.applicableTo : undefined} tooltip="Giới hạn mã chỉ dùng cho một hình thức chơi. Tất cả — áp dụng cho cả thuê xe (RENTAL) lẫn mang xe cá nhân (BYOC).">
           <select aria-invalid={showErrors && !!errors.applicableTo} value={form.applicableTo} onChange={(event) => setField("applicableTo", event.target.value as PromoApplicableTo)} className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.applicableTo && "border-destructive focus-visible:border-destructive")}>
             <option value="ALL">Tất cả booking</option>
             <option value="RENTAL">Thuê xe</option>
             <option value="BYOC">Mang xe cá nhân</option>
           </select>
         </Field>
-        <Field label="Loại giảm giá" error={showErrors ? errors.discountType : undefined}>
+        <Field label="Loại giảm giá" error={showErrors ? errors.discountType : undefined} tooltip="Phần trăm — giảm theo % tổng đơn (slot + thuê xe). Số tiền cố định — trừ thẳng một khoản VND cố định không phụ thuộc giá trị đơn.">
           <select aria-invalid={showErrors && !!errors.discountType} value={form.discountType} onChange={(event) => setField("discountType", event.target.value as DiscountType)} className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.discountType && "border-destructive focus-visible:border-destructive")}>
             <option value="PERCENT">Phần trăm</option>
             <option value="FIXED">Số tiền cố định</option>
           </select>
         </Field>
-        <Field label={form.discountType === "PERCENT" ? "Giá trị giảm (%)" : "Giá trị giảm (VND)"} error={showErrors ? errors.discountValue : undefined}>
+        <Field label={form.discountType === "PERCENT" ? "Giá trị giảm (%)" : "Giá trị giảm (VND)"} error={showErrors ? errors.discountValue : undefined} tooltip={form.discountType === "PERCENT" ? "Phần trăm giảm trên tổng đơn, từ 1–100. Ví dụ: nhập 20 để giảm 20% tổng tiền booking." : "Số tiền giảm cố định tính bằng VND. Ví dụ: nhập 50000 để giảm 50.000đ."}>
           <Input aria-invalid={showErrors && !!errors.discountValue} type="number" min="0" value={form.discountValue} onChange={(event) => setField("discountValue", event.target.value)} className="h-11 rounded-lg bg-white font-bold" />
         </Field>
-        <Field label="Giảm tối đa" error={showErrors ? errors.maxDiscountAmount : undefined}>
+        <Field label="Giảm tối đa" error={showErrors ? errors.maxDiscountAmount : undefined} tooltip="Chỉ dùng khi loại giảm là Phần trăm. Giới hạn số tiền giảm tối đa tính bằng VND. Ví dụ: giảm 30% nhưng không quá 100.000đ — để trống nếu không giới hạn.">
           <Input aria-invalid={showErrors && !!errors.maxDiscountAmount} type="number" min="0" value={form.maxDiscountAmount} onChange={(event) => setField("maxDiscountAmount", event.target.value)} placeholder="Bỏ trống nếu không giới hạn" className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Đơn tối thiểu" error={showErrors ? errors.minOrderAmount : undefined}>
+        <Field label="Đơn tối thiểu" error={showErrors ? errors.minOrderAmount : undefined} tooltip="Tổng tiền booking tối thiểu (VND) để mã được chấp nhận. Booking thấp hơn mức này sẽ không áp dụng được — để trống nếu không yêu cầu.">
           <Input aria-invalid={showErrors && !!errors.minOrderAmount} type="number" min="0" value={form.minOrderAmount} onChange={(event) => setField("minOrderAmount", event.target.value)} placeholder="Bỏ trống nếu không yêu cầu" className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Tổng lượt dùng" error={showErrors ? errors.maxUses : undefined}>
+        <Field label="Tổng lượt dùng" error={showErrors ? errors.maxUses : undefined} tooltip="Số lần tối đa mã có thể được sử dụng bởi tất cả khách cộng lại. Khi đạt giới hạn, mã tự khóa — để trống nếu không giới hạn.">
           <Input aria-invalid={showErrors && !!errors.maxUses} type="number" min="1" value={form.maxUses} onChange={(event) => setField("maxUses", event.target.value)} placeholder="Không giới hạn" className="h-11 rounded-lg bg-white" />
         </Field>
-        <Field label="Lượt dùng mỗi khách" error={showErrors ? errors.maxUsesPerUser : undefined}>
+        <Field label="Lượt dùng mỗi khách" error={showErrors ? errors.maxUsesPerUser : undefined} tooltip="Số lần tối đa một khách hàng có thể dùng mã này. Đặt là 1 để mỗi khách chỉ dùng được một lần duy nhất.">
           <Input aria-invalid={showErrors && !!errors.maxUsesPerUser} type="number" min="1" value={form.maxUsesPerUser} onChange={(event) => setField("maxUsesPerUser", event.target.value)} className="h-11 rounded-lg bg-white" />
         </Field>
         <div className="space-y-4 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 md:col-span-2">
@@ -1151,7 +1208,7 @@ function PromotionForm({
             </p>
           </div>
 
-          <Field label="Kiểu thời gian" error={showErrors ? errors.scheduleMode : undefined}>
+          <Field label="Kiểu thời gian" error={showErrors ? errors.scheduleMode : undefined} tooltip="Không lặp — mã chạy một lần trong khoảng ngày giờ xác định. Hằng ngày — mã lặp lại theo khung giờ mỗi ngày. Theo thứ — mã chỉ áp dụng vào những ngày trong tuần được chọn.">
             <div className="grid gap-2 sm:grid-cols-3">
               {scheduleModeOptions.map((option) => (
                 <button
@@ -1172,16 +1229,16 @@ function PromotionForm({
           </Field>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Ngày bắt đầu" error={showErrors ? errors.startDate : undefined}>
+            <Field label="Ngày bắt đầu" error={showErrors ? errors.startDate : undefined} tooltip="Ngày mã bắt đầu có hiệu lực. Trước ngày này khách chưa dùng được.">
               <Input aria-invalid={showErrors && !!errors.startDate} type="date" min={minStartDate} value={form.startDate} onChange={(event) => handleStartDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
-            <Field label="Giờ bắt đầu" error={showErrors ? errors.startTime : undefined}>
+            <Field label="Giờ bắt đầu" error={showErrors ? errors.startTime : undefined} tooltip="Giờ trong ngày mã bắt đầu nhận. Với lịch lặp, đây là giờ mở đầu khung áp dụng mỗi ngày.">
               <Input aria-invalid={showErrors && !!errors.startTime} type="time" value={form.startTime} onChange={(event) => setField("startTime", event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
-            <Field label={form.scheduleMode === "ONCE" ? "Ngày kết thúc" : "Ngày cuối áp dụng"} error={showErrors ? errors.endDate : undefined}>
+            <Field label={form.scheduleMode === "ONCE" ? "Ngày kết thúc" : "Ngày cuối áp dụng"} error={showErrors ? errors.endDate : undefined} tooltip={form.scheduleMode === "ONCE" ? "Ngày mã hết hạn. Sau ngày này khách không dùng được nữa — để trống nếu không có ngày hết hạn." : "Ngày cuối cùng mã còn hoạt động. Sau ngày này lịch lặp sẽ dừng."}>
               <Input aria-invalid={showErrors && !!errors.endDate} type="date" min={minEndDate} value={form.endDate} onChange={(event) => handleEndDateChange(event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
-            <Field label={form.scheduleMode === "ONCE" ? "Giờ kết thúc" : "Giờ kết thúc mỗi lần"} error={showErrors ? errors.endTime : undefined}>
+            <Field label={form.scheduleMode === "ONCE" ? "Giờ kết thúc" : "Giờ kết thúc mỗi lần"} error={showErrors ? errors.endTime : undefined} tooltip={form.scheduleMode === "ONCE" ? "Giờ trong ngày mã hết hạn." : "Giờ đóng cửa khung áp dụng mỗi ngày. Booking bắt đầu sau giờ này sẽ không được giảm."}>
               <Input aria-invalid={showErrors && !!errors.endTime} type="time" value={form.endTime} onChange={(event) => setField("endTime", event.target.value)} className="h-11 rounded-lg bg-white" />
             </Field>
           </div>
@@ -1223,6 +1280,13 @@ function PromotionForm({
             <p className="text-xs font-semibold text-[#747878]">Tắt để giữ mã nhưng không cho khách sử dụng.</p>
           </div>
           <Switch checked={form.isActive} onCheckedChange={(checked) => setField("isActive", checked)} />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-4 py-3 md:col-span-2">
+          <div>
+            <p className="text-sm font-bold text-[#1c1b1b]">Hiển thị trên trang chi tiết cà phê</p>
+            <p className="text-xs font-semibold text-[#747878]">Tắt để mã chỉ áp dụng khi khách nhập, không hiển thị banner quảng cáo.</p>
+          </div>
+          <Switch checked={form.showOnCafePage} onCheckedChange={(checked) => setField("showOnCafePage", checked)} />
         </div>
       </div>
 
@@ -1357,10 +1421,25 @@ function CopyPromotionPanel({
   )
 }
 
-function Field({ label, children, error }: { label: string; children: React.ReactNode; error?: string }) {
+function FieldTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex group/tip ml-1 align-middle">
+      <HelpCircle className="size-3.5 text-[#9ca3af] cursor-help" />
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-60 -translate-x-1/2 rounded-lg bg-[#1c1b1b] px-3 py-2 text-center text-xs font-medium leading-relaxed text-white opacity-0 shadow-lg transition-opacity group-hover/tip:opacity-100">
+        {text}
+        <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#1c1b1b]" />
+      </span>
+    </span>
+  )
+}
+
+function Field({ label, children, error, tooltip }: { label: string; children: React.ReactNode; error?: string; tooltip?: string }) {
   return (
     <div className="space-y-2">
-      <Label className="font-sans text-xs font-bold uppercase tracking-wider text-[#1c1b1b]">{label}</Label>
+      <Label className="font-sans text-xs font-bold uppercase tracking-wider text-[#1c1b1b]">
+        {label}
+        {tooltip && <FieldTooltip text={tooltip} />}
+      </Label>
       {children}
       {error && (
         <p className="text-xs font-bold text-red-600 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -1416,6 +1495,9 @@ function PromotionRow({
         <p className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Giá trị</p>
         <p className="mt-1 text-sm font-extrabold text-[#1c1b1b]">{formatDiscount(promotion)}</p>
         <p className="mt-1 text-xs font-bold text-[#747878]">{applicableLabel(promotion.applicableTo)}</p>
+        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-[#747878]">
+          {promotion.showOnCafePage ? "🟢 Hiển thị banner" : "⚪ Ẩn banner"}
+        </p>
       </div>
       <div>
         <p className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Lượt dùng</p>
@@ -1460,6 +1542,7 @@ function toPayload(form: PromotionFormState): PromotionPayload {
     schedule_end_time: form.endTime || null,
     schedule_weekdays: form.scheduleMode === "WEEKLY" ? form.weekdays : [],
     is_active: form.isActive,
+    show_on_cafe_page: form.showOnCafePage,
   }
 }
 
@@ -1481,6 +1564,7 @@ function promotionToPayload(promotion: Promotion): PromotionPayload {
     schedule_end_time: normalizeTimeInput(promotion.scheduleEndTime),
     schedule_weekdays: promotion.scheduleWeekdays,
     is_active: promotion.isActive,
+    show_on_cafe_page: promotion.showOnCafePage,
   }
 }
 
@@ -1505,6 +1589,7 @@ function promotionToForm(promotion: Promotion): PromotionFormState {
     endTime: normalizeTimeInput(promotion.scheduleEndTime) ?? end?.time ?? "",
     weekdays: promotion.scheduleWeekdays ?? [],
     isActive: promotion.isActive,
+    showOnCafePage: promotion.showOnCafePage,
   }
 }
 

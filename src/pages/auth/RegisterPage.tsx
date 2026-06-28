@@ -1,17 +1,16 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useNavigate } from "react-router"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Mail, 
-  Lock, 
-  User, 
-  Phone, 
-  ChevronLeft, 
-  Car, 
-  Briefcase,
+import { motion } from "framer-motion"
+import {
+  Mail,
+  Lock,
+  User,
+  Phone,
+  ChevronLeft,
+  Car,
   Sparkles,
   CheckCircle2
 } from "lucide-react"
@@ -25,9 +24,7 @@ import { toast } from "sonner"
 import { registerWithPassword } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
-import { routePaths } from "@/app/router/route-paths"
 
-// Zod Schema for Registration validation
 const registerSchema = z.object({
   fullName: z.string().min(2, { message: "Họ và tên phải chứa ít nhất 2 ký tự" }),
   email: z.string().email({ message: "Địa chỉ email không hợp lệ" }),
@@ -40,45 +37,15 @@ const registerSchema = z.object({
   })
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu xác nhận không trùng khớp",
-  path: ["confirmPassword"], // Highlight confirmPassword input field on failure
+  path: ["confirmPassword"],
 })
 
 type RegisterFormValues = z.infer<typeof registerSchema>
-
-const rotatingBanners = [
-  {
-    title: "Trải Nghiệm Đua Xe Đỉnh Cao",
-    desc: "Đăng ký để đặt chỗ sân đua, thuê các dòng xe cao cấp và lưu trữ lịch sử đua chuyên nghiệp.",
-    icon: Car,
-    color: "from-orange-500 to-red-500"
-  },
-  {
-    title: "Số Hóa Cơ Sở RC Cafe",
-    desc: "Tham gia với tư cách đối tác để vận hành sân đua rảnh tay, quản lý gói hội viên và tăng tối đa doanh thu.",
-    icon: Briefcase,
-    color: "from-indigo-500 to-blue-500"
-  }
-]
-
-const roleRedirects = {
-  customer: "/cafes",
-  provider: "/pending-review",
-}
 
 export function RegisterPage() {
   const navigate = useNavigate()
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<"customer" | "provider">("customer")
-  const [bannerIndex, setBannerIndex] = useState(0)
-
-  // Rotate highlight banners
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBannerIndex(prev => (prev + 1) % rotatingBanners.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
 
   const { register, handleSubmit, control, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -93,10 +60,6 @@ export function RegisterPage() {
   })
 
   const onSubmit = async (data: RegisterFormValues) => {
-    if (selectedRole === "provider") {
-      navigate(routePaths.providerRegister)
-      return
-    }
     setIsLoading(true)
     try {
       const auth = await registerWithPassword({
@@ -104,7 +67,7 @@ export function RegisterPage() {
         email: data.email.trim().toLowerCase(),
         phone: data.phoneNumber.trim() || undefined,
         password: data.password,
-        role: selectedRole,
+        role: "customer",
       })
 
       setAuthenticated(auth.user.role, {
@@ -133,7 +96,7 @@ export function RegisterPage() {
         description: `Chào mừng ${auth.user.fullName} tham gia cộng đồng RCField!`,
       })
 
-      navigate(roleRedirects[selectedRole] ?? "/")
+      navigate("/cafes")
     } catch (error: unknown) {
       const err = error as { response?: { data?: { code?: string; message?: string } } }
       const code = err?.response?.data?.code
@@ -155,58 +118,35 @@ export function RegisterPage() {
     }
   }
 
-  const ActiveIcon = rotatingBanners[bannerIndex].icon
-
   return (
     <div className="min-h-screen bg-slate-50 flex items-stretch overflow-hidden font-sans">
-      
-      {/* LEFT SPLIT BREATHTAKING PANEL */}
+
+      {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-950 text-white relative flex-col justify-between p-12 overflow-hidden select-none">
-        
-        {/* Glow Effects */}
+
         <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] rounded-full bg-orange-600/15 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] rounded-full bg-indigo-600/15 blur-[120px] pointer-events-none" />
 
-        {/* Brand logo link */}
         <AppLogo variant="dark" className="self-start relative z-10" />
 
-        {/* Rotating animated showcase content */}
-        <div className="relative z-10 my-auto max-w-md space-y-8">
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={bannerIndex}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.5 }}
-              className="space-y-6"
-            >
-              <div className={`inline-flex h-12 w-12 rounded-2xl bg-gradient-to-br ${rotatingBanners[bannerIndex].color} items-center justify-center text-white shadow-lg`}>
-                <ActiveIcon className="h-6 w-6" />
-              </div>
-              <div className="space-y-3">
-                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
-                  {rotatingBanners[bannerIndex].title}
-                </h2>
-                <p className="text-sm font-medium leading-relaxed text-slate-400">
-                  {rotatingBanners[bannerIndex].desc}
-                </p>
-              </div>
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Stepper Dots Indicator */}
-          <div className="flex items-center gap-2">
-            {rotatingBanners.map((_, idx) => (
-              <button 
-                key={idx}
-                className={`h-2 rounded-full transition-all ${bannerIndex === idx ? 'w-8 bg-orange-500' : 'w-2 bg-slate-800'}`}
-                onClick={() => setBannerIndex(idx)}
-              />
-            ))}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 my-auto max-w-md space-y-6"
+        >
+          <div className="inline-flex h-12 w-12 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 items-center justify-center text-white shadow-lg">
+            <Car className="h-6 w-6" />
+          </div>
+          <div className="space-y-3">
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
+              Trải Nghiệm Đua Xe Đỉnh Cao
+            </h2>
+            <p className="text-sm font-medium leading-relaxed text-slate-400">
+              Đăng ký để đặt chỗ sân đua, thuê các dòng xe cao cấp và lưu trữ lịch sử đua chuyên nghiệp.
+            </p>
           </div>
 
-          {/* Value Checklist */}
           <div className="pt-6 border-t border-slate-900 space-y-2 text-xs font-semibold text-slate-400">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -217,20 +157,18 @@ export function RegisterPage() {
               Tích hợp Serious Inspection giải quyết tranh chấp thông minh
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Footer legal */}
         <div className="relative z-10 text-[10px] font-bold text-slate-500 flex items-center justify-between">
           <span>Khám phá & Chinh phục Đường đua RC</span>
           <span>© 2024 RCField</span>
         </div>
       </div>
 
-      {/* RIGHT SPLIT FORM PANEL */}
+      {/* RIGHT PANEL — FORM */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-white relative overflow-y-auto">
-        
-        {/* Mobile Go Back button */}
-        <button 
+
+        <button
           onClick={() => navigate("/")}
           className="absolute top-6 left-6 inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-900 transition-colors"
         >
@@ -239,8 +177,7 @@ export function RegisterPage() {
         </button>
 
         <div className="w-full max-w-md space-y-6 pt-10 pb-8">
-          
-          {/* Heading */}
+
           <div className="space-y-2">
             <h1 className="text-2xl md:text-3xl font-extrabold text-slate-950 tracking-tight">
               Đăng ký tài khoản mới
@@ -250,51 +187,18 @@ export function RegisterPage() {
             </p>
           </div>
 
-          {/* ROLE SELECTOR GRID */}
-          <div className="space-y-2">
-            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Vai trò đăng ký</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { key: "customer", label: "Người chơi (Customer)", icon: Car, desc: "Đặt sân & lái xe thuê" },
-                { key: "provider", label: "Chủ quán (Provider)", icon: Briefcase, desc: "Số hóa vận hành sân" }
-              ].map(role => {
-                const RoleIcon = role.icon
-                const isSelected = selectedRole === role.key
-                return (
-                  <button 
-                    key={role.key}
-                    type="button"
-                    onClick={() => setSelectedRole(role.key as "customer" | "provider")}
-                    className={`py-3 px-4 rounded-xl border text-left transition-all flex flex-col gap-1.5 ${isSelected ? 'border-orange-500 bg-orange-50 text-orange-950 shadow-sm shadow-orange-500/5' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <RoleIcon className={`h-5 w-5 ${isSelected ? 'text-orange-600' : 'text-slate-400'}`} />
-                      {isSelected && <span className="h-2 w-2 rounded-full bg-orange-600" />}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold leading-none">{role.label}</p>
-                      <p className="text-[10px] font-medium text-slate-400 mt-1">{role.desc}</p>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* SIGNUP FORM */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            
-            {/* Input FullName */}
+
             <div className="space-y-1.5">
               <Label htmlFor="fullName" className="text-xs font-bold text-slate-700">Họ và tên</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <User className="h-4.5 w-4.5" />
                 </div>
-                <Input 
-                  id="fullName" 
-                  type="text" 
-                  placeholder="Nguyễn Văn A" 
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Nguyễn Văn A"
                   className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.fullName ? 'border-red-500 focus:border-red-500' : ''}`}
                   {...register("fullName")}
                 />
@@ -304,17 +208,16 @@ export function RegisterPage() {
               )}
             </div>
 
-            {/* Input Email */}
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-bold text-slate-700">Email</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Mail className="h-4.5 w-4.5" />
                 </div>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="name@example.com" 
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
                   className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                   {...register("email")}
                 />
@@ -324,17 +227,16 @@ export function RegisterPage() {
               )}
             </div>
 
-            {/* Input Phone */}
             <div className="space-y-1.5">
               <Label htmlFor="phoneNumber" className="text-xs font-bold text-slate-700">Số điện thoại</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Phone className="h-4.5 w-4.5" />
                 </div>
-                <Input 
-                  id="phoneNumber" 
-                  type="tel" 
-                  placeholder="0987654321" 
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="0987654321"
                   className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.phoneNumber ? 'border-red-500 focus:border-red-500' : ''}`}
                   {...register("phoneNumber")}
                 />
@@ -344,7 +246,6 @@ export function RegisterPage() {
               )}
             </div>
 
-            {/* Password */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-xs font-bold text-slate-700">Mật khẩu</Label>
@@ -352,10 +253,10 @@ export function RegisterPage() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Lock className="h-4.5 w-4.5" />
                   </div>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    placeholder="••••••••" 
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
                     className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.password ? 'border-red-500 focus:border-red-500' : ''}`}
                     {...register("password")}
                   />
@@ -371,10 +272,10 @@ export function RegisterPage() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                     <Lock className="h-4.5 w-4.5" />
                   </div>
-                  <Input 
-                    id="confirmPassword" 
-                    type="password" 
-                    placeholder="••••••••" 
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
                     className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
                     {...register("confirmPassword")}
                   />
@@ -385,7 +286,6 @@ export function RegisterPage() {
               </div>
             </div>
 
-            {/* Terms checkbox */}
             <div className="space-y-1">
               <div className="flex items-start gap-2.5 pt-1 select-none">
                 <Controller
@@ -400,10 +300,11 @@ export function RegisterPage() {
                     />
                   )}
                 />
-                <Label htmlFor="agreeToTerms" className="text-xs font-bold text-slate-600 leading-tight cursor-pointer">
+                <Label htmlFor="agreeToTerms" className="text-xs font-bold text-slate-600 cursor-pointer whitespace-nowrap">
                   Tôi đồng ý với{" "}
-                  <a href="#" className="text-orange-600 hover:underline">Điều khoản dịch vụ</a> và{" "}
-                  <a href="#" className="text-orange-600 hover:underline">Chính sách bảo mật</a> của RCField.
+                  <a href="#" className="text-orange-600 hover:underline">Điều khoản dịch vụ</a>
+                  {" "}và{" "}
+                  <a href="#" className="text-orange-600 hover:underline">Chính sách bảo mật</a>
                 </Label>
               </div>
               {errors.agreeToTerms && (
@@ -411,9 +312,8 @@ export function RegisterPage() {
               )}
             </div>
 
-            {/* Submit */}
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={isLoading}
               className="group w-full h-11 rounded-xl bg-slate-950 text-white font-bold shadow-[0_10px_24px_rgba(15,23,42,0.18)] flex items-center justify-center gap-2 pt-1 transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-[0_16px_34px_rgba(15,23,42,0.24),0_0_0_3px_rgba(249,115,22,0.10)] focus-visible:ring-3 focus-visible:ring-orange-500/20 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-70"
             >
@@ -421,11 +321,6 @@ export function RegisterPage() {
                 <>
                   <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Đang thiết lập tài khoản...
-                </>
-              ) : selectedRole === "provider" ? (
-                <>
-                  Tiếp tục đăng ký Provider
-                  <Sparkles className="h-4 w-4 text-orange-400 group-hover:scale-110 transition-transform" />
                 </>
               ) : (
                 <>
@@ -437,7 +332,6 @@ export function RegisterPage() {
 
           </form>
 
-          {/* Social Sign In Divider */}
           <div className="relative my-4 text-center">
             <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] bg-slate-200/80" />
             <span className="relative bg-white px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">
@@ -445,9 +339,8 @@ export function RegisterPage() {
             </span>
           </div>
 
-          {/* Go to Login */}
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="group w-full h-11 rounded-xl border-slate-200 bg-white px-3.5 text-slate-700 font-bold shadow-[0_10px_24px_rgba(15,23,42,0.10)] transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-400 hover:bg-orange-50/25 hover:text-slate-800 hover:shadow-[0_16px_34px_rgba(15,23,42,0.16),0_0_0_3px_rgba(249,115,22,0.10)] focus-visible:ring-3 focus-visible:ring-orange-500/20"
             onClick={() => navigate("/auth/login")}
           >
