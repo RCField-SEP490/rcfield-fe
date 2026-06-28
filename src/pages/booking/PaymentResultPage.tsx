@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Eye, Home, Layers, Loader2, RotateCcw } from "lucide-react"
+import { AlertCircle, CheckCircle2, Eye, Home, Layers, Loader2, RotateCcw, Tag } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/shared/ui/button"
@@ -35,7 +35,9 @@ export function PaymentResultPage() {
   const isPackagePurchase = isSuccess && bookingError && !isFetching
 
   const paymentComponents = booking?.payment_components ?? []
-  const total = paymentComponents.reduce((sum, c) => sum + Number(c.amount), 0)
+  const discountAmount = Number(booking?.discountAmount ?? 0)
+  const grossTotal = paymentComponents.reduce((sum, c) => sum + Number(c.amount), 0)
+  const total = Math.max(0, grossTotal - discountAmount)
 
   return (
     <div className="min-h-screen bg-muted/30 px-4 py-8 md:px-6">
@@ -80,6 +82,14 @@ export function PaymentResultPage() {
                         <span className="font-medium">{formatCurrency(line.amount)}</span>
                       </div>
                     ))}
+                    {discountAmount > 0 && (
+                      <div className="flex items-center justify-between border-b px-4 py-3 text-sm">
+                        <span className="flex items-center gap-1.5 text-emerald-600">
+                          <Tag className="size-3.5" /> Mã ưu đãi
+                        </span>
+                        <span className="font-medium text-emerald-600">−{formatCurrency(discountAmount)}</span>
+                      </div>
+                    )}
                     <Separator />
                     <div className="flex items-center justify-between px-4 py-4 text-lg font-semibold">
                       <span>Tổng cộng</span>

@@ -105,6 +105,8 @@ export interface BookingResponse {
   snapshot: Record<string, unknown> | null
   paymentExpiresAt: string | null
   checkInCode: string | null
+  discountAmount: number
+  promotionId: string | null
   createdAt: string
   updatedAt: string
   participants: BookingParticipant[]

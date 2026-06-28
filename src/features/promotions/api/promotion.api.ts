@@ -92,4 +92,17 @@ export const promotionApi = {
   remove: async (cafeId: string, promotionId: string): Promise<void> => {
     await api.delete(`/v1/cafes/${cafeId}/promotions/${promotionId}`)
   },
+
+  preview: async (
+    cafeId: string,
+    payload: { code: string; play_mode: "RENTAL" | "BYOC"; slot_start: string; subtotal: number },
+  ): Promise<{ code: string; discount_amount: number; discount_type: DiscountType; description: string | null }> => {
+    const res = await api.post<ApiItemResponse<{
+      code: string
+      discount_amount: number
+      discount_type: DiscountType
+      description: string | null
+    }>>(`/v1/cafes/${cafeId}/promotions/preview`, payload)
+    return res.data.data
+  },
 }

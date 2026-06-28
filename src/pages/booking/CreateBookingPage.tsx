@@ -30,6 +30,7 @@ import { ParticipantsStep, type Companion, isPhoneOkOrEmpty } from "./components
 import { PaymentStep } from "./components/checkout/PaymentStep"
 import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
 import { BookingPackageSelector } from "./components/checkout/BookingPackageSelector"
+import type { AppliedPromo } from "./components/checkout/PromoCodeInput"
 import type { TrackConfig } from "@/features/cafes/types"
 import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import { toast } from "sonner"
@@ -126,6 +127,7 @@ export function CreateBookingPage() {
   const [paymentMethod, setPaymentMethod] = useState<CustomerPaymentMethod>("vnpay")
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null)
   const [selectedTrackConfig, setSelectedTrackConfig] = useState<TrackConfig | null>(null)
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null)
 
   const [pendingPlayMode, setPendingPlayMode] = useState<CustomerPlayMode | null>(null)
 
@@ -281,6 +283,7 @@ export function CreateBookingPage() {
           .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
         ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id, track_config_id: selectedTrackConfig.id } : {}),
         ...(selectedPackageId ? { customer_package_id: selectedPackageId } : {}),
+        ...(appliedPromo ? { promotion_code: appliedPromo.code } : {}),
       })
 
       const checkout = await createCheckoutMutation.mutateAsync(booking.booking_id)
@@ -408,6 +411,12 @@ export function CreateBookingPage() {
               paymentMethod={paymentMethod}
               onPaymentMethodChange={setPaymentMethod}
               selectedPackageId={selectedPackageId}
+              cafeId={isMockId ? undefined : cafeId}
+              playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
+              slotStart={slotStartForCheck}
+              subtotal={paymentComponents.filter((c) => c.type === "SLOT_FEE" || c.type === "RENTAL_FEE").reduce((s, c) => s + c.amount, 0)}
+              appliedPromo={appliedPromo}
+              onPromoApply={setAppliedPromo}
             />
           )}
         </main>
@@ -428,6 +437,8 @@ export function CreateBookingPage() {
           isSubmitting={isSubmitting}
           pricingLabel={isMockId ? null : pricingLabel}
           slotMultiplier={isMockId ? 1 : slotMultiplier}
+          discountAmount={appliedPromo?.discount_amount ?? 0}
+          promoCode={appliedPromo?.code ?? null}
           isNextDisabled={
             (currentStep === "track" && (!selectedTrackConfig || !time)) ||
             (currentStep === "participants" && isByocFull) ||

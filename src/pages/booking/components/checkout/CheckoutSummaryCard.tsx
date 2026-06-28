@@ -1,4 +1,4 @@
-import { ArrowRight, Layers, Loader2, MapPin, ShieldCheck } from "lucide-react"
+import { ArrowRight, Layers, Loader2, MapPin, ShieldCheck, Tag } from "lucide-react"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import type { CustomerPlayMode, CheckoutStep, PaymentComponentLine } from "@/features/customer-booking/data/customer-booking-demo"
 import type { Cafe, Vehicle } from "@/shared/data/explore-data"
@@ -27,6 +27,8 @@ type CheckoutSummaryCardProps = {
   selectedTrackConfig?: TrackConfig | null
   pricingLabel?: string | null
   slotMultiplier?: number
+  discountAmount?: number
+  promoCode?: string | null
 }
 
 export function CheckoutSummaryCard({
@@ -47,8 +49,11 @@ export function CheckoutSummaryCard({
   selectedTrackConfig,
   pricingLabel,
   slotMultiplier,
+  discountAmount = 0,
+  promoCode,
 }: CheckoutSummaryCardProps) {
-  const total = components.reduce((sum, item) => sum + item.amount, 0)
+  const subtotal = components.reduce((sum, item) => sum + item.amount, 0)
+  const total = Math.max(0, subtotal - discountAmount)
   const isFirstStep = currentStep === "track"
   const isPaymentStep = currentStep === "payment"
 
@@ -115,6 +120,16 @@ export function CheckoutSummaryCard({
             </div>
           ))}
         </div>
+
+        {discountAmount > 0 && promoCode && (
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex items-center gap-1.5 text-emerald-600">
+              <Tag className="size-3.5" />
+              {promoCode}
+            </span>
+            <span className="font-medium text-emerald-600">−{formatCurrency(discountAmount)}</span>
+          </div>
+        )}
 
         <div className="rounded-lg bg-muted p-3">
           <div className="flex items-center justify-between">

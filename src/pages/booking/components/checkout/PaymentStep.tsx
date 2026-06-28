@@ -2,20 +2,37 @@ import { CheckCircle2, QrCode } from "lucide-react"
 import type { CustomerPaymentMethod } from "@/features/customer-booking/data/customer-booking-demo"
 import { Badge } from "@/shared/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import type { AppliedPromo } from "./PromoCodeInput"
+import { PromoCodeInput } from "./PromoCodeInput"
 
 type PaymentStepProps = {
   paymentMethod: CustomerPaymentMethod
   onPaymentMethodChange: (method: CustomerPaymentMethod) => void
   selectedPackageId?: string | null
   cafeId?: string
-  playMode?: string
+  playMode?: "RENTAL" | "BYOC"
+  slotStart?: string
+  subtotal?: number
+  appliedPromo?: AppliedPromo | null
+  onPromoApply?: (promo: AppliedPromo | null) => void
   slotsNeeded?: number
   onPackageSelect?: (id: string | null) => void
 }
 
 const isSandbox = import.meta.env.DEV
 
-export function PaymentStep({ selectedPackageId }: PaymentStepProps) {
+export function PaymentStep({
+  selectedPackageId,
+  cafeId,
+  playMode,
+  slotStart,
+  subtotal,
+  appliedPromo,
+  onPromoApply,
+}: PaymentStepProps) {
+  const showPromoInput =
+    !selectedPackageId && cafeId && playMode && slotStart && subtotal !== undefined && onPromoApply
+
   return (
     <div className="space-y-4">
       {selectedPackageId && (
@@ -23,6 +40,24 @@ export function PaymentStep({ selectedPackageId }: PaymentStepProps) {
           <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
           <span className="font-semibold">Gói slot đã được áp dụng — phí slot = 0</span>
         </div>
+      )}
+
+      {showPromoInput && (
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Mã ưu đãi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PromoCodeInput
+              cafeId={cafeId}
+              playMode={playMode}
+              slotStart={slotStart}
+              subtotal={subtotal!}
+              appliedPromo={appliedPromo ?? null}
+              onApply={onPromoApply}
+            />
+          </CardContent>
+        </Card>
       )}
 
       <Card className="rounded-xl shadow-sm">
