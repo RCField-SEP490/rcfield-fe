@@ -17,6 +17,7 @@ import {
   TrendingUp,
   TrendingDown,
   CalendarRange,
+  X,
 } from "lucide-react"
 import {
   AreaChart,
@@ -187,6 +188,9 @@ const CHART_COLORS = {
   slotFee: "#ea580c",
   rentalFee: "#3b82f6",
   fnbPreorder: "#10b981",
+  securityDeposit: "#8b5cf6",
+  extensionFee: "#f59e0b",
+  damageCharge: "#ef4444",
 }
 
 const PIE_COLORS = ["#ea580c", "#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444"]
@@ -324,12 +328,51 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
   })
   const cafes = cafesData?.data ?? []
 
-  const { kpi, trend, breakdown, branches, recent, isLoading } = useProviderDashboard({
+  const { kpi, trend, breakdown, branches, recent, topStats, isLoading } = useProviderDashboard({
     cafeId: selectedCafeId,
     period,
     from,
     to,
   })
+
+  const handleFromChange = useCallback((val: string) => {
+    if (!val) {
+      setCustomFrom("")
+      return
+    }
+    const fromIso = new Date(val).toISOString()
+    setCustomFrom(fromIso)
+    
+    if (customTo) {
+      const currentToDate = new Date(customTo)
+      const newFromDate = new Date(val)
+      if (currentToDate < newFromDate) {
+        setCustomTo(new Date(val + "T23:59:59").toISOString())
+      }
+    }
+  }, [customTo])
+
+  const handleToChange = useCallback((val: string) => {
+    if (!val) {
+      setCustomTo("")
+      return
+    }
+    const toIso = new Date(val + "T23:59:59").toISOString()
+    setCustomTo(toIso)
+    
+    if (customFrom) {
+      const currentFromDate = new Date(customFrom)
+      const newToDate = new Date(val)
+      if (currentFromDate > newToDate) {
+        setCustomFrom(new Date(val).toISOString())
+      }
+    }
+  }, [customFrom])
+
+  const handleClearDateRange = useCallback(() => {
+    setCustomFrom("")
+    setCustomTo("")
+  }, [])
 
   const handlePeriodChange = useCallback((p: RevenuePeriod) => {
     setPeriod(p)
@@ -383,17 +426,31 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             <input
               type="date"
               value={customFrom ? customFrom.substring(0, 10) : ""}
-              onChange={(e) => setCustomFrom(e.target.value ? new Date(e.target.value).toISOString() : "")}
+              max={customTo ? customTo.substring(0, 10) : undefined}
+              onChange={(e) => handleFromChange(e.target.value)}
               className="text-xs font-semibold text-[#1c1b1b] focus:outline-none"
             />
             <span className="text-xs text-[#747878]">–</span>
             <input
               type="date"
               value={customTo ? customTo.substring(0, 10) : ""}
-              onChange={(e) => setCustomTo(e.target.value ? new Date(e.target.value + "T23:59:59").toISOString() : "")}
+              min={customFrom ? customFrom.substring(0, 10) : undefined}
+              onChange={(e) => handleToChange(e.target.value)}
               className="text-xs font-semibold text-[#1c1b1b] focus:outline-none"
             />
           </div>
+
+          {(customFrom || customTo) && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleClearDateRange}
+              className="h-9 w-9 rounded-lg border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-bold"
+              title="Xóa bộ lọc ngày"
+            >
+              <X className="size-4" />
+            </Button>
+          )}
 
           <Button
             variant="outline"
@@ -529,6 +586,42 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     strokeOpacity={hoveredSeries === null || hoveredSeries === "fnbPreorder" ? 1 : 0.15}
                     fillOpacity={hoveredSeries === null || hoveredSeries === "fnbPreorder" ? 1 : 0.15}
                     onMouseEnter={() => setHoveredSeries("fnbPreorder")}
+                    onMouseLeave={() => setHoveredSeries(null)}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="securityDeposit"
+                    name="Đặt cọc"
+                    stroke={CHART_COLORS.securityDeposit}
+                    fill="url(#db-grad-securityDeposit)"
+                    strokeWidth={hoveredSeries === "securityDeposit" ? 3.5 : 2}
+                    strokeOpacity={hoveredSeries === null || hoveredSeries === "securityDeposit" ? 1 : 0.15}
+                    fillOpacity={hoveredSeries === null || hoveredSeries === "securityDeposit" ? 1 : 0.15}
+                    onMouseEnter={() => setHoveredSeries("securityDeposit")}
+                    onMouseLeave={() => setHoveredSeries(null)}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="extensionFee"
+                    name="Phí gia hạn"
+                    stroke={CHART_COLORS.extensionFee}
+                    fill="url(#db-grad-extensionFee)"
+                    strokeWidth={hoveredSeries === "extensionFee" ? 3.5 : 2}
+                    strokeOpacity={hoveredSeries === null || hoveredSeries === "extensionFee" ? 1 : 0.15}
+                    fillOpacity={hoveredSeries === null || hoveredSeries === "extensionFee" ? 1 : 0.15}
+                    onMouseEnter={() => setHoveredSeries("extensionFee")}
+                    onMouseLeave={() => setHoveredSeries(null)}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="damageCharge"
+                    name="Phí bồi thường"
+                    stroke={CHART_COLORS.damageCharge}
+                    fill="url(#db-grad-damageCharge)"
+                    strokeWidth={hoveredSeries === "damageCharge" ? 3.5 : 2}
+                    strokeOpacity={hoveredSeries === null || hoveredSeries === "damageCharge" ? 1 : 0.15}
+                    fillOpacity={hoveredSeries === null || hoveredSeries === "damageCharge" ? 1 : 0.15}
+                    onMouseEnter={() => setHoveredSeries("damageCharge")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
                 </AreaChart>
@@ -687,6 +780,203 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
               color="red"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Báo cáo xếp hạng (Top Statistics) */}
+      <section className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Top F&B Items */}
+        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
+              <span>🍔 Món ăn được mua nhiều</span>
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">Top 5 món F&B bán chạy nhất trong kỳ</p>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+              ))}
+            </div>
+          ) : !topStats?.topFnb || topStats.topFnb.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu F&B</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
+                    <th className="pt-3.5 pb-2 leading-relaxed">TÊN MÓN</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">SỐ LƯỢNG</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">DOANH THU</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topStats.topFnb.map((item, idx) => (
+                    <tr key={item.menuItemId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                      <td className="py-2.5">
+                        <div className="font-semibold text-[#1c1b1b]">{item.itemName}</div>
+                        {!selectedCafeId && (
+                          <div className="text-[10px] text-slate-400 font-semibold">{item.cafeName}</div>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">{item.totalQuantity}</td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{formatCurrency(item.totalRevenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Top Track Types */}
+        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
+              <span>🏁 Sân được book nhiều</span>
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">Top 5 loại đường đua được yêu thích nhất</p>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+              ))}
+            </div>
+          ) : !topStats?.topTracks || topStats.topTracks.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu đặt sân</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
+                    <th className="pt-3.5 pb-2 leading-relaxed">TÊN SÂN</th>
+                    <th className="pt-3.5 pb-2 leading-relaxed">MÃ CODE</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">LƯỢT ĐẶT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topStats.topTracks.map((item, idx) => (
+                    <tr key={item.trackTypeId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                      <td className="py-2.5">
+                        <div className="font-semibold text-[#1c1b1b]">{item.trackTypeName}</div>
+                        {!selectedCafeId && (
+                          <div className="text-[10px] text-slate-400 font-semibold">{item.cafeName}</div>
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-600">
+                          {item.trackTypeCode}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{item.bookingCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Top Customers */}
+        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
+              <span>👤 Khách hàng thường xuyên nhất</span>
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">Top 5 khách hàng đặt sân tích cực nhất</p>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+              ))}
+            </div>
+          ) : !topStats?.topCustomers || topStats.topCustomers.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu khách hàng</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
+                    <th className="pt-3.5 pb-2 leading-relaxed">KHÁCH HÀNG</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">LƯỢT BOOK</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">CHI TIÊU</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topStats.topCustomers.map((item, idx) => (
+                    <tr key={item.customerId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                      <td className="py-2.5">
+                        <div className="font-semibold text-[#1c1b1b]">{item.customerName}</div>
+                        <div className="text-[10px] text-[#747878]">{item.customerEmail}</div>
+                      </td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">{item.bookingCount}</td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{formatCurrency(item.totalSpent)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Top Vehicle Catalogs */}
+        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+          <div className="mb-4">
+            <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
+              <span>🏎️ Loại xe được book nhiều</span>
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">Top 5 dòng xe mẫu được thuê nhiều nhất</p>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+              ))}
+            </div>
+          ) : !topStats?.topVehicles || topStats.topVehicles.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu thuê xe</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
+                    <th className="pt-3.5 pb-2 leading-relaxed">MẪU XE</th>
+                    <th className="pt-3.5 pb-2 leading-relaxed">PHÂN HẠNG</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">LƯỢT THUÊ</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">DOANH THU</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topStats.topVehicles.map((item, idx) => (
+                    <tr key={item.catalogId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                      <td className="py-2.5">
+                        <div className="font-semibold text-[#1c1b1b]">{item.catalogName}</div>
+                        {!selectedCafeId && (
+                          <div className="text-[10px] text-slate-400 font-semibold">{item.cafeName}</div>
+                        )}
+                      </td>
+                      <td className="py-2.5">
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${
+                          item.catalogTier === "RESTRICTED"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : item.catalogTier === "PREMIUM"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
+                        }`}>
+                          {item.catalogTier}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">{item.bookingCount}</td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{formatCurrency(item.rentalRevenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 
