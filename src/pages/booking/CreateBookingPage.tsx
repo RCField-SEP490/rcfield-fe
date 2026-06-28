@@ -535,10 +535,8 @@ function buildPaymentComponents({
     // Rental fee is prorated to actual slot duration, not per-slot as 1 hour
     const totalDurationHours = numSlots * (slotDurationMinutes / 60)
     const rentalTotal = Math.round(rentalPerHour * totalDurationHours)
-    const depositTotal = selectedVehicles.reduce((sum, v) => sum + (v.securityDeposit ?? 0), 0)
     const vehicleLabel = selectedVehicles.length === 1 ? selectedVehicles[0].name : `${selectedVehicles.length} xe`
     lines.push({ id: "rental", type: "RENTAL_FEE", label: `Phí thuê ${vehicleLabel}`, amount: rentalTotal, status: "PENDING" })
-    lines.push({ id: "deposit", type: "SECURITY_DEPOSIT", label: `Cọc xe (×${selectedVehicles.length})`, amount: depositTotal, status: "HELD" })
   }
 
   if (fnbTotal > 0) {

@@ -368,7 +368,7 @@ export function ProviderCafeVehiclesSection({ cafeId, tab }: ProviderCafeVehicle
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h3 className="text-base font-extrabold text-zinc-800">Quản lý Danh mục mẫu xe</h3>
-                <p className="text-xs text-zinc-500 font-semibold mt-0.5">Cấu hình các dòng xe RC, giá thuê giờ và tiền đặt cọc tương ứng.</p>
+                <p className="text-xs text-zinc-500 font-semibold mt-0.5">Cấu hình các dòng xe RC và giá thuê giờ tương ứng.</p>
               </div>
               <Button
                 onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${cafeId}`)}
@@ -491,12 +491,6 @@ export function ProviderCafeVehiclesSection({ cafeId, tab }: ProviderCafeVehicle
                           <span className="text-[#747878] font-bold block mb-0.5">Giá thuê giờ</span>
                           <strong className="text-sm text-[#1c1b1b] font-extrabold">
                             {formatVND(catalog.hourlyRate)}
-                          </strong>
-                        </div>
-                        <div>
-                          <span className="text-[#747878] font-bold block mb-0.5">Tiền đặt cọc</span>
-                          <strong className="text-sm text-[#1c1b1b] font-extrabold">
-                            {formatVND(catalog.securityDeposit)}
                           </strong>
                         </div>
                       </div>

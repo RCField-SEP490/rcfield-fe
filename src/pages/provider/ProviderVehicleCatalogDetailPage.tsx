@@ -226,10 +226,6 @@ export function ProviderVehicleCatalogDetailPage() {
                     <strong className="text-[#1c1b1b] font-extrabold">{formatVND(catalog.hourlyRate)}/h</strong>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#444748] font-bold">Tiền đặt cọc:</span>
-                    <strong className="text-[#1c1b1b] font-extrabold">{formatVND(catalog.securityDeposit)}</strong>
-                  </div>
-                  <div className="flex justify-between text-sm">
                     <span className="text-[#444748] font-bold">Hệ số đền bù hỏng:</span>
                     <strong className="text-[#1c1b1b] font-extrabold">x{catalog.damageMultiplier}</strong>
                   </div>

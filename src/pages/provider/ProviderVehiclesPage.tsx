@@ -582,12 +582,6 @@ export function ProviderVehiclesPage() {
                             {formatVND(catalog.hourlyRate)}
                           </strong>
                         </div>
-                        <div>
-                          <span className="text-[#747878] font-bold block mb-0.5">Tiền đặt cọc</span>
-                          <strong className="text-sm text-[#1c1b1b] font-extrabold">
-                            {formatVND(catalog.securityDeposit)}
-                          </strong>
-                        </div>
                       </div>
 
                       {/* Card Bottom Row */}

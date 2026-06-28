@@ -13,7 +13,9 @@ import { useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
+import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { formatCurrency } from "@/shared/lib/format"
 import type { BackendCafe, CafeImage, CafeStatus, CafeUpsertBody } from "@/features/cafes/types"
 import { CafePricingTab } from "@/pages/provider/components/CafePricingTab"
 import { ChannelSettingsTab } from "@/pages/provider/components/ChannelSettingsTab"
@@ -49,6 +51,12 @@ export function ProviderCafeDetailPage() {
   const { data: cafe, isLoading, isError, refetch } = useQuery({
     queryKey: cafeQueryKeys.detail(cafeId),
     queryFn: () => cafeApi.getCafe(cafeId!),
+    enabled: !!cafeId,
+  })
+
+  const { data: kpi } = useQuery({
+    queryKey: ["provider-dashboard-kpi", cafeId],
+    queryFn: () => providerDashboardApi.getKpi({ cafeId }),
     enabled: !!cafeId,
   })
 
@@ -179,9 +187,27 @@ export function ProviderCafeDetailPage() {
         {tab === "info" && (
           <>
             <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <MetricCard label="Doanh thu tháng" value="--" helper="Chưa có API doanh thu" icon={<BarChart3 />} tone="neutral" />
-              <MetricCard label="Tỷ lệ lấp đầy" value="--" helper="Chưa có API vận hành" icon={<TrendingUp />} tone="neutral" />
-              <MetricCard label="Đội xe" value="--" helper="Chưa có API xe theo cơ sở" icon={<Car />} tone="neutral" />
+              <MetricCard
+                label="Doanh thu tháng"
+                value={kpi ? formatCurrency(kpi.totalRevenue) : "--"}
+                helper={kpi ? `${kpi.completedBookings} lượt hoàn tất` : "Đang tải..."}
+                icon={<BarChart3 />}
+                tone="neutral"
+              />
+              <MetricCard
+                label="Tỷ lệ lấp đầy"
+                value={kpi ? `${(kpi.vehicleUtilizationRate * 100).toFixed(0)}%` : "--"}
+                helper={kpi ? `${kpi.inUseVehicles} xe đang dùng` : "Đang tải..."}
+                icon={<TrendingUp />}
+                tone="neutral"
+              />
+              <MetricCard
+                label="Đội xe"
+                value={kpi ? `${kpi.totalVehicles} xe` : "--"}
+                helper={kpi ? `${kpi.availableVehicles} sẵn sàng · ${kpi.maintenanceVehicles} bảo trì` : "Đang tải..."}
+                icon={<Car />}
+                tone="neutral"
+              />
               <MetricCard
                 label="Trạng thái"
                 value={formatCafeStatus(cafe.status)}

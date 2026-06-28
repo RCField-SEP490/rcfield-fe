@@ -80,14 +80,13 @@ export function CustomerPolicyPage() {
 
               <h4>Quy trình thanh toán</h4>
               <p>
-                Sau khi xác nhận đặt lịch, hệ thống sẽ tạm giữ <strong>tiền cọc bảo đảm</strong> (security deposit)
-                qua cổng thanh toán. Các khoản phí còn lại (phí slot, phí thuê xe, F&B đặt trước) sẽ được
-                thu khi kết thúc phiên chơi.
+                Sau khi xác nhận đặt lịch, bạn thanh toán toàn bộ phí qua cổng thanh toán gồm phí slot,
+                phí thuê xe và F&B đặt trước (nếu có). Không yêu cầu tiền cọc.
               </p>
               <ul>
-                <li><strong>Tiền cọc</strong> — Tạm giữ ngay khi đặt lịch thành công. Tính bằng 15% giá trị thị trường của xe được thuê.</li>
-                <li><strong>Phí slot & phí thuê xe</strong> — Thanh toán khi check-out sau phiên chơi.</li>
-                <li><strong>F&B đặt trước</strong> — Thanh toán khi check-out, gộp vào 1 lần.</li>
+                <li><strong>Phí slot</strong> — Phí sử dụng sân, tính theo số người và khung giờ.</li>
+                <li><strong>Phí thuê xe</strong> — Tính theo giờ thực tế của phiên chơi (chỉ áp dụng chế độ RENTAL).</li>
+                <li><strong>F&B đặt trước</strong> — Gộp vào thanh toán ban đầu, xử lý khi check-out.</li>
               </ul>
 
               <h4>Thời hạn thanh toán</h4>

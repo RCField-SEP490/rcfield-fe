@@ -67,7 +67,6 @@ export function ProviderVehicleCatalogFormPage() {
   const [formName, setFormName] = useState("")
   const [formTier, setFormTier] = useState<VehicleTier>(VehicleTier.STANDARD)
   const [formHourlyRate, setFormHourlyRate] = useState<number>(20000)
-  const [formSecurityDeposit, setFormSecurityDeposit] = useState<number>(100000)
   const [formDamageMultiplier, setFormDamageMultiplier] = useState<number>(1.0)
   const [formImages, setFormImages] = useState<string[]>([])
   const [manualUrl, setManualUrl] = useState("")
@@ -79,7 +78,6 @@ export function ProviderVehicleCatalogFormPage() {
       setFormName(catalog.name)
       setFormTier(catalog.tier)
       setFormHourlyRate(catalog.hourlyRate)
-      setFormSecurityDeposit(catalog.securityDeposit)
       setFormDamageMultiplier(catalog.damageMultiplier)
       if (catalog.images && catalog.images.length > 0) {
         setFormImages(catalog.images.map((img: any) => img.url))
@@ -213,7 +211,7 @@ export function ProviderVehicleCatalogFormPage() {
       name: formName.trim(),
       tier: formTier,
       hourlyRate: Number(formHourlyRate),
-      securityDeposit: Number(formSecurityDeposit),
+      securityDeposit: 0,
       damageMultiplier: Number(formDamageMultiplier),
       compatibleTrackTypes: formTracks,
       images: formImages.map((url, idx) => ({ url, isCover: idx === 0 })),
@@ -357,21 +355,6 @@ export function ProviderVehicleCatalogFormPage() {
                 />
               </div>
 
-              {/* Security Deposit */}
-              <div className="space-y-1.5">
-                <Label htmlFor="form-deposit" className="text-sm font-bold text-[#1c1b1b]">
-                  Tiền đặt cọc (VND) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="form-deposit"
-                  type="number"
-                  min="0"
-                  value={formSecurityDeposit}
-                  onChange={(e) => setFormSecurityDeposit(Number(e.target.value))}
-                  required
-                  className="h-10 rounded-lg border-[#c4c7c8] font-semibold"
-                />
-              </div>
             </div>
 
             {/* Album Ảnh Dòng Xe */}

@@ -186,7 +186,6 @@ function getDefaultDateRange(period: RevenuePeriod): { from: string; to: string 
 const CHART_COLORS = {
   slotFee: "#ea580c",
   rentalFee: "#3b82f6",
-  securityDeposit: "#8b5cf6",
   fnbPreorder: "#10b981",
 }
 
@@ -530,18 +529,6 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     strokeOpacity={hoveredSeries === null || hoveredSeries === "fnbPreorder" ? 1 : 0.15}
                     fillOpacity={hoveredSeries === null || hoveredSeries === "fnbPreorder" ? 1 : 0.15}
                     onMouseEnter={() => setHoveredSeries("fnbPreorder")}
-                    onMouseLeave={() => setHoveredSeries(null)}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="securityDeposit"
-                    name="Đặt cọc"
-                    stroke={CHART_COLORS.securityDeposit}
-                    fill="url(#db-grad-securityDeposit)"
-                    strokeWidth={hoveredSeries === "securityDeposit" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "securityDeposit" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "securityDeposit" ? 1 : 0.15}
-                    onMouseEnter={() => setHoveredSeries("securityDeposit")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
                 </AreaChart>
