@@ -22,6 +22,8 @@ import {
   type PeakHourInput,
   type PricingRule,
 } from "@/features/pricing/api/pricing.api"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import type { BackendCafe, CafeUpsertBody } from "@/features/cafes/types"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -36,7 +38,7 @@ const YEAR_OPTIONS = [2025, 2026, 2027]
 
 // ── CafePricingTab ─────────────────────────────────────────────────────────────
 
-export function CafePricingTab({ cafeId }: { cafeId: string }) {
+export function CafePricingTab({ cafeId, cafe }: { cafeId: string; cafe: BackendCafe }) {
   const queryClient = useQueryClient()
   const [holidayYear, setHolidayYear] = useState(new Date().getFullYear())
 
@@ -65,6 +67,7 @@ export function CafePricingTab({ cafeId }: { cafeId: string }) {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
       <div className="space-y-4 lg:col-span-7">
+        <SlotSettingsPanel cafeId={cafeId} cafe={cafe} onSaved={invalidatePricing} />
         <BasePricePanel basePrice={basePrice} />
         <WeekendRulePanel
           cafeId={cafeId}
@@ -96,12 +99,174 @@ export function CafePricingTab({ cafeId }: { cafeId: string }) {
   )
 }
 
+// ── Slot Settings Panel ────────────────────────────────────────────────────────
+
+function SlotSettingsPanel({
+  cafeId,
+  cafe,
+  onSaved,
+}: {
+  cafeId: string
+  cafe: BackendCafe
+  onSaved: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [slotFee, setSlotFee] = useState(Number(cafe.slotFeeRate))
+  const [slotDuration, setSlotDuration] = useState(cafe.slotDurationMinutes)
+  const [bookingNotice, setBookingNotice] = useState(cafe.minBookingNoticeMinutes)
+  const [isEditing, setIsEditing] = useState(false)
+
+  useEffect(() => {
+    setSlotFee(Number(cafe.slotFeeRate))
+    setSlotDuration(cafe.slotDurationMinutes)
+    setBookingNotice(cafe.minBookingNoticeMinutes)
+  }, [cafe])
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      const body: CafeUpsertBody = {
+        name: cafe.name,
+        description: cafe.description ?? null,
+        phone: cafe.phone ?? null,
+        cover_image_url: cafe.coverImageUrl ?? null,
+        address: cafe.address,
+        district: cafe.district,
+        city: cafe.city,
+        latitude: cafe.latitude === null ? null : Number(cafe.latitude),
+        longitude: cafe.longitude === null ? null : Number(cafe.longitude),
+        operating_hours: cafe.operatingHours,
+        track_types: cafe.trackTypes.map((t) => t.id),
+        slot_fee_rate: slotFee,
+        slot_duration_minutes: slotDuration,
+        max_concurrent_bookings: cafe.maxConcurrentBookings,
+        min_booking_notice_minutes: bookingNotice,
+        byoc_capacity: cafe.byocCapacity,
+        amenity_ids: cafe.amenityIds ?? [],
+        rules: cafe.rules ?? [],
+      }
+      return cafeApi.updateCafe(cafeId, body)
+    },
+    onSuccess: async () => {
+      toast.success("Đã cập nhật cài đặt slot")
+      setIsEditing(false)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: cafeQueryKeys.detail(cafeId) }),
+        onSaved(),
+      ])
+    },
+    onError: () => toast.error("Cập nhật thất bại"),
+  })
+
+  const handleCancel = () => {
+    setSlotFee(Number(cafe.slotFeeRate))
+    setSlotDuration(cafe.slotDurationMinutes)
+    setBookingNotice(cafe.minBookingNoticeMinutes)
+    setIsEditing(false)
+  }
+
+  return (
+    <Panel>
+      <div className="flex items-center justify-between">
+        <PanelTitle title="Cài đặt slot" subtitle="Giá, thời lượng và thời gian đặt trước" />
+        {!isEditing && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 rounded-lg border-[#c4c7c8] text-sm"
+            onClick={() => setIsEditing(true)}
+          >
+            <Pencil className="size-3.5" />
+            Chỉnh sửa
+          </Button>
+        )}
+      </div>
+
+      {!isEditing ? (
+        <div className="mt-3 space-y-2">
+          <SlotInfoRow label="Phí slot" value={`${slotFee.toLocaleString("vi-VN")}đ / slot`} />
+          <SlotInfoRow label="Thời lượng slot" value={`${slotDuration} phút`} />
+          <SlotInfoRow label="Đặt trước tối thiểu" value={`${bookingNotice} phút`} />
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-[#5c5a5a]">Phí slot (VNĐ)</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={slotFee === 0 ? "" : slotFee.toLocaleString("vi-VN")}
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "")
+                  setSlotFee(digits === "" ? 0 : Number(digits))
+                }}
+                className="rounded-lg border-[#c4c7c8]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-[#5c5a5a]">Thời lượng slot (phút)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={1440}
+                value={slotDuration}
+                onChange={(e) => setSlotDuration(Number(e.target.value) || 60)}
+                className="rounded-lg border-[#c4c7c8]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-[#5c5a5a]">Báo trước (phút)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={bookingNotice}
+                onChange={(e) => setBookingNotice(Number(e.target.value) || 0)}
+                className="rounded-lg border-[#c4c7c8]"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+              onClick={() => updateMutation.mutate()}
+              disabled={updateMutation.isPending}
+            >
+              <Check className="size-3.5 mr-1" />
+              Lưu
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg border-[#c4c7c8]"
+              onClick={handleCancel}
+              disabled={updateMutation.isPending}
+            >
+              <X className="size-3.5 mr-1" />
+              Hủy
+            </Button>
+          </div>
+        </div>
+      )}
+    </Panel>
+  )
+}
+
+function SlotInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg bg-[#f8f5f4] px-4 py-2.5">
+      <span className="text-sm text-[#5c5a5a]">{label}</span>
+      <span className="text-sm font-semibold text-[#1c1b1b]">{value}</span>
+    </div>
+  )
+}
+
 // ── Base Price Panel ───────────────────────────────────────────────────────────
 
 function BasePricePanel({ basePrice }: { basePrice: number }) {
   return (
     <Panel>
-      <PanelTitle title="Giá cơ bản" subtitle="Được cấu hình trong phần thông tin cơ sở" />
+      <PanelTitle title="Giá cơ bản hiệu lực" subtitle="Phí slot × hệ số ngày/giờ (tham khảo)" />
       <div className="flex items-center gap-3 rounded-lg bg-[#f8f5f4] px-4 py-3">
         <Tag className="size-5 text-[#8a8685]" />
         <span className="text-lg font-bold text-[#1c1b1b]">

@@ -254,7 +254,7 @@ export function ProviderCafeDetailPage() {
               <TrackConfigManager cafeId={cafe.id} />
             </section>
           )}
-          {tab === "pricing" && <CafePricingTab cafeId={cafe.id} />}
+          {tab === "pricing" && <CafePricingTab cafeId={cafe.id} cafe={cafe} />}
           {tab === "catalogs" && (
             <ProviderCafeVehiclesSection cafeId={cafe.id} />
           )}

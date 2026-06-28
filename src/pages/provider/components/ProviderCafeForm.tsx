@@ -361,12 +361,6 @@ export function ProviderCafeForm({
             }}
           />
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <NumberField label="Phí slot (VNĐ)" tooltip="Giá thuê sân cho mỗi slot thời gian, chưa tính phí thuê xe. Khách thanh toán trước khi vào sân" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} formatted />
-            <NumberField label="Thời lượng slot (phút)" tooltip="Độ dài mỗi slot đặt lịch. VD: 60 = mỗi lượt chạy 1 giờ. Ảnh hưởng đến lưới giờ hiển thị cho khách" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} max={1440} />
-            <NumberField label="Báo trước (phút)" tooltip="Thời gian tối thiểu khách phải đặt trước khi slot bắt đầu. VD: 30 = khách không thể đặt muộn hơn 30 phút trước giờ chạy" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />
-          </div>
-
           <div className="rounded-lg border border-[#e5e2e1] p-3">
             <div className="mb-3">
               <FieldLabel tooltip="Loại đường đua cơ sở hỗ trợ. Ảnh hưởng đến bộ lọc tìm kiếm — khách có thể lọc cơ sở theo loại track mong muốn">Loại track</FieldLabel>

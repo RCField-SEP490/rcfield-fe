@@ -22,6 +22,7 @@ interface TrackSelectionStepProps {
   selectedTrackConfig: TrackConfig | null
   onSelectTrack: (config: TrackConfig) => void
   slotDurationMinutes: number
+  minBookingNoticeMinutes?: number
   openHour?: number
   closeHour?: number
   playMode: PlayMode
@@ -43,6 +44,7 @@ export function TrackSelectionStep({
   selectedTrackConfig,
   onSelectTrack,
   slotDurationMinutes,
+  minBookingNoticeMinutes = 0,
   openHour = 8,
   closeHour = 22,
   playMode,
@@ -112,6 +114,7 @@ export function TrackSelectionStep({
           selectedSlotEnd={selectedSlotEnd}
           setSelectedSlotEnd={setSelectedSlotEnd}
           slotDurationMinutes={slotDurationMinutes}
+          minBookingNoticeMinutes={minBookingNoticeMinutes}
           openHour={openHour}
           closeHour={closeHour}
           playMode={playMode}
@@ -143,6 +146,7 @@ function SlotPicker({
   selectedSlotEnd,
   setSelectedSlotEnd,
   slotDurationMinutes,
+  minBookingNoticeMinutes = 0,
   openHour,
   closeHour,
   playMode,
@@ -157,6 +161,7 @@ function SlotPicker({
   selectedSlotEnd: string | null
   setSelectedSlotEnd: (s: string | null) => void
   slotDurationMinutes: number
+  minBookingNoticeMinutes?: number
   openHour: number
   closeHour: number
   playMode: PlayMode
@@ -252,6 +257,7 @@ function SlotPicker({
           selectedSlotEndId={selectedSlotEnd ?? undefined}
           onSelectSlot={setSelectedSlot}
           slotDurationMinutes={slotDurationMinutes}
+          minBookingNoticeMinutes={minBookingNoticeMinutes}
           openHour={openHour}
           closeHour={closeHour}
           date={date}

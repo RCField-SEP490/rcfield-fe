@@ -372,6 +372,7 @@ export function CreateBookingPage() {
               selectedTrackConfig={selectedTrackConfig}
               onSelectTrack={setSelectedTrackConfig}
               slotDurationMinutes={cafe.slotDurationMinutes ?? 60}
+              minBookingNoticeMinutes={cafe.minBookingNoticeMinutes ?? 0}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
               onPlayModeChange={handlePlayModeChange}
               effectivePricePerHour={isMockId ? undefined : effectivePricePerHour}

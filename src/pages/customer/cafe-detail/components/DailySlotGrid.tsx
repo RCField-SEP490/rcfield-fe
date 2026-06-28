@@ -27,6 +27,7 @@ type DailySlotGridProps = {
   closeHour?: number
   date?: string
   onSelectRange?: (slotStart: string, slotEnd: string) => void
+  minBookingNoticeMinutes?: number
 }
 
 function slotAvailabilityLabel(slot: DailySlot): string {
@@ -55,6 +56,7 @@ export function DailySlotGrid({
   closeHour = DEFAULT_CLOSE_HOUR,
   date,
   onSelectRange,
+  minBookingNoticeMinutes = 0,
 }: DailySlotGridProps) {
   const today = new Date().toISOString().slice(0, 10)
   const isToday = date === today
@@ -157,7 +159,8 @@ export function DailySlotGrid({
           const isPast = isToday && (() => {
             const now = new Date()
             const [hh, mm] = slot.startTime.split(":").map(Number)
-            return hh * 60 + mm <= now.getHours() * 60 + now.getMinutes()
+            const cutoff = now.getHours() * 60 + now.getMinutes() + minBookingNoticeMinutes
+            return hh * 60 + mm <= cutoff
           })()
           const isBooked = slot.status === "booked" || slot.status === "closed" || isPast
           const isSelected = isInSelectedRange(slot.id)

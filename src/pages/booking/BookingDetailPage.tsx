@@ -159,6 +159,10 @@ export function BookingDetailPage() {
     ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
     .flatMap((ins) => ins.photos) ?? []
 
+  const checkOutPhotos = sessionDetail?.inspections
+    ?.filter((ins) => ins.type === "CHECK_OUT" && ins.photos.length > 0)
+    .flatMap((ins) => ins.photos) ?? []
+
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [totalDuration, setTotalDuration] = useState(1)
 
@@ -718,6 +722,42 @@ export function BookingDetailPage() {
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3">
                     {checkInPhotos.map((photo, idx) => (
+                      <div key={idx} className="overflow-hidden rounded-xl border border-border">
+                        <img
+                          src={photo.url}
+                          alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                          className="w-full aspect-video object-cover"
+                        />
+                        <div className="bg-muted/50 px-2.5 py-1.5">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                            {DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                          </p>
+                          {photo.notes && (
+                            <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Check-out return photos */}
+            {checkOutPhotos.length > 0 && (
+              <Card className="rounded-xl shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Camera className="h-5 w-5" />
+                    Ảnh trả xe (Check-out)
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Tình trạng xe sau khi phiên chơi kết thúc — làm căn cứ đối chiếu hư hỏng (nếu có).
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    {checkOutPhotos.map((photo, idx) => (
                       <div key={idx} className="overflow-hidden rounded-xl border border-border">
                         <img
                           src={photo.url}
