@@ -40,7 +40,7 @@ export function AdminProvidersPage() {
   const [suspendTarget, setSuspendTarget] = useState<ProviderListItem | null>(null)
   const [reason, setReason] = useState("")
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-providers", statusFilter, page],
     queryFn: () =>
       subscriptionApi.listProviders({
@@ -111,6 +111,8 @@ export function AdminProvidersPage() {
 
         {isLoading ? (
           <div className="py-16 text-center text-sm text-slate-400">Đang tải...</div>
+        ) : isError ? (
+          <div className="py-16 text-center text-sm text-red-500">Không thể tải danh sách provider. Vui lòng thử lại.</div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-slate-100">
             <table className="w-full text-sm">

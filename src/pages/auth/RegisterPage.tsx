@@ -25,6 +25,7 @@ import { toast } from "sonner"
 import { registerWithPassword } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
+import { routePaths } from "@/app/router/route-paths"
 
 // Zod Schema for Registration validation
 const registerSchema = z.object({
@@ -92,6 +93,10 @@ export function RegisterPage() {
   })
 
   const onSubmit = async (data: RegisterFormValues) => {
+    if (selectedRole === "provider") {
+      navigate(routePaths.providerRegister)
+      return
+    }
     setIsLoading(true)
     try {
       const auth = await registerWithPassword({
@@ -416,6 +421,11 @@ export function RegisterPage() {
                 <>
                   <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Đang thiết lập tài khoản...
+                </>
+              ) : selectedRole === "provider" ? (
+                <>
+                  Tiếp tục đăng ký Provider
+                  <Sparkles className="h-4 w-4 text-orange-400 group-hover:scale-110 transition-transform" />
                 </>
               ) : (
                 <>
