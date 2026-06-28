@@ -6,6 +6,7 @@ import type {
   BranchPerformanceItem,
   RecentBookingItem,
   RevenuePeriod,
+  ProviderTopStats,
 } from "../types/dashboard.types"
 
 export const providerDashboardApi = {
@@ -66,6 +67,21 @@ export const providerDashboardApi = {
     const res = await api.get<{ success: boolean; data: RecentBookingItem[] }>("/v1/provider/dashboard/recent-bookings", {
       params: {
         limit: params.limit || undefined,
+      },
+    })
+    return res.data.data
+  },
+
+  getTopStats: async (params: {
+    from?: string
+    to?: string
+    cafeId?: string | null
+  }): Promise<ProviderTopStats> => {
+    const res = await api.get<{ success: boolean; data: ProviderTopStats }>("/v1/provider/dashboard/top-stats", {
+      params: {
+        from: params.from || undefined,
+        to: params.to || undefined,
+        cafeId: params.cafeId || undefined,
       },
     })
     return res.data.data

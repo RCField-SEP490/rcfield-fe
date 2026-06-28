@@ -18,7 +18,8 @@ export interface RevenueTrendItem {
   slotFee: number;
   rentalFee: number;
   fnbPreorder: number;
-  securityDeposit: number;
+  extensionFee: number;
+  damageCharge: number;
   total: number;
 }
 
@@ -43,4 +44,44 @@ export interface RecentBookingItem {
   slotStart: string;
   status: string;
   totalCharged: number;
+}
+
+export interface TopFnbItem {
+  menuItemId: string;
+  itemName: string;
+  cafeName: string;
+  totalQuantity: number;
+  totalRevenue: number;
+}
+
+export interface TopTrackItem {
+  trackTypeId: string;
+  trackTypeName: string;
+  trackTypeCode: string;
+  cafeName: string;
+  bookingCount: number;
+}
+
+export interface TopCustomerItem {
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  bookingCount: number;
+  totalSpent: number;
+}
+
+export interface TopVehicleItem {
+  catalogId: string;
+  catalogName: string;
+  catalogTier: string;
+  cafeName: string;
+  bookingCount: number;
+  rentalRevenue: number;
+}
+
+export interface ProviderTopStats {
+  topFnb: TopFnbItem[];
+  topTracks: TopTrackItem[];
+  topCustomers: TopCustomerItem[];
+  topVehicles: TopVehicleItem[];
 }

@@ -5,7 +5,7 @@ import { useSearchParams, Navigate } from "react-router"
 export function ProviderVehiclesRedirect() {
   const [searchParams] = useSearchParams()
   const queryCafeId = searchParams.get("cafeId") || ""
-  const tab = searchParams.get("tab") || "vehicles"
+  const tab = searchParams.get("tab") || "catalogs"
 
   const { data: cafesData, isLoading } = useQuery({
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),

@@ -40,24 +40,33 @@ export function useProviderDashboard({ cafeId, period, from, to }: UseProviderDa
     staleTime: 10000,
   })
 
+  const topStatsQuery = useQuery({
+    queryKey: ["provider-dashboard", "top-stats", { cafeId, from, to }],
+    queryFn: () => providerDashboardApi.getTopStats({ from, to, cafeId }),
+    staleTime: 15000,
+  })
+
   return {
     kpi: kpiQuery.data,
     trend: trendQuery.data ?? [],
     breakdown: breakdownQuery.data ?? [],
     branches: branchesQuery.data ?? [],
     recent: recentQuery.data ?? [],
+    topStats: topStatsQuery.data,
     isLoading:
       kpiQuery.isLoading ||
       trendQuery.isLoading ||
       breakdownQuery.isLoading ||
       branchesQuery.isLoading ||
-      recentQuery.isLoading,
+      recentQuery.isLoading ||
+      topStatsQuery.isLoading,
     refetch: () => {
       kpiQuery.refetch()
       trendQuery.refetch()
       breakdownQuery.refetch()
       branchesQuery.refetch()
       recentQuery.refetch()
+      topStatsQuery.refetch()
     },
   }
 }
