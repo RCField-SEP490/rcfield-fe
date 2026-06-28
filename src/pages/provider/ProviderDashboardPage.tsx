@@ -188,12 +188,11 @@ const CHART_COLORS = {
   slotFee: "#ea580c",
   rentalFee: "#3b82f6",
   fnbPreorder: "#10b981",
-  securityDeposit: "#8b5cf6",
   extensionFee: "#f59e0b",
   damageCharge: "#ef4444",
 }
 
-const PIE_COLORS = ["#ea580c", "#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444"]
+const PIE_COLORS = ["#ea580c", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"]
 
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 
@@ -388,13 +387,13 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
       />
 
       {/* Thanh bộ lọc */}
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Building2 className="size-4 text-[#747878]" />
           <select
             value={selectedCafeId ?? ""}
             onChange={(e) => setSelectedCafeId(e.target.value || null)}
-            className="rounded-lg border border-[#c4c7c8] bg-white px-3 py-1.5 text-sm font-semibold text-[#1c1b1b] focus:border-orange-400 focus:outline-none"
+            className="w-full sm:w-auto rounded-lg border border-[#c4c7c8] bg-white px-3 py-1.5 text-sm font-semibold text-[#1c1b1b] focus:border-orange-400 focus:outline-none"
           >
             <option value="">Tất cả chi nhánh</option>
             {cafes.map((c) => (
@@ -405,14 +404,14 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border border-[#c4c7c8] bg-[#f1edec] p-0.5">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex rounded-lg border border-[#c4c7c8] bg-[#f1edec] p-0.5 w-full sm:w-auto justify-between sm:justify-start">
             {(["daily", "weekly", "monthly"] as RevenuePeriod[]).map((p) => (
               <button
                 key={p}
                 onClick={() => handlePeriodChange(p)}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-bold transition-all",
+                  "flex-1 sm:flex-none text-center rounded-md px-3 py-1.5 text-xs font-bold transition-all",
                   period === p && !customFrom ? "bg-white text-[#1c1b1b] shadow-sm" : "text-[#5d5f5f] hover:text-[#1c1b1b]"
                 )}
               >
@@ -421,22 +420,22 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             ))}
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-lg border border-[#c4c7c8] bg-white px-3 py-1">
-            <CalendarRange className="size-3.5 text-[#747878]" />
+          <div className="flex flex-1 sm:flex-none items-center justify-between sm:justify-start gap-1.5 rounded-lg border border-[#c4c7c8] bg-white px-3 py-1.5 w-full sm:w-auto">
+            <CalendarRange className="size-3.5 text-[#747878] shrink-0" />
             <input
               type="date"
               value={customFrom ? customFrom.substring(0, 10) : ""}
               max={customTo ? customTo.substring(0, 10) : undefined}
               onChange={(e) => handleFromChange(e.target.value)}
-              className="text-xs font-semibold text-[#1c1b1b] focus:outline-none"
+              className="text-xs font-semibold text-[#1c1b1b] focus:outline-none bg-transparent w-full"
             />
-            <span className="text-xs text-[#747878]">–</span>
+            <span className="text-xs text-[#747878] shrink-0">–</span>
             <input
               type="date"
               value={customTo ? customTo.substring(0, 10) : ""}
               min={customFrom ? customFrom.substring(0, 10) : undefined}
               onChange={(e) => handleToChange(e.target.value)}
-              className="text-xs font-semibold text-[#1c1b1b] focus:outline-none"
+              className="text-xs font-semibold text-[#1c1b1b] focus:outline-none bg-transparent w-full"
             />
           </div>
 
@@ -445,7 +444,7 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
               variant="outline"
               size="icon"
               onClick={handleClearDateRange}
-              className="h-9 w-9 rounded-lg border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-bold"
+              className="h-9 w-9 rounded-lg border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-bold shrink-0"
               title="Xóa bộ lọc ngày"
             >
               <X className="size-4" />
@@ -455,11 +454,11 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
           <Button
             variant="outline"
             onClick={onResetOnboarding}
-            className="h-9 gap-1.5 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 text-xs font-bold"
+            className="h-9 gap-1.5 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 text-xs font-bold flex-1 sm:flex-none justify-center"
           >
             Xem Setup
           </Button>
-          <Button variant="outline" className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold">
+          <Button variant="outline" className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold flex-1 sm:flex-none justify-center">
             <Download className="size-3.5" />
             Xuất báo cáo
           </Button>
@@ -588,18 +587,7 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     onMouseEnter={() => setHoveredSeries("fnbPreorder")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="securityDeposit"
-                    name="Đặt cọc"
-                    stroke={CHART_COLORS.securityDeposit}
-                    fill="url(#db-grad-securityDeposit)"
-                    strokeWidth={hoveredSeries === "securityDeposit" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "securityDeposit" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "securityDeposit" ? 1 : 0.15}
-                    onMouseEnter={() => setHoveredSeries("securityDeposit")}
-                    onMouseLeave={() => setHoveredSeries(null)}
-                  />
+
                   <Area
                     type="monotone"
                     dataKey="extensionFee"
