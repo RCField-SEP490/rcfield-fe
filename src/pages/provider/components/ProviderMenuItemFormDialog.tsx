@@ -14,6 +14,7 @@ type ProviderMenuItemFormDialogProps = {
   open: boolean
   item: MenuItem | null
   isPending: boolean
+  categoryOptions?: string[]
   onOpenChange: (open: boolean) => void
   onSubmit: (values: MenuUpsertBody) => Promise<void>
 }
@@ -31,6 +32,7 @@ export function ProviderMenuItemFormDialog({
   open,
   item,
   isPending,
+  categoryOptions = [],
   onOpenChange,
   onSubmit,
 }: ProviderMenuItemFormDialogProps) {
@@ -94,7 +96,11 @@ export function ProviderMenuItemFormDialog({
             <div className="grid gap-3 sm:grid-cols-2">
               <TextField label="Tên món" value={values.name} onChange={(value) => setField("name", value)} required />
               <NumberField label="Giá bán" value={values.price} onChange={(value) => setField("price", value ?? 0)} min={0} />
-              <TextField label="Category" value={values.category ?? ""} onChange={(value) => setField("category", value)} />
+              <CategoryField
+                value={values.category ?? ""}
+                onChange={(value) => setField("category", value)}
+                suggestions={categoryOptions}
+              />
               <TextField label="Image URL" value={values.image_url ?? ""} onChange={(value) => setField("image_url", value)} />
             </div>
 
@@ -167,6 +173,35 @@ function TextField({
     <label className="block space-y-2">
       <span className="text-sm font-bold text-[#1c1b1b]">{label}</span>
       <Input value={value} onChange={(event) => onChange(event.target.value)} required={required} className="rounded-lg border-[#c4c7c8]" />
+    </label>
+  )
+}
+
+function CategoryField({
+  value,
+  onChange,
+  suggestions,
+}: {
+  value: string
+  onChange: (value: string) => void
+  suggestions: string[]
+}) {
+  const listId = "menu-category-suggestions"
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm font-bold text-[#1c1b1b]">Danh mục</span>
+      <Input
+        value={value}
+        list={listId}
+        placeholder="VD: Đồ uống, Đồ ăn, Tráng miệng..."
+        onChange={(event) => onChange(event.target.value)}
+        className="rounded-lg border-[#c4c7c8]"
+      />
+      <datalist id={listId}>
+        {suggestions.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
     </label>
   )
 }

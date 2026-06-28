@@ -25,7 +25,6 @@ import {
   Compass,
   DollarSign,
   Coffee,
-  Tag,
   BadgePercent,
   Car,
   Package,
@@ -95,9 +94,15 @@ function restoreProviderSidebarScroll(element: HTMLElement | null) {
 export function ProviderShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { cafeId } = useParams()
+  const { cafeId: paramCafeId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get("tab") || "info"
+
+  // cafeId may be in path param (cafe page) or query param (vehicle/catalog child pages)
+  const effectiveCafeId = paramCafeId || searchParams.get("cafeId") || ""
+  const isVehicleChildPage =
+    location.pathname.startsWith("/provider/vehicle-catalogs") ||
+    location.pathname.startsWith("/provider/vehicles")
+  const tab = isVehicleChildPage ? "catalogs" : searchParams.get("tab") || "info"
   const [openGroups, setOpenGroups] = useState({
     config: true,
     operations: true,
@@ -174,7 +179,20 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   }
 
   const renderSubMenu = (isMobile: boolean) => {
-    if (!cafeId || location.pathname !== `/provider/cafes/${cafeId}`) return null
+    const isOnCafeSubPage =
+      effectiveCafeId &&
+      (location.pathname === `/provider/cafes/${effectiveCafeId}` || isVehicleChildPage)
+    if (!isOnCafeSubPage) return null
+
+    const goToTab = (tabName: string) => {
+      if (location.pathname === `/provider/cafes/${effectiveCafeId}`) {
+        setSearchParams({ tab: tabName })
+      } else {
+        navigate(`/provider/cafes/${effectiveCafeId}?tab=${tabName}`)
+      }
+      if (isMobile) setMobileMenuOpen(false)
+    }
+
     return (
       <div className="mt-1.5 ml-6 pl-2 border-l border-[#e5e2e1] space-y-3">
         {/* Nhóm 1: Thiết lập chung */}
@@ -194,10 +212,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             <div className="mt-1 ml-1 space-y-0.5">
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "info" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("info")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "info"
@@ -210,10 +225,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "widget" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("widget")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "widget"
@@ -226,10 +238,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "channel" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("channel")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "channel"
@@ -261,10 +270,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             <div className="mt-1 ml-1 space-y-0.5">
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "tracks" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("tracks")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "tracks"
@@ -277,10 +283,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "pricing" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("pricing")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "pricing"
@@ -293,26 +296,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "vehicles" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
-                  tab === "vehicles"
-                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
-                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
-                )}
-              >
-                <Car className="size-3.5" />
-                Danh sách xe
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "catalogs" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("catalogs")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "catalogs"
@@ -320,8 +304,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                     : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
                 )}
               >
-                <Tag className="size-3.5" />
-                Danh mục mẫu xe
+                <Car className="size-3.5" />
+                Đội xe
               </button>
             </div>
           )}
@@ -344,10 +328,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             <div className="mt-1 ml-1 space-y-0.5">
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "menu" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("menu")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "menu"
@@ -360,10 +341,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "packages" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("packages")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "packages"
@@ -376,10 +354,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchParams({ tab: "promotions" })
-                  if (isMobile) setMobileMenuOpen(false)
-                }}
+                onClick={() => goToTab("promotions")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
                   tab === "promotions"

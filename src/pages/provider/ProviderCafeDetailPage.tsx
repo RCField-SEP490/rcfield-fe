@@ -112,7 +112,6 @@ export function ProviderCafeDetailPage() {
     | "info"
     | "tracks"
     | "widget"
-    | "vehicles"
     | "catalogs"
     | "pricing"
     | "menu"
@@ -190,14 +189,14 @@ export function ProviderCafeDetailPage() {
               <MetricCard
                 label="Doanh thu tháng"
                 value={kpi ? formatCurrency(kpi.totalRevenue) : "--"}
-                helper={kpi ? `${kpi.completedBookings} lượt hoàn tất` : "Đang tải..."}
+                helper={kpi ? `${kpi.totalBookings} lượt đặt lịch` : "Đang tải..."}
                 icon={<BarChart3 />}
                 tone="neutral"
               />
               <MetricCard
                 label="Tỷ lệ lấp đầy"
-                value={kpi ? `${(kpi.vehicleUtilizationRate * 100).toFixed(0)}%` : "--"}
-                helper={kpi ? `${kpi.inUseVehicles} xe đang dùng` : "Đang tải..."}
+                value={kpi ? `${kpi.totalBookings > 0 ? ((kpi.completedBookings / kpi.totalBookings) * 100).toFixed(0) : 0}%` : "--"}
+                helper={kpi ? `${kpi.completedBookings}/${kpi.totalBookings} lượt hoàn tất` : "Đang tải..."}
                 icon={<TrendingUp />}
                 tone="neutral"
               />
@@ -256,11 +255,8 @@ export function ProviderCafeDetailPage() {
             </section>
           )}
           {tab === "pricing" && <CafePricingTab cafeId={cafe.id} />}
-          {tab === "vehicles" && (
-            <ProviderCafeVehiclesSection cafeId={cafe.id} tab="vehicles" />
-          )}
           {tab === "catalogs" && (
-            <ProviderCafeVehiclesSection cafeId={cafe.id} tab="catalogs" />
+            <ProviderCafeVehiclesSection cafeId={cafe.id} />
           )}
           {tab === "widget" && (
             <div className="space-y-4">

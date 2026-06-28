@@ -76,8 +76,8 @@ export function ProviderVehicleDetailPage() {
   const fromPage = searchParams.get("from") || ""
 
   const handleBack = () => {
-    if (fromPage === "vehicles") {
-      navigate(`/provider/cafes/${selectedCafeId}?tab=vehicles`)
+    if (fromPage === "vehicles" || fromPage === "catalogs") {
+      navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)
     } else {
       navigate(`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalogId)}?cafeId=${selectedCafeId}`)
     }
@@ -195,7 +195,7 @@ export function ProviderVehicleDetailPage() {
             Quay lại danh sách
           </Button>
         </div>
-        <form onSubmit={handleFormSubmit} className="rounded-xl border border-[#c4c7c8] bg-white shadow-sm overflow-hidden p-6 space-y-6">
+        <form onSubmit={handleFormSubmit} className="rounded-xl border border-[#c4c7c8] bg-white shadow-sm p-6 space-y-6">
           <div className="flex items-center gap-4 pb-4 border-b border-[#e5e2e1]">
             <div className="flex size-12 items-center justify-center rounded-xl bg-[#f6f3f2] text-[#444748]">
               <Car className="size-6" />
@@ -209,7 +209,7 @@ export function ProviderVehicleDetailPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="edit-unit-color" className="text-sm font-bold text-[#1c1b1b]">
                   Màu sắc xe
@@ -248,19 +248,19 @@ export function ProviderVehicleDetailPage() {
               <Label htmlFor="edit-unit-maintenance" className="text-sm font-bold text-[#1c1b1b]">
                 Ngày bảo trì gần nhất
               </Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Input
                   id="edit-unit-maintenance"
                   type="date"
                   value={formLastMaintenance}
                   onChange={(e) => setFormLastMaintenance(e.target.value)}
-                  className="h-10 rounded-lg border-[#c4c7c8] flex-1"
+                  className="h-10 rounded-lg border-[#c4c7c8] flex-1 min-w-0"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleSetTodayMaintenance}
-                  className="h-10 rounded-lg border-[#c4c7c8] font-bold"
+                  className="h-10 shrink-0 rounded-lg border-[#c4c7c8] font-bold"
                 >
                   Đặt hôm nay
                 </Button>
@@ -269,22 +269,49 @@ export function ProviderVehicleDetailPage() {
 
             {/* Distinctive Identification Image */}
             <div className="space-y-2">
-              <Label htmlFor="edit-unit-image" className="text-sm font-bold text-[#1c1b1b]">
+              <Label className="text-sm font-bold text-[#1c1b1b]">
                 Hình ảnh nhận diện xe (Đặc điểm riêng)
               </Label>
-              <div className="grid gap-3 sm:grid-cols-[1fr_120px] sm:items-center">
-                <Input
-                  id="edit-unit-image"
-                  placeholder="Nhập link ảnh nhận diện hoặc tải lên từ thiết bị"
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  className="h-10 rounded-lg border-[#c4c7c8]"
-                />
-                <label className="block cursor-pointer rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] px-3 py-2 text-center text-xs font-semibold text-[#444748] hover:bg-[#f6f3f2]">
-                  <span className="flex items-center justify-center gap-1.5">
-                    <ImagePlus className="size-4 text-orange-600" />
-                    {uploading ? "Đang tải..." : "Tải ảnh"}
-                  </span>
+              {formImageUrl ? (
+                <div className="flex items-center gap-3 rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-3">
+                  <img
+                    src={sanitizeImageUrl(formImageUrl)!}
+                    alt=""
+                    className="size-16 shrink-0 rounded-lg object-cover border border-[#e5e2e1]"
+                  />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <p className="text-xs font-semibold text-zinc-500 truncate">
+                      {formImageUrl.split("/").pop() || formImageUrl}
+                    </p>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[#c4c7c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#444748] hover:bg-[#f6f3f2]">
+                      <ImagePlus className="size-3.5 text-orange-600" />
+                      {uploading ? "Đang tải..." : "Đổi ảnh"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={uploading}
+                        className="sr-only"
+                        onChange={(event) => void handleUpload(event.target.files?.[0])}
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormImageUrl("")}
+                    className="text-xs font-bold text-red-500 hover:text-red-700 shrink-0"
+                  >
+                    Xóa
+                  </button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-6 text-center hover:bg-[#f6f3f2]">
+                  <ImagePlus className="size-8 text-orange-400" />
+                  <div>
+                    <p className="text-sm font-bold text-[#444748]">
+                      {uploading ? "Đang tải lên..." : "Nhấn để tải ảnh nhận diện xe"}
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, WEBP · tối đa 10MB</p>
+                  </div>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -293,13 +320,7 @@ export function ProviderVehicleDetailPage() {
                     onChange={(event) => void handleUpload(event.target.files?.[0])}
                   />
                 </label>
-              </div>
-              {formImageUrl ? (
-                <div className="flex items-center gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-2 mt-1 min-w-0 overflow-hidden">
-                  <img src={sanitizeImageUrl(formImageUrl)!} alt="" className="size-12 shrink-0 rounded-md object-cover" />
-                  <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{formImageUrl}</span>
-                </div>
-              ) : null}
+              )}
             </div>
 
             <div className="space-y-1.5">

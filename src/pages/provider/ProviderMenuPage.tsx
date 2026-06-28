@@ -169,7 +169,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
           }
         />
 
-        <div className={cn("mb-5 grid gap-3", propCafeId ? "lg:grid-cols-2" : "lg:grid-cols-3")}>
+        <div className={cn("mb-5 gap-3", propCafeId ? "flex flex-wrap" : "grid lg:grid-cols-3")}>
           {!propCafeId && (
             <Select value={selectedCafeId} onValueChange={setSelectedCafeId} disabled={cafesQuery.isLoading || cafes.length === 0}>
               <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
@@ -186,7 +186,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
           )}
 
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
+            <SelectTrigger className="h-11 min-w-[160px] rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -200,7 +200,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
           </Select>
 
           <Select value={selectedAvailability} onValueChange={(value) => setSelectedAvailability(value as typeof selectedAvailability)}>
-            <SelectTrigger className="h-11 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
+            <SelectTrigger className="h-11 min-w-[160px] rounded-lg border-[#c4c7c8] bg-[#f6f3f2] font-semibold">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -301,6 +301,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
         open={dialogOpen}
         item={editingItem}
         isPending={saveMutation.isPending}
+        categoryOptions={categoryOptions}
         onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) setEditingItem(null)
