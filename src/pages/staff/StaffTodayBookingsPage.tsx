@@ -252,11 +252,29 @@ export default function StaffTodayBookingsPage() {
     }
   }
 
-  const visibleBookings = displayBookings.filter((booking: any) => {
-    const matchSearch = searchTerm === "" || getCustomerName(booking).toLowerCase().includes(searchTerm.toLowerCase())
-    const matchStatus = statusFilter === "ALL" || booking.status === statusFilter
-    return matchSearch && matchStatus
-  })
+  const getStatusSortPriority = (booking: any): number => {
+    const session = booking.sessions?.find((s: any) =>
+      ["ACTIVE", "EXTENDING", "CHECKING_OUT", "CHECKED_IN"].includes(s.status)
+    )
+    if (session?.status === "ACTIVE" || session?.status === "EXTENDING") return 0
+    if (session?.status === "CHECKING_OUT" || session?.status === "CHECKED_IN") return 1
+    if (booking.status === "CONFIRMED") return 2
+    if (booking.status === "PENDING") return 3
+    if (booking.status === "COMPLETED") return 4
+    return 5 // CANCELLED, NO_SHOW
+  }
+
+  const visibleBookings = displayBookings
+    .filter((booking: any) => {
+      const matchSearch = searchTerm === "" || getCustomerName(booking).toLowerCase().includes(searchTerm.toLowerCase())
+      const matchStatus = statusFilter === "ALL" || booking.status === statusFilter
+      return matchSearch && matchStatus
+    })
+    .sort((a: any, b: any) => {
+      const priorityDiff = getStatusSortPriority(a) - getStatusSortPriority(b)
+      if (priorityDiff !== 0) return priorityDiff
+      return new Date(getSlotStart(a)).getTime() - new Date(getSlotStart(b)).getTime()
+    })
 
   return (
     <div className="space-y-6">
@@ -388,17 +406,36 @@ export default function StaffTodayBookingsPage() {
                     : "warning"
 
                   const hasFnb = fnbAmount > 0
-                  const countdown = getSlotCountdown(slotStart)
+                  const countdown = activeSession ? null : getSlotCountdown(slotStart)
+                  const remainingMs = activeSession ? new Date(slotEnd).getTime() - Date.now() : null
+                  const remainingMinutes = remainingMs !== null ? Math.ceil(remainingMs / 60000) : null
 
                   return (
                     <StaffCard key={bookingId} className="space-y-3">
-                      {/* Row 1 — ID + status + detail link */}
+                      {/* Row 1 — ID + status + remaining + detail link */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-[#a09e9d] font-mono font-bold">
                             #{bookingId.slice(0, 8).toUpperCase()}
                           </span>
                           <StaffBadge variant={badgeVariant}>{displayLabel}</StaffBadge>
+                          {remainingMinutes !== null && remainingMinutes > 0 && (
+                            <span className={cn(
+                              "rounded-full px-2.5 py-0.5 text-[10px] font-bold border",
+                              remainingMinutes <= 10
+                                ? "bg-red-50 text-red-600 border-red-200"
+                                : remainingMinutes <= 20
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            )}>
+                              còn {remainingMinutes} phút
+                            </span>
+                          )}
+                          {remainingMinutes !== null && remainingMinutes <= 0 && (
+                            <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold border bg-red-100 text-red-700 border-red-300">
+                              hết giờ
+                            </span>
+                          )}
                         </div>
                         <Link
                           to={`/booking/${bookingId}`}

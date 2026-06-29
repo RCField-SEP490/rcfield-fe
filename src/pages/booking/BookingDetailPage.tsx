@@ -228,6 +228,7 @@ export function BookingDetailPage() {
 
   const slotFee = Number(booking?.payment_components?.find((c) => c.type === "SLOT_FEE")?.amount ?? snapshotSlotFee)
   const rentalFee = Number(booking?.payment_components?.find((c) => c.type === "RENTAL_FEE")?.amount ?? snapshotRentalFee)
+  const discountAmount = Number(booking?.discountAmount ?? 0)
   const depositComponent = booking?.payment_components?.find((c) => c.type === "SECURITY_DEPOSIT")
   const depositAmount = Number(depositComponent?.amount ?? snapshotDeposit)
   const fnbPreorderFee = Number(
@@ -474,12 +475,17 @@ export function BookingDetailPage() {
                   const checkinTitle = !sess ? "Chờ check-in"
                     : sessStatus === "CHECKED_IN" ? "Đang check-in"
                     : "Đã check-in"
+                  const checkinStaff = sessionDetail?.staffName
                   const checkinDesc = !sess
                     ? `Dự kiến: ${slotLabel}`
                     : sessStatus === "CHECKED_IN"
-                    ? "Nhân viên đang xác nhận tình trạng xe bàn giao"
+                    ? checkinStaff
+                      ? `Nhân viên ${checkinStaff} đang xác nhận tình trạng xe bàn giao`
+                      : "Nhân viên đang xác nhận tình trạng xe bàn giao"
                     : sess.actualStartAt
-                    ? `Bắt đầu lúc ${new Date(sess.actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+                    ? `Bắt đầu lúc ${new Date(sess.actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}${checkinStaff ? ` · NV: ${checkinStaff}` : ""}`
+                    : checkinStaff
+                    ? `Đã check-in bởi ${checkinStaff}`
                     : "Đã hoàn tất check-in"
 
                   // Playing step
@@ -834,9 +840,15 @@ export function BookingDetailPage() {
                         <span className="font-semibold tabular-nums">{formatCurrency(depositAmount)}</span>
                       </div>
                     )}
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Mã giảm giá</span>
+                        <span className="font-semibold text-emerald-600 tabular-nums">−{formatCurrency(discountAmount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm font-bold border-t border-slate-100 pt-1.5">
                       <span className="text-slate-800">Tổng đã trả</span>
-                      <span className="text-slate-900 tabular-nums">{formatCurrency(slotFee + rentalFee + fnbPreorderFee + depositAmount)}</span>
+                      <span className="text-slate-900 tabular-nums">{formatCurrency(slotFee + rentalFee + fnbPreorderFee + depositAmount - discountAmount)}</span>
                     </div>
                   </div>
                 </div>
@@ -918,11 +930,6 @@ export function BookingDetailPage() {
                 ) : booking.status === "PENDING" ? (
                   <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-700 font-medium text-center">
                     Chờ thanh toán
-                  </div>
-                ) : (booking.status === "CONFIRMED" || booking.status === "COMPLETED") ? (
-                  <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-600 font-bold py-1">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Đã thanh toán qua VNPAY
                   </div>
                 ) : null}
               </CardContent>
