@@ -17,7 +17,7 @@ type PanelState =
   | { status: "success"; data: AiInsightResponse }
   | { status: "insufficient_data" }
   | { status: "quota_exceeded"; resetDate: string }
-  | { status: "error" }
+  | { status: "error"; disabled?: boolean }
 
 const SEVERITY_STYLES: Record<InsightSeverity, string> = {
   positive: "border-emerald-200 bg-emerald-50 text-emerald-900",
@@ -100,6 +100,11 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
 
       if (code === "AI_QUOTA_EXCEEDED") {
         setPanel({ status: "quota_exceeded", resetDate: getNextMonthReset() })
+        return
+      }
+
+      if (code === "AI_ANALYTICS_DISABLED") {
+        setPanel({ status: "error", disabled: true })
         return
       }
 
@@ -187,9 +192,13 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
           <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-200">
             <AlertTriangle className="size-4 text-red-500 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-bold text-red-800">Phân tích thất bại</p>
+              <p className="text-sm font-bold text-red-800">
+                {panel.disabled ? "Tính năng chưa được kích hoạt" : "Phân tích thất bại"}
+              </p>
               <p className="text-xs text-red-600 mt-1">
-                Dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau ít phút.
+                {panel.disabled
+                  ? "Tính năng AI Phân Tích Doanh Thu hiện chưa được bật. Liên hệ quản trị viên để kích hoạt."
+                  : "Dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau ít phút."}
               </p>
             </div>
           </div>

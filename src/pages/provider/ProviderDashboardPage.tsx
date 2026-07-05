@@ -43,6 +43,7 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { toast } from "sonner"
 import { useProviderDashboard } from "@/features/dashboard/hooks/useProviderDashboard"
+import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import type { RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
@@ -327,6 +328,13 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
     staleTime: 300_000,
   })
   const cafes = cafesData?.data ?? []
+
+  const { data: featureFlags } = useQuery({
+    queryKey: ["provider-feature-flags"],
+    queryFn: providerDashboardApi.getProviderFeatureFlags,
+    staleTime: 5 * 60_000,
+  })
+  const isAiAnalyticsEnabled = featureFlags?.AI_REVENUE_ANALYTICS ?? false
 
   const { kpi, trend, breakdown, branches, recent, topStats, isLoading } = useProviderDashboard({
     cafeId: selectedCafeId,
@@ -1037,7 +1045,7 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
           from={from.slice(0, 10)}
           to={to.slice(0, 10)}
           cafeId={selectedCafeId}
-          isFeatureEnabled={true}
+          isFeatureEnabled={isAiAnalyticsEnabled}
         />
       </section>
     </ProviderShell>

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { toast } from "sonner"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
@@ -37,6 +37,18 @@ export function AdminFeatureFlagsPage() {
     },
   })
 
+  const updateQuotaMutation = useMutation({
+    mutationFn: ({ key, monthlyQuota }: { key: string; monthlyQuota: number }) =>
+      adminFeatureFlagsApi.update(key, { config: { monthly_quota: monthlyQuota } }),
+    onSuccess: (_, { key, monthlyQuota }) => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-feature-flags"] })
+      toast.success(`${key} → quota ${monthlyQuota === 0 ? "không giới hạn" : `${monthlyQuota} lượt/tháng`}`)
+    },
+    onError: (_err, { key }) => {
+      toast.error(`Không thể cập nhật quota "${key}"`)
+    },
+  })
+
   const filtered = flags.filter(
     (f) =>
       f.feature_key.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -72,7 +84,15 @@ export function AdminFeatureFlagsPage() {
               Không tìm thấy flag nào.
             </div>
           ) : (
-            filtered.map((flag) => <FlagRow key={flag.feature_key} flag={flag} onToggle={(isEnabled) => updateMutation.mutate({ key: flag.feature_key, isEnabled })} isPending={updateMutation.isPending} />)
+            filtered.map((flag) => (
+              <FlagRow
+                key={flag.feature_key}
+                flag={flag}
+                onToggle={(isEnabled) => updateMutation.mutate({ key: flag.feature_key, isEnabled })}
+                onUpdateQuota={(monthlyQuota) => updateQuotaMutation.mutate({ key: flag.feature_key, monthlyQuota })}
+                isPending={updateMutation.isPending || updateQuotaMutation.isPending}
+              />
+            ))
           )}
         </div>
       </AdminPanel>
@@ -83,14 +103,33 @@ export function AdminFeatureFlagsPage() {
 function FlagRow({
   flag,
   onToggle,
+  onUpdateQuota,
   isPending,
 }: {
   flag: ApiFeatureFlag
   onToggle: (isEnabled: boolean) => void
+  onUpdateQuota: (monthlyQuota: number) => void
   isPending: boolean
 }) {
   const description = FLAG_DESCRIPTIONS[flag.feature_key] ?? flag.feature_key
   const monthlyQuota = (flag.config as { monthly_quota?: number })?.monthly_quota
+  const [editingQuota, setEditingQuota] = useState(false)
+  const [quotaInput, setQuotaInput] = useState("")
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const startEdit = () => {
+    setQuotaInput(String(monthlyQuota ?? 0))
+    setEditingQuota(true)
+    setTimeout(() => inputRef.current?.select(), 0)
+  }
+
+  const commitEdit = () => {
+    const val = parseInt(quotaInput, 10)
+    if (!isNaN(val) && val >= 0 && val !== monthlyQuota) {
+      onUpdateQuota(val)
+    }
+    setEditingQuota(false)
+  }
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white hover:bg-[#fcf8f8]/50 transition-colors">
@@ -107,9 +146,32 @@ function FlagRow({
             {flag.is_enabled ? "Đang bật" : "Đang tắt"}
           </span>
           {monthlyQuota !== undefined && (
-            <span className="text-[10px] font-semibold text-[#747878] bg-[#f6f3f2] px-2 py-0.5 rounded-full border border-[#e5e2e1]">
-              {monthlyQuota === 0 ? "Không giới hạn" : `${monthlyQuota} lượt/tháng`}
-            </span>
+            editingQuota ? (
+              <div className="flex items-center gap-1">
+                <input
+                  ref={inputRef}
+                  type="number"
+                  min="0"
+                  value={quotaInput}
+                  onChange={(e) => setQuotaInput(e.target.value)}
+                  onBlur={commitEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitEdit()
+                    if (e.key === "Escape") setEditingQuota(false)
+                  }}
+                  className="w-20 text-[11px] font-semibold px-1.5 py-0.5 rounded border border-[#c5c2c1] focus:outline-none focus:border-violet-400 text-[#1c1b1b]"
+                />
+                <span className="text-[10px] text-[#747878]">lượt/tháng (0=∞)</span>
+              </div>
+            ) : (
+              <button
+                onClick={startEdit}
+                title="Nhấn để sửa quota"
+                className="text-[10px] font-semibold text-[#747878] bg-[#f6f3f2] hover:bg-[#edeae9] px-2 py-0.5 rounded-full border border-[#e5e2e1] transition-colors cursor-pointer"
+              >
+                {monthlyQuota === 0 ? "Không giới hạn" : `${monthlyQuota} lượt/tháng`}
+              </button>
+            )
           )}
         </div>
         <p className="text-xs text-[#5d5f5f] font-medium leading-relaxed">{description}</p>

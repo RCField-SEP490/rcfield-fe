@@ -20,7 +20,6 @@ const TYPE_ICONS: Record<string, string> = {
   SUBSCRIPTION_ACTIVATED: "🎉",
   PAYMENT_REQUEST_CONFIRMED: "💳",
   PAYMENT_REQUEST_REJECTED: "❌",
-  SESSION_CHECKIN_INSPECTION: "📋",
   SESSION_CHECKOUT_INSPECTION: "🔑",
   SESSION_EXTENSION_PROPOSED: "⏳",
   SESSION_FNB_ORDER_ADDED: "🍔",
@@ -87,7 +86,7 @@ export function NotificationBell() {
     if (!n.readAt) markReadMutation.mutate(n.id)
     setOpen(false)
 
-    if (n.type === "SESSION_CHECKIN_INSPECTION" || n.type === "SESSION_CHECKOUT_INSPECTION") {
+    if (n.type === "SESSION_CHECKOUT_INSPECTION") {
       try {
         const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
         const activeBooking = bookingsRes.data.find(

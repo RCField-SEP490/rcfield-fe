@@ -106,4 +106,11 @@ export const providerDashboardApi = {
     )
     return { type: res.data.type, data: res.data.data } as AiInsightResult
   },
+
+  getProviderFeatureFlags: async (): Promise<Record<string, boolean>> => {
+    const res = await api.get<{ success: boolean; data: Record<string, boolean> }>(
+      "/v1/provider/dashboard/feature-flags",
+    )
+    return res.data.data
+  },
 }
