@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
-import { staffApi } from "@/features/staff/api/staff.api"
+import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
 import {
   type CustomerBookingDetail,
   type MockSessionDetail,
@@ -225,6 +225,17 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
           description: "Ca chơi đã cập nhật trạng thái quyết toán thành công.",
         })
         void fetchData()
+        return
+      }
+
+      if (msg.event === "NEW_BOOKING") {
+        const bookingData = msg.data as { bookingId?: string; cafeName?: string; slotStart?: string } | undefined
+        toast.info("Có đặt lịch mới!", {
+          description: bookingData?.slotStart
+            ? `Khung giờ ${new Date(bookingData.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+            : undefined,
+        })
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() })
         return
       }
     },

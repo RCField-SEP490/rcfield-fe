@@ -22,7 +22,7 @@ export default function StaffInspectionPage() {
   const [searchParams] = useSearchParams()
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
-  const { sessions, bookings, submitInspection } = useStaffOperations()
+  const { sessions, bookings, submitInspection, refreshData } = useStaffOperations()
 
   const sessionId = routeSessionId ?? searchParams.get("sessionId")
   const type = searchParams.get("type") as "CHECK_IN" | "CHECK_OUT" | null
@@ -112,6 +112,7 @@ export default function StaffInspectionPage() {
         toast.success("Đã đóng phiên chơi thành công!", {
           description: "Booking đã được cập nhật trạng thái hoàn thành.",
         })
+        await refreshData()
         navigate(`/staff/sessions/${session.sessionId}`)
       } catch (err) {
         const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message

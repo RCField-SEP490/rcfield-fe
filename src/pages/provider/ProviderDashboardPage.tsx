@@ -46,6 +46,7 @@ import { useProviderDashboard } from "@/features/dashboard/hooks/useProviderDash
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import type { RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
+import { AiInsightsPanel } from "@/features/dashboard/components/AiInsightsPanel"
 
 export function ProviderDashboardPage() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(() => {
@@ -1028,6 +1029,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             )}
           </div>
         </div>
+      </section>
+
+      {/* AI Revenue Analytics Panel */}
+      <section className="mt-6">
+        <AiInsightsPanel
+          from={from.slice(0, 10)}
+          to={to.slice(0, 10)}
+          cafeId={selectedCafeId}
+          isFeatureEnabled={true}
+        />
       </section>
     </ProviderShell>
   )

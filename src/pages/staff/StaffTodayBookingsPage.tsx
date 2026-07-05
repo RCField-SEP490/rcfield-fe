@@ -99,7 +99,8 @@ export default function StaffTodayBookingsPage() {
   const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),
     queryFn: staffApi.getTodayBookings,
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   })
 
   // Primary navigation tab
@@ -260,8 +261,10 @@ export default function StaffTodayBookingsPage() {
     if (session?.status === "CHECKING_OUT" || session?.status === "CHECKED_IN") return 1
     if (booking.status === "CONFIRMED") return 2
     if (booking.status === "PENDING") return 3
-    if (booking.status === "COMPLETED") return 4
-    return 5 // CANCELLED, NO_SHOW
+    const hasPending = booking.payment_components?.some((c: any) => c.status === "PENDING")
+    if (booking.status === "COMPLETED" && hasPending) return 4
+    if (booking.status === "COMPLETED") return 5
+    return 6 // CANCELLED, NO_SHOW
   }
 
   const visibleBookings = displayBookings
@@ -390,11 +393,13 @@ export default function StaffTodayBookingsPage() {
                     EXTENDING: "GIA HẠN",
                     CHECKING_OUT: "ĐANG CHECKOUT",
                   }
+                  const hasPendingSettlement = b.status === "COMPLETED" &&
+                    (b as any).payment_components?.some((c: any) => c.status === "PENDING")
                   const bookingStatusLabel: Record<string, string> = {
                     PENDING: "CHỜ THANH TOÁN",
                     CONFIRMED: "ĐÃ XÁC NHẬN",
                     NO_SHOW: "KHÔNG ĐẾN",
-                    COMPLETED: "HOÀN THÀNH",
+                    COMPLETED: hasPendingSettlement ? "CHỜ QUYẾT TOÁN" : "HOÀN THÀNH",
                     CANCELLED: "ĐÃ HỦY",
                   }
                   const displayLabel = activeSession
@@ -404,7 +409,7 @@ export default function StaffTodayBookingsPage() {
                     activeSession?.status === "ACTIVE" || activeSession?.status === "EXTENDING" ? "success"
                     : activeSession?.status === "CHECKED_IN" || activeSession?.status === "CHECKING_OUT" ? "warning"
                     : b.status === "CONFIRMED" ? "info"
-                    : b.status === "COMPLETED" ? "success"
+                    : b.status === "COMPLETED" && !hasPendingSettlement ? "success"
                     : b.status === "CANCELLED" || b.status === "NO_SHOW" ? "neutral"
                     : "warning"
 

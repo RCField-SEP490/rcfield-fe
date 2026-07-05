@@ -85,3 +85,28 @@ export interface ProviderTopStats {
   topCustomers: TopCustomerItem[];
   topVehicles: TopVehicleItem[];
 }
+
+// ── AI Revenue Analytics ────────────────────────────────────────────────────
+
+export type InsightSeverity = "positive" | "neutral" | "warning" | "critical"
+export type InsightType = "trend" | "revenue_mix" | "fleet" | "retention" | "branch"
+
+export interface AiInsight {
+  type: InsightType
+  title: string
+  body: string
+  severity: InsightSeverity
+}
+
+export interface AiInsightResponse {
+  period: { from: string; to: string }
+  summary: string
+  insights: AiInsight[]
+  topOpportunity: string
+  watchouts: string[]
+  generatedAt: string
+}
+
+export type AiInsightResult =
+  | { type: "SUCCESS"; data: AiInsightResponse }
+  | { type: "INSUFFICIENT_DATA"; data: null }

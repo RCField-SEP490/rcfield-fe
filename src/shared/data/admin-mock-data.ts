@@ -424,7 +424,8 @@ export const mockFeatureFlags: FeatureFlag[] = [
   { key: "BOT_CONFIG.AI", description: "Tích hợp Gemini AI hỗ trợ phản hồi nhanh nhu cầu khách hàng", status: "READY", parentKey: "BOT_CONFIG" },
   { key: "BOT_CONFIG.ANALYTICS", description: "Thu thập thống kê hội thoại tự động của Bot", status: "DISABLED", parentKey: "BOT_CONFIG" },
   { key: "BOT_CONFIG.CHANNELS", description: "Cấu hình tích hợp Bot trên đa kênh Facebook, Zalo, Web Widget", status: "READY", parentKey: "BOT_CONFIG" },
-  { key: "BOT_CONFIG.SESSION", description: "Lưu vết ngữ cảnh phiên đàm thoại thông minh", status: "DISABLED", parentKey: "BOT_CONFIG" }
+  { key: "BOT_CONFIG.SESSION", description: "Lưu vết ngữ cảnh phiên đàm thoại thông minh", status: "DISABLED", parentKey: "BOT_CONFIG" },
+  { key: "AI_REVENUE_ANALYTICS", description: "Bảng phân tích doanh thu bằng AI Gemini trong Provider Dashboard", status: "DISABLED" },
 ]
 
 // 8. Trust Score Audit Logs

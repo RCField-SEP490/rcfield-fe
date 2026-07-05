@@ -7,6 +7,7 @@ import type {
   RecentBookingItem,
   RevenuePeriod,
   ProviderTopStats,
+  AiInsightResult,
 } from "../types/dashboard.types"
 
 export const providerDashboardApi = {
@@ -85,5 +86,24 @@ export const providerDashboardApi = {
       },
     })
     return res.data.data
+  },
+
+  generateAiInsights: async (params: {
+    from: string
+    to: string
+    cafeId?: string | null
+  }): Promise<AiInsightResult> => {
+    const res = await api.post<{ success: boolean; type: string; data: AiInsightResult["data"] }>(
+      "/v1/provider/dashboard/ai-insights",
+      undefined,
+      {
+        params: {
+          from: params.from,
+          to: params.to,
+          cafeId: params.cafeId || undefined,
+        },
+      },
+    )
+    return { type: res.data.type, data: res.data.data } as AiInsightResult
   },
 }
