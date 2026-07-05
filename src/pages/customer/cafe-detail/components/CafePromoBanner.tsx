@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Tag, ChevronLeft, ChevronRight, Clock } from "lucide-react"
+import { ChevronLeft, ChevronRight, Clock, Sparkles, Ticket } from "lucide-react"
 import { useState } from "react"
 import { promotionApi } from "@/features/promotions/api/promotion.api"
 import type { ActivePromotion } from "@/features/promotions/api/promotion.api"
@@ -29,41 +29,42 @@ function PromoSlide({ promo }: { promo: ActivePromotion }) {
   const expiry = formatExpiry(promo.expires_at)
   const modeLabel =
     promo.applicable_to === "RENTAL"
-      ? "· Thuê xe"
+      ? "Thuê xe"
       : promo.applicable_to === "BYOC"
-        ? "· Xe cá nhân"
+        ? "Xe cá nhân"
         : null
 
   return (
-    <div className="flex items-center gap-3 min-w-0">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20">
-        <Tag className="h-4 w-4 text-white" />
+    <div className="flex items-center gap-3 min-w-0 flex-1">
+      {/* Discount badge — white card, nổi bật nhất */}
+      <div className="shrink-0 flex flex-col items-center justify-center bg-white rounded-lg px-3 py-2 shadow-sm min-w-[90px] text-center">
+        <span className="text-orange-600 font-black text-lg leading-tight">{formatDiscount(promo)}</span>
+        {modeLabel && (
+          <span className="text-orange-400 text-[10px] font-semibold uppercase tracking-wide mt-0.5">{modeLabel}</span>
+        )}
       </div>
+
+      {/* Code + meta */}
       <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-sm font-bold tracking-widest text-white">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Sparkles className="h-3.5 w-3.5 text-yellow-200 shrink-0" />
+          <span className="font-mono text-base font-black tracking-widest text-white">
             {promo.code}
           </span>
-          <span className="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white">
-            {formatDiscount(promo)}
-          </span>
-          {modeLabel && (
-            <span className="text-[11px] text-orange-100">{modeLabel}</span>
-          )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {promo.description && (
             <span className="text-xs text-orange-100 truncate">{promo.description}</span>
           )}
           {expiry && (
-            <span className="flex items-center gap-1 text-[11px] text-orange-200 shrink-0">
+            <span className="flex items-center gap-1 text-[11px] text-yellow-200 shrink-0">
               <Clock className="h-3 w-3" />
               {expiry}
             </span>
           )}
           {promo.min_order_amount && (
             <span className="text-[11px] text-orange-200 shrink-0">
-              · Đơn tối thiểu {formatCurrency(promo.min_order_amount)}
+              · Đơn từ {formatCurrency(promo.min_order_amount)}
             </span>
           )}
         </div>
@@ -87,26 +88,36 @@ export function CafePromoBanner({ cafeId }: { cafeId: string }) {
   const hasMultiple = promos.length > 1
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 shadow-sm shadow-orange-200">
-      <PromoSlide promo={current} />
+    <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 px-4 py-3.5 shadow-lg shadow-orange-300">
+      {/* Decorative circles */}
+      <div className="pointer-events-none absolute -right-4 -top-6 h-20 w-20 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute right-10 -bottom-6 h-14 w-14 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute -left-4 -bottom-4 h-16 w-16 rounded-full bg-white/10" />
 
-      {hasMultiple && (
-        <div className="ml-auto flex shrink-0 items-center gap-1">
-          <span className="text-[11px] text-orange-100">{index + 1}/{promos.length}</span>
-          <button
-            onClick={() => setIndex((i) => (i - 1 + promos.length) % promos.length)}
-            className="rounded p-0.5 text-white hover:bg-white/20 transition-colors"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setIndex((i) => (i + 1) % promos.length)}
-            className="rounded p-0.5 text-white hover:bg-white/20 transition-colors"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      {/* Ticket icon deco */}
+      <Ticket className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-white/5" />
+
+      <div className="relative flex items-center gap-3">
+        <PromoSlide promo={current} />
+
+        {hasMultiple && (
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <span className="text-[11px] text-orange-100">{index + 1}/{promos.length}</span>
+            <button
+              onClick={() => setIndex((i) => (i - 1 + promos.length) % promos.length)}
+              className="rounded p-0.5 text-white hover:bg-white/20 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setIndex((i) => (i + 1) % promos.length)}
+              className="rounded p-0.5 text-white hover:bg-white/20 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

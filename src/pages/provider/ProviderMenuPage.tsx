@@ -7,9 +7,11 @@ import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe } from "@/features/cafes/types"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
-import type { MenuItem, MenuListParams, MenuUpsertBody } from "@/features/menu/types"
+import type { ComboUpsertBody, MenuItem, MenuListParams, MenuUpsertBody } from "@/features/menu/types"
+import { FNB_CATEGORIES, FNB_CATEGORY_LABEL } from "@/features/menu/types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader, ProviderTable, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderMenuItemFormDialog } from "@/pages/provider/components/ProviderMenuItemFormDialog"
+import { ProviderComboFormDialog } from "@/pages/provider/components/ProviderComboFormDialog"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Button } from "@/shared/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
@@ -30,6 +32,8 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
   const [selectedAvailability, setSelectedAvailability] = useState<(typeof availabilityOptions)[number]["value"]>("all")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
+  const [comboDialogOpen, setComboDialogOpen] = useState(false)
+  const [editingCombo, setEditingCombo] = useState<MenuItem | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const PAGE_SIZE = 10
 
@@ -75,13 +79,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
-  const categoryOptions = useMemo(() => {
-    const categories = new Set<string>()
-    for (const item of menuItems) {
-      if (item.category) categories.add(item.category)
-    }
-    return Array.from(categories).sort((a, b) => a.localeCompare(b, "vi"))
-  }, [menuItems])
+  const categoryOptions = FNB_CATEGORIES
 
   const availableCount = menuItems.filter((item) => item.isAvailable).length
   const categoryCount = categoryOptions.length
@@ -100,6 +98,21 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
     onError: (error) => {
       debugProviderMenu("save failed", error)
       toast.error("Không thể lưu món", { description: "Vui lòng kiểm tra dữ liệu hoặc quyền quản lý cơ sở." })
+    },
+  })
+
+  const saveComboMutation = useMutation({
+    mutationFn: async ({ cafeId, combo, values }: { cafeId: string; combo: MenuItem | null; values: ComboUpsertBody }) => {
+      return combo ? menuApi.updateCombo(cafeId, combo.id, values) : menuApi.createCombo(cafeId, values)
+    },
+    onSuccess: async (savedCombo) => {
+      await invalidateMenu(queryClient, savedCombo.cafeId)
+      toast.success(editingCombo ? "Đã cập nhật combo" : "Đã tạo combo", { description: savedCombo.name })
+      setComboDialogOpen(false)
+      setEditingCombo(null)
+    },
+    onError: () => {
+      toast.error("Không thể lưu combo")
     },
   })
 
@@ -140,8 +153,13 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
   }
 
   const handleOpenEdit = (item: MenuItem) => {
-    setEditingItem(item)
-    setDialogOpen(true)
+    if (item.isCombo) {
+      setEditingCombo(item)
+      setComboDialogOpen(true)
+    } else {
+      setEditingItem(item)
+      setDialogOpen(true)
+    }
   }
 
   const content = (
@@ -160,6 +178,16 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Button type="button" variant="outline" size="icon-sm" onClick={() => void menuQuery.refetch()} disabled={!selectedCafeId || menuQuery.isFetching} className="rounded-lg">
                 <RefreshCw className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setEditingCombo(null); setComboDialogOpen(true) }}
+                disabled={!selectedCafeId}
+                className="h-10 gap-2 rounded-lg border-[#c4c7c8] font-bold"
+              >
+                <Layers3 className="size-4" />
+                Tạo combo
               </Button>
               <Button type="button" onClick={handleOpenCreate} disabled={!selectedCafeId} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
                 <Plus className="size-4" />
@@ -191,9 +219,9 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả category</SelectItem>
-              {categoryOptions.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
+              {categoryOptions.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -227,7 +255,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
               columns={["Món", "Category", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
               rows={paginatedMenuItems.map((item) => [
                 <MenuNameCell key={`${item.id}-name`} item={item} />,
-                item.category ?? "--",
+                item.isCombo ? "Combo" : (FNB_CATEGORY_LABEL[item.category ?? ""] ?? item.category ?? "--"),
                 formatMoney(item.price),
                 selectedCafe ? formatCafeName(selectedCafe) : "--",
                 <StatusBadge key={`${item.id}-status`} status={item.isAvailable ? "Đang bán" : "Tạm ẩn"} />,
@@ -301,7 +329,6 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
         open={dialogOpen}
         item={editingItem}
         isPending={saveMutation.isPending}
-        categoryOptions={categoryOptions}
         onOpenChange={(open) => {
           setDialogOpen(open)
           if (!open) setEditingItem(null)
@@ -312,6 +339,24 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
             return
           }
           await saveMutation.mutateAsync({ cafeId: selectedCafeId, item: editingItem, values })
+        }}
+      />
+
+      <ProviderComboFormDialog
+        open={comboDialogOpen}
+        combo={editingCombo}
+        menuItems={menuItems}
+        isPending={saveComboMutation.isPending}
+        onOpenChange={(open) => {
+          setComboDialogOpen(open)
+          if (!open) setEditingCombo(null)
+        }}
+        onSubmit={async (values) => {
+          if (!selectedCafeId) {
+            toast.error("Vui lòng chọn cơ sở trước khi lưu combo")
+            return
+          }
+          await saveComboMutation.mutateAsync({ cafeId: selectedCafeId, combo: editingCombo, values })
         }}
       />
     </>

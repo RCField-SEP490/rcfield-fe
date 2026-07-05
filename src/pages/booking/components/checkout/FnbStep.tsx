@@ -85,10 +85,17 @@ function FnbCard({
         <div>
           <div className="flex items-start justify-between gap-2">
             <p className="line-clamp-1 text-sm font-semibold">{item.name}</p>
-            {item.category && (
+            {item.isCombo ? (
+              <Badge className="shrink-0 bg-orange-100 text-orange-700 hover:bg-orange-100">Combo</Badge>
+            ) : item.category ? (
               <Badge variant="secondary" className="capitalize shrink-0">{item.category}</Badge>
-            )}
+            ) : null}
           </div>
+          {item.isCombo && item.components && item.components.length > 0 && (
+            <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
+              {item.components.map((c) => `${c.quantity > 1 ? `${c.quantity}× ` : ""}${c.name}`).join(" + ")}
+            </p>
+          )}
           <p className="mt-1 text-sm font-semibold">{formatCurrency(price)}</p>
         </div>
         <div className="flex items-center justify-end">

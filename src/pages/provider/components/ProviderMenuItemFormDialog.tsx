@@ -2,19 +2,20 @@ import { useEffect, useState, type FormEvent } from "react"
 import { ImagePlus } from "lucide-react"
 
 import type { MenuItem, MenuUpsertBody } from "@/features/menu/types"
+import { FNB_CATEGORIES } from "@/features/menu/types"
 import { uploadImage } from "@/features/uploads/api/upload.api"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import { Textarea } from "@/shared/ui/textarea"
 
 type ProviderMenuItemFormDialogProps = {
   open: boolean
   item: MenuItem | null
   isPending: boolean
-  categoryOptions?: string[]
   onOpenChange: (open: boolean) => void
   onSubmit: (values: MenuUpsertBody) => Promise<void>
 }
@@ -32,7 +33,6 @@ export function ProviderMenuItemFormDialog({
   open,
   item,
   isPending,
-  categoryOptions = [],
   onOpenChange,
   onSubmit,
 }: ProviderMenuItemFormDialogProps) {
@@ -93,17 +93,28 @@ export function ProviderMenuItemFormDialog({
           </DialogHeader>
 
           <div className="space-y-4 p-5">
+            {/* Row 1: tên + giá */}
             <div className="grid gap-3 sm:grid-cols-2">
               <TextField label="Tên món" value={values.name} onChange={(value) => setField("name", value)} required />
               <NumberField label="Giá bán" value={values.price} onChange={(value) => setField("price", value ?? 0)} min={0} />
+            </div>
+
+            {/* Row 2: danh mục + trạng thái */}
+            <div className="grid gap-3 sm:grid-cols-[1fr_160px] sm:items-end">
               <CategoryField
                 value={values.category ?? ""}
                 onChange={(value) => setField("category", value)}
-                suggestions={categoryOptions}
               />
-              <TextField label="Image URL" value={values.image_url ?? ""} onChange={(value) => setField("image_url", value)} />
+              <Label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[#e5e2e1] px-3">
+                <Checkbox
+                  checked={values.is_available ?? true}
+                  onCheckedChange={(checked) => setField("is_available", checked === true)}
+                />
+                <span className="text-sm font-semibold text-[#1c1b1b]">Đang bán</span>
+              </Label>
             </div>
 
+            {/* Row 3: mô tả */}
             <label className="block space-y-2">
               <span className="text-sm font-bold text-[#1c1b1b]">Mô tả</span>
               <Textarea
@@ -113,7 +124,22 @@ export function ProviderMenuItemFormDialog({
               />
             </label>
 
-            <div className="grid gap-3 sm:grid-cols-[1fr_180px] sm:items-center">
+            {/* Row 4: upload ảnh + preview */}
+            {values.image_url ? (
+              <div className="flex items-center gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 min-w-0 overflow-hidden">
+                <img src={values.image_url} alt="" className="size-16 shrink-0 rounded-md object-cover" />
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-medium text-[#444748]">{values.image_url}</span>
+                  <button
+                    type="button"
+                    onClick={() => setField("image_url", null)}
+                    className="mt-1 text-xs font-semibold text-red-500 hover:underline"
+                  >
+                    Xóa ảnh
+                  </button>
+                </div>
+              </div>
+            ) : (
               <label className="block cursor-pointer rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-4 text-sm font-semibold text-[#444748] hover:bg-[#f6f3f2]">
                 <span className="flex items-center gap-2">
                   <ImagePlus className="size-4" />
@@ -127,21 +153,7 @@ export function ProviderMenuItemFormDialog({
                   onChange={(event) => void handleUpload(event.target.files?.[0])}
                 />
               </label>
-              <Label className="rounded-lg border border-[#e5e2e1] px-3 py-3">
-                <Checkbox
-                  checked={values.is_available ?? true}
-                  onCheckedChange={(checked) => setField("is_available", checked === true)}
-                />
-                Đang bán
-              </Label>
-            </div>
-
-            {values.image_url ? (
-              <div className="flex items-center gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 min-w-0 overflow-hidden">
-                <img src={values.image_url} alt="" className="size-16 shrink-0 rounded-md object-cover" />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{values.image_url}</span>
-              </div>
-            ) : null}
+            )}
           </div>
 
           <DialogFooter className="px-5">
@@ -177,32 +189,23 @@ function TextField({
   )
 }
 
-function CategoryField({
-  value,
-  onChange,
-  suggestions,
-}: {
-  value: string
-  onChange: (value: string) => void
-  suggestions: string[]
-}) {
-  const listId = "menu-category-suggestions"
+function CategoryField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <label className="block space-y-2">
+    <div className="space-y-2">
       <span className="text-sm font-bold text-[#1c1b1b]">Danh mục</span>
-      <Input
-        value={value}
-        list={listId}
-        placeholder="VD: Đồ uống, Đồ ăn, Tráng miệng..."
-        onChange={(event) => onChange(event.target.value)}
-        className="rounded-lg border-[#c4c7c8]"
-      />
-      <datalist id={listId}>
-        {suggestions.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-    </label>
+      <Select value={value || ""} onValueChange={onChange}>
+        <SelectTrigger className="h-10 w-full rounded-lg border-[#c4c7c8]">
+          <SelectValue placeholder="Chọn danh mục" />
+        </SelectTrigger>
+        <SelectContent>
+          {FNB_CATEGORIES.map((cat) => (
+            <SelectItem key={cat.value} value={cat.value}>
+              {cat.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   )
 }
 
