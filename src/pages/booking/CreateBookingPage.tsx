@@ -33,6 +33,7 @@ import { BookingPackageSelector } from "./components/checkout/BookingPackageSele
 import type { AppliedPromo } from "./components/checkout/PromoCodeInput"
 import type { TrackConfig } from "@/features/cafes/types"
 import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
+import { bookingApi } from "@/features/booking/api/booking.api"
 import { toast } from "sonner"
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -327,6 +328,52 @@ export function CreateBookingPage() {
     }
   }
 
+  const handleMockPayment = async () => {
+    if (authRole !== "customer") {
+      toast.error("Vui lòng đăng nhập bằng tài khoản khách hàng.")
+      return
+    }
+    if (isMockId) {
+      toast.error("Không thể đặt lịch với dữ liệu demo. Vui lòng chọn một cơ sở thực tế.")
+      return
+    }
+    try {
+      const slotStart = `${date}T${time}:00+07:00`
+      const slotEnd = preselectedSlotEnd
+        ? `${date}T${preselectedSlotEnd}:00+07:00`
+        : buildSlotEnd(date, time, mode, planId)
+      const vehicleIds = selectedVehicleIds.filter((id) => UUID_REGEX.test(id))
+      const participantList = companions.map((c) => ({
+        participant_type: "WALK_IN_GUEST" as const,
+        ...(c.name ? { guest_name: c.name } : {}),
+        ...(c.phone ? { guest_phone: c.phone } : {}),
+      }))
+
+      const booking = await createBookingMutation.mutateAsync({
+        cafe_id: cafeId,
+        play_mode: playMode === "RENTAL" ? "RENTAL" : "BYOC",
+        slot_start: slotStart,
+        slot_end: slotEnd,
+        vehicle_ids: vehicleIds,
+        participants: participantList,
+        fnb_items: Object.entries(fnbQuantities)
+          .filter(([, qty]) => qty > 0)
+          .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
+        ...(selectedTrackConfig ? { track_type_id: selectedTrackConfig.track_type_id, track_config_id: selectedTrackConfig.id } : {}),
+        ...(selectedPackageId ? { customer_package_id: selectedPackageId } : {}),
+        ...(appliedPromo ? { promotion_code: appliedPromo.code } : {}),
+      })
+
+      await bookingApi.mockCheckout(booking.booking_id)
+      toast.success("Mock thanh toán thành công!", { description: "Booking đã được xác nhận." })
+      window.location.href = "/customer/bookings"
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? "Mock thanh toán thất bại. Vui lòng thử lại.")
+      console.error("[MockPayment]", err)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-muted/30">
       <section className="border-b bg-background">
@@ -417,6 +464,7 @@ export function CreateBookingPage() {
               subtotal={paymentComponents.filter((c) => c.type === "SLOT_FEE" || c.type === "RENTAL_FEE").reduce((s, c) => s + c.amount, 0)}
               appliedPromo={appliedPromo}
               onPromoApply={setAppliedPromo}
+              onMockPayment={() => void handleMockPayment()}
             />
           )}
         </main>

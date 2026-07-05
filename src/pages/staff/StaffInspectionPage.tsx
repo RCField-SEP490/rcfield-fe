@@ -7,8 +7,10 @@ import {
   ChevronLeft,
   Info,
   FileCheck,
+  CheckCircle2,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
+import { staffApi } from "@/features/staff/api/staff.api"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
 import {
@@ -99,8 +101,26 @@ export default function StaffInspectionPage() {
     )
   }
 
-  // BYOC không có checkout inspection
+  // BYOC không có checkout inspection — staff đóng phiên trực tiếp
   if (isByoc && type === "CHECK_OUT") {
+    const [isClosing, setIsClosing] = React.useState(false)
+
+    const handleCloseByocSession = async () => {
+      setIsClosing(true)
+      try {
+        await staffApi.simulateClientCheckOut(session.sessionId)
+        toast.success("Đã đóng phiên chơi thành công!", {
+          description: "Booking đã được cập nhật trạng thái hoàn thành.",
+        })
+        navigate(`/staff/sessions/${session.sessionId}`)
+      } catch (err) {
+        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        toast.error(msg ?? "Không thể đóng phiên chơi. Vui lòng thử lại.")
+      } finally {
+        setIsClosing(false)
+      }
+    }
+
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-4">
         <Info className="size-12 text-blue-400" />
@@ -108,14 +128,26 @@ export default function StaffInspectionPage() {
         <p className="text-sm text-[#6b7280] text-center max-w-xs font-semibold">
           Chế độ mang xe riêng (BYOC) — khách tự chịu trách nhiệm với xe của họ, không cần biên bản trả xe.
         </p>
-        <StaffButton
-          type="button"
-          variant="outline"
-          onClick={() => navigate(`/staff/sessions/${session.sessionId}`)}
-        >
-          <ChevronLeft className="size-4" />
-          Quay lại phiên chạy
-        </StaffButton>
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <StaffButton
+            type="button"
+            onClick={handleCloseByocSession}
+            disabled={isClosing}
+            className="w-full"
+          >
+            <CheckCircle2 className="size-4" />
+            {isClosing ? "Đang đóng phiên..." : "Đóng phiên chơi"}
+          </StaffButton>
+          <StaffButton
+            type="button"
+            variant="outline"
+            onClick={() => navigate(`/staff/sessions/${session.sessionId}`)}
+            className="w-full"
+          >
+            <ChevronLeft className="size-4" />
+            Quay lại phiên chạy
+          </StaffButton>
+        </div>
       </div>
     )
   }

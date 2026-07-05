@@ -12,7 +12,7 @@ import { formatCurrency } from "@/shared/lib/format"
 import { useBooking, useCancelBooking } from "@/features/booking/hooks/use-booking"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
 import { useQuery } from "@tanstack/react-query"
-import type { BookingResponse, BookingStatus, PaymentComponentType } from "@/features/booking/types/booking.types"
+import type { BookingResponse, BookingStatus, PaymentComponentType, PaymentTransactionResponse } from "@/features/booking/types/booking.types"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
@@ -133,6 +133,21 @@ export function BookingDetailPage() {
       ? "/admin/dashboard"
       : "/customer/bookings"
 
+  const handleSettleCash = async () => {
+    if (!bookingId) return
+    try {
+      setSettlingCash(true)
+      await staffApi.settlePendingPayments(bookingId)
+      toast.success("Đã xác nhận thanh toán tiền mặt thành công")
+      void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(bookingId) })
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || "Không thể xác nhận thanh toán")
+    } finally {
+      setSettlingCash(false)
+    }
+  }
+
   const handleConfirmRefund = async () => {
     if (!bookingId) return
     try {
@@ -191,6 +206,7 @@ export function BookingDetailPage() {
   }, [secondsLeft])
 
   const [payingAdditional, setPayingAdditional] = useState(false)
+  const [settlingCash, setSettlingCash] = useState(false)
 
   const handlePayAdditionalFees = async () => {
     if (!bookingId) return
@@ -261,7 +277,24 @@ export function BookingDetailPage() {
   const totalCounterServiceBill = counterComponents.reduce((sum, c) => sum + Number(c.amount), 0)
   const totalCounterBill = totalCounterServiceBill + damageExceedingDeposit
 
+  // settleSessionCheckoutBilling already created a FB_PREORDER PENDING component for on-site F&B
+  // — hide the raw onsiteFnbTotal row to avoid double-counting
+  const hasSettledFnbComponent = counterComponents.some(
+    (c) => c.type === "FB_PREORDER" || c.type === "FNB_PREORDER"
+  )
+
   const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING")
+
+  const transactions: PaymentTransactionResponse[] = booking?.payment_transactions ?? []
+  const gatewayLabel = (gateway: string) =>
+    gateway === "DIRECT" ? "Tiền mặt" : gateway === "MOCK" ? "DEV Mock" : "VNPay Online"
+  const prepaidTx = transactions.find((t) => t.type === "PAYMENT" && t.gateway !== "DIRECT" && t.status === "SUCCESS")
+  const counterTx = transactions.find((t) => t.type === "PAYMENT" && t.gateway === "DIRECT" && t.status === "SUCCESS")
+  const additionalVnpayTx = transactions.filter(
+    (t) => t.type === "PAYMENT" && t.gateway !== "DIRECT" && t.status === "SUCCESS"
+  ).length > 1
+    ? transactions.filter((t) => t.type === "PAYMENT" && t.gateway !== "DIRECT" && t.status === "SUCCESS").at(-1)
+    : undefined
 
   const refundComponents = booking?.payment_components?.filter(
     (c) => c.status === "PENDING_REFUND" || c.status === "REFUNDED"
@@ -812,7 +845,11 @@ export function BookingDetailPage() {
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                     <span className="text-xs font-bold text-emerald-700">
-                      {booking.status === "PENDING" ? "Sẽ thanh toán qua VNPAY" : "Đã trả qua VNPAY"}
+                      {booking.status === "PENDING"
+                        ? "Sẽ thanh toán qua VNPAY"
+                        : prepaidTx
+                          ? `Đã trả qua ${gatewayLabel(prepaidTx.gateway)}`
+                          : "Đã trả qua VNPAY"}
                     </span>
                   </div>
                   <div className="pl-5 space-y-1.5">
@@ -884,7 +921,7 @@ export function BookingDetailPage() {
                             <span className="font-semibold text-orange-600 tabular-nums">+{formatCurrency(Number(c.amount))}</span>
                           </div>
                         ))}
-                        {onsiteFnbTotal > 0 && (
+                        {onsiteFnbTotal > 0 && !hasSettledFnbComponent && (
                           <div className="flex justify-between text-sm items-start">
                             <div>
                               <span className="text-slate-500">F&B gọi tại quầy</span>
@@ -921,11 +958,25 @@ export function BookingDetailPage() {
                         {payingAdditional ? "Đang khởi tạo..." : "Thanh toán qua VNPAY"}
                       </Button>
                     )}
+                    {role === "staff" && (
+                      <Button
+                        onClick={handleSettleCash}
+                        disabled={settlingCash}
+                        className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 rounded-xl"
+                      >
+                        {settlingCash ? "Đang xác nhận..." : "✓ Xác nhận đã thu tiền mặt"}
+                      </Button>
+                    )}
                   </div>
                 ) : totalCounterBill > 0 && isPaid ? (
                   <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-700 font-bold flex items-center gap-1.5 justify-center">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Đã thanh toán đầy đủ
+                    {(counterTx || additionalVnpayTx) && (
+                      <span className="ml-1 font-normal text-emerald-600">
+                        · {gatewayLabel((counterTx ?? additionalVnpayTx)!.gateway)}
+                      </span>
+                    )}
                   </div>
                 ) : booking.status === "PENDING" ? (
                   <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-700 font-medium text-center">

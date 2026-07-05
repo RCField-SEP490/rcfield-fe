@@ -79,6 +79,10 @@ export const bookingApi = {
     return res.data.data
   },
 
+  mockCheckout: async (bookingId: string): Promise<void> => {
+    await api.post(`/v1/bookings/${bookingId}/mock-checkout`)
+  },
+
   cancelBooking: async (bookingId: string, reason?: string): Promise<BookingResponse> => {
     const res = await api.post<ApiEnvelope<BookingResponse>>(
       `/v1/bookings/${bookingId}/cancel`,

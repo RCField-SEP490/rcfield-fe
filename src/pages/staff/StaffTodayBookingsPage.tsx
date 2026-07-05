@@ -381,6 +381,9 @@ export default function StaffTodayBookingsPage() {
                   const activeSession = !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(b.status)
                     ? b.sessions?.find((session: any) => ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(session.status))
                     : undefined
+                  const completedSession = b.status === "COMPLETED"
+                    ? b.sessions?.find((session: any) => session.status === "COMPLETED")
+                    : undefined
                   const sessionStatusLabel: Record<string, string> = {
                     CHECKED_IN: "ĐANG CHECK-IN",
                     ACTIVE: "ĐANG CHƠI",
@@ -518,6 +521,11 @@ export default function StaffTodayBookingsPage() {
                           ) : b.status === "CONFIRMED" ? (
                             <StaffButton onClick={() => handleStartCheckIn(b)} variant="primary" size="sm">
                               Check-In bàn giao
+                              <ArrowRight className="size-3.5" />
+                            </StaffButton>
+                          ) : completedSession ? (
+                            <StaffButton onClick={() => navigate(`/staff/sessions/${completedSession.sessionId}`)} variant="outline" size="sm">
+                              Xem phiên
                               <ArrowRight className="size-3.5" />
                             </StaffButton>
                           ) : null}

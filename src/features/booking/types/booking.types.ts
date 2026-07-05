@@ -37,6 +37,19 @@ export interface PaymentComponentResponse {
   refundedAt?: string | null
 }
 
+export type PaymentGateway = 'VNPAY' | 'DIRECT' | 'MOCK'
+export type PaymentTransactionType = 'PAYMENT' | 'REFUND' | 'CAPTURE' | 'HOLD'
+export type PaymentTransactionStatus = 'SUCCESS' | 'PENDING' | 'FAILED'
+
+export interface PaymentTransactionResponse {
+  id: string
+  type: PaymentTransactionType
+  gateway: PaymentGateway
+  amount: number
+  status: PaymentTransactionStatus
+  createdAt: string
+}
+
 export interface AvailableVehicle {
   vehicle_id: string
   vehicle_identifier: string
@@ -112,6 +125,7 @@ export interface BookingResponse {
   participants: BookingParticipant[]
   vehicles: BookingVehicleItem[]
   payment_components: PaymentComponentResponse[]
+  payment_transactions: PaymentTransactionResponse[]
   fnb_order: FnbOrder | null
   cafe: { name: string; address: string; city: string } | null
   track_type_name: string | null

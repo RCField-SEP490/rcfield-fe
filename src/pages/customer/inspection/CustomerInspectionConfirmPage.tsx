@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate, useSearchParams } from "react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { type MockSessionDetail, type MockInspection } from "@/shared/data/customer-operational-mock-data"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
+import { bookingQueryKeys } from "@/features/booking/api/booking.api"
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -21,6 +23,7 @@ import { toast } from "sonner"
 export function CustomerInspectionConfirmPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const targetInspectionId = searchParams.get("inspectionId")
 
@@ -141,7 +144,8 @@ export function CustomerInspectionConfirmPage() {
           ? "Phiên chơi đã được đóng sau khi đối chiếu biên bản."
           : "Phiên chơi của bạn đã chính thức bắt đầu. Chúc bạn chơi vui vẻ!"
       })
-      navigate(`/customer/sessions/${session.sessionId}`)
+      await queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(session.bookingId) })
+      navigate(`/customer/bookings/${session.bookingId}`)
     } catch (err) {
       const message =
         err && typeof err === "object" && "response" in err

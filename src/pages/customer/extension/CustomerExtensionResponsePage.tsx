@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { type MockSessionDetail, type MockExtensionProposal } from "@/shared/data/customer-operational-mock-data"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
+import { bookingQueryKeys } from "@/features/booking/api/booking.api"
 import { 
   Clock, 
   Sparkles, 
@@ -18,6 +20,7 @@ import { toast } from "sonner"
 
 export function CustomerExtensionResponsePage() {
   const { sessionId } = useParams<{ sessionId: string }>()
+  const queryClient = useQueryClient()
   const navigate = useNavigate()
 
   const [session, setSession] = useState<MockSessionDetail | null>(null)
@@ -136,7 +139,8 @@ export function CustomerExtensionResponsePage() {
           description: "Phiên chơi giữ nguyên thời hạn kết thúc cũ."
         })
       }
-      navigate(`/customer/sessions/${session.sessionId}`)
+      await queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(session.bookingId) })
+      navigate(`/customer/bookings/${session.bookingId}`)
     } catch (err) {
       const message =
         err && typeof err === "object" && "response" in err

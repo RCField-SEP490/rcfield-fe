@@ -1,4 +1,4 @@
-import { CheckCircle2, QrCode } from "lucide-react"
+import { CheckCircle2, QrCode, Zap } from "lucide-react"
 import type { CustomerPaymentMethod } from "@/features/customer-booking/data/customer-booking-demo"
 import { Badge } from "@/shared/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -17,6 +17,7 @@ type PaymentStepProps = {
   onPromoApply?: (promo: AppliedPromo | null) => void
   slotsNeeded?: number
   onPackageSelect?: (id: string | null) => void
+  onMockPayment?: () => void
 }
 
 const isSandbox = import.meta.env.DEV
@@ -29,6 +30,7 @@ export function PaymentStep({
   subtotal,
   appliedPromo,
   onPromoApply,
+  onMockPayment,
 }: PaymentStepProps) {
   const showPromoInput =
     !selectedPackageId && cafeId && playMode && slotStart && subtotal !== undefined && onPromoApply
@@ -90,6 +92,17 @@ export function PaymentStep({
             Bấm "Xác nhận thanh toán" để chuyển đến trang thanh toán VNPay
             {isSandbox ? " (môi trường thử nghiệm)" : ""}.
           </p>
+
+          {isSandbox && onMockPayment && (
+            <button
+              type="button"
+              onClick={onMockPayment}
+              className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors"
+            >
+              <Zap className="h-4 w-4" />
+              Mock thanh toán thành công (DEV)
+            </button>
+          )}
         </CardContent>
       </Card>
     </div>
