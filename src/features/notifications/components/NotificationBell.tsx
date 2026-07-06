@@ -28,6 +28,7 @@ const TYPE_ICONS: Record<string, string> = {
   CUSTOMER_INSPECTION_DISPUTED: "⚠️",
   CUSTOMER_EXTENSION_APPROVED: "⏰",
   CUSTOMER_EXTENSION_REJECTED: "❌",
+  BOOKING_REVIEW_REQUEST: "⭐",
 }
 
 function timeAgo(dateStr: string): string {
@@ -129,6 +130,8 @@ export function NotificationBell() {
       } catch (err) {
         console.error("Lỗi điều hướng gọi món:", err)
       }
+    } else if (n.type === "BOOKING_REVIEW_REQUEST") {
+      navigate("/customer/bookings")
     } else if (
       n.type === "CUSTOMER_CHECKIN_CONFIRMED" ||
       n.type === "CUSTOMER_CHECKOUT_CONFIRMED" ||

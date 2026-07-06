@@ -18,6 +18,7 @@ export type NotificationType =
   | 'CUSTOMER_EXTENSION_APPROVED'
   | 'CUSTOMER_EXTENSION_REJECTED'
   | 'CUSTOMER_PAYMENT_CONFIRMED'
+  | 'BOOKING_REVIEW_REQUEST'
 
 export interface Notification {
   id: string

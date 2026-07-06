@@ -29,6 +29,7 @@ import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
 import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
 import { ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
+import { ProviderReviewsTab } from "@/pages/provider/components/ProviderReviewsTab"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +119,7 @@ export function ProviderCafeDetailPage() {
     | "packages"
     | "promotions"
     | "channel"
+    | "reviews"
 
 
   if (isLoading) {
@@ -278,6 +280,7 @@ export function ProviderCafeDetailPage() {
             <ProviderPromotionsPage cafeId={cafe.id} />
           )}
           {tab === "channel" && <ChannelSettingsTab cafeId={cafe.id} />}
+          {tab === "reviews" && <ProviderReviewsTab cafeId={cafe.id} />}
         </div>
       </div>
     </ProviderShell>

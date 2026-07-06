@@ -15,6 +15,7 @@ import { cn } from "@/shared/lib/utils"
 import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
 import { CustomerPageShell } from "./components/CustomerPageShell"
+import { ReviewReminderBanner } from "@/features/booking-review/components/ReviewReminderBanner"
 import { useMyBookings, useCancelBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import type { BookingStatus } from "@/features/booking/types/booking.types"
 
@@ -103,6 +104,8 @@ export function CustomerBookingsPage() {
   return (
     <CustomerPageShell>
       <CustomerSubNav activeTab="bookings" />
+
+      <ReviewReminderBanner />
 
       <div className="flex flex-wrap items-center gap-2">
         {FILTERS.map((f) => (

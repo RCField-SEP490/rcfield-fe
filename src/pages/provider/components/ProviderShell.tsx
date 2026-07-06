@@ -28,6 +28,7 @@ import {
   BadgePercent,
   Car,
   Package,
+  Star,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -364,6 +365,19 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
               >
                 <BadgePercent className="size-3.5" />
                 Ưu đãi
+              </button>
+              <button
+                type="button"
+                onClick={() => goToTab("reviews")}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "reviews"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Star className="size-3.5" />
+                Đánh giá
               </button>
             </div>
           )}

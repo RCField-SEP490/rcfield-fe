@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import type { BookingListItem, BookingStatus } from "@/features/booking/types/booking.types"
 import type { MyPackageItem } from "@/features/customer-packages/api/customer-package.api"
 import type { Cafe } from "@/shared/data/explore-data"
+import { ReviewReminderBanner } from "@/features/booking-review/components/ReviewReminderBanner"
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -304,6 +305,8 @@ export function CustomerHomePage() {
 
       {/* ── Content ── */}
       <div className="mx-auto max-w-2xl space-y-6 px-4 py-6 md:px-6">
+
+        <ReviewReminderBanner />
 
         {/* Quick actions */}
         <QuickActions />

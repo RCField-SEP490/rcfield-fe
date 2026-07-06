@@ -2,6 +2,8 @@ import { Wrench } from "lucide-react"
 import type { AmenityCatalogItem } from "@/features/cafes/types"
 import { cafeRules, cafeAmenities } from "../cafe-detail-data"
 import { TrackConfigList } from "./TrackConfigList"
+import { CafeRatingAggregate } from "@/features/booking-review/components/CafeRatingAggregate"
+import { CafeReviewList } from "@/features/booking-review/components/CafeReviewList"
 
 export function CafeDetailContent({
   description,
@@ -66,6 +68,17 @@ export function CafeDetailContent({
                 </article>
               ))}
             </div>
+          </section>
+        </>
+      )}
+
+      {cafeId && (
+        <>
+          <SectionDivider />
+          <section className="space-y-3">
+            <h2 className="text-base font-bold text-slate-900">Đánh giá</h2>
+            <CafeRatingAggregate cafeId={cafeId} />
+            <CafeReviewList cafeId={cafeId} />
           </section>
         </>
       )}
