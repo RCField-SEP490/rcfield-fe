@@ -58,6 +58,10 @@ export default function StaffSessionDetailPage() {
   const [selectedItemName, setSelectedItemName] = useState("")
   const [selectedQty, setSelectedQty] = useState(1)
 
+  // Extension mode: false = propose to customer, true = direct (staff confirms in-person)
+  const [directExtensionMode, setDirectExtensionMode] = useState(false)
+  const [pendingDirectExtension, setPendingDirectExtension] = useState<{ mins: number; fee: number } | null>(null)
+
   // Swap Vehicle local modal state
   const [swapModalOpen, setSwapModalOpen] = useState(false)
   const [swappingVehicleId, setSwappingVehicleId] = useState("") // old vehicle ID
@@ -203,7 +207,7 @@ export default function StaffSessionDetailPage() {
   const checkInInspection = session.inspections.find((inspection) => inspection.type === "CHECK_IN")
   const checkOutInspection = session.inspections.find((inspection) => inspection.type === "CHECK_OUT")
   const checkInPending = Boolean(checkInInspection && !checkInInspection.customerConfirmed && !checkInInspection.customerConfirmedAt)
-  const checkOutPending = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && !checkOutInspection.customerConfirmedAt)
+
   const checkInDisputed = Boolean(checkInInspection && !checkInInspection.customerConfirmed && checkInInspection.customerConfirmedAt)
   const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
   const extensionPending = session.extensionProposal?.status === "PENDING"
@@ -221,7 +225,13 @@ export default function StaffSessionDetailPage() {
     const fee = calcExtensionFee(mins)
     return { mins, fee, blocked: fee > remainingCap }
   })
-  const handleExtension = (mins: number, fee: number) => proposeExtension(session.sessionId, mins, fee)
+  const handleExtension = (mins: number, fee: number) => {
+    if (directExtensionMode) {
+      setPendingDirectExtension({ mins, fee })
+    } else {
+      proposeExtension(session.sessionId, mins, fee)
+    }
+  }
   const slotEndMs = new Date(booking.slotEnd).getTime()
   const projectedEnd = (extraMins: number) =>
     new Date(slotEndMs + extraMins * 60000).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
@@ -420,10 +430,65 @@ export default function StaffSessionDetailPage() {
                 </span>
               </div>
 
+              {/* Mode toggle */}
+              <div className="flex items-center gap-2 rounded-xl border border-[#e5e2e1] bg-[#f5f3f2] p-1">
+                <button
+                  type="button"
+                  onClick={() => { setDirectExtensionMode(false); setPendingDirectExtension(null) }}
+                  className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition-all ${
+                    !directExtensionMode
+                      ? "bg-white text-[#ea580c] shadow-sm border border-[#ffdbca]"
+                      : "text-[#6b7280]"
+                  }`}
+                >
+                  Gửi khách xác nhận
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setDirectExtensionMode(true); setPendingDirectExtension(null) }}
+                  className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition-all ${
+                    directExtensionMode
+                      ? "bg-white text-[#ea580c] shadow-sm border border-[#ffdbca]"
+                      : "text-[#6b7280]"
+                  }`}
+                >
+                  Gia hạn trực tiếp
+                </button>
+              </div>
+
               {extensionPending ? (
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-semibold text-orange-800 flex items-center gap-2">
                   <Clock className="size-3.5 shrink-0" />
                   Đang chờ khách phản hồi đề xuất gia hạn {session.extensionProposal?.extraMinutes} phút…
+                </div>
+              ) : pendingDirectExtension ? (
+                <div className="rounded-xl border border-[#ea580c] bg-[#fff3eb] p-3 space-y-2.5">
+                  <p className="text-xs font-bold text-[#1c1b1b]">
+                    Xác nhận gia hạn trực tiếp: <span className="text-[#ea580c]">+{pendingDirectExtension.mins < 60 ? `${pendingDirectExtension.mins} phút` : "1 giờ"}</span>
+                    {" "}({pendingDirectExtension.fee.toLocaleString("vi-VN")} đ) → {projectedEnd(pendingDirectExtension.mins)}
+                  </p>
+                  <p className="text-[10px] text-[#6b7280] font-semibold">Khách đã đồng ý tại chỗ — gia hạn ngay, không cần xác nhận qua app.</p>
+                  <div className="flex gap-2">
+                    <StaffButton
+                      variant="primary"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => {
+                        proposeExtension(session.sessionId, pendingDirectExtension.mins, pendingDirectExtension.fee, true)
+                        setPendingDirectExtension(null)
+                      }}
+                    >
+                      Xác nhận gia hạn
+                    </StaffButton>
+                    <StaffButton
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => setPendingDirectExtension(null)}
+                    >
+                      Huỷ
+                    </StaffButton>
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
@@ -455,7 +520,9 @@ export default function StaffSessionDetailPage() {
               )}
 
               <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
-                Nếu slot tiếp theo đã có đơn, hệ thống sẽ báo lỗi và không gửi đề xuất.
+                {directExtensionMode
+                  ? "Chế độ trực tiếp: nhân viên xác nhận thay khách khi đã hỏi tại chỗ."
+                  : "Chế độ đề xuất: hệ thống gửi thông báo và chờ khách phản hồi qua app."}
               </p>
             </StaffCard>
 

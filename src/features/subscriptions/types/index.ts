@@ -1,3 +1,5 @@
+import type { KycDocumentType } from '../../provider-kyc/types'
+
 export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'GRACE_PERIOD' | 'EXPIRED'
 export type ProviderStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED'
 export type PaymentRequestStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED'
@@ -52,6 +54,12 @@ export interface ProviderListItem {
   expires_at: string | null
 }
 
+export interface KycDocument {
+  documentType: KycDocumentType
+  cloudinaryUrl: string
+  originalFilename: string | null
+}
+
 export interface ProviderDetail extends ProviderListItem {
   phone: string | null
   business_description: string | null
@@ -64,6 +72,11 @@ export interface ProviderDetail extends ProviderListItem {
   ai_quota_per_month: number | null
   branch_limit: number | null
   channel_limit: number | null
+  kyc: {
+    businessType: string | null
+    submittedAt: string | null
+    documents: KycDocument[]
+  } | null
 }
 
 export interface CafeListItem {

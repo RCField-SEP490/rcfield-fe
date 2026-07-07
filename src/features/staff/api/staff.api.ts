@@ -154,7 +154,7 @@ export const staffApi = {
     return res.data.data
   },
 
-  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee: number }): Promise<any> => {
+  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee: number; direct?: boolean }): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/extensions`, data)
     return res.data.data
   },

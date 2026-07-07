@@ -71,7 +71,7 @@ export interface StaffOperationContextType {
     damageDetails?: { description: string; estimatedCost: number; damageMultiplier: number; finalCharge: number },
     swappedVehiclesState?: { vehicleId: string; status: keyof typeof VehicleStatus }[]
   ) => void
-  proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number) => void
+  proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => void
   addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => void
   updateFnbOrderStatus: (orderId: string, status: FnbOrder["status"]) => void
   swapSessionVehicle: (
@@ -510,10 +510,14 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
   }, [fetchData])
 
-  const proposeExtension = useCallback(async (sessionId: string, extraMinutes: number, additionalFee: number) => {
+  const proposeExtension = useCallback(async (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => {
     try {
-      await staffApi.proposeExtension(sessionId, { extraMinutes, additionalFee })
-      toast.success(`Đã gửi yêu cầu gia hạn thêm ${extraMinutes} phút đến khách hàng.`)
+      await staffApi.proposeExtension(sessionId, { extraMinutes, additionalFee, direct })
+      toast.success(
+        direct
+          ? `Đã gia hạn trực tiếp thêm ${extraMinutes} phút.`
+          : `Đã gửi yêu cầu gia hạn thêm ${extraMinutes} phút đến khách hàng.`
+      )
       await fetchData()
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể gửi đề xuất gia hạn")
