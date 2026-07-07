@@ -39,9 +39,20 @@ export default function StaffInspectionPage() {
     FRONT: "", BACK: "", LEFT: "", RIGHT: "",
   })
 
-  // ── BYOC: single photo state ──────────────────────────────────────────────────
-  const [byocPhotoUrl, setByocPhotoUrl] = useState("")
-  const [byocPhotoNote, setByocPhotoNote] = useState("")
+  // ── BYOC: per-participant photo state ────────────────────────────────────────
+  type ByocPhoto = { participantName: string; url: string; notes: string }
+  const [byocPhotos, setByocPhotos] = useState<ByocPhoto[]>([])
+
+  // Sync slots when booking data arrives (handles direct URL load where booking may be null on first render)
+  useEffect(() => {
+    if (!isByoc || !booking) return
+    const names = booking.participantDetails?.map((p) => p.name) ??
+      booking.plannedParticipants ??
+      ["Người chơi"]
+    setByocPhotos((prev) =>
+      names.map((name) => prev.find((p) => p.participantName === name) ?? { participantName: name, url: "", notes: "" })
+    )
+  }, [booking?.bookingId, isByoc])
 
   const [checklist, setChecklist] = useState<
     { id: string; label: string; checked: boolean; notes?: string }[]
@@ -172,7 +183,7 @@ export default function StaffInspectionPage() {
     reader.readAsDataURL(file)
   }
 
-  const handleByocPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleByocPhotoChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith("image/")) { toast.error("Vui lòng chọn đúng định dạng ảnh."); return }
@@ -180,8 +191,10 @@ export default function StaffInspectionPage() {
 
     const reader = new FileReader()
     reader.onload = () => {
-      setByocPhotoUrl(String(reader.result))
-      toast.success("Đã thêm ảnh xác nhận xe khách.")
+      setByocPhotos((prev) =>
+        prev.map((p, i) => i === index ? { ...p, url: String(reader.result) } : p)
+      )
+      toast.success(`Đã thêm ảnh xác nhận xe của ${byocPhotos[index]?.participantName ?? "khách"}.`)
     }
     reader.readAsDataURL(file)
   }
@@ -200,14 +213,20 @@ export default function StaffInspectionPage() {
     e.preventDefault()
 
     if (isByoc) {
-      if (!byocPhotoUrl) {
-        toast.error("Vui lòng chụp ảnh xác nhận xe của khách!")
+      const missing = byocPhotos.filter((p) => !p.url)
+      if (missing.length > 0) {
+        toast.error(`Vui lòng chụp ảnh xác nhận xe cho: ${missing.map((p) => p.participantName).join(", ")}`)
         return
       }
+      const directions = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
       submitInspection(
         session.sessionId,
         type,
-        [{ direction: "FRONT" as const, url: byocPhotoUrl, notes: byocPhotoNote || "Ảnh xác nhận xe khách" }],
+        byocPhotos.map((p, i) => ({
+          direction: directions[i % directions.length],
+          url: p.url,
+          notes: p.notes || `Xe của ${p.participantName}`,
+        })),
         checklist,
         staffNotes,
         false,
@@ -273,7 +292,7 @@ export default function StaffInspectionPage() {
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-2">
               <Camera className="size-4.5 text-[#ea580c]" />
               {isByoc
-                ? "Chụp ảnh xác nhận xe khách (Bắt buộc 1 ảnh)"
+                ? `Chụp ảnh xác nhận xe khách (${byocPhotos.length} người — bắt buộc mỗi xe 1 ảnh)`
                 : "Chụp ảnh thực tế phương tiện (Bắt buộc 4 hướng)"}
             </h3>
             {!isByoc && type === "CHECK_OUT" && checkInInspection && (
@@ -289,47 +308,79 @@ export default function StaffInspectionPage() {
           </div>
 
           {isByoc ? (
-            /* BYOC: single photo upload */
-            <div className="flex flex-col items-center gap-4">
-              <label
-                htmlFor="byoc-photo"
-                className={cn(
-                  "w-full max-w-sm aspect-video rounded-xl border-2 border-dashed border-[#e5e2e1] bg-[#fcf8f8] flex flex-col items-center justify-center cursor-pointer hover:border-[#ea580c] hover:bg-[#fff3eb]/30 overflow-hidden relative group transition-all",
-                  byocPhotoUrl && "border-solid border-[#e5e2e1]"
-                )}
-              >
-                {byocPhotoUrl ? (
-                  <>
-                    <img src={byocPhotoUrl} alt="Xe khách" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Camera className="size-6 text-white" />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="size-8 text-[#6b7280] mb-2" />
-                    <span className="text-sm font-bold text-[#ea580c]">+ Chụp ảnh xe khách</span>
-                    <span className="text-[10px] text-[#a09e9d] mt-1 font-semibold">Chụp toàn cảnh xe để xác nhận có mặt</span>
-                  </>
-                )}
-                <input
-                  id="byoc-photo"
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={handleByocPhotoChange}
-                />
-              </label>
+            /* BYOC: one photo slot per participant */
+            <div className={cn(
+              "grid gap-4",
+              byocPhotos.length === 1 ? "grid-cols-1 max-w-xs mx-auto" :
+              byocPhotos.length === 2 ? "grid-cols-2" :
+              "grid-cols-2 md:grid-cols-3"
+            )}>
+              {byocPhotos.map((slot, index) => (
+                <div key={index} className="space-y-2">
+                  {/* Participant label */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-extrabold text-[#4c4a49] uppercase tracking-wider truncate">
+                      {slot.participantName}
+                    </span>
+                    {slot.url && (
+                      <span className="shrink-0 text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5 leading-none uppercase">
+                        ✓ Đã chụp
+                      </span>
+                    )}
+                    {!slot.url && (
+                      <span className="shrink-0 text-[9px] font-extrabold text-rose-600 bg-rose-50 border border-rose-200 rounded px-1 py-0.5 leading-none uppercase">
+                        Bắt buộc
+                      </span>
+                    )}
+                  </div>
 
-              {byocPhotoUrl && (
-                <input
-                  type="text"
-                  placeholder="Ghi chú về xe (màu sắc, đặc điểm nhận dạng...)"
-                  value={byocPhotoNote}
-                  onChange={(e) => setByocPhotoNote(e.target.value)}
-                  className="w-full max-w-sm rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:border-[#ea580c]"
-                />
-              )}
+                  {/* Photo upload zone */}
+                  <label
+                    htmlFor={`byoc-photo-${index}`}
+                    className={cn(
+                      "aspect-video rounded-xl border-2 border-dashed border-[#e5e2e1] bg-[#fcf8f8] flex flex-col items-center justify-center cursor-pointer hover:border-[#ea580c] hover:bg-[#fff3eb]/30 overflow-hidden relative group transition-all",
+                      slot.url && "border-solid border-[#e5e2e1]",
+                      !slot.url && "border-rose-200"
+                    )}
+                  >
+                    {slot.url ? (
+                      <>
+                        <img src={slot.url} alt={slot.participantName} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Camera className="size-5 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="size-6 text-[#6b7280] mb-1.5" />
+                        <span className="text-xs font-bold text-[#ea580c]">+ Chụp ảnh xe</span>
+                        <span className="text-[10px] text-[#a09e9d] mt-0.5 font-semibold px-2 text-center">Toàn cảnh xe để xác nhận</span>
+                      </>
+                    )}
+                    <input
+                      id={`byoc-photo-${index}`}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="sr-only"
+                      onChange={(e) => handleByocPhotoChange(index, e)}
+                    />
+                  </label>
+
+                  {/* Notes field */}
+                  {slot.url && (
+                    <input
+                      type="text"
+                      placeholder="Màu, đặc điểm xe..."
+                      value={slot.notes}
+                      onChange={(e) => setByocPhotos((prev) =>
+                        prev.map((p, i) => i === index ? { ...p, notes: e.target.value } : p)
+                      )}
+                      className="w-full rounded-lg border border-[#e5e2e1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:border-[#ea580c]"
+                    />
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
             /* RENTAL: 4-angle grid */

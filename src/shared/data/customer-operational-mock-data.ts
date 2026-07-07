@@ -85,7 +85,7 @@ export interface CustomerBookingDetail {
   trackType: string;
   bookingMode: "SINGLE" | "PACKAGE" | "SUBSCRIPTION";
   playMode: "RENTAL" | "BYOC" | "MIXED";
-  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "COMPLETED";
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "AWAITING_PAYMENT" | "COMPLETED";
   slotStart: string;
   slotEnd: string;
   slotCount: number;
@@ -99,6 +99,7 @@ export interface CustomerBookingDetail {
   paymentStatus: "UNPAID" | "PAID" | "REFUNDED";
   payment_components?: any[];
   plannedParticipants: string[];
+  participantDetails?: { name: string; phone?: string; isBooker: boolean }[];
   plannedVehicles: string[];
   sessions: MockSessionDetail[];
 }

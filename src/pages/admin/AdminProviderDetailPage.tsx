@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import { AdminHeader, AdminPanel, AdminPanelTitle } from "@/pages/admin/components/AdminPrimitives"
+import { KycDocumentViewer } from "@/features/provider-kyc/components/KycDocumentViewer"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog"
@@ -310,6 +311,20 @@ export function AdminProviderDetailPage() {
           )}
         </AdminPanel>
       </div>
+
+      {/* KYC Documents */}
+      {detail.kyc && (
+        <div className="mt-6">
+          <AdminPanel>
+            <AdminPanelTitle title="Giấy tờ xác thực (KYC)" />
+            <KycDocumentViewer
+              businessType={detail.kyc.businessType ?? null}
+              submittedAt={detail.kyc.submittedAt ?? null}
+              documents={detail.kyc.documents ?? []}
+            />
+          </AdminPanel>
+        </div>
+      )}
 
       {/* Reject Dialog */}
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>

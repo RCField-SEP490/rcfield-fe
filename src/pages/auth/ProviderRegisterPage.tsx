@@ -3,16 +3,20 @@ import { useNavigate } from "react-router"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Mail, Lock, User, Phone, Building2, ChevronLeft, CheckCircle2, Sparkles, ArrowRight, ArrowLeft } from "lucide-react"
+import { Mail, Lock, User, Phone, Building2, ChevronLeft, CheckCircle2, Sparkles, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react"
 
 import { AppLogo } from "@/shared/components/AppLogo"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Textarea } from "@/shared/ui/textarea"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
 import { toast } from "sonner"
 import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
 import { routePaths } from "@/app/router/route-paths"
+import { KycDocumentUpload } from "@/features/provider-kyc/components/KycDocumentUpload"
+import type { KycBusinessType } from "@/features/provider-kyc/types"
+import type { KycFiles } from "@/features/provider-kyc/components/KycDocumentUpload"
 
 const schema = z
   .object({
@@ -31,12 +35,30 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
+const REQUIRED_FIELDS: Record<KycBusinessType, string[]> = {
+  INDIVIDUAL: ["cccd_front", "cccd_back", "venue_photo"],
+  BUSINESS: ["gpkd", "representative_id", "venue_photo"],
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  cccd_front: "CCCD mặt trước",
+  cccd_back: "CCCD mặt sau",
+  gpkd: "Giấy phép kinh doanh",
+  representative_id: "CCCD người đại diện",
+  venue_photo: "Ảnh mặt bằng",
+}
+
 export function ProviderRegisterPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [showTerms, setShowTerms] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
+  const [businessType, setBusinessType] = useState<KycBusinessType>("INDIVIDUAL")
+  const [kycFiles, setKycFiles] = useState<KycFiles>({})
+  const [fileErrors, setFileErrors] = useState<Partial<Record<string, string>>>({})
 
   const {
     register,
@@ -64,17 +86,43 @@ export function ProviderRegisterPage() {
     setStep(2)
   }
 
+  const handleStep2Next = async () => {
+    const isValid = await trigger(["business_name", "business_description"])
+    if (!isValid) return
+    setStep(3)
+  }
+
+  const validateFiles = (): boolean => {
+    const required = REQUIRED_FIELDS[businessType]
+    const newErrors: Partial<Record<string, string>> = {}
+    for (const field of required) {
+      if (!kycFiles[field]) {
+        newErrors[field] = `${FIELD_LABELS[field]} là bắt buộc`
+      }
+    }
+    setFileErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const onSubmit = async (data: FormValues) => {
+    if (!validateFiles()) return
+
     setSubmitting(true)
     try {
-      await subscriptionApi.registerProvider({
-        email: data.email,
-        password: data.password,
-        full_name: data.full_name,
-        phone: data.phone || undefined,
-        business_name: data.business_name,
-        business_description: data.business_description,
-      })
+      const formData = new FormData()
+      formData.append("email", data.email)
+      formData.append("password", data.password)
+      formData.append("full_name", data.full_name)
+      if (data.phone) formData.append("phone", data.phone)
+      formData.append("business_name", data.business_name)
+      if (data.business_description) formData.append("business_description", data.business_description)
+      formData.append("business_type", businessType)
+
+      for (const [fieldName, file] of Object.entries(kycFiles)) {
+        if (file) formData.append(fieldName, file)
+      }
+
+      await subscriptionApi.registerProvider(formData)
       setSuccess(true)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -163,14 +211,23 @@ export function ProviderRegisterPage() {
               </span>
               <span className="text-xs font-bold text-slate-700">Tài khoản</span>
             </div>
-            <div className="flex-1 h-[2px] bg-slate-200 mx-4" />
+            <div className="flex-1 h-[2px] bg-slate-200 mx-3" />
             <div className="flex items-center gap-2">
               <span className={`size-7 rounded-lg flex items-center justify-center text-xs font-bold ${
-                step === 2 ? "bg-orange-600 text-white shadow-sm" : "bg-slate-200 text-slate-500"
+                step === 2 ? "bg-orange-600 text-white shadow-sm" : step > 2 ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
               }`}>
-                2
+                {step > 2 ? <CheckCircle2 className="size-4" /> : "2"}
               </span>
               <span className="text-xs font-bold text-slate-700">Doanh nghiệp</span>
+            </div>
+            <div className="flex-1 h-[2px] bg-slate-200 mx-3" />
+            <div className="flex items-center gap-2">
+              <span className={`size-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                step === 3 ? "bg-orange-600 text-white shadow-sm" : "bg-slate-200 text-slate-500"
+              }`}>
+                {step === 3 ? <ShieldCheck className="size-4" /> : "3"}
+              </span>
+              <span className="text-xs font-bold text-slate-700">Giấy tờ</span>
             </div>
           </div>
 
@@ -218,8 +275,8 @@ export function ProviderRegisterPage() {
                   />
                   <label htmlFor="terms" className="text-xs text-slate-500 leading-relaxed cursor-pointer select-none">
                     Tôi đồng ý với{" "}
-                    <span className="font-bold text-orange-600 hover:underline">Điều khoản dịch vụ</span> và{" "}
-                    <span className="font-bold text-orange-600 hover:underline">Chính sách bảo mật đối tác</span> của RCField.
+                    <button type="button" onClick={() => setShowTerms(true)} className="font-bold text-orange-600 hover:underline">Điều khoản dịch vụ</button> và{" "}
+                    <button type="button" onClick={() => setShowPrivacy(true)} className="font-bold text-orange-600 hover:underline">Chính sách bảo mật đối tác</button> của RCField.
                   </label>
                 </div>
 
@@ -261,6 +318,62 @@ export function ProviderRegisterPage() {
                   </Button>
 
                   <Button
+                    type="button"
+                    onClick={handleStep2Next}
+                    className="w-2/3 h-11 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl gap-2 shadow-md shadow-orange-600/10"
+                  >
+                    Tiếp tục bước 3 <ArrowRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-5 animate-fadeIn">
+                {/* Business type selector */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-700">Loại hình kinh doanh *</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["INDIVIDUAL", "BUSINESS"] as KycBusinessType[]).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => { setBusinessType(type); setKycFiles({}); setFileErrors({}) }}
+                        className={`h-11 rounded-xl border-2 text-xs font-bold transition-colors ${
+                          businessType === type
+                            ? "border-orange-500 bg-orange-50 text-orange-700"
+                            : "border-slate-200 text-slate-600 hover:border-slate-300"
+                        }`}
+                      >
+                        {type === "INDIVIDUAL" ? "Cá nhân" : "Doanh nghiệp"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <KycDocumentUpload
+                  businessType={businessType}
+                  files={kycFiles}
+                  errors={fileErrors}
+                  onChange={(fieldName, file) => {
+                    setKycFiles((prev) => ({ ...prev, [fieldName]: file }))
+                    if (fileErrors[fieldName]) {
+                      setFileErrors((prev) => { const next = { ...prev }; delete next[fieldName]; return next })
+                    }
+                  }}
+                />
+
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    variant="outline"
+                    className="w-1/3 h-11 border-slate-200 hover:bg-slate-50 rounded-xl text-slate-600 font-bold gap-2"
+                  >
+                    <ArrowLeft className="size-4" /> Quay lại
+                  </Button>
+
+                  <Button
                     type="submit"
                     disabled={submitting}
                     className="w-2/3 h-11 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl gap-2 shadow-md shadow-orange-600/10"
@@ -284,7 +397,257 @@ export function ProviderRegisterPage() {
           </form>
         </div>
       </div>
+
+      <TermsDialog open={showTerms} onClose={() => setShowTerms(false)} />
+      <PrivacyDialog open={showPrivacy} onClose={() => setShowPrivacy(false)} />
     </div>
+  )
+}
+
+function TermsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Điều khoản dịch vụ Đối tác RCField</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 text-sm text-slate-600 leading-relaxed">
+          <p className="text-xs text-slate-400">Phiên bản 1.0 — Có hiệu lực từ ngày 01/07/2026</p>
+
+          <p>Vui lòng đọc kỹ Điều khoản dịch vụ này trước khi đăng ký trở thành Đối tác của Nền tảng RCField. Bằng việc hoàn tất đăng ký, bạn xác nhận đã đọc, hiểu và đồng ý bị ràng buộc bởi toàn bộ các điều khoản dưới đây.</p>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">1. Định nghĩa</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><span className="font-medium text-slate-700">"RCField" / "Nền tảng"</span>: Công ty vận hành phần mềm quản lý sân xe RC mô hình tại Việt Nam.</li>
+              <li><span className="font-medium text-slate-700">"Đối tác" / "Provider"</span>: Cá nhân hoặc tổ chức kinh doanh sân xe RC mô hình đăng ký sử dụng Nền tảng.</li>
+              <li><span className="font-medium text-slate-700">"Khách hàng"</span>: Người dùng cuối đặt lịch chơi tại cơ sở của Đối tác thông qua Nền tảng.</li>
+              <li><span className="font-medium text-slate-700">"Dịch vụ"</span>: Toàn bộ tính năng phần mềm được cung cấp theo gói đăng ký, bao gồm quản lý đặt lịch, quản lý tài sản, thanh toán và báo cáo.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">2. Điều kiện tham gia</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Đối tác phải là cá nhân đủ 18 tuổi trở lên hoặc tổ chức được thành lập hợp pháp tại Việt Nam.</li>
+              <li>Đối tác phải hoàn tất quy trình xác minh danh tính (KYC) bằng cách cung cấp giấy tờ hợp lệ theo yêu cầu của RCField.</li>
+              <li>Đối tác phải có quyền hợp pháp để vận hành cơ sở kinh doanh tại địa điểm đăng ký.</li>
+              <li>Việc phê duyệt tài khoản thuộc thẩm quyền quyết định cuối cùng của RCField và có thể bị từ chối mà không cần nêu lý do.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">3. Quyền và nghĩa vụ của Đối tác</p>
+            <p className="font-medium text-slate-700">3.1. Quyền của Đối tác:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Được sử dụng đầy đủ tính năng theo gói đăng ký đã thanh toán.</li>
+              <li>Được hỗ trợ kỹ thuật trong giờ hành chính qua các kênh chính thức.</li>
+              <li>Được thông báo trước tối thiểu 30 ngày về mọi thay đổi lớn ảnh hưởng đến hoạt động kinh doanh.</li>
+            </ul>
+            <p className="font-medium text-slate-700 mt-2">3.2. Nghĩa vụ của Đối tác:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Cung cấp thông tin đăng ký chính xác, đầy đủ và cập nhật kịp thời khi có thay đổi.</li>
+              <li>Tự chịu trách nhiệm về tính hợp pháp của hoạt động kinh doanh và tuân thủ mọi quy định pháp luật hiện hành.</li>
+              <li>Bảo mật thông tin đăng nhập, không chia sẻ tài khoản cho bên thứ ba.</li>
+              <li>Không sử dụng Nền tảng cho mục đích gian lận, rửa tiền hoặc các hành vi vi phạm pháp luật.</li>
+              <li>Không cố tình phá hoại, tấn công hoặc khai thác lỗ hổng bảo mật của Nền tảng.</li>
+              <li>Thanh toán phí dịch vụ đúng hạn theo gói đã đăng ký.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">4. Quyền và nghĩa vụ của RCField</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>RCField cam kết duy trì tính ổn định và bảo mật của Nền tảng theo tiêu chuẩn kỹ thuật hiện hành.</li>
+              <li>RCField có quyền tạm ngưng hoặc chấm dứt tài khoản vi phạm Điều khoản mà không cần thông báo trước trong trường hợp vi phạm nghiêm trọng.</li>
+              <li>RCField có quyền điều chỉnh tính năng, giao diện hoặc cấu trúc dịch vụ nhằm cải thiện trải nghiệm, với thông báo hợp lý.</li>
+              <li>RCField không chịu trách nhiệm về các thiệt hại phát sinh từ việc Đối tác vi phạm điều khoản hoặc pháp luật.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">5. Phí dịch vụ và thanh toán</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>RCField thu phí theo mô hình đăng ký gói (SaaS) hàng tháng hoặc hàng năm, không thu hoa hồng trên từng giao dịch đặt lịch của Khách hàng.</li>
+              <li>Phí có thể thay đổi với thông báo trước tối thiểu 30 ngày. Gói đang sử dụng được giữ nguyên giá đến hết chu kỳ thanh toán hiện tại.</li>
+              <li>Không hoàn tiền cho thời gian sử dụng đã qua, trừ trường hợp lỗi kỹ thuật nghiêm trọng thuộc trách nhiệm của RCField.</li>
+              <li>Tài khoản quá hạn thanh toán sẽ bị chuyển sang trạng thái gia hạn (Grace Period) 7 ngày trước khi tạm ngưng.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">6. Quyền sở hữu trí tuệ</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Toàn bộ phần mềm, giao diện, logo và tài liệu của RCField là tài sản trí tuệ thuộc quyền sở hữu của RCField.</li>
+              <li>Đối tác không được sao chép, phân phối lại, dịch ngược hoặc tạo sản phẩm phái sinh từ Nền tảng.</li>
+              <li>Dữ liệu kinh doanh (đặt lịch, khách hàng, tài sản) do Đối tác tạo ra thuộc sở hữu của Đối tác. RCField chỉ lưu trữ và xử lý theo ủy quyền.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">7. Giới hạn trách nhiệm</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>RCField không chịu trách nhiệm về lợi nhuận bị mất, gián đoạn kinh doanh hoặc thiệt hại gián tiếp phát sinh từ việc sử dụng Nền tảng.</li>
+              <li>Tổng mức bồi thường tối đa của RCField không vượt quá tổng phí dịch vụ Đối tác đã thanh toán trong 3 tháng gần nhất.</li>
+              <li>RCField không chịu trách nhiệm về tranh chấp giữa Đối tác và Khách hàng cuối.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">8. Chấm dứt hợp đồng</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Đối tác có thể chấm dứt bất kỳ lúc nào bằng cách gửi thông báo bằng văn bản. Dịch vụ tiếp tục đến hết chu kỳ thanh toán hiện tại.</li>
+              <li>RCField có quyền chấm dứt ngay lập tức nếu Đối tác vi phạm nghiêm trọng Điều khoản, vi phạm pháp luật, hoặc có hành vi gây hại cho Nền tảng/người dùng khác.</li>
+              <li>Sau khi chấm dứt, Đối tác có 30 ngày để xuất dữ liệu. Sau thời hạn này, dữ liệu sẽ bị xóa vĩnh viễn theo chính sách lưu trữ.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">9. Sửa đổi điều khoản</p>
+            <p>RCField có quyền sửa đổi Điều khoản này bất kỳ lúc nào. Thay đổi sẽ được thông báo qua email đăng ký và trên Nền tảng trước ít nhất 15 ngày. Việc tiếp tục sử dụng dịch vụ sau thời điểm có hiệu lực được xem là chấp thuận các thay đổi.</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">10. Luật áp dụng và giải quyết tranh chấp</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Điều khoản này được điều chỉnh bởi pháp luật Việt Nam hiện hành.</li>
+              <li>Các bên ưu tiên giải quyết tranh chấp thông qua thương lượng thiện chí trong vòng 30 ngày kể từ ngày phát sinh tranh chấp.</li>
+              <li>Nếu thương lượng không thành, tranh chấp sẽ được đưa ra Tòa án nhân dân có thẩm quyền tại Thành phố Hồ Chí Minh để giải quyết.</li>
+            </ul>
+          </div>
+
+          <p className="text-xs text-slate-400 pt-2 border-t border-slate-100">Cập nhật lần cuối: 01/07/2026 · Phiên bản 1.0 · Tài liệu này có thể được cập nhật. Mọi thắc mắc liên hệ: support@rcfield.vn</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Chính sách bảo mật dành cho Đối tác RCField</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 text-sm text-slate-600 leading-relaxed">
+          <p className="text-xs text-slate-400">Phiên bản 1.0 — Có hiệu lực từ ngày 01/07/2026</p>
+
+          <p>Chính sách này mô tả cách RCField thu thập, sử dụng, lưu trữ và bảo vệ thông tin cá nhân của Đối tác trong quá trình đăng ký và sử dụng Nền tảng, phù hợp với Luật An ninh mạng 2018, Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân và các quy định pháp luật hiện hành tại Việt Nam.</p>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">1. Thông tin chúng tôi thu thập</p>
+            <p className="font-medium text-slate-700">1.1. Thông tin nhận dạng cá nhân:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Họ và tên đầy đủ, ngày tháng năm sinh</li>
+              <li>Số Căn cước công dân / Chứng minh nhân dân (cả hai mặt)</li>
+              <li>Địa chỉ email, số điện thoại liên lạc</li>
+            </ul>
+            <p className="font-medium text-slate-700 mt-2">1.2. Thông tin doanh nghiệp (áp dụng cho Đối tác doanh nghiệp):</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Tên doanh nghiệp, mã số thuế, địa chỉ trụ sở</li>
+              <li>Giấy chứng nhận đăng ký kinh doanh</li>
+              <li>Thông tin người đại diện pháp luật và CCCD của người đại diện</li>
+            </ul>
+            <p className="font-medium text-slate-700 mt-2">1.3. Thông tin cơ sở kinh doanh:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Ảnh thực tế mặt bằng kinh doanh</li>
+              <li>Địa chỉ và thông tin liên hệ của từng chi nhánh</li>
+            </ul>
+            <p className="font-medium text-slate-700 mt-2">1.4. Dữ liệu hoạt động:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Lịch sử đặt lịch, giao dịch thanh toán, báo cáo doanh thu</li>
+              <li>Nhật ký truy cập hệ thống (log), địa chỉ IP, loại trình duyệt</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">2. Mục đích xử lý thông tin</p>
+            <p>Thông tin được thu thập và xử lý cho các mục đích sau:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><span className="font-medium text-slate-700">Xác minh danh tính (KYC):</span> Đảm bảo Đối tác là cá nhân/tổ chức hợp pháp, phòng ngừa gian lận và rửa tiền theo quy định pháp luật.</li>
+              <li><span className="font-medium text-slate-700">Cung cấp dịch vụ:</span> Thiết lập và quản lý tài khoản, xử lý thanh toán, hỗ trợ kỹ thuật.</li>
+              <li><span className="font-medium text-slate-700">Liên lạc và thông báo:</span> Gửi thông tin về cập nhật dịch vụ, hóa đơn, cảnh báo bảo mật và thông báo quan trọng.</li>
+              <li><span className="font-medium text-slate-700">Tuân thủ pháp lý:</span> Đáp ứng yêu cầu của cơ quan nhà nước có thẩm quyền khi được yêu cầu hợp pháp.</li>
+              <li><span className="font-medium text-slate-700">Cải thiện dịch vụ:</span> Phân tích dữ liệu ẩn danh để nâng cao chất lượng Nền tảng.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">3. Nguyên tắc xử lý dữ liệu</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Chỉ thu thập dữ liệu cần thiết cho mục đích đã xác định (tối giản hóa dữ liệu).</li>
+              <li>Không sử dụng dữ liệu ngoài các mục đích đã nêu mà không có sự đồng ý bổ sung.</li>
+              <li>Không bán, cho thuê hoặc trao đổi thông tin cá nhân của Đối tác cho bên thứ ba vì mục đích thương mại.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">4. Chia sẻ thông tin với bên thứ ba</p>
+            <p>Thông tin có thể được chia sẻ giới hạn trong các trường hợp sau:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><span className="font-medium text-slate-700">Nhà cung cấp dịch vụ kỹ thuật:</span> Cloudinary (lưu trữ tệp), nhà cung cấp dịch vụ thanh toán — chỉ chia sẻ dữ liệu tối thiểu cần thiết và ràng buộc bằng hợp đồng bảo mật.</li>
+              <li><span className="font-medium text-slate-700">Cơ quan nhà nước:</span> Khi có yêu cầu bằng văn bản hợp pháp từ cơ quan công an, tòa án hoặc cơ quan thuế.</li>
+              <li><span className="font-medium text-slate-700">Tình huống khẩn cấp:</span> Khi cần thiết để bảo vệ quyền lợi, tính mạng hoặc tài sản của các bên liên quan.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">5. Bảo mật dữ liệu</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Toàn bộ dữ liệu truyền tải được mã hóa bằng TLS 1.2 trở lên (HTTPS).</li>
+              <li>Giấy tờ KYC được lưu trữ trên hạ tầng đám mây bảo mật (Cloudinary) với kiểm soát truy cập nghiêm ngặt — chỉ nhân viên được ủy quyền của RCField mới có quyền xem.</li>
+              <li>Mật khẩu tài khoản được băm (hash) bằng thuật toán bcrypt, không được lưu dưới dạng văn bản thô.</li>
+              <li>Hệ thống được kiểm tra bảo mật định kỳ. Khi phát hiện vi phạm dữ liệu có nguy cơ ảnh hưởng đến Đối tác, RCField sẽ thông báo trong vòng 72 giờ.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">6. Thời hạn lưu trữ</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Dữ liệu tài khoản và hoạt động: lưu trong suốt thời gian hợp đồng còn hiệu lực.</li>
+              <li>Giấy tờ KYC và hồ sơ pháp lý: lưu tối thiểu 5 năm sau khi chấm dứt hợp đồng theo quy định Nghị định 13/2023/NĐ-CP.</li>
+              <li>Nhật ký hệ thống: lưu tối đa 2 năm phục vụ mục đích kiểm toán và bảo mật.</li>
+              <li>Sau khi hết thời hạn lưu trữ bắt buộc, dữ liệu sẽ được xóa an toàn và không thể phục hồi.</li>
+            </ul>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">7. Quyền của Đối tác đối với dữ liệu cá nhân</p>
+            <p>Theo quy định pháp luật, Đối tác có các quyền sau:</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li><span className="font-medium text-slate-700">Quyền truy cập:</span> Yêu cầu xem bản sao thông tin cá nhân mà RCField đang lưu trữ.</li>
+              <li><span className="font-medium text-slate-700">Quyền chỉnh sửa:</span> Yêu cầu cập nhật thông tin không chính xác hoặc không đầy đủ.</li>
+              <li><span className="font-medium text-slate-700">Quyền xóa:</span> Yêu cầu xóa dữ liệu cá nhân khi không còn cần thiết, trừ trường hợp pháp luật yêu cầu lưu trữ.</li>
+              <li><span className="font-medium text-slate-700">Quyền rút đồng ý:</span> Rút lại sự đồng ý xử lý dữ liệu bất kỳ lúc nào (có thể ảnh hưởng đến khả năng sử dụng dịch vụ).</li>
+              <li><span className="font-medium text-slate-700">Quyền phản đối:</span> Phản đối việc xử lý dữ liệu vì mục đích marketing trực tiếp.</li>
+            </ul>
+            <p className="mt-1">Để thực hiện các quyền trên, liên hệ qua email: <span className="font-medium text-slate-700">privacy@rcfield.vn</span>. RCField sẽ phản hồi trong vòng 15 ngày làm việc.</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">8. Cookie và công nghệ theo dõi</p>
+            <p>Nền tảng sử dụng cookie cần thiết để duy trì phiên đăng nhập và đảm bảo tính năng hoạt động bình thường. Không sử dụng cookie theo dõi hành vi vì mục đích quảng cáo bên thứ ba.</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">9. Thay đổi chính sách</p>
+            <p>RCField có thể cập nhật Chính sách này để phù hợp với thay đổi pháp lý hoặc vận hành. Mọi thay đổi quan trọng sẽ được thông báo qua email trước ít nhất 15 ngày. Phiên bản mới nhất luôn có hiệu lực và có thể truy cập trong mục Cài đặt tài khoản.</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="font-semibold text-slate-800">10. Liên hệ về quyền riêng tư</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>Email: privacy@rcfield.vn</li>
+              <li>Địa chỉ: [Địa chỉ công ty RCField]</li>
+              <li>Thời gian phản hồi: trong vòng 15 ngày làm việc kể từ ngày nhận yêu cầu.</li>
+            </ul>
+          </div>
+
+          <p className="text-xs text-slate-400 pt-2 border-t border-slate-100">Cập nhật lần cuối: 01/07/2026 · Phiên bản 1.0 · Căn cứ pháp lý: Luật An ninh mạng 2018, Nghị định 13/2023/NĐ-CP</p>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

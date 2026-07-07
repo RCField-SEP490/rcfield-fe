@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Clock3, MapPin, Phone, Route, ShieldCheck, TimerReset, Users, X } from "lucide-react"
+import { Clock3, MapPin, Phone, ShieldCheck, TimerReset, Users, X } from "lucide-react"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { mapCafeToExploreCafe } from "@/features/cafes/lib/cafe.mappers"
 import type { Cafe } from "@/shared/data/explore-data"
@@ -27,7 +27,7 @@ export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe |
 
   return (
     <Dialog open={!!displayCafe} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90svh] max-w-3xl sm:max-w-3xl overflow-hidden border border-slate-200 bg-white p-0">
+      <DialogContent showCloseButton={false} className="max-h-[90svh] max-w-3xl sm:max-w-3xl overflow-hidden border border-slate-200 bg-white p-0">
         {displayCafe && (
           <>
             <DialogHeader className="sr-only">
@@ -38,7 +38,7 @@ export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe |
               <img src={displayCafe.image} alt={displayCafe.name} className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
               <Button type="button" size="icon" variant="secondary" onClick={onClose} className="absolute right-4 top-4 rounded-full bg-white/90">
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 text-slate-700" />
               </Button>
               <div className="absolute bottom-5 left-5 right-5 text-white">
                 <div className="mb-2 flex flex-wrap gap-2">
@@ -79,7 +79,6 @@ export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe |
                   <p className="mt-2 text-xl font-black text-slate-950">{displayCafe.priceRange}</p>
                   <div className="mt-4 space-y-2 text-xs font-semibold text-slate-600">
                     <span className="flex items-center gap-2"><TimerReset className="h-4 w-4 text-orange-500" /> Báo trước {displayCafe.minBookingNoticeMinutes ?? 60} phút</span>
-                    <span className="flex items-center gap-2"><Route className="h-4 w-4 text-orange-500" /> Tối đa {displayCafe.maxConcurrentBookings ?? "--"} booking</span>
                   </div>
                   <Button type="button" onClick={() => onBookNow(displayCafe.id)} className="mt-4 h-10 w-full rounded-xl bg-orange-600 font-black text-white hover:bg-slate-950">Đặt sân này</Button>
                 </div>

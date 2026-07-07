@@ -40,17 +40,13 @@ export const subscriptionApi = {
     return res.data
   },
 
-  registerProvider: async (body: {
-    email: string
-    password: string
-    full_name: string
-    phone?: string
-    business_name: string
-    business_description?: string
-  }): Promise<{ success: boolean; data: { id: string; email: string } }> => {
+  registerProvider: async (
+    formData: FormData,
+  ): Promise<{ success: boolean; data: { id: string; email: string } }> => {
+    // Do NOT set Content-Type manually — browser sets multipart boundary automatically
     const res = await api.post<{ success: boolean; data: { id: string; email: string } }>(
       "/v1/auth/register-provider",
-      body,
+      formData,
     )
     return res.data
   },

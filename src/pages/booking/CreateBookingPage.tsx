@@ -35,6 +35,7 @@ import type { TrackConfig } from "@/features/cafes/types"
 import { useAvailability, useCreateBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import { bookingApi } from "@/features/booking/api/booking.api"
 import { toast } from "sonner"
+import { LoginPromptDialog } from "./components/LoginPromptDialog"
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -235,7 +236,17 @@ export function CreateBookingPage() {
     return components
   }, [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots, participants, selectedPackageId])
 
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
+
   const handleNext = () => {
+    if (!authRole) {
+      setShowLoginPrompt(true)
+      return
+    }
+    if (authRole !== "customer") {
+      toast.error("Vui lòng đăng nhập bằng tài khoản khách hàng để đặt lịch.")
+      return
+    }
     const index = orderedSteps.indexOf(currentStep)
     setCurrentStep(orderedSteps[Math.min(index + 1, orderedSteps.length - 1)])
   }
@@ -516,6 +527,15 @@ export function CreateBookingPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <LoginPromptDialog
+        open={showLoginPrompt}
+        onClose={() => setShowLoginPrompt(false)}
+        onSuccess={() => {
+          const index = orderedSteps.indexOf(currentStep)
+          setCurrentStep(orderedSteps[Math.min(index + 1, orderedSteps.length - 1)])
+        }}
+      />
     </div>
   )
 }

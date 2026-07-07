@@ -11,6 +11,10 @@ import {
   ClipboardCheck,
   FileText,
   HelpCircle,
+  Banknote,
+  CheckCircle2,
+  ShieldCheck,
+  Package,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { staffApi } from "@/features/staff/api/staff.api"
@@ -48,6 +52,7 @@ export default function StaffSessionDetailPage() {
   const [loadingMenu, setLoadingMenu] = useState(false)
   const [availableFleet, setAvailableFleet] = useState<VehicleUnit[]>([])
   const [settlingPayment, setSettlingPayment] = useState(false)
+  const [confirmSettleOpen, setConfirmSettleOpen] = useState(false)
 
   // F&B local form state
   const [selectedItemName, setSelectedItemName] = useState("")
@@ -124,12 +129,6 @@ export default function StaffSessionDetailPage() {
         </StaffButton>
       </div>
     )
-  }
-
-  // Handle extension proposal
-  const handleExtension = (mins: number) => {
-    const additionalFee = mins === 15 ? 40000 : mins === 30 ? 75000 : 100000
-    proposeExtension(session.sessionId, mins, additionalFee)
   }
 
   // Handle adding custom F&B order
@@ -209,6 +208,23 @@ export default function StaffSessionDetailPage() {
   const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
   const extensionPending = session.extensionProposal?.status === "PENDING"
   const approvedExtensionFee = session.extensionProposal?.status === "APPROVED" ? session.extensionProposal.additionalFee : 0
+
+  // Extension fee derived from booking slot rate (placed after approvedExtensionFee to avoid TDZ)
+  const sessionDurationMinutes =
+    (new Date(booking.slotEnd).getTime() - new Date(booking.slotStart).getTime()) / 60000
+  const slotRatePerMinute = sessionDurationMinutes > 0 ? booking.slotFee / sessionDurationMinutes : 0
+  const calcExtensionFee = (mins: number) =>
+    Math.round((slotRatePerMinute * mins) / 1000) * 1000
+  const maxExtensionFee = booking.depositAmount > 0 ? booking.depositAmount * 0.5 : Infinity
+  const remainingCap = Math.max(0, maxExtensionFee - approvedExtensionFee)
+  const extensionOptions = ([15, 30, 60] as const).map((mins) => {
+    const fee = calcExtensionFee(mins)
+    return { mins, fee, blocked: fee > remainingCap }
+  })
+  const handleExtension = (mins: number, fee: number) => proposeExtension(session.sessionId, mins, fee)
+  const slotEndMs = new Date(booking.slotEnd).getTime()
+  const projectedEnd = (extraMins: number) =>
+    new Date(slotEndMs + extraMins * 60000).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
   const fnbTotal = (session.fnbOrders || []).reduce((sum, order) => sum + order.total, 0)
   const damageCharge = session.damageClaim?.finalCharge ?? 0
 
@@ -222,6 +238,8 @@ export default function StaffSessionDetailPage() {
 
   // Counter service bill = F&B + Extension + damage that exceeds deposit
   const totalCounterBill = fnbTotal + approvedExtensionFee + damageExceedingDeposit
+  // Net amount customer hands over at the counter (positive = customer pays, negative = staff returns change)
+  const netCounterAmount = totalCounterBill - depositRefundAmount
 
   // UI flags
   const hasPendingCounterPayment = booking.payment_components?.some(
@@ -251,164 +269,224 @@ export default function StaffSessionDetailPage() {
         </div>
       </div>
 
-      {/* 2. TOP TIMER DISPLAY & SIMULATOR ACTION SUMMARY */}
-      <div className="grid md:grid-cols-3 gap-6">
-        <StaffCard className="md:col-span-2 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute right-0 top-0 h-full w-1/4 bg-gradient-to-l from-[#fff3eb]/20 to-transparent pointer-events-none" />
-          
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="mb-2">
-                <StaffBadge variant={sessionBadgeVariant}>
-                  {session.status === "ACTIVE" && "ĐANG CHƠI"}
-                  {session.status === "CHECKED_IN" && "ĐÃ CHECK-IN"}
-                  {session.status === "EXTENDING" && "YÊU CẦU GIA HẠN"}
-                  {session.status === "CHECKING_OUT" && "ĐANG TRẢ XE"}
-                  {session.status === "COMPLETED" && "ĐÃ ĐÓNG"}
-                </StaffBadge>
-              </div>
-              <h3 className="text-2xl font-black text-[#1c1b1b] tracking-tight">{booking.trackName}</h3>
-              <p className="text-xs text-[#6b7280] font-semibold mt-1">Đường đua: {booking.trackType}</p>
-            </div>
+      {/* 2. SESSION INFO CARD */}
+      <StaffCard className="relative overflow-hidden">
+        <div className="absolute right-0 top-0 h-full w-1/5 bg-gradient-to-l from-[#fff3eb]/15 to-transparent pointer-events-none" />
 
-            {/* Live Timer widget */}
-            {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
-              <div className="bg-[#fff3eb] border border-[#ffdbca] rounded-xl px-5 py-2.5 text-center min-w-36 shrink-0 shadow-sm">
-                <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block mb-0.5">
-                  Thời gian còn lại
-                </span>
-                <span className="text-3xl font-mono font-black text-[#ea580c] tracking-tight">{timeLeft}</span>
-              </div>
-            )}
+        {/* Top row: status badge + track name + timer */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <StaffBadge variant={sessionBadgeVariant}>
+              {session.status === "ACTIVE" && "ĐANG CHƠI"}
+              {session.status === "CHECKED_IN" && "ĐÃ CHECK-IN"}
+              {session.status === "EXTENDING" && "YÊU CẦU GIA HẠN"}
+              {session.status === "CHECKING_OUT" && "ĐANG TRẢ XE"}
+              {session.status === "COMPLETED" && "ĐÃ ĐÓNG"}
+            </StaffBadge>
+            <div>
+              <h3 className="text-xl font-black text-[#1c1b1b] tracking-tight leading-tight">{booking.trackName}</h3>
+              <p className="text-[11px] text-[#6b7280] font-semibold">{booking.trackType} · {booking.shortCode}</p>
+            </div>
           </div>
 
-          {/* Details metadata grid */}
-          <div className="mt-6 border-t border-[#e5e2e1] pt-4 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-semibold">
-            <div>
-              <span className="text-[#6b7280] block mb-0.5">Khách hàng</span>
-              <span className="text-[#1c1b1b] font-bold">{booking.plannedParticipants[0]}</span>
+          {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
+            <div className="bg-[#fff3eb] border border-[#ffdbca] rounded-xl px-5 py-2 text-center min-w-32 shrink-0 shadow-sm">
+              <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
+                Còn lại
+              </span>
+              <span className="text-2xl font-mono font-black text-[#ea580c] tracking-tight">{timeLeft}</span>
             </div>
-            <div>
-              <span className="text-[#6b7280] block mb-0.5">Mã đơn gốc</span>
-              <span className="text-[#1c1b1b] font-bold">{booking.shortCode}</span>
-            </div>
-            <div>
-              <span className="text-[#6b7280] block mb-0.5">Nhân viên trực ca</span>
-              <span className="text-[#1c1b1b] font-bold">{session.staffName}</span>
+          )}
+        </div>
+
+        {/* Bottom metadata strip */}
+        <div className="mt-4 pt-3 border-t border-[#e5e2e1] grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-xs font-semibold">
+          <div className="col-span-2 sm:col-span-2">
+            <span className="text-[#6b7280] block mb-1">
+              Người chơi ({booking.participantDetails?.length ?? booking.plannedParticipants.length})
+            </span>
+            <div className="space-y-0.5">
+              {(booking.participantDetails
+                ? booking.participantDetails
+                : booking.plannedParticipants.map((name) => ({ name, phone: undefined, isBooker: false }))
+              ).map((p, i) => (
+                <div key={i} className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[#1c1b1b] font-bold">{p.name}</span>
+                  {p.isBooker && (
+                    <span className="text-[9px] font-extrabold uppercase tracking-wide bg-[#fff3eb] text-[#ea580c] border border-[#ffdbca] rounded px-1 py-0.5 leading-none">
+                      Booker
+                    </span>
+                  )}
+                  {p.phone && (
+                    <span className="text-[#9b8fa8] font-normal">{p.phone}</span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
-        </StaffCard>
-
-        {/* Customer response status */}
-        <StaffCard className="border-orange-100 bg-[#fffbf9] flex flex-col justify-between p-5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 text-[#ea580c]">
-              <ClipboardCheck className="size-4.5" />
-              <h4 className="font-bold text-xs uppercase tracking-wider">Trạng thái xác nhận khách hàng</h4>
-            </div>
-            <p className="text-[11px] text-[#6b7280] leading-relaxed">
-              Staff gửi biên bản hoặc đề xuất, khách xác nhận trên ứng dụng. Màn hình này tự cập nhật khi nhận WebSocket.
-            </p>
+          <div>
+            <span className="text-[#6b7280] block mb-0.5">Giờ chơi</span>
+            <span className="text-[#1c1b1b] font-bold">
+              {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              {" – "}
+              {new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+            </span>
           </div>
+          <div>
+            <span className="text-[#6b7280] block mb-0.5">Nhân viên trực</span>
+            <span className="text-[#1c1b1b] font-bold">{session.staffName}</span>
+          </div>
+        </div>
+      </StaffCard>
 
-          <div className="space-y-2 pt-4 text-xs font-semibold">
-            {!checkInInspection && session.status === "CHECKED_IN" && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900">
-                Cần lập biên bản check-in trước khi khách có thể xác nhận nhận xe.
-              </div>
-            )}
-
-            {checkInPending && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-blue-900">
-                Đang chờ khách xác nhận biên bản nhận xe trên ứng dụng.
-              </div>
-            )}
-
-            {checkInDisputed && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-900">
-                Khách đã phản hồi sai lệch biên bản nhận xe. Cần kiểm tra lại và lập biên bản mới.
-              </div>
-            )}
-
-            {extensionPending && (
-              <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-orange-900">
-                Đang chờ khách phản hồi đề xuất gia hạn {session.extensionProposal?.extraMinutes} phút.
-              </div>
-            )}
-
-            {checkOutPending && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-blue-900">
-                Đang chờ khách xác nhận biên bản trả xe để đóng phiên.
-              </div>
-            )}
-
-            {checkOutDisputed && (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-rose-900">
-                Khách đã phản hồi sai lệch biên bản trả xe. Staff cần đối chiếu và kiểm lại xe.
-              </div>
-            )}
-
-            {!checkInPending && !checkInDisputed && !extensionPending && !checkOutPending && !checkOutDisputed && session.status !== "CHECKED_IN" && (
-              <p className="rounded-xl border border-[#e5e2e1] bg-white p-3 text-center text-[#6b7280]">
-                Không có phản hồi nào đang chờ từ khách hàng.
+      {/* 3. PRE-SESSION INFO STRIP — show before session goes ACTIVE */}
+      {(session.status === "CHECKED_IN") && (
+        <div className="grid sm:grid-cols-3 gap-3">
+          {/* Play mode */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-[#fff3eb] shrink-0 mt-0.5">
+              <ShieldCheck className="size-4 text-[#ea580c]" />
+            </div>
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">Chế độ chơi</p>
+              <p className="text-sm font-extrabold text-[#1c1b1b]">
+                {booking.playMode === "RENTAL" ? "Thuê xe tại quán" : booking.playMode === "BYOC" ? "Mang xe cá nhân" : booking.playMode}
               </p>
-            )}
+              {booking.playMode === "RENTAL" && (
+                <p className="text-[11px] text-[#ea580c] font-semibold mt-0.5">Cần bàn giao xe cho khách</p>
+              )}
+              {booking.playMode === "BYOC" && (
+                <p className="text-[11px] text-[#6b7280] font-semibold mt-0.5">Khách tự mang xe</p>
+              )}
+            </div>
           </div>
-        </StaffCard>
-      </div>
 
-      {/* 3. CORE ACTION MODULES (F&B / Extensions / Fleet controls) */}
-      {session.status === "ACTIVE" && (
+          {/* Planned vehicles */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-[#fff3eb] shrink-0 mt-0.5">
+              <Car className="size-4 text-[#ea580c]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">Xe đã đặt ({booking.plannedVehicles.length})</p>
+              {booking.plannedVehicles.length > 0 ? (
+                <div className="space-y-0.5">
+                  {booking.plannedVehicles.map((v, i) => (
+                    <p key={i} className="text-xs font-bold text-[#1c1b1b] truncate">{v}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-[#6b7280] font-semibold">Chưa chỉ định xe</p>
+              )}
+            </div>
+          </div>
+
+          {/* Pre-ordered F&B */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
+            <div className={`flex size-8 items-center justify-center rounded-lg shrink-0 mt-0.5 ${booking.fnbPreorderFee > 0 ? "bg-amber-50" : "bg-[#f5f3f2]"}`}>
+              <Package className={`size-4 ${booking.fnbPreorderFee > 0 ? "text-amber-600" : "text-[#6b7280]"}`} />
+            </div>
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">F&B đặt trước</p>
+              {booking.fnbPreorderFee > 0 ? (
+                <>
+                  <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
+                  <p className="text-[11px] text-amber-600 font-semibold mt-0.5">Chuẩn bị trước khi bắt đầu</p>
+                </>
+              ) : (
+                <p className="text-xs text-[#6b7280] font-semibold">Không có đặt trước</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. CORE ACTION MODULES (F&B / Extensions / Fleet controls) */}
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
         <div className="grid md:grid-cols-2 gap-6">
           {/* Module 1: Fleet swap & Extension Controls */}
           <div className="space-y-6">
             {/* Extensions panel */}
-            <StaffCard className="space-y-4">
-              <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-                <Clock className="size-4.5 text-[#ea580c]" />
-                Yêu cầu gia hạn ca chạy
-              </h4>
-              <p className="text-xs text-[#6b7280]">
-                Tạo yêu cầu gia hạn thêm lượt chơi nhanh chóng cho khách hàng tại quầy:
-              </p>
-              
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <StaffButton
-                  onClick={() => handleExtension(15)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white text-[#ea580c] hover:bg-[#fff3eb]"
-                >
-                  +15 phút
-                </StaffButton>
-                <StaffButton
-                  onClick={() => handleExtension(30)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white text-[#ea580c] hover:bg-[#fff3eb]"
-                >
-                  +30 phút
-                </StaffButton>
-                <StaffButton
-                  onClick={() => handleExtension(60)}
-                  variant="outline"
-                  size="sm"
-                  className="bg-white text-[#ea580c] hover:bg-[#fff3eb]"
-                >
-                  +1 giờ
-                </StaffButton>
+            <StaffCard className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+                  <Clock className="size-4 text-[#ea580c]" />
+                  Gia hạn ca chạy
+                </h4>
+                <span className="text-[11px] font-semibold text-[#6b7280]">
+                  Kết thúc lúc{" "}
+                  <span className="text-[#1c1b1b] font-extrabold">
+                    {new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </span>
               </div>
+
+              {extensionPending ? (
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-semibold text-orange-800 flex items-center gap-2">
+                  <Clock className="size-3.5 shrink-0" />
+                  Đang chờ khách phản hồi đề xuất gia hạn {session.extensionProposal?.extraMinutes} phút…
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {extensionOptions.map(({ mins, fee, blocked }) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      disabled={blocked}
+                      onClick={() => !blocked && handleExtension(mins, fee)}
+                      title={blocked ? `Vượt giới hạn gia hạn (tối đa ${(maxExtensionFee === Infinity ? "—" : (maxExtensionFee).toLocaleString("vi-VN") + " đ")})` : undefined}
+                      className={`rounded-xl border transition-all p-2.5 text-center group ${
+                        blocked
+                          ? "border-[#e5e2e1] bg-[#f5f3f2] opacity-50 cursor-not-allowed"
+                          : "border-[#e5e2e1] bg-white hover:border-[#ea580c] hover:bg-[#fff3eb] cursor-pointer"
+                      }`}
+                    >
+                      <span className={`block text-sm font-extrabold ${blocked ? "text-[#9b8fa8]" : "text-[#ea580c]"}`}>
+                        +{mins < 60 ? `${mins} phút` : "1 giờ"}
+                      </span>
+                      <span className="block text-[10px] text-[#6b7280] font-semibold mt-0.5">
+                        → {projectedEnd(mins)}
+                      </span>
+                      <span className={`block text-[10px] font-bold mt-1 ${blocked ? "text-[#9b8fa8]" : "text-[#1c1b1b]"}`}>
+                        {fee.toLocaleString("vi-VN")} đ
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
+                Nếu slot tiếp theo đã có đơn, hệ thống sẽ báo lỗi và không gửi đề xuất.
+              </p>
             </StaffCard>
 
             {/* Active Vehicles & Swap Button */}
             <StaffCard className="space-y-4">
-              <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-                <Car className="size-4.5 text-[#ea580c]" />
-                Xe đang chạy trên làn đua ({session.vehicles.length})
-              </h4>
+              {(() => {
+                // For BYOC: pad vehicle list to match participant count if DB had old data (1 vehicle only)
+                const participantNames = booking.participantDetails?.map((p) => p.name)
+                  ?? booking.plannedParticipants
+                const isByocMode = booking.playMode === "BYOC"
+                const displayVehicles = isByocMode && session.vehicles.length < participantNames.length
+                  ? [
+                      ...session.vehicles,
+                      ...participantNames.slice(session.vehicles.length).map((name, i) => ({
+                        vehicleId: `byoc-placeholder-${i}`,
+                        name: `Xe của ${name} (BYOC)`,
+                        type: "BYOC" as const,
+                        imageUrl: undefined,
+                      })),
+                    ]
+                  : session.vehicles
 
-              <div className="space-y-2">
-                {session.vehicles.map((v) => (
+                return (
+                  <>
+                    <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+                      <Car className="size-4.5 text-[#ea580c]" />
+                      Xe đang chạy trên làn đua ({displayVehicles.length})
+                    </h4>
+
+                    <div className="space-y-2">
+                      {displayVehicles.map((v) => (
                   <div
                     key={v.vehicleId}
                     className="flex items-center justify-between rounded-lg bg-[#fcf8f8] p-3 border border-[#e5e2e1]"
@@ -438,9 +516,12 @@ export default function StaffSessionDetailPage() {
                         Đổi Xe Khác
                       </StaffButton>
                     )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  </>
+                )
+              })()}
             </StaffCard>
           </div>
 
@@ -536,7 +617,7 @@ export default function StaffSessionDetailPage() {
         </StaffCard>
       )}
 
-      {session.status === "ACTIVE" && !checkOutDisputed && (
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") && !checkOutDisputed && (
         <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-amber-900">Yêu cầu lập biên bản thu hồi Check-Out</h4>
@@ -555,7 +636,7 @@ export default function StaffSessionDetailPage() {
         </StaffCard>
       )}
 
-      {session.status === "ACTIVE" && checkOutDisputed && (
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") && checkOutDisputed && (
         <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-amber-900">Khách phản hồi sai lệch biên bản trả xe</h4>
@@ -586,49 +667,57 @@ export default function StaffSessionDetailPage() {
         </StaffCard>
       )}
 
-      {/* 5. RENDER BILLING AND ORDER HISTORY */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* F&B Ordered Items Grid */}
-        <StaffCard className="space-y-4">
+      {/* 5. RENDER BILLING AND ORDER HISTORY — only after session starts */}
+      {(session.status === "ACTIVE" || session.status === "EXTENDING" || session.status === "CHECKING_OUT" || session.status === "COMPLETED") && (
+      <div className="grid md:grid-cols-5 gap-4 items-start">
+        {/* F&B Ordered Items — narrow column */}
+        <StaffCard className="md:col-span-2 space-y-3">
           <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-            <Coffee className="size-4.5 text-[#ea580c]" />
-            Lịch sử đặt món F&B tại phiên
+            <Coffee className="size-4 text-[#ea580c]" />
+            F&B đã gọi
           </h4>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {(session.fnbOrders || []).map((order) => (
               <div
                 key={order.orderId}
-                className="rounded-lg bg-[#fcf8f8] p-3 border border-[#e5e2e1] text-xs flex justify-between items-center font-semibold"
+                className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start font-semibold"
               >
-                <div>
-                  <p className="text-[#1c1b1b] font-bold">Mã F&B: {order.orderId}</p>
-                  <div className="text-[11px] text-[#6b7280] mt-1 font-medium space-y-0.5">
-                    {order.items.map((i, idx) => (
-                      <span key={idx} className="block">
-                        {i.name} (x{i.qty})
-                      </span>
-                    ))}
-                  </div>
+                <div className="space-y-0.5">
+                  {order.items.map((i, idx) => (
+                    <span key={idx} className="block text-[#1c1b1b]">
+                      {i.name} <span className="text-[#6b7280] font-normal">×{i.qty}</span>
+                    </span>
+                  ))}
                 </div>
-                <div className="text-right">
-                  <span className="font-extrabold text-[#ea580c]">{order.total.toLocaleString("vi-VN")} đ</span>
-                </div>
+                <span className="font-extrabold text-[#ea580c] shrink-0 ml-3">{order.total.toLocaleString("vi-VN")} đ</span>
               </div>
             ))}
 
             {(session.fnbOrders || []).length === 0 && (
-              <p className="text-xs text-[#6b7280] italic py-4 text-center">Ca chơi chưa gọi món F&B nào.</p>
+              <p className="text-xs text-[#6b7280] italic py-4 text-center">Chưa gọi món.</p>
             )}
           </div>
         </StaffCard>
 
-        {/* Dynamic Billing Summary Box */}
-        <StaffCard className="space-y-4">
+        {/* Dynamic Billing Summary Box — wide column */}
+        <StaffCard className="md:col-span-3 space-y-4">
           <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
             <FileText className="size-4.5 text-[#ea580c]" />
             Bảng Quyết Toán Hóa Đơn
           </h4>
+
+          {(hasPendingCounterPayment || hasPendingDepositRefund) && (
+            <div className="flex items-start gap-2.5 rounded-xl bg-orange-50 border border-orange-200 px-3.5 py-3">
+              <Banknote className="size-4 text-orange-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-extrabold text-orange-900">Chưa quyết toán — cần thu/hoàn tiền</p>
+                <p className="text-[11px] text-orange-700 mt-0.5 leading-relaxed">
+                  Ca đã đóng nhưng chưa hoàn tất giao dịch tài chính. Xem tóm tắt bên dưới rồi xác nhận.
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3 text-xs font-semibold">
             {/* Section 1: Prepaid Online */}
@@ -707,59 +796,56 @@ export default function StaffSessionDetailPage() {
               </div>
             </div>
 
-             {/* Separate Settlement Listings (independent transactions) */}
-             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
-               <span className="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider block">
-                 Quyết toán thực tế tại quầy
-               </span>
-               {depositRefundAmount > 0 && (
-                 <div className="flex justify-between text-[11px] text-slate-600 border-b border-dashed border-slate-200 pb-1.5 mb-1">
-                   <span className="font-semibold text-slate-700">1. Hoàn trả cọc xe (Deposit Refund):</span>
-                   <span className="text-emerald-700 font-bold">{depositRefundAmount.toLocaleString("vi-VN")} đ</span>
-                 </div>
-               )}
-               {totalCounterBill > 0 && (
-                 <div className="flex justify-between text-[11px] text-slate-600">
-                   <span className="font-semibold text-slate-700">2. Thu dịch vụ tại quầy (On-site Bill):</span>
-                   <span className="text-[#ea580c] font-bold">+{totalCounterBill.toLocaleString("vi-VN")} đ</span>
-                 </div>
-               )}
-             </div>
- 
-             {/* Settle Action Button */}
+             {/* Settle Action */}
              {(hasPendingCounterPayment || hasPendingDepositRefund) ? (
-               <div className="space-y-2 pt-2">
-                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2.5 text-[11px] text-yellow-800 leading-relaxed font-semibold">
-                   ⚠️ <strong>Hướng dẫn giao dịch tại quầy:</strong>
-                   <ul className="list-disc pl-4 mt-1 space-y-1">
-                     {hasPendingDepositRefund && depositRefundAmount > 0 && (
-                       <li>Hoàn trả cho khách hàng: <strong className="text-emerald-700">{depositRefundAmount.toLocaleString("vi-VN")} đ</strong> tiền cọc xe.</li>
-                     )}
-                     {hasPendingCounterPayment && totalCounterBill > 0 && (
-                       <li>Thu thêm từ khách hàng: <strong className="text-orange-700">{totalCounterBill.toLocaleString("vi-VN")} đ</strong> phí dịch vụ phát sinh.</li>
-                     )}
-                   </ul>
-                   <p className="mt-2 text-[10px] text-slate-500 font-medium italic">
-                     * Lưu ý: Đây là hai luồng tiền riêng biệt (hoàn trả cọc và thu thêm dịch vụ), không tự động khấu trừ lẫn nhau.
-                   </p>
+               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3">
+                 <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wide">Giao dịch tại quầy</p>
+                 {depositRefundAmount > 0 && (
+                   <div className="flex justify-between items-center text-[11px] font-semibold">
+                     <span className="flex items-center gap-2 text-slate-600">
+                       <span className="size-2 rounded-full bg-emerald-500 inline-block" />
+                       Hoàn trả cọc xe cho khách
+                     </span>
+                     <span className="text-emerald-700 font-extrabold">{depositRefundAmount.toLocaleString("vi-VN")} đ</span>
+                   </div>
+                 )}
+                 {totalCounterBill > 0 && (
+                   <div className="flex justify-between items-center text-[11px] font-semibold">
+                     <span className="flex items-center gap-2 text-slate-600">
+                       <span className="size-2 rounded-full bg-orange-500 inline-block" />
+                       Thu phí dịch vụ từ khách
+                     </span>
+                     <span className="text-orange-700 font-extrabold">{totalCounterBill.toLocaleString("vi-VN")} đ</span>
+                   </div>
+                 )}
+                 <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
+                   <span className="text-slate-800 font-extrabold text-sm">
+                     {netCounterAmount >= 0 ? "Khách trả thêm" : "Staff hoàn lại"}
+                   </span>
+                   <span className={`font-extrabold text-lg ${netCounterAmount >= 0 ? "text-orange-700" : "text-emerald-700"}`}>
+                     {Math.abs(netCounterAmount).toLocaleString("vi-VN")} đ
+                   </span>
                  </div>
                  <StaffButton
-                   onClick={handleSettlePayment}
+                   onClick={() => setConfirmSettleOpen(true)}
                    disabled={settlingPayment}
                    variant="primary"
-                   className="w-full text-xs py-2.5 rounded-xl font-bold bg-[#ea580c] hover:bg-[#d44f0a] text-white transition-all shadow-md active:scale-[0.98]"
+                   className="w-full py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-md active:scale-[0.98]"
                  >
-                   {settlingPayment ? "Đang xử lý..." : "✅ Xác nhận đã hoàn tất giao dịch tại quầy"}
+                   <Banknote className="size-4" />
+                   {settlingPayment ? "Đang xử lý..." : "Xác nhận đã thu tiền mặt"}
                  </StaffButton>
                </div>
             ) : isFullySettled ? (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg p-2.5 text-[11px] font-bold text-center mt-2 flex items-center justify-center gap-1.5">
-                <span>✅ Đã quyết toán hoàn tất tại quầy</span>
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 text-xs font-bold text-center mt-2 flex items-center justify-center gap-2">
+                <CheckCircle2 className="size-4" />
+                <span>Đã quyết toán hoàn tất</span>
               </div>
             ) : null}
           </div>
         </StaffCard>
       </div>
+      )}
 
       {/* Helpful Operational tips */}
       <div className="rounded-lg border border-[#e5e2e1] bg-[#f5f3f2]/30 p-4 space-y-1">
@@ -771,6 +857,70 @@ export default function StaffSessionDetailPage() {
           Nếu khách chơi gặp sự cố ngoài đường đua hoặc xe gặp lỗi cơ khí cần đổi nhanh sang xe mới, sử dụng tính năng <strong className="text-[#1c1b1b]">Đổi Xe Khác</strong> để thu hồi xe hỏng về khu vực kỹ thuật bảo trì và bàn giao xe thay thế phù hợp.
         </p>
       </div>
+
+      {/* SETTLE PAYMENT CONFIRMATION MODAL */}
+      {confirmSettleOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100">
+                <Banknote className="size-5 text-emerald-700" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">Xác nhận quyết toán</h3>
+                <p className="text-[11px] text-slate-500">Đảm bảo đã thực hiện xong với khách tại quầy</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2.5 text-xs font-semibold">
+              {depositRefundAmount > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <span className="size-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />
+                    Hoàn trả tiền cọc cho khách
+                  </div>
+                  <span className="text-emerald-700 font-extrabold">{depositRefundAmount.toLocaleString("vi-VN")} đ</span>
+                </div>
+              )}
+              {totalCounterBill > 0 && (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <span className="size-2.5 rounded-full bg-orange-500 inline-block shrink-0" />
+                    Thu phí dịch vụ từ khách
+                  </div>
+                  <span className="text-orange-700 font-extrabold">{totalCounterBill.toLocaleString("vi-VN")} đ</span>
+                </div>
+              )}
+              <div className="border-t border-slate-200 pt-2.5 flex justify-between items-center">
+                <span className="text-slate-800 font-extrabold text-sm">
+                  {netCounterAmount >= 0 ? "Khách trả thêm tại quầy" : "Staff hoàn lại cho khách"}
+                </span>
+                <span className={`font-extrabold text-base ${netCounterAmount >= 0 ? "text-orange-700" : "text-emerald-700"}`}>
+                  {Math.abs(netCounterAmount).toLocaleString("vi-VN")} đ
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5">
+              <StaffButton
+                onClick={() => setConfirmSettleOpen(false)}
+                variant="outline"
+                className="flex-1"
+              >
+                Huỷ bỏ
+              </StaffButton>
+              <StaffButton
+                onClick={() => { setConfirmSettleOpen(false); void handleSettlePayment() }}
+                variant="primary"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+              >
+                <CheckCircle2 className="size-4" />
+                Đã thu xong
+              </StaffButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VEHICLE SWAP MODAL */}
       {swapModalOpen && (
