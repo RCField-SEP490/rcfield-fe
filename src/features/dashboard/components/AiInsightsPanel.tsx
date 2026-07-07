@@ -143,7 +143,7 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
         ) : (
           <button
             onClick={handleAnalyze}
-            disabled={panel.status === "loading" || panel.status === "quota_exceeded"}
+            disabled={panel.status === "loading"}
             className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg transition-colors"
           >
             {panel.status === "loading" && <RefreshCw className="size-3.5 animate-spin" />}
