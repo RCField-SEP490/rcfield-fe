@@ -14,7 +14,6 @@ import { staffApi, staffQueryKeys, type StaffListItem, type InviteStaffBody } fr
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { storageKeys } from "@/shared/lib/storage"
 import { routePaths } from "@/app/router/route-paths"
-import { useNavigate } from "react-router"
 
 function isOnline(lastActiveAt: string | null): boolean {
   if (!lastActiveAt) return false

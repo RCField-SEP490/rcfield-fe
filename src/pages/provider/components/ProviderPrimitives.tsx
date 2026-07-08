@@ -342,11 +342,6 @@ function Building2Placeholder() {
   )
 }
 
-function cafeStatusStrip(status: BackendCafe["status"]) {
-  if (status === "ACTIVE") return "bg-[#1c1b1b]"
-  if (status === "PENDING") return "bg-amber-400"
-  return "bg-[#c4c7c8]"
-}
 
 function formatCafeStatus(status: BackendCafe["status"]) {
   return status === "ACTIVE" ? "Hoạt động" : status === "PENDING" ? "Chờ duyệt" : "Tạm ngưng"
