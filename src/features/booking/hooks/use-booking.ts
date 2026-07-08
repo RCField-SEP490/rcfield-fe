@@ -91,7 +91,7 @@ export function useCafeBookings(cafeId: string | undefined, params: ListCafeBook
     queryKey: bookingQueryKeys.cafe(cafeId ?? '', params),
     queryFn: () => bookingApi.listCafeBookings(cafeId!, params),
     enabled: !!cafeId && !!params.date,
-    staleTime: 30_000,
+    staleTime: 0,
   })
 }
 

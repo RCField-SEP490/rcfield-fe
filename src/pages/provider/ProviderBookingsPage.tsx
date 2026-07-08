@@ -206,6 +206,7 @@ export function ProviderBookingsPage() {
               <thead>
                 <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
                   <th className="pb-3 pl-1">Mã</th>
+                  <th className="pb-3">Khách hàng</th>
                   <th className="pb-3">Thời gian</th>
                   <th className="pb-3">Chế độ</th>
                   <th className="pb-3">Trạng thái</th>
@@ -220,6 +221,12 @@ export function ProviderBookingsPage() {
                     <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-3 pl-1 font-mono font-bold text-slate-800">
                         #{booking.id.substring(0, 8).toUpperCase()}
+                      </td>
+                      <td className="py-3">
+                        <p className="font-semibold text-slate-800">{booking.customerName}</p>
+                        {booking.customerPhone && (
+                          <p className="text-[10px] text-slate-400">{booking.customerPhone}</p>
+                        )}
                       </td>
                       <td className="py-3 text-slate-700">
                         {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}

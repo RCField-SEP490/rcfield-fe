@@ -62,7 +62,7 @@ export const bookingApi = {
       `/v1/provider/cafes/${cafeId}/bookings`,
       { params },
     )
-    return res.data as unknown as CafeBookingListResponse
+    return res.data.data
   },
 
   createCheckout: async (bookingId: string): Promise<CheckoutResponse> => {
