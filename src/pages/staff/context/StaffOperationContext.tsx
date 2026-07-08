@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect */
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -46,19 +47,14 @@ export interface StaffOperationContextType {
   
   resetDemoData: () => void
   createWalkInBooking: (data: {
-    playMode: "RENTAL" | "BYOC" | "MIXED"
-    trackName: string
-    trackType: string
+    playMode: "RENTAL" | "BYOC"
+    trackTypeId: string
     slotStart: string
     slotEnd: string
-    slotCount: number
-    slotFee: number
-    rentalFee: number
-    totalAmount: number
-    plannedParticipants: string[]
-    plannedVehicles: string[]
-    selectedVehicles: { vehicleId: string; name: string; imageUrl?: string }[]
-  }) => boolean
+    paymentMethod: "CASH" | "BANK_TRANSFER"
+    vehicleIds: string[]
+    participants: { guest_name: string; guest_phone: string; participant_type: string }[]
+  }) => Promise<boolean>
   refreshData: () => Promise<void>
   startCheckIn: (bookingId: string) => Promise<any | null>
   submitInspection: (
@@ -290,10 +286,10 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     // No-op - derived directly from auth store profile
   }, [])
 
-  const saveBookings = useCallback((newBookings: CustomerBookingDetail[]) => {
-    setBookings(newBookings)
-    localStorage.setItem(bookingsKey, JSON.stringify(newBookings))
-  }, [bookingsKey])
+  // const saveBookings = useCallback((newBookings: CustomerBookingDetail[]) => {
+  //   setBookings(newBookings)
+  //   localStorage.setItem(bookingsKey, JSON.stringify(newBookings))
+  // }, [bookingsKey])
 
   const saveFnbOrders = useCallback((newOrders: FnbOrder[]) => {
     setFnbOrders(newOrders)
@@ -378,80 +374,35 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     toast.success("Đã khôi phục dữ liệu vận hành cục bộ về mặc định thành công.")
   }, [bookingsKey, fnbOrdersKey, fleetKey, incidentsKey, maintenanceKey, byocKey])
 
-  const createWalkInBooking = useCallback((data: {
-    playMode: "RENTAL" | "BYOC" | "MIXED"
-    trackName: string
-    trackType: string
+  const createWalkInBooking = useCallback(async (data: {
+    playMode: "RENTAL" | "BYOC"
+    trackTypeId: string
     slotStart: string
     slotEnd: string
-    slotCount: number
-    slotFee: number
-    rentalFee: number
-    totalAmount: number
-    plannedParticipants: string[]
-    plannedVehicles: string[]
-    selectedVehicles: { vehicleId: string; name: string; imageUrl?: string }[]
+    paymentMethod: "CASH" | "BANK_TRANSFER"
+    vehicleIds: string[]
+    participants: { guest_name: string; guest_phone: string; participant_type: string }[]
   }) => {
-    const activeAtSameTime = bookings.filter(
-      (b) =>
-        b.status === "CONFIRMED" &&
-        b.trackName === data.trackName &&
-        new Date(b.slotStart) < new Date(data.slotEnd) &&
-        new Date(b.slotEnd) > new Date(data.slotStart)
-    )
-
-    if (activeAtSameTime.length >= 2) {
-      toast.error(`Đường đua ${data.trackName} đã đạt giới hạn công suất cho khung giờ này!`)
+    try {
+      const res = await staffApi.createWalkInBooking({
+        play_mode: data.playMode,
+        track_type_id: data.trackTypeId,
+        slot_start: data.slotStart,
+        slot_end: data.slotEnd,
+        payment_method: data.paymentMethod,
+        vehicle_ids: data.vehicleIds,
+        participants: data.participants,
+      })
+      toast.success(`Tạo đơn đặt lịch trực tiếp ${res.bookingCode || ""} thành công!`)
+      await fetchData()
+      return true
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; errors?: { message: string }[] } }; message?: string }
+      const msg = error.response?.data?.message || error.response?.data?.errors?.[0]?.message || error.message || "Something went wrong"
+      toast.error(`Lỗi khi tạo đơn: ${msg}`)
       return false
     }
-
-    if (data.playMode !== "BYOC") {
-      const busyVehicles = data.selectedVehicles.some(v => fleetStates[v.vehicleId] === "IN_USE" || fleetStates[v.vehicleId] === "MAINTENANCE")
-      if (busyVehicles) {
-        toast.error("Một số xe được chọn hiện đang bận hoặc đang bảo trì!")
-        return false
-      }
-    }
-
-    const bookingId = `BK-${Math.floor(1000 + Math.random() * 9000)}`
-    const shortCode = `RCF-${Math.floor(1000 + Math.random() * 9000)}`
-
-    const newBooking: CustomerBookingDetail = {
-      bookingId,
-      shortCode,
-      cafeId: assignedCafeId || "cafe-drift-town",
-      cafeName: "Chi nhánh đang chọn",
-      cafeAddress: "Địa chỉ chi nhánh",
-      cafePhone: "0900000000",
-      trackName: data.trackName,
-      trackType: data.trackType,
-      bookingMode: "SINGLE",
-      playMode: data.playMode,
-      status: "CONFIRMED",
-      slotStart: data.slotStart,
-      slotEnd: data.slotEnd,
-      slotCount: data.slotCount,
-      depositAmount: data.playMode === "RENTAL" ? 150000 : 0,
-      slotFee: data.slotFee,
-      rentalFee: data.rentalFee,
-      fnbPreorderFee: 0,
-      discountAmount: 0,
-      totalAmount: data.totalAmount,
-      paymentStatus: "PAID",
-      plannedParticipants: data.plannedParticipants,
-      plannedVehicles: data.plannedVehicles,
-      sessions: [],
-    }
-
-    const updatedFleet = { ...fleetStates }
-    data.selectedVehicles.forEach((v) => {
-      updatedFleet[v.vehicleId] = "AVAILABLE"
-    })
-    saveFleetStates(updatedFleet)
-    saveBookings([newBooking, ...bookings])
-    toast.success(`Tạo đơn đặt lịch trực tiếp ${shortCode} thành công!`)
-    return true
-  }, [bookings, fleetStates, assignedCafeId, saveBookings, saveFleetStates])
+  }, [fetchData])
 
   const startCheckIn = useCallback(async (bookingId: string) => {
     try {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { api } from "@/shared/lib/axios"
 
 export interface StaffListItem {
@@ -28,6 +29,29 @@ export interface InviteStaffResult extends StaffListItem {
 export interface StaffImpersonateResponse {
   token: string
   staff: { id: string; email: string; fullName: string; cafeName: string; cafeId: string }
+}
+
+export interface CreateWalkInBookingInput {
+  play_mode: "RENTAL" | "BYOC"
+  track_type_id: string
+  slot_start: string
+  slot_end: string
+  payment_method: "CASH" | "BANK_TRANSFER"
+  vehicle_ids: string[]
+  participants: {
+    guest_name: string
+    guest_phone: string
+    participant_type: string
+  }[]
+}
+
+export interface CreateWalkInBookingResponse {
+  bookingId: string
+  bookingCode: string
+  status: string
+  source: string
+  paymentStatus: string
+  totalAmount: number
 }
 
 export interface TodayBookingItem {
@@ -251,6 +275,11 @@ export const staffApi = {
 
   confirmRefund: async (bookingId: string): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/confirm-refund`)
+    return res.data.data
+  },
+
+  createWalkInBooking: async (body: CreateWalkInBookingInput): Promise<CreateWalkInBookingResponse> => {
+    const res = await api.post<{ success: boolean; data: CreateWalkInBookingResponse }>("/v1/staff/bookings", body)
     return res.data.data
   },
 }
