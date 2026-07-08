@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { getCafes } from "@/features/explore/api/explore.api"
+import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { ExploreMapOverlay } from "./components/ExploreMapOverlay"
 import { ExploreMapPanel } from "./components/ExploreMapPanel"
@@ -11,6 +12,8 @@ import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
 import { buildBookingUrl, cafeInBounds, filterCafes, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { favoriteApi } from "@/features/explore/api/favorite.api"
 
 export function ExplorePage() {
   const navigate = useNavigate()
@@ -20,9 +23,97 @@ export function ExplorePage() {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
   const [hoveredCafeId, setHoveredCafeId] = useState<string | null>(null)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
-  const [searchOnMove, setSearchOnMove] = useState(true)
+  const [searchOnMove, setSearchOnMove] = useState(false)
   const listRef = useRef<HTMLDivElement>(null)
   const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const favsStr = localStorage.getItem("rcfield_favorite_cafes")
+      if (favsStr) {
+        const parsed = JSON.parse(favsStr)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch (e) {
+      console.warn("Failed to load favorites from localStorage", e)
+    }
+    return []
+  })
+
+  // Sync favorites when page receives focus, mounts, or authentication status changes
+  useEffect(() => {
+    const loadFavs = async () => {
+      let localFavs: string[] = []
+      try {
+        const favsStr = localStorage.getItem("rcfield_favorite_cafes")
+        if (favsStr) {
+          const parsed = JSON.parse(favsStr)
+          if (Array.isArray(parsed)) localFavs = parsed
+        }
+      } catch (e) {
+        console.warn("Failed to parse local favorites", e)
+      }
+
+      if (isAuthenticated) {
+        try {
+          const isSynced = localStorage.getItem("rcfield_favorites_synced") === "true"
+          if (!isSynced) {
+            const mergedFavs = await favoriteApi.syncFavorites(localFavs)
+            setFavoriteIds(mergedFavs)
+            localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(mergedFavs))
+            localStorage.setItem("rcfield_favorites_synced", "true")
+          } else {
+            const dbFavs = await favoriteApi.getFavorites()
+            setFavoriteIds(dbFavs)
+            localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(dbFavs))
+          }
+        } catch (e) {
+          console.error("Failed to load favorites from backend", e)
+          setFavoriteIds(localFavs)
+        }
+      } else {
+        localStorage.removeItem("rcfield_favorites_synced")
+        setFavoriteIds(localFavs)
+      }
+    }
+
+    loadFavs()
+  }, [isAuthenticated])
+
+  const handleToggleFavorite = useCallback(
+    async (cafeId: string) => {
+      const isFav = favoriteIds.includes(cafeId)
+      const updated = isFav ? favoriteIds.filter((id) => id !== cafeId) : [...favoriteIds, cafeId]
+
+      // Optimistic update
+      setFavoriteIds(updated)
+      try {
+        localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(updated))
+        if (isFav) {
+          toast.success("Đã xóa khỏi danh sách yêu thích")
+          if (isAuthenticated) {
+            await favoriteApi.removeFavorite(cafeId)
+          }
+        } else {
+          toast.success("Đã thêm vào danh sách yêu thích")
+          if (isAuthenticated) {
+            await favoriteApi.addFavorite(cafeId)
+          }
+        }
+      } catch (e) {
+        console.error("Failed to toggle favorite:", e)
+        // Rollback on failure
+        setFavoriteIds(favoriteIds)
+        try {
+          localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(favoriteIds))
+        } catch (err) {
+          console.error(err)
+        }
+      }
+    },
+    [favoriteIds, isAuthenticated],
+  )
 
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     clearTimeout(boundsTimerRef.current)
@@ -42,19 +133,30 @@ export function ExplorePage() {
   const filteredCafes = useMemo(() => {
     let filtered = filterCafes(cafes, filters.params)
     if (searchOnMove && mapBounds) filtered = filtered.filter((c) => cafeInBounds(c, mapBounds))
-    if (!userLocation) return filtered
+
+    // Sort: favorites first, then by distance or keep original order
     return [...filtered].sort((a, b) => {
-      const hasA = a.latitude && a.longitude
-      const hasB = b.latitude && b.longitude
-      if (!hasA && !hasB) return 0
-      if (!hasA) return 1
-      if (!hasB) return -1
-      return (
-        haversineKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) -
-        haversineKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!)
-      )
+      const isFavA = favoriteIds.includes(a.id)
+      const isFavB = favoriteIds.includes(b.id)
+
+      if (isFavA && !isFavB) return -1
+      if (!isFavA && isFavB) return 1
+
+      // If both are favorites or both are not favorites, sort by distance if userLocation is available
+      if (userLocation) {
+        const hasA = a.latitude && a.longitude
+        const hasB = b.latitude && b.longitude
+        if (!hasA && !hasB) return 0
+        if (!hasA) return 1
+        if (!hasB) return -1
+        return (
+          haversineKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) -
+          haversineKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!)
+        )
+      }
+      return 0
     })
-  }, [cafes, filters.params, userLocation, mapBounds, searchOnMove])
+  }, [cafes, filters.params, userLocation, mapBounds, searchOnMove, favoriteIds])
 
   const handleBookNow = (cafeId: string, vehicleId?: string) => {
     navigate(buildBookingUrl(cafeId, vehicleId))
@@ -121,6 +223,8 @@ export function ExplorePage() {
                       <CafeGridCard
                         key={cafe.id}
                         cafe={cafe}
+                        isFavorite={favoriteIds.includes(cafe.id)}
+                        onToggleFavorite={handleToggleFavorite}
                         distanceKm={dist}
                         onQuickView={setQuickViewCafe}
                         onBookNow={handleBookNow}
