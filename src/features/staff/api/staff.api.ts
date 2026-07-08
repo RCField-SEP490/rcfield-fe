@@ -66,11 +66,52 @@ export interface TodayFnbOrderItem {
   items: FnbOrderItemDetail[]
 }
 
+export interface StaffDetailProfile {
+  id: string
+  fullName: string
+  email: string
+  phone: string | null
+  cafeName: string
+  cafeId: string
+  status: "PENDING" | "ACTIVE" | "DISABLED"
+  createdAt: string
+  activatedAt: string | null
+  lastActiveAt: string | null
+}
+
+export interface StaffKpiSummary {
+  staffId: string
+  period: "7d" | "30d" | "90d"
+  totalCheckIns: number
+  totalFnbOrdersHandled: number
+  totalExtensionsApproved: number
+  onTimeCheckInRate: number | null
+  activeDaysCount: number
+}
+
+export interface StaffActivityEvent {
+  id: string
+  type: "CHECK_IN" | "CHECK_OUT" | "FNB_ORDER" | "EXTENSION_APPROVED"
+  eventTime: string
+  label: string
+  bookingId: string
+  bookingSource: "APP" | "STAFF_MANUAL"
+}
+
+export interface StaffActivityPage {
+  events: StaffActivityEvent[]
+  total: number
+  hasMore: boolean
+}
+
 export const staffQueryKeys = {
   all: ["staff"] as const,
   list: (cafeId?: string) => [...staffQueryKeys.all, "list", cafeId ?? "all"] as const,
   todayBookings: () => [...staffQueryKeys.all, "today-bookings"] as const,
   fnbOrders: () => [...staffQueryKeys.all, "fnb-orders"] as const,
+  staffDetail: (staffId: string) => [...staffQueryKeys.all, "detail", staffId] as const,
+  staffKpi: (staffId: string, period: string) => [...staffQueryKeys.all, "kpi", staffId, period] as const,
+  staffActivity: (staffId: string) => [...staffQueryKeys.all, "activity", staffId] as const,
 }
 
 export const staffApi = {
@@ -137,6 +178,21 @@ export const staffApi = {
     password: string,
   ): Promise<{ access_token: string; refresh_token: string; user: { id: string; email: string; fullName: string; role: string; cafeId: string | null } }> => {
     const res = await api.post("/v1/auth/staff-invite/activate", { token, password })
+    return res.data.data
+  },
+
+  getStaffDetail: async (staffId: string): Promise<StaffDetailProfile> => {
+    const res = await api.get<{ success: boolean; data: StaffDetailProfile }>(`/v1/provider/staff/${staffId}`)
+    return res.data.data
+  },
+
+  getStaffKpi: async (staffId: string, period: "7d" | "30d" | "90d"): Promise<StaffKpiSummary> => {
+    const res = await api.get<{ success: boolean; data: StaffKpiSummary }>(`/v1/provider/staff/${staffId}/kpi`, { params: { period } })
+    return res.data.data
+  },
+
+  getStaffActivity: async (staffId: string, limit = 20, offset = 0): Promise<StaffActivityPage> => {
+    const res = await api.get<{ success: boolean; data: StaffActivityPage }>(`/v1/provider/staff/${staffId}/activity`, { params: { limit, offset } })
     return res.data.data
   },
 

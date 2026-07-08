@@ -260,60 +260,92 @@ export function BranchList({
 }) {
   if (cafes.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-[#c4c7c8] p-5 text-sm font-medium text-[#444748]">
-        Chưa có cơ sở nào từ dữ liệu hiện tại.
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[#c4c7c8] py-10 text-center">
+        <Building2Placeholder />
+        <p className="text-sm font-semibold text-[#747878]">Chưa có cơ sở nào</p>
+      </div>
+    )
+  }
+
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        {cafes.map((cafe) => (
+          <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</div>
+                <div className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</div>
+              </div>
+              <StatusBadge status={formatCafeStatus(cafe.status)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <InlineMetric label="Phí slot" value={formatSlotFee(cafe.slotFeeRate)} />
+              <InlineMetric label="Lấp đầy" value="--" align="right" />
+            </div>
+          </div>
+        ))}
       </div>
     )
   }
 
   return (
-    <div className="space-y-3">
-      {cafes.map((cafe) => {
-        const content = (
-          <>
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</div>
-              <div className="mt-1 text-xs font-semibold text-[#5d5f5f]">{cafe.district}, {cafe.city}</div>
+    <div className="space-y-2">
+      {cafes.map((cafe) => (
+        <Link
+          key={cafe.id}
+          to={`/provider/cafes/${cafe.id}`}
+          aria-label={`Xem chi tiết ${cafe.name}`}
+          className="group flex overflow-hidden rounded-xl border border-[#e5e2e1] bg-white shadow-sm transition-all hover:border-[#b0adac] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1c1b1b]"
+        >
+          {/* Content */}
+          <div className="flex flex-1 flex-wrap items-center gap-y-3 px-4 py-4 sm:flex-nowrap sm:gap-6">
+            {/* Name + location + badge */}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</span>
+                <StatusBadge status={formatCafeStatus(cafe.status)} />
+              </div>
+              <p className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</p>
             </div>
-            <StatusBadge status={formatCafeStatus(cafe.status)} />
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <InlineMetric label="Phí slot" value={formatSlotFee(cafe.slotFeeRate)} />
-            <InlineMetric label="Lấp đầy" value="--" align="right" />
-            {!compact ? <InlineMetric label="Đội xe" value="--" align="right" /> : null}
-          </div>
-          {!compact ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex h-9 items-center text-sm font-bold text-[#1c1b1b]">
-                Xem chi tiết
-                <ArrowRight className="ml-1 size-4 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </div>
-          ) : null}
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#e5e2e1]">
-            <div className="h-full rounded-full bg-[#1c1b1b]" style={{ width: "0%" }} />
-          </div>
-          </>
-        )
 
-        return compact ? (
-          <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
-            {content}
+            {/* Metrics */}
+            <div className="flex shrink-0 items-center divide-x divide-[#e5e2e1]">
+              <div className="pr-5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Phí slot</p>
+                <p className="mt-0.5 text-sm font-bold tabular-nums text-[#1c1b1b]">{formatSlotFee(cafe.slotFeeRate)}</p>
+              </div>
+              <div className="px-5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Lấp đầy</p>
+                <p className="mt-0.5 text-sm font-bold text-[#c4c7c8]">--</p>
+              </div>
+              <div className="pl-5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Đội xe</p>
+                <p className="mt-0.5 text-sm font-bold text-[#c4c7c8]">--</p>
+              </div>
+            </div>
+
+            {/* Arrow */}
+            <ArrowRight className="ml-auto size-4 shrink-0 text-[#c4c7c8] transition-all group-hover:translate-x-0.5 group-hover:text-[#1c1b1b]" />
           </div>
-        ) : (
-          <Link
-            key={cafe.id}
-            to={`/provider/cafes/${cafe.id}`}
-            aria-label={`Xem chi tiết ${cafe.name}`}
-            className="group block rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1c1b1b]"
-          >
-            {content}
-          </Link>
-        )
-      })}
+        </Link>
+      ))}
     </div>
   )
+}
+
+function Building2Placeholder() {
+  return (
+    <svg className="size-8 text-[#c4c7c8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+    </svg>
+  )
+}
+
+function cafeStatusStrip(status: BackendCafe["status"]) {
+  if (status === "ACTIVE") return "bg-[#1c1b1b]"
+  if (status === "PENDING") return "bg-amber-400"
+  return "bg-[#c4c7c8]"
 }
 
 function formatCafeStatus(status: BackendCafe["status"]) {

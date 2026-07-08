@@ -83,6 +83,7 @@ import { ProviderPackageCopyPage, ProviderPackageCreatePage, ProviderPackageEdit
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
 import { ProviderPromotionCopyPage, ProviderPromotionCreatePage, ProviderPromotionEditPage, ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
+import { ProviderStaffDetailPage } from "@/pages/provider/ProviderStaffDetailPage"
 import { StaffActivatePage } from "@/pages/staff/activate/StaffActivatePage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { ProviderConfigurationPage } from "@/pages/provider/ProviderConfigurationPage"
@@ -240,6 +241,7 @@ export const router = createBrowserRouter([
           { path: routePaths.providerPromotionCopy, element: providerGuardRoute(<ProviderPromotionCopyPage />) },
           { path: routePaths.providerPromotionEdit, element: providerGuardRoute(<ProviderPromotionEditPage />) },
           { path: routePaths.providerStaff, element: providerGuardRoute(<ProviderStaffPage />) },
+          { path: routePaths.providerStaffDetail, element: providerGuardRoute(<ProviderStaffDetailPage />) },
           { path: routePaths.providerRevenue, element: providerGuardRoute(<ProviderRevenuePage />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },

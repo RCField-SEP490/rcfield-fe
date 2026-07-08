@@ -1,12 +1,37 @@
+import type { ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, Building2, CalendarClock, Plus, TrendingUp } from "lucide-react"
+import { AlertTriangle, Building2, Plus, TrendingUp } from "lucide-react"
 import { useNavigate } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import { BranchList, MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
+import { BranchList, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
+import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
+
+type Tone = "success" | "warning" | "danger" | "neutral"
+
+function CafeStatCard({ label, value, helper, icon, tone }: { label: string; value: string; helper: string; icon: ReactNode; tone: Tone }) {
+  const iconCls = {
+    success: "bg-[#f6f3f2] text-[#1c1b1b]",
+    warning: "bg-amber-50 text-amber-600",
+    danger:  "bg-red-50 text-red-600",
+    neutral: "bg-[#f6f3f2] text-[#747878]",
+  }[tone]
+  const helperCls = { success: "text-[#747878]", warning: "text-amber-600", danger: "text-red-600", neutral: "text-[#747878]" }[tone]
+
+  return (
+    <article className="rounded-xl border border-[#c4c7c8] bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-[#747878]">{label}</p>
+        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg [&>svg]:size-4", iconCls)}>{icon}</span>
+      </div>
+      <p className="mt-3 text-[26px] font-extrabold leading-none tracking-tight text-[#1c1b1b]">{value}</p>
+      <p className={cn("mt-2 text-xs font-semibold", helperCls)}>{helper}</p>
+    </article>
+  )
+}
 
 export function ProviderCafesPage() {
   const navigate = useNavigate()
@@ -17,9 +42,9 @@ export function ProviderCafesPage() {
     queryFn: () => cafeApi.listCafes(listParams),
   })
   const cafes = data?.data ?? []
-  const activeCount = cafes.filter((cafe) => cafe.status === "ACTIVE").length
-  const pendingCount = cafes.filter((cafe) => cafe.status === "PENDING").length
-  const suspendedCount = cafes.filter((cafe) => cafe.status === "SUSPENDED").length
+  const activeCount = cafes.filter((c) => c.status === "ACTIVE").length
+  const pendingCount = cafes.filter((c) => c.status === "PENDING").length
+  const suspendedCount = cafes.filter((c) => c.status === "SUSPENDED").length
 
   return (
     <ProviderShell>
@@ -27,38 +52,64 @@ export function ProviderCafesPage() {
         title="Quản lý cơ sở"
         description="Tạo, cập nhật và kiểm soát trạng thái các cơ sở xe RC thuộc provider của bạn."
       />
+
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricCard label="Cơ sở hoạt động" value={`${activeCount}/${cafes.length}`} helper={`${pendingCount} chờ duyệt`} icon={<Building2 />} tone="success" />
-        <MetricCard label="Tỷ lệ lấp đầy TB" value="--" helper="Chưa có API vận hành" icon={<TrendingUp />} tone="neutral" />
-        <MetricCard label="Cảnh báo vận hành" value={`${suspendedCount}`} helper="Cơ sở đang tạm ngưng" icon={<AlertTriangle />} tone={suspendedCount > 0 ? "warning" : "success"} />
+        <CafeStatCard
+          label="Cơ sở hoạt động"
+          value={`${activeCount}/${cafes.length}`}
+          helper={pendingCount > 0 ? `${pendingCount} cơ sở đang chờ duyệt` : "Tất cả đã được kích hoạt"}
+          icon={<Building2 />}
+          tone="success"
+        />
+        <CafeStatCard
+          label="Tỷ lệ lấp đầy TB"
+          value="--"
+          helper="Chưa có dữ liệu vận hành"
+          icon={<TrendingUp />}
+          tone="neutral"
+        />
+        <CafeStatCard
+          label="Cảnh báo vận hành"
+          value={String(suspendedCount)}
+          helper={suspendedCount > 0 ? `${suspendedCount} cơ sở tạm ngưng` : "Không có cảnh báo"}
+          icon={<AlertTriangle />}
+          tone={suspendedCount > 0 ? "warning" : "success"}
+        />
       </section>
+
       <Panel className="mt-4">
         <PanelTitle
           title="Danh sách cơ sở"
           subtitle="Sắp xếp theo doanh thu tháng hiện tại"
           action={
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <Button variant="outline" className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
-                <CalendarClock className="size-5" />
-                Tháng này
-              </Button>
-              <Button type="button" onClick={() => navigate(routePaths.providerCafeCreate)} className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
-                <Plus className="size-5" />
-                Thêm cơ sở
-              </Button>
-            </div>
+            <Button
+              type="button"
+              onClick={() => navigate(routePaths.providerCafeCreate)}
+              className="h-9 gap-2 rounded-lg bg-[#1c1b1b] px-4 text-sm text-white hover:bg-[#313030] font-bold"
+            >
+              <Plus className="size-4" />
+              Thêm cơ sở
+            </Button>
           }
         />
         {isLoading ? (
           <div className="space-y-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-32 animate-pulse rounded-lg bg-[#f6f3f2]" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-[72px] animate-pulse rounded-xl bg-[#f6f3f2]" />
             ))}
           </div>
         ) : isError ? (
-          <button type="button" onClick={() => void refetch()} className="rounded-lg border border-[#c4c7c8] bg-[#f1edec] hover:bg-[#e5e2e1] px-4 py-2 text-sm font-bold text-[#1c1b1b]">
-            Tải lại danh sách cơ sở
-          </button>
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <AlertTriangle className="size-8 text-[#c4c7c8]" />
+            <p className="text-sm font-medium text-[#747878]">Không thể tải danh sách cơ sở</p>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="rounded-lg border border-[#c4c7c8] px-4 py-2 text-sm font-bold text-[#1c1b1b] hover:bg-[#f6f3f2] transition-colors"
+            >
+              Thử lại
+            </button>
+          </div>
         ) : (
           <BranchList cafes={cafes} />
         )}

@@ -60,6 +60,7 @@ export const routePaths = {
   providerPromotionCopy: "/provider/promotions/copy",
   providerPromotionEdit: "/provider/promotions/:promotionId/edit",
   providerStaff: "/provider/staff",
+  providerStaffDetail: "/provider/staff/:staffId",
   providerRevenue: "/provider/revenue",
   providerConfiguration: "/provider/configuration",
   adminDashboard: "/admin/dashboard",

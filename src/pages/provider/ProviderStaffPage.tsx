@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { ArrowLeftRight, Clock, Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2, MonitorSmartphone, Users } from "lucide-react"
+import { ArrowLeftRight, Clock, Mail, MapPin, MoreHorizontal, Phone, Search, UserPlus, AlertCircle, Loader2, RefreshCw, Ban, CheckCircle2, MonitorSmartphone, Users, Eye } from "lucide-react"
 import { toast } from "sonner"
 
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -14,6 +14,12 @@ import { staffApi, staffQueryKeys, type StaffListItem, type InviteStaffBody } fr
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { storageKeys } from "@/shared/lib/storage"
 import { routePaths } from "@/app/router/route-paths"
+import { useNavigate } from "react-router"
+
+function isOnline(lastActiveAt: string | null): boolean {
+  if (!lastActiveAt) return false
+  return Date.now() - new Date(lastActiveAt).getTime() < 10 * 60 * 1000
+}
 
 function formatExpiry(isoString: string): { label: string; urgent: boolean } {
   const diff = new Date(isoString).getTime() - Date.now()
@@ -113,6 +119,7 @@ export function ProviderStaffPage() {
   const { data: staffList = [], isLoading, isError } = useQuery({
     queryKey: staffQueryKeys.list(selectedCafeId),
     queryFn: () => staffApi.listStaff(selectedCafeId),
+    refetchInterval: 60_000,
   })
 
   const { data: cafesResp } = useQuery({
@@ -247,6 +254,9 @@ export function ProviderStaffPage() {
               onResend={() => resendMutation.mutate(staff.id)}
               onTransfer={() => { setTransferTarget(staff); setTransferCafeId(staff.cafeId) }}
               onImpersonate={() => handleImpersonate(staff)}
+              onViewDetail={() => {
+                window.location.href = routePaths.providerStaffDetail.replace(":staffId", staff.id)
+              }}
             />
           ))}
 
@@ -408,6 +418,7 @@ function StaffCard({
   onResend,
   onTransfer,
   onImpersonate,
+  onViewDetail,
 }: {
   staff: StaffListItem
   impersonating: boolean
@@ -416,6 +427,7 @@ function StaffCard({
   onResend: () => void
   onTransfer: () => void
   onImpersonate: () => void
+  onViewDetail: () => void
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -429,13 +441,18 @@ function StaffCard({
       {/* Header row: avatar + name + status + menu */}
       <div className="mb-4 flex items-start gap-3">
         {/* Avatar */}
-        <div className={cn(
-          "flex size-11 shrink-0 items-center justify-center rounded-full text-base font-bold",
-          staff.status === "ACTIVE"
-            ? "bg-orange-100 text-orange-700"
-            : "bg-[#ebe7e7] text-[#747878]",
-        )}>
-          {staff.fullName.charAt(0).toUpperCase()}
+        <div className="relative shrink-0">
+          <div className={cn(
+            "flex size-11 items-center justify-center rounded-full text-base font-bold",
+            staff.status === "ACTIVE"
+              ? "bg-orange-100 text-orange-700"
+              : "bg-[#ebe7e7] text-[#747878]",
+          )}>
+            {staff.fullName.charAt(0).toUpperCase()}
+          </div>
+          {staff.status === "ACTIVE" && isOnline(staff.lastActiveAt) && (
+            <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#fcf8f8] bg-emerald-500" />
+          )}
         </div>
 
         {/* Name + role */}
@@ -460,6 +477,14 @@ function StaffCard({
                 className="absolute right-0 top-8 z-20 min-w-[200px] overflow-hidden rounded-lg border border-[#c4c7c8] bg-white shadow-lg"
                 onMouseLeave={() => setMenuOpen(false)}
               >
+                <button
+                  className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-[#1c1b1b] hover:bg-[#f6f3f2]"
+                  onClick={() => { setMenuOpen(false); onViewDetail() }}
+                >
+                  <Eye className="size-4 text-[#747878]" />
+                  Xem chi tiết
+                </button>
+                <div className="h-px bg-[#e5e2e1]" />
                 {staff.status === "ACTIVE" && (
                   <button
                     className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-orange-600 hover:bg-orange-50 disabled:opacity-50"
