@@ -15,12 +15,17 @@ import {
   Users,
   MapPin,
   UtensilsCrossed,
+  QrCode,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from "lucide-react"
 import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
+import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
 import type { BackendCafe } from "@/features/cafes/types"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import { toast } from "sonner"
@@ -31,6 +36,7 @@ import {
   StaffBadge,
   StaffButton,
 } from "./components/StaffUI"
+import { QrCheckinUploader } from "@/features/staff/components/QrCheckinUploader"
 import type { CustomerBookingDetail } from "@/shared/data/customer-operational-mock-data"
 
 type TabType = "LIST" | "WALKIN"
@@ -105,7 +111,23 @@ export default function StaffTodayBookingsPage() {
 
   // Primary navigation tab
   const [activeTab, setActiveTab] = useState<TabType>("LIST")
-  
+
+  // QR check-in panel state
+  const [showQrPanel, setShowQrPanel] = useState(false)
+  const [qrBookingId, setQrBookingId] = useState("")
+  const [qrInputValue, setQrInputValue] = useState("")
+
+  const {
+    data: qrBookingData,
+    isLoading: qrBookingLoading,
+    isError: qrBookingError,
+  } = useQuery({
+    queryKey: bookingQueryKeys.detail(qrBookingId),
+    queryFn: () => bookingApi.getBooking(qrBookingId),
+    enabled: !!qrBookingId,
+    retry: false,
+  })
+
   // List states
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
@@ -361,6 +383,131 @@ export default function StaffTodayBookingsPage() {
               ))}
             </div>
           </div>
+
+          {/* QR CHECK-IN PANEL */}
+          <StaffCard className="overflow-hidden">
+            <button
+              onClick={() => {
+                setShowQrPanel((v) => !v)
+                if (showQrPanel) {
+                  setQrBookingId("")
+                  setQrInputValue("")
+                }
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-[#1c1b1b] hover:bg-[#fcf8f8] transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <QrCode className="size-4 text-[#ea580c]" />
+                Quét mã QR check-in
+              </span>
+              {showQrPanel ? <ChevronUp className="size-4 text-[#a09e9d]" /> : <ChevronDown className="size-4 text-[#a09e9d]" />}
+            </button>
+
+            {showQrPanel && (
+              <div className="px-4 pb-4 space-y-4 border-t border-[#f0eeee] pt-4">
+                <QrCheckinUploader onDecoded={(id) => { setQrBookingId(id); setQrInputValue(id) }} />
+
+                <div className="relative flex items-center">
+                  <div className="flex-grow border-t border-[#e5e2e1]" />
+                  <span className="mx-3 text-xs font-bold text-[#a09e9d] bg-white px-1">hoặc</span>
+                  <div className="flex-grow border-t border-[#e5e2e1]" />
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nhập booking ID thủ công..."
+                    value={qrInputValue}
+                    onChange={(e) => setQrInputValue(e.target.value)}
+                    className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                  />
+                  <button
+                    onClick={() => setQrBookingId(qrInputValue.trim())}
+                    disabled={!qrInputValue.trim()}
+                    className="rounded-lg bg-[#ea580c] text-white text-sm font-bold px-4 py-2 hover:bg-[#c2410c] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Tìm
+                  </button>
+                  {qrBookingId && (
+                    <button
+                      onClick={() => { setQrBookingId(""); setQrInputValue("") }}
+                      className="rounded-lg border border-[#e5e2e1] text-[#6b7280] px-3 py-2 hover:bg-[#fcf8f8] transition-colors"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+
+                {qrBookingId && (
+                  <div className="rounded-xl border border-[#e5e2e1] overflow-hidden">
+                    {qrBookingLoading && (
+                      <div className="flex items-center justify-center py-6 gap-2 text-sm text-[#6b7280]">
+                        <Loader2 className="size-4 animate-spin" />
+                        Đang tải thông tin booking...
+                      </div>
+                    )}
+                    {qrBookingError && (
+                      <div className="py-4 px-4 text-sm text-red-600 font-semibold">
+                        Không tìm thấy booking. Kiểm tra lại mã QR hoặc ID.
+                      </div>
+                    )}
+                    {qrBookingData && (
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono font-bold text-[#a09e9d]">
+                            #{qrBookingData.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <StaffBadge variant={
+                            qrBookingData.status === "CONFIRMED" ? "info"
+                            : qrBookingData.status === "COMPLETED" ? "success"
+                            : "neutral"
+                          }>
+                            {qrBookingData.status}
+                          </StaffBadge>
+                        </div>
+                        <div className="text-xs space-y-1 text-[#4c4a49] font-semibold">
+                          <p><span className="text-[#a09e9d]">Khách:</span> {qrBookingData.participants?.[0]?.resolvedName ?? "—"}</p>
+                          <p>
+                            <span className="text-[#a09e9d]">Giờ:</span>{" "}
+                            {new Date(qrBookingData.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            {" – "}
+                            {new Date(qrBookingData.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                          <p><span className="text-[#a09e9d]">Chế độ:</span> {qrBookingData.playMode === "RENTAL" ? "Thuê xe" : "BYOC"}</p>
+                        </div>
+                        {qrBookingData.status !== "CONFIRMED" && (
+                          <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                            {qrBookingData.status === "COMPLETED" ? "Booking này đã hoàn thành." :
+                             qrBookingData.status === "CANCELLED" ? "Booking này đã bị hủy." :
+                             qrBookingData.status === "NO_SHOW" ? "Booking này đã quá hạn (No Show)." :
+                             qrBookingData.status === "PENDING" ? "Booking chưa thanh toán, không thể check-in." :
+                             "Không thể check-in với trạng thái hiện tại."}
+                          </div>
+                        )}
+                        {qrBookingData.status === "CONFIRMED" && qrBookingData.session && (
+                          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
+                            Đã check-in lúc {qrBookingData.session.actualStartAt
+                              ? new Date(qrBookingData.session.actualStartAt).toLocaleTimeString("vi-VN")
+                              : "—"}.
+                          </div>
+                        )}
+                        {qrBookingData.status === "CONFIRMED" && !qrBookingData.session && (
+                          <StaffButton
+                            onClick={() => handleStartCheckIn(qrBookingData)}
+                            variant="primary"
+                            className="w-full"
+                          >
+                            Xác nhận check-in
+                            <ArrowRight className="size-3.5" />
+                          </StaffButton>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </StaffCard>
 
           {/* BOOKINGS CARDS GRID */}
           {loadingBookings ? (
