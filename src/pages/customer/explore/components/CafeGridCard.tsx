@@ -1,19 +1,24 @@
-import { Navigation, Star } from "lucide-react"
+import { Navigation, Star, Heart } from "lucide-react"
 import { Link } from "react-router"
 import type { Cafe } from "@/shared/data/explore-data"
 import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
 import { formatCurrency } from "@/shared/lib/format"
 import { formatDistance } from "../explore-utils"
 import { Button } from "@/shared/ui/button"
+import { cn } from "@/shared/lib/utils"
 
 export function CafeGridCard({
   cafe,
+  isFavorite,
+  onToggleFavorite,
   distanceKm,
   onQuickView,
   onBookNow,
   onHover,
 }: {
   cafe: Cafe
+  isFavorite: boolean
+  onToggleFavorite: (cafeId: string) => void
   distanceKm?: number
   onQuickView: (cafe: Cafe) => void
   onBookNow: (cafeId: string) => void
@@ -41,6 +46,19 @@ export function CafeGridCard({
           alt={cafe.name}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
         />
+
+        {/* Favorite button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onToggleFavorite(cafe.id)
+          }}
+          className="absolute left-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-slate-600 shadow-sm backdrop-blur-sm transition-all hover:scale-110 active:scale-95"
+        >
+          <Heart className={cn("h-3.5 w-3.5", isFavorite ? "fill-red-500 text-red-500" : "text-slate-600 hover:text-red-500")} />
+        </button>
 
         {/* Rating badge */}
         {cafe.rating > 0 && (

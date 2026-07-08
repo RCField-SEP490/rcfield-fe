@@ -1,12 +1,101 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useMemo, useState, useEffect, type ReactNode } from "react"
 import { CarFront, Clock3, Heart, Images, MapPin, Share2, Star, WalletCards } from "lucide-react"
 import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { cn } from "@/shared/lib/utils"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { favoriteApi } from "@/features/explore/api/favorite.api"
 
 export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const [isFavorite, setIsFavorite] = useState(() => {
+    try {
+      const favs = localStorage.getItem("rcfield_favorite_cafes")
+      const list = favs ? JSON.parse(favs) : []
+      return Array.isArray(list) && list.includes(cafe.id)
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    const loadFav = async () => {
+      let localFavs: string[] = []
+      try {
+        const favsStr = localStorage.getItem("rcfield_favorite_cafes")
+        if (favsStr) {
+          const parsed = JSON.parse(favsStr)
+          if (Array.isArray(parsed)) localFavs = parsed
+        }
+      } catch (e) {
+        console.warn("Failed to parse local favorites", e)
+      }
+
+      if (isAuthenticated) {
+        try {
+          const isSynced = localStorage.getItem("rcfield_favorites_synced") === "true"
+          let latestFavs = localFavs
+          if (!isSynced) {
+            latestFavs = await favoriteApi.syncFavorites(localFavs)
+            localStorage.setItem("rcfield_favorites_synced", "true")
+          } else {
+            latestFavs = await favoriteApi.getFavorites()
+          }
+          localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(latestFavs))
+          setIsFavorite(latestFavs.includes(cafe.id))
+        } catch (e) {
+          console.error("Failed to load favorites from backend", e)
+          setIsFavorite(localFavs.includes(cafe.id))
+        }
+      } else {
+        localStorage.removeItem("rcfield_favorites_synced")
+        setIsFavorite(localFavs.includes(cafe.id))
+      }
+    }
+
+    loadFav()
+  }, [isAuthenticated, cafe.id])
+
+  const toggleFavorite = async () => {
+    try {
+      const favs = localStorage.getItem("rcfield_favorite_cafes")
+      let list: string[] = favs ? JSON.parse(favs) : []
+      if (!Array.isArray(list)) list = []
+      
+      const isFav = list.includes(cafe.id)
+      let updatedList = [...list]
+
+      if (isFav) {
+        updatedList = updatedList.filter((id) => id !== cafe.id)
+        setIsFavorite(false)
+        toast.success("Đã xóa khỏi danh sách yêu thích")
+        if (isAuthenticated) {
+          await favoriteApi.removeFavorite(cafe.id)
+        }
+      } else {
+        updatedList.push(cafe.id)
+        setIsFavorite(true)
+        toast.success("Đã thêm vào danh sách yêu thích")
+        if (isAuthenticated) {
+          await favoriteApi.addFavorite(cafe.id)
+        }
+      }
+      localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(updatedList))
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error)
+      // Rollback
+      try {
+        const favs = localStorage.getItem("rcfield_favorite_cafes")
+        const list = favs ? JSON.parse(favs) : []
+        setIsFavorite(Array.isArray(list) && list.includes(cafe.id))
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   const handleShare = async () => {
     const url = window.location.href
     if (navigator.share) {
@@ -24,12 +113,16 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
     () => dedupeImages([cafe.image, ...(cafe.images ?? []), ...cafe.availableVehicles.map((vehicle) => vehicle.image)]),
     [cafe],
   )
-  const [activeImage, setActiveImage] = useState(images[0] ?? cafe.image)
-  const galleryTiles = buildGalleryTiles(images, activeImage)
+  const targetFirstImage = images[0] ?? cafe.image
+  const [activeImage, setActiveImage] = useState(targetFirstImage)
+  const [prevFirstImage, setPrevFirstImage] = useState(targetFirstImage)
 
-  useEffect(() => {
-    setActiveImage(images[0] ?? cafe.image)
-  }, [cafe.image, images])
+  if (targetFirstImage !== prevFirstImage) {
+    setPrevFirstImage(targetFirstImage)
+    setActiveImage(targetFirstImage)
+  }
+
+  const galleryTiles = buildGalleryTiles(images, activeImage)
 
   return (
     <section className="space-y-4">
@@ -55,8 +148,14 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
           <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={() => void handleShare()}>
             <Share2 className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="outline" size="icon" className="rounded-full">
-            <Heart className="h-4 w-4" />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={cn("rounded-full transition-colors", isFavorite && "bg-red-50 text-red-500 border-red-200 hover:bg-red-100")}
+            onClick={toggleFavorite}
+          >
+            <Heart className={cn("h-4 w-4", isFavorite && "fill-red-500 text-red-500")} />
           </Button>
         </div>
       </div>
