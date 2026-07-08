@@ -412,10 +412,87 @@ export default function StaffSessionDetailPage() {
 
       {/* 4. CORE ACTION MODULES (F&B / Extensions / Fleet controls) */}
       {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Module 1: Fleet swap & Extension Controls */}
-          <div className="space-y-6">
-            {/* Extensions panel */}
+        <>
+          {/* Active Vehicles — position 2, right below session info */}
+          <StaffCard className="space-y-4">
+            {(() => {
+              const participantNames = booking.participantDetails?.map((p) => p.name)
+                ?? booking.plannedParticipants
+              const isByocMode = booking.playMode === "BYOC"
+              const displayVehicles = isByocMode && session.vehicles.length < participantNames.length
+                ? [
+                    ...session.vehicles,
+                    ...participantNames.slice(session.vehicles.length).map((name, i) => ({
+                      vehicleId: `byoc-placeholder-${i}`,
+                      name: `Xe của ${name} (BYOC)`,
+                      type: "BYOC" as const,
+                      imageUrl: undefined,
+                    })),
+                  ]
+                : session.vehicles
+
+              const checkInPhotos = session.inspections.find((i) => i.type === "CHECK_IN")?.photos ?? []
+              const byocDirections = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
+
+              return (
+                <>
+                  <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+                    <Car className="size-4.5 text-[#ea580c]" />
+                    Xe đang chạy trên làn đua ({displayVehicles.length})
+                  </h4>
+
+                  <div className="space-y-2">
+                    {displayVehicles.map((v, idx) => {
+                      const photoUrl = v.type === "RENT"
+                        ? v.imageUrl
+                        : checkInPhotos.find((p) => p.direction === byocDirections[idx])?.url
+                      return (
+                        <div
+                          key={v.vehicleId}
+                          className="flex items-center justify-between rounded-lg bg-[#fcf8f8] p-3 border border-[#e5e2e1]"
+                        >
+                          <div className="flex items-center gap-3">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={v.name}
+                                className="size-9 rounded-lg object-cover border border-[#e5e2e1] shrink-0"
+                              />
+                            ) : (
+                              <div className="flex size-9 items-center justify-center rounded-lg bg-white border border-[#e5e2e1] shrink-0">
+                                <Car className="size-4.5 text-[#6b7280]" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs font-bold text-[#1c1b1b]">{v.name}</p>
+                              <p className="text-[10px] text-[#6b7280] font-semibold">Mã ID: {v.vehicleId}</p>
+                            </div>
+                          </div>
+                          {v.type === "RENT" && (
+                            <StaffButton
+                              onClick={() => {
+                                setSwappingVehicleId(v.vehicleId)
+                                setSwapModalOpen(true)
+                              }}
+                              variant="secondary"
+                              size="sm"
+                              className="py-1 px-2.5 text-[10px] font-bold rounded-lg"
+                            >
+                              <ArrowLeftRight className="size-3" />
+                              Đổi Xe Khác
+                            </StaffButton>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+          </StaffCard>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Module 1: Extension Controls */}
             <StaffCard className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
@@ -526,74 +603,8 @@ export default function StaffSessionDetailPage() {
               </p>
             </StaffCard>
 
-            {/* Active Vehicles & Swap Button */}
+            {/* Module 2: Menu F&B Console */}
             <StaffCard className="space-y-4">
-              {(() => {
-                // For BYOC: pad vehicle list to match participant count if DB had old data (1 vehicle only)
-                const participantNames = booking.participantDetails?.map((p) => p.name)
-                  ?? booking.plannedParticipants
-                const isByocMode = booking.playMode === "BYOC"
-                const displayVehicles = isByocMode && session.vehicles.length < participantNames.length
-                  ? [
-                      ...session.vehicles,
-                      ...participantNames.slice(session.vehicles.length).map((name, i) => ({
-                        vehicleId: `byoc-placeholder-${i}`,
-                        name: `Xe của ${name} (BYOC)`,
-                        type: "BYOC" as const,
-                        imageUrl: undefined,
-                      })),
-                    ]
-                  : session.vehicles
-
-                return (
-                  <>
-                    <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-                      <Car className="size-4.5 text-[#ea580c]" />
-                      Xe đang chạy trên làn đua ({displayVehicles.length})
-                    </h4>
-
-                    <div className="space-y-2">
-                      {displayVehicles.map((v) => (
-                  <div
-                    key={v.vehicleId}
-                    className="flex items-center justify-between rounded-lg bg-[#fcf8f8] p-3 border border-[#e5e2e1]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-white border border-[#e5e2e1]">
-                        <Car className="size-4.5 text-[#6b7280]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-[#1c1b1b]">{v.name}</p>
-                        <p className="text-[10px] text-[#6b7280] font-semibold">Mã ID: {v.vehicleId}</p>
-                      </div>
-                    </div>
-
-                    {/* Swap Trigger */}
-                    {v.type === "RENT" && (
-                      <StaffButton
-                        onClick={() => {
-                          setSwappingVehicleId(v.vehicleId)
-                          setSwapModalOpen(true)
-                        }}
-                        variant="secondary"
-                        size="sm"
-                        className="py-1 px-2.5 text-[10px] font-bold rounded-lg"
-                      >
-                        <ArrowLeftRight className="size-3" />
-                        Đổi Xe Khác
-                      </StaffButton>
-                    )}
-                      </div>
-                    ))}
-                  </div>
-                  </>
-                )
-              })()}
-            </StaffCard>
-          </div>
-
-          {/* Module 2: Menu F&B Console */}
-          <StaffCard className="space-y-4">
             <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
               <Coffee className="size-4.5 text-[#ea580c]" />
               Gọi dịch vụ ăn uống (F&B)
@@ -645,7 +656,8 @@ export default function StaffSessionDetailPage() {
               </form>
             )}
           </StaffCard>
-        </div>
+          </div>
+        </>
       )}
 
       {/* 4. RENDER INSPECTION BANNER */}
