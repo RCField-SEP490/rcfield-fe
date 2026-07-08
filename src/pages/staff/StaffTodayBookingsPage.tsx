@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react"
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
+import React, { useState, useEffect, useMemo } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -38,6 +39,10 @@ import {
 } from "./components/StaffUI"
 import { QrCheckinUploader } from "@/features/staff/components/QrCheckinUploader"
 import type { CustomerBookingDetail } from "@/shared/data/customer-operational-mock-data"
+import { useDailyAvailability } from "@/features/booking/hooks/use-booking"
+import { useTrackConfigs } from "@/features/cafes/hooks/useTrackConfigs"
+import { buildDailySlots, DailySlotGrid, type DailySlot, type DailySlotStatus } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
+import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
 
 type TabType = "LIST" | "WALKIN"
 
@@ -101,6 +106,7 @@ export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { assignedCafeId, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
+  const [nowTime] = useState(() => Date.now())
 
   const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),
@@ -132,14 +138,27 @@ export default function StaffTodayBookingsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
 
+  const getTodayString = () => {
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const date = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${date}`
+  }
+
+
+
   // Walk-in form states
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
-  const [playMode, setPlayMode] = useState<"RENTAL" | "BYOC" | "MIXED">("RENTAL")
+  const [playMode, setPlayMode] = useState<"RENTAL" | "BYOC">("RENTAL")
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER">("CASH")
   const [selectedTrackCode, setSelectedTrackCode] = useState("")
   const [selectedTrackName, setSelectedTrackName] = useState("")
-  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [selectedSlot, setSelectedSlot] = useState("")
+  const [selectedSlotEnd, setSelectedSlotEnd] = useState<string | null>(null)
   const [selectedVehicles, setSelectedVehicles] = useState<VehicleUnit[]>([])
+  const bookingDate = getTodayString()
 
   // Branch data
   const [cafeDetails, setCafeDetails] = useState<BackendCafe | null>(null)
@@ -195,21 +214,66 @@ export default function StaffTodayBookingsPage() {
     setCustomerName("")
     setCustomerPhone("")
     setPlayMode("RENTAL")
+    setPaymentMethod("CASH")
     setSelectedVehicles([])
-    setDurationMinutes(60)
+    setSelectedSlot("")
+    setSelectedSlotEnd(null)
     setSearchParams({})
+  }
+
+  // Load track configs and daily availability
+  const { data: trackConfigs = [] } = useTrackConfigs(assignedCafeId ?? "")
+  
+  const selectedTrackConfig = useMemo(() => {
+    return trackConfigs.find((c) => c.track_type?.code === selectedTrackCode) || null
+  }, [trackConfigs, selectedTrackCode])
+
+  const { openHour, closeHour } = useMemo(() => {
+    const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+    const dayKey = DAY_KEYS[new Date().getDay()]
+    const hours = (cafeDetails?.operatingHours as Record<string, { open?: string; close?: string }> | undefined)?.[dayKey]
+    const parseHour = (t?: string) => (t ? parseInt(t.split(":")[0], 10) : undefined)
+    return {
+      openHour: parseHour(hours?.open) ?? 8,
+      closeHour: parseHour(hours?.close) ?? 22,
+    }
+  }, [cafeDetails])
+
+  const { data: dailyAvailability, isLoading: isLoadingAvailability } = useDailyAvailability(
+    assignedCafeId ?? "",
+    bookingDate,
+    openHour,
+    closeHour,
+    selectedTrackConfig?.id || undefined,
+  )
+
+  const slots = useMemo<DailySlot[]>(() => {
+    if (!dailyAvailability) return buildDailySlots(openHour, closeHour)
+    return buildSlotsFromAvailability(dailyAvailability, playMode)
+  }, [dailyAvailability, openHour, closeHour, playMode])
+
+  const calculateDurationFromSlots = (start: string, end: string | null): number => {
+    if (!start) return 60
+    const [startH, startM] = start.split(":").map(Number)
+    const slotDuration = cafeDetails?.slotDurationMinutes || 30
+    if (!end) return slotDuration
+    const [endH, endM] = end.split(":").map(Number)
+    const startTotal = startH * 60 + startM
+    const endTotal = endH * 60 + endM
+    return Math.max(slotDuration, endTotal - startTotal)
   }
 
   // Calculate pricing values
   const slotFeeRate = cafeDetails ? Number(cafeDetails.slotFeeRate) || 80000 : 80000
   const slotDuration = cafeDetails?.slotDurationMinutes || 30
-  const slotCount = Math.ceil(durationMinutes / slotDuration)
+  const computedDuration = calculateDurationFromSlots(selectedSlot, selectedSlotEnd)
+  const slotCount = Math.ceil(computedDuration / slotDuration)
   const slotFeeTotal = slotCount * slotFeeRate
 
   // Calculate rental fees
   const rentalFeeTotal = selectedVehicles.reduce((total, unit) => {
     const hourly = unit.catalog?.hourlyRate || 75000
-    return total + hourly * (durationMinutes / 60)
+    return total + hourly * (computedDuration / 60)
   }, 0)
 
   const totalAmount = slotFeeTotal + rentalFeeTotal
@@ -223,38 +287,61 @@ export default function StaffTodayBookingsPage() {
       return
     }
 
+    if (!customerPhone.trim()) {
+      toast.error("Vui lòng nhập số điện thoại khách hàng!")
+      return
+    }
+
+    if (!/^[0-9]{10}$/.test(customerPhone.trim())) {
+      toast.error("Số điện thoại không hợp lệ (phải gồm 10 chữ số)!")
+      return
+    }
+
+    if (!selectedSlot) {
+      toast.error("Vui lòng chọn slot giờ chơi trên lịch!")
+      return
+    }
+
     if (playMode !== "BYOC" && selectedVehicles.length === 0) {
       toast.error("Vui lòng chọn ít nhất 1 xe thuê để tiếp tục!")
       return
     }
 
-    const slotStart = new Date().toISOString()
-    const slotEnd = new Date(Date.now() + durationMinutes * 60000).toISOString()
+    const startDateTime = new Date(`${bookingDate}T${selectedSlot}:00`)
+    if (isNaN(startDateTime.getTime())) {
+      toast.error("Thời gian bắt đầu không hợp lệ!")
+      return
+    }
+    const slotStart = startDateTime.toISOString()
+    const slotEnd = new Date(startDateTime.getTime() + computedDuration * 60000).toISOString()
 
-    const success = createWalkInBooking({
+    const matchedTrack = cafeDetails?.trackTypes.find((t) => t.code === selectedTrackCode)
+    if (!matchedTrack) {
+      toast.error("Không tìm thấy thông tin cấu hình đường đua!")
+      return
+    }
+
+    createWalkInBooking({
       playMode,
-      trackName: selectedTrackName,
-      trackType: selectedTrackCode,
+      trackTypeId: matchedTrack.id,
       slotStart,
       slotEnd,
-      slotCount,
-      slotFee: slotFeeTotal,
-      rentalFee: rentalFeeTotal,
-      totalAmount,
-      plannedParticipants: [customerName.trim()],
-      plannedVehicles: selectedVehicles.map((v) => v.identifier),
-      selectedVehicles: selectedVehicles.map((v) => ({
-        vehicleId: v.id,
-        name: v.catalog?.name || v.identifier,
-        imageUrl: v.distinctive_image_url || undefined,
-      })),
+      paymentMethod,
+      vehicleIds: selectedVehicles.map((v) => v.id),
+      participants: [
+        {
+          guest_name: customerName.trim(),
+          guest_phone: customerPhone.trim(),
+          participant_type: "WALK_IN_GUEST",
+        },
+      ],
+    }).then((success) => {
+      if (success) {
+        resetWalkinForm()
+        setActiveTab("LIST")
+        setSearchParams({})
+      }
     })
-
-    if (success) {
-      resetWalkinForm()
-      setActiveTab("LIST")
-      setSearchParams({})
-    }
   }
 
   // Toggle vehicle selection for Walk-in
@@ -562,7 +649,7 @@ export default function StaffTodayBookingsPage() {
 
                   const hasFnb = fnbAmount > 0
                   const countdown = activeSession ? null : getSlotCountdown(slotStart)
-                  const remainingMs = activeSession ? new Date(slotEnd).getTime() - Date.now() : null
+                  const remainingMs = activeSession ? new Date(slotEnd).getTime() - nowTime : null
                   const remainingMinutes = remainingMs !== null ? Math.ceil(remainingMs / 60000) : null
 
                   return (
@@ -734,10 +821,11 @@ export default function StaffTodayBookingsPage() {
                 {/* Customer Phone */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Số điện thoại
+                    Số điện thoại <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
+                    required
                     placeholder="Nhập số điện thoại khách hàng"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
@@ -746,7 +834,7 @@ export default function StaffTodayBookingsPage() {
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Play Mode */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
@@ -755,14 +843,15 @@ export default function StaffTodayBookingsPage() {
                   <select
                     value={playMode}
                     onChange={(e) => {
-                      setPlayMode(e.target.value as any)
+                      setPlayMode(e.target.value as "RENTAL" | "BYOC")
                       setSelectedVehicles([])
+                      setSelectedSlot("")
+                      setSelectedSlotEnd(null)
                     }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
                     <option value="RENTAL">Thuê xe của hàng</option>
                     <option value="BYOC">Tự mang xe (BYOC)</option>
-                    <option value="MIXED">Hỗn hợp (Thuê + BYOC)</option>
                   </select>
                 </div>
 
@@ -778,6 +867,8 @@ export default function StaffTodayBookingsPage() {
                       if (match) {
                         setSelectedTrackCode(match.code)
                         setSelectedTrackName(match.name)
+                        setSelectedSlot("")
+                        setSelectedSlotEnd(null)
                       }
                     }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
@@ -790,21 +881,65 @@ export default function StaffTodayBookingsPage() {
                   </select>
                 </div>
 
-                {/* Duration selector */}
+                {/* Payment Method */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Thời lượng ca chơi
+                    Thanh toán tại quầy
                   </label>
                   <select
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as "CASH" | "BANK_TRANSFER") }
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
-                    <option value={30}>30 phút ({slotDuration} phút/lượt)</option>
-                    <option value={60}>60 phút (1 giờ)</option>
-                    <option value={90}>90 phút (1.5 giờ)</option>
-                    <option value={120}>120 phút (2 giờ)</option>
+                    <option value="CASH">Tiền mặt (Cash)</option>
+                    <option value="BANK_TRANSFER">Chuyển khoản (Bank Transfer)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* DATE & DYNAMIC SLOT GRID */}
+              <div className="rounded-xl border border-orange-100 bg-orange-50/20 p-4 md:p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#ea580c]" />
+                    <span className="text-sm font-bold text-[#1c1b1b]">
+                      Ngày chơi: Hôm nay (
+                      {new Date().toLocaleDateString("vi-VN", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                      )
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-[#fff3eb] border border-[#ffdbca] px-2.5 py-0.5 text-[10px] font-bold text-[#ea580c]">
+                    Walk-in trong ngày
+                  </span>
+                </div>
+
+                <div className={cn("transition-opacity", isLoadingAvailability && "pointer-events-none opacity-40")}>
+                  {isLoadingAvailability && (
+                    <div className="flex items-center gap-2 text-xs text-[#6b7280] mb-2 animate-pulse font-semibold">
+                      <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
+                      Đang cập nhật danh sách slot trống...
+                    </div>
+                  )}
+
+                  <DailySlotGrid
+                    slots={slots}
+                    selectedSlotId={selectedSlot}
+                    selectedSlotEndId={selectedSlotEnd ?? undefined}
+                    onSelectSlot={setSelectedSlot}
+                    slotDurationMinutes={slotDuration}
+                    minBookingNoticeMinutes={0}
+                    openHour={openHour}
+                    closeHour={closeHour}
+                    date={bookingDate}
+                    onSelectRange={(start, end) => {
+                      setSelectedSlot(start)
+                      setSelectedSlotEnd(end || null)
+                    }}
+                  />
                 </div>
               </div>
 
@@ -933,4 +1068,40 @@ export default function StaffTodayBookingsPage() {
       )}
     </div>
   )
+}
+
+function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[], playMode: "RENTAL" | "BYOC"): DailySlot[] {
+  return hourlyData.map(({ hour, data }) => {
+    const startTime = `${String(hour).padStart(2, "0")}:00`
+    const endTime = `${String(hour + 1).padStart(2, "0")}:00`
+    if (!data) return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0, rentalCount: 0, byocRemaining: 0 }
+
+    const rentalCount = data.vehicles?.length ?? 0
+    const byocRemaining = data.byoc_remaining ?? 0
+
+    let remaining: number
+    let available: boolean
+    if (playMode === "RENTAL") {
+      remaining = rentalCount
+      available = rentalCount > 0
+    } else {
+      remaining = byocRemaining
+      available = byocRemaining > 0
+    }
+
+    let status: DailySlotStatus
+    if (!available) status = "booked"
+    else if (remaining <= 2) status = "limited"
+    else status = "available"
+
+    return {
+      id: startTime,
+      startTime,
+      endTime,
+      status,
+      remaining,
+      rentalCount: playMode === "BYOC" ? 0 : rentalCount,
+      byocRemaining: playMode === "RENTAL" ? 0 : byocRemaining,
+    }
+  })
 }
