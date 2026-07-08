@@ -11,6 +11,7 @@ export interface StaffListItem {
   createdAt: string
   activatedAt: string | null
   inviteExpiresAt: string | null
+  lastActiveAt: string | null
 }
 
 export interface InviteStaffBody {
