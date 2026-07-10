@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { useMemo } from "react"
+import { LayoutGrid, List } from "lucide-react"
 import { trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import { SORT_OPTIONS, FEATURE_OPTIONS } from "../constants"
@@ -10,6 +11,8 @@ interface ExploreResultsHeaderProps {
   resultCount: number
   sortBy: SortOption
   onSortByChange: (v: SortOption) => void
+  viewMode: "grid" | "list"
+  onViewModeChange: (v: "grid" | "list") => void
   // Inline filter chips
   trackType: string
   onTrackTypeChange: (v: string) => void
@@ -36,6 +39,8 @@ export function ExploreResultsHeader({
   resultCount,
   sortBy,
   onSortByChange,
+  viewMode,
+  onViewModeChange,
   trackType,
   onTrackTypeChange,
   feature,
@@ -68,18 +73,51 @@ export function ExploreResultsHeader({
           <h1 className="text-xl font-bold text-slate-900">{cityLabel}</h1>
           <p className="text-sm text-slate-500">{resultCount} nơi giao lưu được tìm thấy</p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-slate-500 sm:inline">Xếp theo:</span>
-          <Select value={sortBy} onValueChange={(v) => onSortByChange(v as SortOption)}>
-            <SelectTrigger className="h-9 w-[160px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-orange-600">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORT_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="hidden text-sm text-slate-500 sm:inline">Xếp theo:</span>
+            <Select value={sortBy} onValueChange={(v) => onSortByChange(v as SortOption)}>
+              <SelectTrigger className="h-9 w-[160px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-orange-600 focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORT_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="hidden text-sm text-slate-500 sm:inline">Xem:</span>
+            <div className="flex items-center rounded-full border border-slate-200 bg-white p-0.5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => onViewModeChange("grid")}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+                title="Xem dạng ô"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <div className="h-4 w-px bg-slate-200" />
+              <button
+                type="button"
+                onClick={() => onViewModeChange("list")}
+                className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                  viewMode === "list"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+                title="Xem dạng danh sách"
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

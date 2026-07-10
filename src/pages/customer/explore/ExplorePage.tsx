@@ -9,6 +9,7 @@ import { ExploreSearchBar } from "./components/ExploreSearchBar"
 import { ExploreLeftSidebar } from "./components/ExploreLeftSidebar"
 import { ExploreResultsHeader } from "./components/ExploreResultsHeader"
 import { CafeHorizontalCard } from "./components/CafeHorizontalCard"
+import { CafeGridCard } from "./components/CafeGridCard"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
 import { buildBookingUrl, cafeInBounds, filterCafes, sortCafes, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
@@ -25,6 +26,14 @@ export function ExplorePage() {
   const [hoveredCafeId, setHoveredCafeId] = useState<string | null>(null)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [searchOnMove, setSearchOnMove] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    return (localStorage.getItem("explore_view_mode") as "grid" | "list") || "list"
+  })
+
+  const handleViewModeChange = (mode: "grid" | "list") => {
+    setViewMode(mode)
+    localStorage.setItem("explore_view_mode", mode)
+  }
   const listRef = useRef<HTMLDivElement>(null)
   const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
@@ -176,7 +185,7 @@ export function ExplorePage() {
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
         {/* LEFT — Sidebar with map + filters (desktop only) */}
         <div className="hidden w-[280px] shrink-0 lg:block">
-          <div className="sticky top-6">
+          <div className="sticky top-6 max-h-[calc(100vh-5rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             <ExploreLeftSidebar
               cafes={filteredCafes}
               onSelectCafe={setQuickViewCafe}
@@ -207,6 +216,8 @@ export function ExplorePage() {
             resultCount={filteredCafes.length}
             sortBy={filters.sortBy}
             onSortByChange={filters.setSortBy}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
             trackType={filters.trackType}
             onTrackTypeChange={filters.setTrackType}
             feature={filters.feature}
@@ -220,9 +231,9 @@ export function ExplorePage() {
           />
 
           {/* Card list */}
-          <main className="mt-5 space-y-4">
+          <main className={viewMode === "grid" ? "mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "mt-5 space-y-4"}>
             {isLoading ? (
-              <ExploreLoadingState />
+              <ExploreLoadingState viewMode={viewMode} />
             ) : isError ? (
               <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
                 <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
@@ -248,7 +259,18 @@ export function ExplorePage() {
                   userLocation && cafe.latitude && cafe.longitude
                     ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
                     : undefined
-                return (
+                return viewMode === "grid" ? (
+                  <CafeGridCard
+                    key={cafe.id}
+                    cafe={cafe}
+                    isFavorite={favoriteIds.includes(cafe.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                    distanceKm={dist}
+                    onQuickView={setQuickViewCafe}
+                    onBookNow={handleBookNow}
+                    onHover={setHoveredCafeId}
+                  />
+                ) : (
                   <CafeHorizontalCard
                     key={cafe.id}
                     cafe={cafe}
@@ -293,7 +315,28 @@ export function ExplorePage() {
   )
 }
 
-function ExploreLoadingState() {
+function ExploreLoadingState({ viewMode }: { viewMode: "grid" | "list" }) {
+  if (viewMode === "grid") {
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm h-full">
+            <div className="aspect-[16/10] w-full animate-pulse bg-slate-100" />
+            <div className="flex-1 space-y-3 p-4">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-slate-100" />
+              <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100" />
+              <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+              <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100" />
+                <div className="h-8 w-1/2 animate-pulse rounded bg-slate-100" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {Array.from({ length: 4 }).map((_, i) => (
