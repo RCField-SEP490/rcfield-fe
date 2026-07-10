@@ -185,7 +185,7 @@ export function ExplorePage() {
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
         {/* LEFT — Sidebar with map + filters (desktop only) */}
         <div className="hidden w-[280px] shrink-0 lg:block">
-          <div className="sticky top-6 max-h-[calc(100vh-5rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+          <div className="sticky top-[96px] max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
             <ExploreLeftSidebar
               cafes={filteredCafes}
               onSelectCafe={setQuickViewCafe}
@@ -211,27 +211,29 @@ export function ExplorePage() {
         {/* CENTER — Results list */}
         <div ref={listRef} className="flex-1 min-w-0">
           {/* Results header */}
-          <ExploreResultsHeader
-            city={filters.city}
-            resultCount={filteredCafes.length}
-            sortBy={filters.sortBy}
-            onSortByChange={filters.setSortBy}
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-            trackType={filters.trackType}
-            onTrackTypeChange={filters.setTrackType}
-            feature={filters.feature}
-            onFeatureChange={filters.setFeature}
-            vehicleType={filters.vehicleType}
-            onVehicleTypeChange={filters.setVehicleType}
-            priceRange={filters.priceRange}
-            onPriceRangeChange={filters.setPriceRange}
-            query={filters.query}
-            onQueryChange={filters.setQuery}
-          />
+          <div className="sticky top-[68px] lg:top-[80px] z-20 -mx-4 bg-slate-50/95 px-4 pb-3 pt-2 backdrop-blur-sm border-b border-slate-200/50 shadow-sm mb-4">
+            <ExploreResultsHeader
+              city={filters.city}
+              resultCount={filteredCafes.length}
+              sortBy={filters.sortBy}
+              onSortByChange={filters.setSortBy}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+              trackType={filters.trackType}
+              onTrackTypeChange={filters.setTrackType}
+              feature={filters.feature}
+              onFeatureChange={filters.setFeature}
+              vehicleType={filters.vehicleType}
+              onVehicleTypeChange={filters.setVehicleType}
+              priceRange={filters.priceRange}
+              onPriceRangeChange={filters.setPriceRange}
+              query={filters.query}
+              onQueryChange={filters.setQuery}
+            />
+          </div>
 
           {/* Card list */}
-          <main className={viewMode === "grid" ? "mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "mt-5 space-y-4"}>
+          <main className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
             {isLoading ? (
               <ExploreLoadingState viewMode={viewMode} />
             ) : isError ? (
