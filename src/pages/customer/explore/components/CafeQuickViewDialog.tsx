@@ -2,7 +2,8 @@ import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Clock3, MapPin, Phone, ShieldCheck, TimerReset, Users, X } from "lucide-react"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import { mapCafeToExploreCafe } from "@/features/cafes/lib/cafe.mappers"
+import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
+import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -20,10 +21,19 @@ export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe |
     queryFn: () => cafeApi.listCafeImages(cafe!.id),
     enabled: !!cafe?.id,
   })
-  const displayCafe = useMemo(
-    () => (cafeDetail ? mapCafeToExploreCafe(cafeDetail, cafeImages) : cafe),
-    [cafe, cafeDetail, cafeImages],
-  )
+  const { data: vehicleCatalogs = [] } = useQuery({
+    queryKey: ["cafes", cafe?.id, "vehicle-catalogs"],
+    queryFn: () => vehicleApi.listCatalogs(cafe!.id),
+    enabled: !!cafe?.id,
+  })
+  const displayCafe = useMemo(() => {
+    const baseCafe = cafeDetail ? mapCafeToExploreCafe(cafeDetail, cafeImages) : cafe
+    if (!baseCafe) return null
+    return {
+      ...baseCafe,
+      availableVehicles: vehicleCatalogs.map(mapCatalogToExploreVehicle),
+    }
+  }, [cafe, cafeDetail, cafeImages, vehicleCatalogs])
 
   return (
     <Dialog open={!!displayCafe} onOpenChange={(open) => !open && onClose()}>

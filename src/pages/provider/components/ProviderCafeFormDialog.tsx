@@ -68,40 +68,44 @@ export function ProviderCafeFormDialog({
   })
 
   useEffect(() => {
-    if (!open) return
+    const timer = window.setTimeout(() => {
+      if (!open) return
 
-    if (!cafe) {
-      setValues(defaultValues)
-      setOpenTime("09:00")
-      setCloseTime("22:00")
+      if (!cafe) {
+        setValues(defaultValues)
+        setOpenTime("09:00")
+        setCloseTime("22:00")
+        setFiles([])
+        return
+      }
+
+      const sampleHours = cafe.operatingHours.mon ?? Object.values(cafe.operatingHours)[0]
+      const nextOpen = sampleHours?.open ?? "09:00"
+      const nextClose = sampleHours?.close ?? "22:00"
+      setOpenTime(nextOpen)
+      setCloseTime(nextClose)
+      setValues({
+        name: cafe.name,
+        description: cafe.description ?? "",
+        phone: cafe.phone ?? "",
+        cover_image_url: cafe.coverImageUrl ?? null,
+        address: cafe.address,
+        district: cafe.district,
+        city: cafe.city,
+        latitude: cafe.latitude === null ? null : Number(cafe.latitude),
+        longitude: cafe.longitude === null ? null : Number(cafe.longitude),
+        operating_hours: buildOperatingHours(nextOpen, nextClose),
+        track_types: cafe.trackTypes.map((t) => t.id),
+        slot_duration_minutes: cafe.slotDurationMinutes,
+        slot_fee_rate: Number(cafe.slotFeeRate),
+        max_concurrent_bookings: cafe.maxConcurrentBookings,
+        min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
+        byoc_capacity: cafe.byocCapacity,
+      })
       setFiles([])
-      return
-    }
+    }, 0)
 
-    const sampleHours = cafe.operatingHours.mon ?? Object.values(cafe.operatingHours)[0]
-    const nextOpen = sampleHours?.open ?? "09:00"
-    const nextClose = sampleHours?.close ?? "22:00"
-    setOpenTime(nextOpen)
-    setCloseTime(nextClose)
-    setValues({
-      name: cafe.name,
-      description: cafe.description ?? "",
-      phone: cafe.phone ?? "",
-      cover_image_url: cafe.coverImageUrl ?? null,
-      address: cafe.address,
-      district: cafe.district,
-      city: cafe.city,
-      latitude: cafe.latitude === null ? null : Number(cafe.latitude),
-      longitude: cafe.longitude === null ? null : Number(cafe.longitude),
-      operating_hours: buildOperatingHours(nextOpen, nextClose),
-      track_types: cafe.trackTypes.map((t) => t.id),
-      slot_duration_minutes: cafe.slotDurationMinutes,
-      slot_fee_rate: Number(cafe.slotFeeRate),
-      max_concurrent_bookings: cafe.maxConcurrentBookings,
-      min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
-      byoc_capacity: cafe.byocCapacity,
-    })
-    setFiles([])
+    return () => window.clearTimeout(timer)
   }, [cafe, open])
 
   const title = cafe ? "Cập nhật cơ sở" : "Thêm cơ sở"
@@ -112,6 +116,14 @@ export function ProviderCafeFormDialog({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const hasValidCoordinates =
+      values.latitude !== null &&
+      values.longitude !== null &&
+      Number.isFinite(values.latitude) &&
+      Number.isFinite(values.longitude) &&
+      values.latitude !== 0 &&
+      values.longitude !== 0
+    if (!hasValidCoordinates) return
     const body = {
       ...values,
       description: values.description?.trim() ? values.description.trim() : null,
@@ -262,7 +274,20 @@ export function ProviderCafeFormDialog({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
               Hủy
             </Button>
-            <Button type="submit" disabled={isPending || values.track_types.length === 0} className="bg-[#1c1b1b] text-white hover:bg-[#313030]">
+            <Button
+              type="submit"
+              disabled={
+                isPending ||
+                values.track_types.length === 0 ||
+                values.latitude === null ||
+                values.longitude === null ||
+                !Number.isFinite(values.latitude) ||
+                !Number.isFinite(values.longitude) ||
+                values.latitude === 0 ||
+                values.longitude === 0
+              }
+              className="bg-[#1c1b1b] text-white hover:bg-[#313030]"
+            >
               {isPending ? "Đang lưu..." : cafe ? "Lưu thay đổi" : "Tạo cơ sở"}
             </Button>
           </DialogFooter>

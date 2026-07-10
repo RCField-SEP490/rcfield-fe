@@ -11,7 +11,7 @@ import { ExploreResultsHeader } from "./components/ExploreResultsHeader"
 import { CafeHorizontalCard } from "./components/CafeHorizontalCard"
 import { CafeGridCard } from "./components/CafeGridCard"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
-import { buildBookingUrl, cafeInBounds, filterCafes, sortCafes, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
+import { buildBookingUrl, cafeInBounds, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
@@ -137,14 +137,11 @@ export function ExplorePage() {
   }, [mapBounds, searchOnMove])
 
   const filteredCafes = useMemo(() => {
-    let filtered = filterCafes(cafes, filters.params)
-    if (searchOnMove && mapBounds) filtered = filtered.filter((c) => cafeInBounds(c, mapBounds))
+    let visible = cafes
+    if (searchOnMove && mapBounds) visible = visible.filter((c) => cafeInBounds(c, mapBounds))
 
-    // Apply sort
-    filtered = sortCafes(filtered, filters.sortBy)
-
-    // Sort: favorites first, then by distance or keep original order
-    return [...filtered].sort((a, b) => {
+    // Favourites first, then by distance when available; server already handles query filters/sort.
+    return [...visible].sort((a, b) => {
       const isFavA = favoriteIds.includes(a.id)
       const isFavB = favoriteIds.includes(b.id)
 
@@ -164,7 +161,7 @@ export function ExplorePage() {
       }
       return 0
     })
-  }, [cafes, filters.params, filters.sortBy, userLocation, mapBounds, searchOnMove, favoriteIds])
+  }, [cafes, userLocation, mapBounds, searchOnMove, favoriteIds])
 
   const handleBookNow = (cafeId: string, vehicleId?: string) => {
     navigate(buildBookingUrl(cafeId, vehicleId))

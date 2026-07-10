@@ -32,7 +32,7 @@ export function CafeGridCard({
 
   const discountedPrice = hasPromo ? computeDiscountedPrice(slotPrice, bestPromo) : null
   const ratingLabel = getRatingLabel(cafe.rating)
-  const starCount = Math.round(cafe.rating / 2)
+  const starCount = Math.round(cafe.rating)
 
   return (
     <div
@@ -90,7 +90,7 @@ export function CafeGridCard({
             {cafe.rating > 0 && (
               <div className="flex shrink-0 items-center gap-1">
                 <span className="rounded bg-orange-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                  {cafe.rating.toFixed(1)}
+                  {cafe.rating.toFixed(1)}/5
                 </span>
               </div>
             )}
@@ -226,10 +226,10 @@ function computeDiscountedPrice(
 }
 
 function getRatingLabel(rating: number): string {
-  if (rating >= 9) return "Tuyệt vời"
-  if (rating >= 8) return "Rất tốt"
-  if (rating >= 7) return "Tốt"
-  if (rating >= 6) return "Hài lòng"
-  if (rating >= 5) return "Trung bình"
+  if (rating >= 4.8) return "Tuyệt vời"
+  if (rating >= 4.5) return "Rất tốt"
+  if (rating >= 4.0) return "Tốt"
+  if (rating >= 3.5) return "Hài lòng"
+  if (rating >= 3.0) return "Trung bình"
   return ""
 }
