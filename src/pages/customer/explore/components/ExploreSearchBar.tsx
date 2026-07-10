@@ -21,10 +21,10 @@ export function ExploreSearchBar({
 }: ExploreSearchBarProps) {
   return (
     <section className="shrink-0 border-b bg-white shadow-sm">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:px-6">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:px-6">
         {/* Location */}
-        <div className="relative flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100">
-          <MapPin className="h-4 w-4 shrink-0 text-blue-500" />
+        <div className="relative flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-100">
+          <MapPin className="h-4 w-4 shrink-0 text-orange-600" />
           <select
             value={city}
             onChange={(e) => onCityChange(e.target.value)}
@@ -37,7 +37,7 @@ export function ExploreSearchBar({
         </div>
 
         {/* Date */}
-        <div className="relative flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100 md:w-[200px]">
+        <div className="relative flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-100 md:w-[200px]">
           <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
           <input
             type="date"
@@ -49,7 +49,7 @@ export function ExploreSearchBar({
         </div>
 
         {/* Search text (mobile only — on desktop it's part of sidebar) */}
-        <div className="relative flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100 md:hidden">
+        <div className="relative flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-100 md:hidden">
           <Search className="h-4 w-4 shrink-0 text-slate-400" />
           <input
             type="text"
@@ -61,7 +61,7 @@ export function ExploreSearchBar({
         </div>
 
         {/* Search CTA */}
-        <Button className="h-11 gap-2 rounded-lg bg-blue-500 px-6 text-sm font-bold text-white shadow-sm hover:bg-blue-600">
+        <Button className="h-11 gap-2 rounded-lg bg-orange-600 px-6 text-sm font-bold text-white shadow-sm hover:bg-orange-700">
           Tìm RC Cafe
           <Search className="h-4 w-4" />
         </Button>

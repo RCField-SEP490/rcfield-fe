@@ -22,6 +22,7 @@ export function CafeHorizontalCard({
   isFavorite,
   onToggleFavorite,
   distanceKm,
+  onQuickView,
   onBookNow,
   onHover,
 }: CafeHorizontalCardProps) {
@@ -104,13 +105,13 @@ export function CafeHorizontalCard({
           <div className="flex items-start justify-between gap-3">
             <Link
               to={buildCafeDetailPath(cafe)}
-              className="line-clamp-1 text-base font-bold text-slate-900 hover:text-blue-600 hover:underline"
+              className="line-clamp-1 text-base font-bold text-slate-900 hover:text-orange-600 hover:underline"
             >
               {cafe.name}
             </Link>
             {cafe.rating > 0 && (
               <div className="flex shrink-0 items-center gap-1.5">
-                <span className="rounded bg-blue-500 px-1.5 py-0.5 text-xs font-bold text-white">
+                <span className="rounded bg-orange-600 px-1.5 py-0.5 text-xs font-bold text-white">
                   {cafe.rating.toFixed(1)}/10
                 </span>
                 <span className="text-xs font-semibold text-slate-600">{ratingLabel}</span>
@@ -127,7 +128,7 @@ export function CafeHorizontalCard({
 
           {/* RC CAFE badge + stars */}
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600">
+            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">
               RC CAFE
             </span>
             {starCount > 0 && (
@@ -197,7 +198,7 @@ export function CafeHorizontalCard({
 
       {/* RIGHT — Price + CTA */}
       <div className="flex w-[180px] shrink-0 flex-col items-end justify-between border-l border-slate-100 p-4 lg:w-[200px]">
-        <div className="text-right">
+        <div className="w-full text-right">
           {/* Promo badge */}
           {hasPromo && <PromoBadge promotion={bestPromo} />}
 
@@ -221,17 +222,31 @@ export function CafeHorizontalCard({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => onBookNow(cafe.id)}
-          className="mt-3 w-full rounded-lg bg-blue-500 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-600"
-        >
-          Chọn sân
-        </button>
+        <div className="mt-3 flex w-full flex-col gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onQuickView(cafe)
+            }}
+            className="w-full rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
+            Xem nhanh
+          </button>
+          <button
+            type="button"
+            onClick={() => onBookNow(cafe.id)}
+            className="w-full rounded-lg bg-orange-600 py-2.5 text-sm font-bold text-white transition hover:bg-orange-700"
+          >
+            Chọn sân
+          </button>
+        </div>
       </div>
     </div>
   )
 }
+
 
 function computeDiscountedPrice(
   originalPrice: number,

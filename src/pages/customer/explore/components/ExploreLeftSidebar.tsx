@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronUp, MapPin, RotateCcw } from "lucide-react"
 import { trackTypeApi, trackTypeQueryKeys, amenityApi, amenityQueryKeys } from "@/features/cafes/api/cafe.api"
@@ -11,8 +11,8 @@ interface ExploreLeftSidebarProps {
   // Map
   cafes: Cafe[]
   onSelectCafe: (cafe: Cafe) => void
-  userLocation: UserLocation | null
-  onUserLocation: (loc: UserLocation) => void
+  userLocation: UserLocation | null;
+  onUserLocation: (loc: UserLocation | null) => void;
   hoveredCafeId: string | null
   onBoundsChange: (bounds: MapBounds) => void
   searchOnMove: boolean
@@ -85,12 +85,9 @@ export function ExploreLeftSidebar({
   const visibleOptions = showAllPopular ? popularOptions : popularOptions.slice(0, 5)
   const isPriceModified = priceMin > PRICE_SLIDER_MIN || priceMax < PRICE_SLIDER_MAX
 
-  const formatVND = useCallback((v: number) => {
-    return new Intl.NumberFormat("vi-VN").format(v)
-  }, [])
 
   return (
-    <aside className="flex w-[280px] shrink-0 flex-col gap-4 overflow-y-auto p-4 lg:w-[300px]">
+    <aside className="flex w-full flex-col gap-4 py-2">
       {/* Map mini */}
       <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
         <div className="h-[180px]">
@@ -108,7 +105,7 @@ export function ExploreLeftSidebar({
         <button
           type="button"
           onClick={() => {/* Parent handles full map */}}
-          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-blue-500/90 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-blue-600/90"
+          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-orange-600/95 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-orange-700/95"
         >
           <MapPin className="h-3.5 w-3.5" />
           Explore on Map
@@ -123,7 +120,7 @@ export function ExploreLeftSidebar({
             <button
               type="button"
               onClick={onResetPrice}
-              className="text-xs font-semibold text-blue-500 hover:text-blue-600"
+              className="text-xs font-semibold text-orange-600 hover:text-orange-700"
             >
               Đặt lại
             </button>
@@ -135,7 +132,7 @@ export function ExploreLeftSidebar({
         <div className="relative mt-4 h-1.5">
           <div className="absolute inset-0 rounded-full bg-slate-200" />
           <div
-            className="absolute h-full rounded-full bg-blue-500"
+            className="absolute h-full rounded-full bg-orange-600"
             style={{
               left: `${(priceMin / PRICE_SLIDER_MAX) * 100}%`,
               right: `${100 - (priceMax / PRICE_SLIDER_MAX) * 100}%`,
@@ -151,7 +148,7 @@ export function ExploreLeftSidebar({
               const val = Number(e.target.value)
               if (val < priceMax) onPriceMinChange(val)
             }}
-            className="pointer-events-none absolute inset-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-500 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm"
+            className="pointer-events-none absolute inset-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-orange-600 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm"
           />
           <input
             type="range"
@@ -163,7 +160,7 @@ export function ExploreLeftSidebar({
               const val = Number(e.target.value)
               if (val > priceMin) onPriceMaxChange(val)
             }}
-            className="pointer-events-none absolute inset-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-500 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm"
+            className="pointer-events-none absolute inset-0 w-full appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-orange-600 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-sm"
           />
         </div>
 
@@ -225,7 +222,7 @@ export function ExploreLeftSidebar({
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => onTogglePopularFilter(opt.id)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-500 focus:ring-blue-200"
+                  className="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-200 accent-orange-600"
                 />
                 <span className="text-sm leading-none">{opt.icon}</span>
                 <span className="text-sm font-medium text-slate-700">{opt.label}</span>
@@ -238,7 +235,7 @@ export function ExploreLeftSidebar({
           <button
             type="button"
             onClick={() => setShowAllPopular(!showAllPopular)}
-            className="mt-2 text-xs font-semibold text-blue-500 hover:text-blue-600"
+            className="mt-2 text-xs font-semibold text-orange-600 hover:text-orange-700"
           >
             {showAllPopular ? "Thu gọn" : `Xem Tất cả (${popularOptions.length})`}
           </button>

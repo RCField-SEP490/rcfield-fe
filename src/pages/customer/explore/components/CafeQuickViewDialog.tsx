@@ -80,7 +80,7 @@ export function CafeQuickViewDialog({ cafe, onClose, onBookNow }: { cafe: Cafe |
                   <div className="mt-4 space-y-2 text-xs font-semibold text-slate-600">
                     <span className="flex items-center gap-2"><TimerReset className="h-4 w-4 text-orange-500" /> Báo trước {displayCafe.minBookingNoticeMinutes ?? 60} phút</span>
                   </div>
-                  <Button type="button" onClick={() => onBookNow(displayCafe.id)} className="mt-4 h-10 w-full rounded-xl bg-orange-600 font-black text-white hover:bg-slate-950">Đặt sân này</Button>
+                  <Button type="button" onClick={() => onBookNow(displayCafe.id)} className="mt-4 h-10 w-full rounded-xl bg-orange-600 font-black text-white hover:bg-orange-700">Đặt sân này</Button>
                 </div>
               </div>
               {displayCafe.availableVehicles.length > 0 ? (

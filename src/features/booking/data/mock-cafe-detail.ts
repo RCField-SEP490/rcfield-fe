@@ -8,7 +8,7 @@ export type CafeGalleryImage = {
 }
 
 /** Mở rộng Cafe detail để có nhiều ảnh gallery như khách sạn */
-export type CafeDetail = Cafe & {
+export type CafeDetail = Omit<Cafe, "amenities"> & {
   gallery: CafeGalleryImage[]
   operatingHours: string
   cancellationPolicy: string

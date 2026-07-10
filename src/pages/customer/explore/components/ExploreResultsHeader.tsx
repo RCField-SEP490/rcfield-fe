@@ -71,7 +71,7 @@ export function ExploreResultsHeader({
         <div className="flex items-center gap-3">
           <span className="hidden text-sm text-slate-500 sm:inline">Xếp theo:</span>
           <Select value={sortBy} onValueChange={(v) => onSortByChange(v as SortOption)}>
-            <SelectTrigger className="h-9 w-[160px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-blue-500">
+            <SelectTrigger className="h-9 w-[160px] rounded-lg border-slate-200 bg-white text-sm font-semibold text-orange-600">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -86,7 +86,7 @@ export function ExploreResultsHeader({
       {/* Search + filter chips row — desktop */}
       <div className="hidden items-center gap-2 md:flex">
         {/* Search input inline */}
-        <div className="relative flex flex-1 items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 focus-within:border-blue-400">
+        <div className="relative flex flex-1 items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 focus-within:border-orange-500">
           <input
             type="text"
             value={query}

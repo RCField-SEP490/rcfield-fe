@@ -162,7 +162,7 @@ export function ExplorePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Top search bar */}
       <ExploreSearchBar
         city={filters.city}
@@ -173,96 +173,96 @@ export function ExplorePage() {
         onQueryChange={filters.setQuery}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
         {/* LEFT — Sidebar with map + filters (desktop only) */}
-        <div className="hidden border-r border-slate-200 bg-white lg:block">
-          <ExploreLeftSidebar
-            cafes={filteredCafes}
-            onSelectCafe={setQuickViewCafe}
-            userLocation={userLocation}
-            onUserLocation={setUserLocation}
-            hoveredCafeId={hoveredCafeId}
-            onBoundsChange={handleBoundsChange}
-            searchOnMove={searchOnMove}
-            onSearchOnMoveChange={setSearchOnMove}
-            priceMin={filters.priceMin}
-            priceMax={filters.priceMax}
-            onPriceMinChange={filters.setPriceMin}
-            onPriceMaxChange={filters.setPriceMax}
-            onResetPrice={filters.resetPriceSlider}
-            popularFilters={filters.popularFilters}
-            onTogglePopularFilter={filters.togglePopularFilter}
-            activeFilterCount={filters.activeFilterCount}
-            onClearAll={filters.clearFilters}
-          />
+        <div className="hidden w-[280px] shrink-0 lg:block">
+          <div className="sticky top-6">
+            <ExploreLeftSidebar
+              cafes={filteredCafes}
+              onSelectCafe={setQuickViewCafe}
+              userLocation={userLocation}
+              onUserLocation={setUserLocation}
+              hoveredCafeId={hoveredCafeId}
+              onBoundsChange={handleBoundsChange}
+              searchOnMove={searchOnMove}
+              onSearchOnMoveChange={setSearchOnMove}
+              priceMin={filters.priceMin}
+              priceMax={filters.priceMax}
+              onPriceMinChange={filters.setPriceMin}
+              onPriceMaxChange={filters.setPriceMax}
+              onResetPrice={filters.resetPriceSlider}
+              popularFilters={filters.popularFilters}
+              onTogglePopularFilter={filters.togglePopularFilter}
+              activeFilterCount={filters.activeFilterCount}
+              onClearAll={filters.clearFilters}
+            />
+          </div>
         </div>
 
         {/* CENTER — Results list */}
-        <div ref={listRef} className="flex flex-1 flex-col overflow-y-auto">
-          <div className="mx-auto w-full max-w-[960px] px-4 py-5 md:px-6">
-            {/* Results header */}
-            <ExploreResultsHeader
-              city={filters.city}
-              resultCount={filteredCafes.length}
-              sortBy={filters.sortBy}
-              onSortByChange={filters.setSortBy}
-              trackType={filters.trackType}
-              onTrackTypeChange={filters.setTrackType}
-              feature={filters.feature}
-              onFeatureChange={filters.setFeature}
-              vehicleType={filters.vehicleType}
-              onVehicleTypeChange={filters.setVehicleType}
-              priceRange={filters.priceRange}
-              onPriceRangeChange={filters.setPriceRange}
-              query={filters.query}
-              onQueryChange={filters.setQuery}
-            />
+        <div ref={listRef} className="flex-1 min-w-0">
+          {/* Results header */}
+          <ExploreResultsHeader
+            city={filters.city}
+            resultCount={filteredCafes.length}
+            sortBy={filters.sortBy}
+            onSortByChange={filters.setSortBy}
+            trackType={filters.trackType}
+            onTrackTypeChange={filters.setTrackType}
+            feature={filters.feature}
+            onFeatureChange={filters.setFeature}
+            vehicleType={filters.vehicleType}
+            onVehicleTypeChange={filters.setVehicleType}
+            priceRange={filters.priceRange}
+            onPriceRangeChange={filters.setPriceRange}
+            query={filters.query}
+            onQueryChange={filters.setQuery}
+          />
 
-            {/* Card list */}
-            <main className="mt-5 min-w-0 space-y-4">
-              {isLoading ? (
-                <ExploreLoadingState />
-              ) : isError ? (
-                <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
-                  <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
-                  <button
-                    type="button"
-                    onClick={() => void refetch()}
-                    className="mt-4 rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    Tải lại
-                  </button>
-                </div>
-              ) : filteredCafes.length === 0 ? (
-                <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
-                  <p className="mt-2 text-sm text-slate-500">
-                    {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
-                  </p>
-                </div>
-              ) : (
-                filteredCafes.map((cafe) => {
-                  const dist =
-                    userLocation && cafe.latitude && cafe.longitude
-                      ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
-                      : undefined
-                  return (
-                    <CafeHorizontalCard
-                      key={cafe.id}
-                      cafe={cafe}
-                      isFavorite={favoriteIds.includes(cafe.id)}
-                      onToggleFavorite={handleToggleFavorite}
-                      distanceKm={dist}
-                      onQuickView={setQuickViewCafe}
-                      onBookNow={handleBookNow}
-                      onHover={setHoveredCafeId}
-                    />
-                  )
-                })
-              )}
-            </main>
-          </div>
+          {/* Card list */}
+          <main className="mt-5 space-y-4">
+            {isLoading ? (
+              <ExploreLoadingState />
+            ) : isError ? (
+              <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
+                <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                <button
+                  type="button"
+                  onClick={() => void refetch()}
+                  className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
+                >
+                  Tải lại
+                </button>
+              </div>
+            ) : filteredCafes.length === 0 ? (
+              <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
+                <p className="mt-2 text-sm text-slate-500">
+                  {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                </p>
+              </div>
+            ) : (
+              filteredCafes.map((cafe) => {
+                const dist =
+                  userLocation && cafe.latitude && cafe.longitude
+                    ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
+                    : undefined
+                return (
+                  <CafeHorizontalCard
+                    key={cafe.id}
+                    cafe={cafe}
+                    isFavorite={favoriteIds.includes(cafe.id)}
+                    onToggleFavorite={handleToggleFavorite}
+                    distanceKm={dist}
+                    onQuickView={setQuickViewCafe}
+                    onBookNow={handleBookNow}
+                    onHover={setHoveredCafeId}
+                  />
+                )
+              })
+            )}
+          </main>
         </div>
       </div>
 
