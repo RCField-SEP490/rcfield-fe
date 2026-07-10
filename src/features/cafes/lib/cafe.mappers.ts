@@ -14,8 +14,9 @@ export function mapCafeToExploreCafe(cafe: BackendCafe, images: CafeImage[] = []
     providerId: cafe.providerId,
     name: cafe.name,
     slug: cafe.slug,
-    rating: 0,
-    reviewsCount: 0,
+    // BE cần trả rating & reviewsCount — hiện chưa có, dùng 0 làm fallback
+    rating: (cafe as any).rating ?? 0,
+    reviewsCount: (cafe as any).reviewsCount ?? (cafe as any).reviews_count ?? 0,
     phone: cafe.phone,
     status: cafe.status,
     address: cafe.address,
@@ -31,13 +32,16 @@ export function mapCafeToExploreCafe(cafe: BackendCafe, images: CafeImage[] = []
     byocCapacity: cafe.byocCapacity,
     trackTypes: cafe.trackTypes.map(formatTrackType),
     trackTypeIds: cafe.trackTypes.map((t) => t.id),
-    features: [],
+    // Map amenities từ BE thay vì hardcode [] — fallback [] nếu BE chưa trả
+    features: cafe.amenities?.map((a) => a.title) ?? [],
+    amenities: cafe.amenities ?? [],
     operatingHours: cafe.operatingHours,
     description: cafe.description ?? "Cơ sở chưa cập nhật mô tả.",
     coordinates: buildMapCoordinates(cafe.latitude, cafe.longitude),
     latitude: toNumber(cafe.latitude) || null,
     longitude: toNumber(cafe.longitude) || null,
     availableVehicles: [],
+    promotions: [],
   }
 }
 

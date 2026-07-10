@@ -5,11 +5,12 @@ import { getCafes } from "@/features/explore/api/explore.api"
 import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { ExploreMapOverlay } from "./components/ExploreMapOverlay"
-import { ExploreMapPanel } from "./components/ExploreMapPanel"
-import { ExploreSearchHeader } from "./components/ExploreSearchHeader"
-import { CafeGridCard } from "./components/CafeGridCard"
+import { ExploreSearchBar } from "./components/ExploreSearchBar"
+import { ExploreLeftSidebar } from "./components/ExploreLeftSidebar"
+import { ExploreResultsHeader } from "./components/ExploreResultsHeader"
+import { CafeHorizontalCard } from "./components/CafeHorizontalCard"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
-import { buildBookingUrl, cafeInBounds, filterCafes, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
+import { buildBookingUrl, cafeInBounds, filterCafes, sortCafes, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
@@ -41,7 +42,6 @@ export function ExplorePage() {
     return []
   })
 
-  // Sync favorites when page receives focus, mounts, or authentication status changes
   useEffect(() => {
     const loadFavs = async () => {
       let localFavs: string[] = []
@@ -86,7 +86,6 @@ export function ExplorePage() {
       const isFav = favoriteIds.includes(cafeId)
       const updated = isFav ? favoriteIds.filter((id) => id !== cafeId) : [...favoriteIds, cafeId]
 
-      // Optimistic update
       setFavoriteIds(updated)
       try {
         localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(updated))
@@ -103,7 +102,6 @@ export function ExplorePage() {
         }
       } catch (e) {
         console.error("Failed to toggle favorite:", e)
-        // Rollback on failure
         setFavoriteIds(favoriteIds)
         try {
           localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(favoriteIds))
@@ -125,7 +123,6 @@ export function ExplorePage() {
     queryFn: () => getCafes(filters.params),
   })
 
-  // Scroll card list về đầu khi vùng map thay đổi
   useEffect(() => {
     if (searchOnMove) listRef.current?.scrollTo({ top: 0, behavior: "smooth" })
   }, [mapBounds, searchOnMove])
@@ -133,6 +130,9 @@ export function ExplorePage() {
   const filteredCafes = useMemo(() => {
     let filtered = filterCafes(cafes, filters.params)
     if (searchOnMove && mapBounds) filtered = filtered.filter((c) => cafeInBounds(c, mapBounds))
+
+    // Apply sort
+    filtered = sortCafes(filtered, filters.sortBy)
 
     // Sort: favorites first, then by distance or keep original order
     return [...filtered].sort((a, b) => {
@@ -142,7 +142,6 @@ export function ExplorePage() {
       if (isFavA && !isFavB) return -1
       if (!isFavA && isFavB) return 1
 
-      // If both are favorites or both are not favorites, sort by distance if userLocation is available
       if (userLocation) {
         const hasA = a.latitude && a.longitude
         const hasB = b.latitude && b.longitude
@@ -156,91 +155,28 @@ export function ExplorePage() {
       }
       return 0
     })
-  }, [cafes, filters.params, userLocation, mapBounds, searchOnMove, favoriteIds])
+  }, [cafes, filters.params, filters.sortBy, userLocation, mapBounds, searchOnMove, favoriteIds])
 
   const handleBookNow = (cafeId: string, vehicleId?: string) => {
     navigate(buildBookingUrl(cafeId, vehicleId))
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-background">
-      <ExploreSearchHeader
-        query={filters.query}
-        onQueryChange={filters.setQuery}
-        resultCount={filteredCafes.length}
-        onShowMap={() => setShowMap(true)}
+    <div className="flex flex-1 flex-col overflow-hidden bg-slate-50">
+      {/* Top search bar */}
+      <ExploreSearchBar
         city={filters.city}
         onCityChange={filters.setCity}
-        trackType={filters.trackType}
-        onTrackTypeChange={filters.setTrackType}
-        priceRange={filters.priceRange}
-        onPriceRangeChange={filters.setPriceRange}
-        feature={filters.feature}
-        onFeatureChange={filters.setFeature}
-        vehicleType={filters.vehicleType}
-        onVehicleTypeChange={filters.setVehicleType}
         date={filters.date}
         onDateChange={filters.setDate}
-        activeFilterCount={filters.activeFilterCount}
-        onClear={filters.clearFilters}
+        query={filters.query}
+        onQueryChange={filters.setQuery}
       />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* LEFT — scrollable list */}
-        <div ref={listRef} className="flex flex-1 flex-col overflow-y-auto">
-          <div className="px-6 py-6 md:px-8">
-            {/* Card grid */}
-            <main className="min-w-0">
-              {isLoading ? (
-                <ExploreLoadingState />
-              ) : isError ? (
-                <div className="rounded-xl border bg-card p-12 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
-                  <button
-                    type="button"
-                    onClick={() => void refetch()}
-                    className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                  >
-                    Tải lại
-                  </button>
-                </div>
-              ) : filteredCafes.length === 0 ? (
-                <div className="rounded-xl border bg-card p-12 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2">
-                  {filteredCafes.map((cafe) => {
-                    const dist =
-                      userLocation && cafe.latitude && cafe.longitude
-                        ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
-                        : undefined
-                    return (
-                      <CafeGridCard
-                        key={cafe.id}
-                        cafe={cafe}
-                        isFavorite={favoriteIds.includes(cafe.id)}
-                        onToggleFavorite={handleToggleFavorite}
-                        distanceKm={dist}
-                        onQuickView={setQuickViewCafe}
-                        onBookNow={handleBookNow}
-                        onHover={setHoveredCafeId}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-            </main>
-          </div>
-        </div>
-
-        {/* RIGHT — sticky inline map (desktop only) */}
-        <div className="hidden h-full w-[42%] shrink-0 p-[30px] xl:w-[45%] lg:block">
-          <ExploreMapPanel
+        {/* LEFT — Sidebar with map + filters (desktop only) */}
+        <div className="hidden border-r border-slate-200 bg-white lg:block">
+          <ExploreLeftSidebar
             cafes={filteredCafes}
             onSelectCafe={setQuickViewCafe}
             userLocation={userLocation}
@@ -249,7 +185,84 @@ export function ExplorePage() {
             onBoundsChange={handleBoundsChange}
             searchOnMove={searchOnMove}
             onSearchOnMoveChange={setSearchOnMove}
+            priceMin={filters.priceMin}
+            priceMax={filters.priceMax}
+            onPriceMinChange={filters.setPriceMin}
+            onPriceMaxChange={filters.setPriceMax}
+            onResetPrice={filters.resetPriceSlider}
+            popularFilters={filters.popularFilters}
+            onTogglePopularFilter={filters.togglePopularFilter}
+            activeFilterCount={filters.activeFilterCount}
+            onClearAll={filters.clearFilters}
           />
+        </div>
+
+        {/* CENTER — Results list */}
+        <div ref={listRef} className="flex flex-1 flex-col overflow-y-auto">
+          <div className="mx-auto w-full max-w-[960px] px-4 py-5 md:px-6">
+            {/* Results header */}
+            <ExploreResultsHeader
+              city={filters.city}
+              resultCount={filteredCafes.length}
+              sortBy={filters.sortBy}
+              onSortByChange={filters.setSortBy}
+              trackType={filters.trackType}
+              onTrackTypeChange={filters.setTrackType}
+              feature={filters.feature}
+              onFeatureChange={filters.setFeature}
+              vehicleType={filters.vehicleType}
+              onVehicleTypeChange={filters.setVehicleType}
+              priceRange={filters.priceRange}
+              onPriceRangeChange={filters.setPriceRange}
+              query={filters.query}
+              onQueryChange={filters.setQuery}
+            />
+
+            {/* Card list */}
+            <main className="mt-5 min-w-0 space-y-4">
+              {isLoading ? (
+                <ExploreLoadingState />
+              ) : isError ? (
+                <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                  <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
+                  <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                  <button
+                    type="button"
+                    onClick={() => void refetch()}
+                    className="mt-4 rounded-lg bg-blue-500 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Tải lại
+                  </button>
+                </div>
+              ) : filteredCafes.length === 0 ? (
+                <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                  <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
+                  <p className="mt-2 text-sm text-slate-500">
+                    {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                  </p>
+                </div>
+              ) : (
+                filteredCafes.map((cafe) => {
+                  const dist =
+                    userLocation && cafe.latitude && cafe.longitude
+                      ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
+                      : undefined
+                  return (
+                    <CafeHorizontalCard
+                      key={cafe.id}
+                      cafe={cafe}
+                      isFavorite={favoriteIds.includes(cafe.id)}
+                      onToggleFavorite={handleToggleFavorite}
+                      distanceKm={dist}
+                      onQuickView={setQuickViewCafe}
+                      onBookNow={handleBookNow}
+                      onHover={setHoveredCafeId}
+                    />
+                  )
+                })
+              )}
+            </main>
+          </div>
         </div>
       </div>
 
@@ -258,7 +271,7 @@ export function ExplorePage() {
         <button
           type="button"
           onClick={() => setShowMap(true)}
-          className="flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background shadow-xl hover:bg-foreground/90"
+          className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-slate-800"
         >
           <Map className="h-4 w-4" /> Xem bản đồ
         </button>
@@ -282,14 +295,23 @@ export function ExplorePage() {
 
 function ExploreLoadingState() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div className="aspect-[4/3] animate-pulse bg-muted" />
-          <div className="space-y-2 p-3">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-            <div className="h-8 w-full animate-pulse rounded bg-muted" />
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex overflow-hidden rounded-xl border bg-white shadow-sm">
+          <div className="h-[200px] w-[280px] shrink-0 animate-pulse bg-slate-100" />
+          <div className="flex-1 space-y-3 p-4">
+            <div className="h-5 w-2/3 animate-pulse rounded bg-slate-100" />
+            <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+            <div className="flex gap-2">
+              <div className="h-6 w-16 animate-pulse rounded bg-slate-100" />
+              <div className="h-6 w-16 animate-pulse rounded bg-slate-100" />
+            </div>
+          </div>
+          <div className="w-[180px] shrink-0 border-l p-4">
+            <div className="h-6 w-full animate-pulse rounded bg-slate-100" />
+            <div className="mt-2 h-8 w-full animate-pulse rounded bg-slate-100" />
+            <div className="mt-auto h-10 w-full animate-pulse rounded bg-slate-100" />
           </div>
         </div>
       ))}
