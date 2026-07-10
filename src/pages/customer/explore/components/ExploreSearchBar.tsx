@@ -20,7 +20,7 @@ export function ExploreSearchBar({
   onQueryChange,
 }: ExploreSearchBarProps) {
   return (
-    <section className="relative z-10 shrink-0 border-b bg-white shadow-sm">
+    <section className="relative z-30 shrink-0 border-b bg-white shadow-sm">
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:px-6">
         {/* Location */}
         <div className="relative flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 transition-colors focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-100">
