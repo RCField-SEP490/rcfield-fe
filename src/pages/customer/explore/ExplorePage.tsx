@@ -211,7 +211,7 @@ export function ExplorePage() {
         {/* CENTER — Results list */}
         <div ref={listRef} className="flex-1 min-w-0">
           {/* Results header */}
-          <div className="sticky top-[68px] lg:top-[80px] z-20 -mx-4 bg-slate-50/95 px-4 pb-3 pt-2 backdrop-blur-sm border-b border-slate-200/50 shadow-sm mb-4">
+          <div className="sticky top-[68px] lg:top-[80px] z-20 bg-slate-50 pb-3 pt-2 mb-4 relative before:absolute before:bottom-full before:left-[-9999px] before:right-[-9999px] before:h-[200px] before:bg-slate-50 before:z-[-1]">
             <ExploreResultsHeader
               city={filters.city}
               resultCount={filteredCafes.length}
