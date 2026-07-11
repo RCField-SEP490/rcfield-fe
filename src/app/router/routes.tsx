@@ -20,6 +20,8 @@ import StaffIncidentsPage from "@/pages/staff/StaffIncidentsPage"
 import StaffMaintenancePage from "@/pages/staff/StaffMaintenancePage"
 import StaffByocPage from "@/pages/staff/StaffByocPage"
 import StaffPackagesPage from "@/pages/staff/StaffPackagesPage"
+import StaffContestsPage from "@/pages/staff/contest/StaffContestsPage"
+import StaffContestCheckInPage from "@/pages/staff/contest/StaffContestCheckInPage"
 
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { RoleGuard } from "@/shared/components/RoleGuard"
@@ -102,6 +104,7 @@ import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
 import { ProviderContestsPage } from "@/pages/provider/ProviderContestsPage"
 import { ProviderContestFormPage } from "@/pages/provider/ProviderContestFormPage"
+import { ProviderContestRuntimePage } from "@/pages/provider/contest-runtime/ProviderContestRuntimePage"
 
 const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (
   <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>
@@ -203,6 +206,8 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: routePaths.staffDashboard, element: <StaffDashboardPage /> },
+          { path: routePaths.staffContests, element: <StaffContestsPage /> },
+          { path: routePaths.staffContestCheckIn, element: <StaffContestCheckInPage /> },
           { path: routePaths.staffTodayBookings, element: <StaffTodayBookingsPage /> },
           { path: routePaths.staffSessionDetail, element: <StaffSessionDetailPage /> },
           { path: routePaths.staffInspection, element: <StaffInspectionPage /> },
@@ -254,6 +259,7 @@ export const router = createBrowserRouter([
           { path: routePaths.providerContests, element: providerGuardRoute(<ProviderContestsPage />) },
           { path: routePaths.providerContestCreate, element: providerGuardRoute(<ProviderContestFormPage />) },
           { path: routePaths.providerContestEdit, element: providerGuardRoute(<ProviderContestFormPage />) },
+          { path: routePaths.providerContestRuntime, element: providerGuardRoute(<ProviderContestRuntimePage />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
           { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },

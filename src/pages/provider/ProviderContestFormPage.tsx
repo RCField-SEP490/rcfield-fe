@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, PlayCircle, Save } from "lucide-react"
 import { useNavigate, useParams } from "react-router"
 import { toast } from "sonner"
 
@@ -95,11 +95,6 @@ export function ProviderContestFormPage() {
     queryFn: () => contestApi.getContest(contestId!),
     enabled: Boolean(contestId),
   })
-  const registrationsQuery = useQuery({
-    queryKey: contestQueryKeys.registrations(contestId),
-    queryFn: () => contestApi.listContestRegistrations(contestId!),
-    enabled: Boolean(contestId),
-  })
 
   useEffect(() => {
     if (!contestQuery.data) return
@@ -146,20 +141,6 @@ export function ProviderContestFormPage() {
       void queryClient.invalidateQueries({ queryKey: contestQueryKeys.all })
     },
   })
-  const registrationActionMutation = useMutation({
-    mutationFn: async (payload: { kind: "markPaid" | "waive" | "approve" | "reject"; registrationId: string }) => {
-      if (payload.kind === "markPaid") return contestApi.markEntryFeePaid(payload.registrationId)
-      if (payload.kind === "waive") return contestApi.waiveEntryFee(payload.registrationId)
-      if (payload.kind === "approve") return contestApi.approveRegistration(payload.registrationId)
-      return contestApi.rejectRegistration(payload.registrationId, "Rejected from provider dashboard")
-    },
-    onSuccess: () => {
-      if (contestId) {
-        void queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) })
-      }
-    },
-  })
-
   const handleSubmit = async () => {
     try {
       const payload = toPayload(form)
@@ -174,22 +155,6 @@ export function ProviderContestFormPage() {
   }
 
   const cafes = cafesQuery.data?.data ?? []
-  const registrations = registrationsQuery.data ?? []
-
-  const handleRegistrationAction = async (
-    kind: "markPaid" | "waive" | "approve" | "reject",
-    registrationId: string,
-  ) => {
-    try {
-      await registrationActionMutation.mutateAsync({ kind, registrationId })
-      toast.success("Đã cập nhật registration")
-    } catch (error) {
-      toast.error("Không thể cập nhật registration", {
-        description: getErrorMessage(error),
-      })
-    }
-  }
-
   return (
     <ProviderShell>
       <ProviderPageHeader
@@ -215,6 +180,17 @@ export function ProviderContestFormPage() {
               <Save className="size-4" />
               {saveMutation.isPending ? "Đang lưu..." : "Lưu contest"}
             </Button>
+            {isEdit && contestId ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                onClick={() => navigate(routePaths.providerContestRuntime.replace(":contestId", contestId))}
+              >
+                <PlayCircle className="size-4" />
+                Vận hành contest
+              </Button>
+            ) : null}
           </>
         }
       />
@@ -374,68 +350,22 @@ export function ProviderContestFormPage() {
           {isEdit ? (
             <Panel>
               <PanelTitle
-                title="Registrations"
-                subtitle="Provider có thể đánh dấu phí tham gia, waive hoặc approve/reject registration ngay trên dữ liệu thật."
+                title="Contest runtime workspace"
+                subtitle="Luồng event-day, runtime matches, leaderboard và audit đã được tách sang workspace vận hành riêng."
               />
-              {registrationsQuery.isLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <div key={index} className="h-20 animate-pulse rounded-lg bg-[#f6f3f2]" />
-                  ))}
-                </div>
-              ) : registrations.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-[#c4c7c8] p-6 text-center text-sm font-semibold text-[#747878]">
-                  Chưa có registration nào.
+              <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-6">
+                <p className="text-sm font-semibold text-[#5d5f5f]">
+                  Màn hình chỉnh sửa này chỉ giữ phần cấu hình contest. Các thao tác registration live, generate match, result, leaderboard và audit nằm ở workspace runtime riêng để tách domain rõ ràng.
                 </p>
-              ) : (
-                <div className="space-y-3">
-                  {registrations.map((registration) => (
-                    <div key={registration.id} className="rounded-lg border border-[#e5e2e1] p-3">
-                      <div className="flex flex-col gap-3">
-                        <div>
-                          <p className="text-sm font-bold text-[#1c1b1b]">{registration.id.slice(0, 8)}</p>
-                          <p className="text-xs font-medium text-[#747878]">
-                            Status: {registration.status} · Fee: {registration.paymentStatus}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-8 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-xs"
-                            onClick={() => void handleRegistrationAction("markPaid", registration.id)}
-                          >
-                            Mark paid
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-8 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-xs"
-                            onClick={() => void handleRegistrationAction("waive", registration.id)}
-                          >
-                            Waive fee
-                          </Button>
-                          <Button
-                            type="button"
-                            className="h-8 rounded-lg bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700"
-                            onClick={() => void handleRegistrationAction("approve", registration.id)}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="h-8 rounded-lg border-red-200 bg-red-50 px-3 text-xs text-red-700 hover:bg-red-100"
-                            onClick={() => void handleRegistrationAction("reject", registration.id)}
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                <Button
+                  type="button"
+                  className="mt-4 h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+                  onClick={() => navigate(routePaths.providerContestRuntime.replace(":contestId", contestId!))}
+                >
+                  <PlayCircle className="size-4" />
+                  Mở workspace runtime
+                </Button>
+              </div>
             </Panel>
           ) : null}
         </div>

@@ -15,6 +15,11 @@ export type ContestEntryFeePaymentStatus =
   | "PENDING_REVIEW"
   | "WAIVED"
   | "MARKED_PAID"
+export type ContestRegistrationStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "CHECKED_IN"
+export type ContestMatchStatus = "DRAFT" | "READY" | "RUNNING" | "COMPLETED" | "CANCELLED"
+export type ContestMatchType = "HEAD_TO_HEAD" | "MULTI_DRIVER" | "TIME_ATTACK" | "FINAL"
+export type ContestParticipantStatus = "READY" | "STARTED" | "FINISHED" | "DNS" | "DNF" | "DQ"
+export type ContestRuntimeTab = "overview" | "event-day" | "matches" | "leaderboard" | "audit"
 
 export type ContestCatalogType = {
   id: string
@@ -163,7 +168,7 @@ export type ContestRegistration = {
   vehicleSource: string
   vehicleId: string | null
   bookingId: string | null
-  status: string
+  status: ContestRegistrationStatus
   checkInCode: string | null
   paymentStatus: ContestEntryFeePaymentStatus
   entryFeeAmount: number | null
@@ -172,4 +177,149 @@ export type ContestRegistration = {
   cancellationReason: string | null
   createdAt: string
   updatedAt: string
+}
+
+export type ContestMatchParticipantRegistrationSnapshot = {
+  id: string
+  user_id: string
+  status: ContestRegistrationStatus
+  check_in_code: string | null
+  checked_in_at: string | null
+}
+
+export type ContestMatchParticipant = {
+  id: string
+  registration_id: string
+  slot_no: number
+  lane: string | null
+  grid_position: number | null
+  seed_no: number | null
+  status: ContestParticipantStatus
+  score: number | null
+  finish_position: number | null
+  best_lap_ms: number | null
+  total_time_ms: number | null
+  is_winner: boolean
+  result_note: string | null
+  metadata: Record<string, unknown>
+  registration: ContestMatchParticipantRegistrationSnapshot | null
+}
+
+export type ContestMatch = {
+  id: string
+  contest_id: string
+  cafe_id: string
+  track_config_id: string | null
+  round_no: number
+  match_no: number
+  name: string | null
+  match_type: ContestMatchType
+  status: ContestMatchStatus
+  scheduled_at: string | null
+  started_at: string | null
+  ended_at: string | null
+  next_match_id: string | null
+  advancement_rule: Record<string, unknown>
+  result_summary: Record<string, unknown>
+  metadata: Record<string, unknown>
+  decided_by: string | null
+  decided_at: string | null
+  participants: ContestMatchParticipant[]
+}
+
+export type ContestMetrics = {
+  contest_id: string
+  registration_counts: {
+    total: number
+    pending: number
+    confirmed: number
+    checked_in: number
+    cancelled: number
+  }
+  match_counts: {
+    total: number
+    draft: number
+    ready: number
+    running: number
+    completed: number
+    cancelled: number
+  }
+  leaderboard: {
+    published: boolean
+    published_at: string | null
+    entry_count: number
+    mode: "BEST_LAP" | "TOTAL_TIME" | "KNOCKOUT_WINS"
+  }
+}
+
+export type ContestLeaderboardEntry = {
+  rank: number
+  registration_id: string
+  wins: number
+  best_lap_ms: number | null
+  total_time_ms: number | null
+  latest_finish_position: number | null
+  matches_completed: number
+  progressed_round: number
+}
+
+export type ContestLeaderboardPayload = {
+  mode: "BEST_LAP" | "TOTAL_TIME" | "KNOCKOUT_WINS"
+  entries: ContestLeaderboardEntry[]
+  match_count: number
+  published_at: string
+  published_by: string
+}
+
+export type ContestAuditLogItem = {
+  id: string
+  contestId: string
+  registrationId: string | null
+  matchId: string | null
+  actorId: string | null
+  actorRole: string | null
+  eventType: string
+  beforeJson: Record<string, unknown> | null
+  afterJson: Record<string, unknown> | null
+  reason: string | null
+  metadata: Record<string, unknown>
+  createdAt: string
+}
+
+export type ContestGenerateMatchesBody = {
+  cafe_id: string
+  track_config_id?: string | null
+  registration_ids: string[]
+  drivers_per_match?: number
+  seeding_mode?: "MANUAL" | "CHECK_IN_ORDER"
+}
+
+export type ContestUpdateMatchParticipantsBody = {
+  participants: Array<{
+    registration_id: string
+    slot_no: number
+    lane?: string | null
+    grid_position?: number | null
+    seed_no?: number | null
+  }>
+}
+
+export type ContestMatchResultInput = {
+  registration_id: string
+  finish_position?: number | null
+  score?: number | null
+  best_lap_ms?: number | null
+  total_time_ms?: number | null
+  is_winner?: boolean
+  result_note?: string | null
+  status?: ContestParticipantStatus
+}
+
+export type ContestSubmitResultsBody = {
+  results: ContestMatchResultInput[]
+  reason: string
+}
+
+export type ContestCorrectResultsBody = ContestSubmitResultsBody & {
+  force_cascade?: boolean
 }

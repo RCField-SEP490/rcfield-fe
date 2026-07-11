@@ -5,27 +5,11 @@ import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
-import type { ContestItem } from "@/features/contests/types"
+import { getContestStatusClass } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
-
-function contestStatusTone(status: ContestItem["status"]) {
-  switch (status) {
-    case "OPEN":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200"
-    case "CLOSED":
-    case "RUNNING":
-      return "bg-amber-50 text-amber-700 border-amber-200"
-    case "COMPLETED":
-      return "bg-slate-100 text-slate-700 border-slate-200"
-    case "CANCELLED":
-      return "bg-red-50 text-red-700 border-red-200"
-    default:
-      return "bg-[#f6f3f2] text-[#5d5f5f] border-[#e5e2e1]"
-  }
-}
 
 export function ProviderContestsPage() {
   const navigate = useNavigate()
@@ -111,7 +95,7 @@ export function ProviderContestsPage() {
                       >
                         {contest.name}
                       </Link>
-                      <Badge className={`border ${contestStatusTone(contest.status)}`}>{contest.status}</Badge>
+                      <Badge className={`border ${getContestStatusClass(contest.status)}`}>{contest.status}</Badge>
                     </div>
                     <p className="mt-2 text-sm font-medium text-[#5d5f5f]">
                       {contest.description || "Chưa có mô tả contest."}
@@ -134,6 +118,15 @@ export function ProviderContestsPage() {
                     >
                       <Pencil className="size-4" />
                       Sửa
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 gap-2 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      onClick={() => navigate(routePaths.providerContestRuntime.replace(":contestId", contest.id))}
+                    >
+                      <Flag className="size-4" />
+                      Vận hành
                     </Button>
                     {contest.status === "DRAFT" ? (
                       <Button
