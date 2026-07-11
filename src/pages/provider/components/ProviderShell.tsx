@@ -9,6 +9,7 @@ import {
   CalendarDays,
   CircleHelp,
   ClipboardList,
+  Flag,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -59,6 +60,7 @@ const providerNavGroups: NavGroup[] = [
     items: [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
+      { label: "Contest", icon: Flag, to: routePaths.providerContests },
       { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
       { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },

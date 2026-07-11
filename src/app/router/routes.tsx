@@ -39,6 +39,7 @@ import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePage"
+import { CustomerContestRegistrationsPage } from "@/pages/customer/CustomerContestRegistrationsPage"
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
 import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
@@ -92,11 +93,15 @@ import { FacebookOAuthCallbackPage } from "@/pages/FacebookOAuthCallbackPage"
 import { ProviderStatusGuard } from "@/shared/components/ProviderStatusGuard"
 import { PartnerLandingPage } from "@/pages/public/PartnerLandingPage"
 import { CustomerPolicyPage } from "@/pages/public/CustomerPolicyPage"
+import { PublicContestsPage } from "@/pages/public/PublicContestsPage"
+import { PublicContestDetailPage } from "@/pages/public/PublicContestDetailPage"
 import { PendingReviewPage } from "@/pages/auth/PendingReviewPage"
 import { RejectedPage } from "@/pages/auth/RejectedPage"
 import { SuspendedPage } from "@/pages/auth/SuspendedPage"
 import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
+import { ProviderContestsPage } from "@/pages/provider/ProviderContestsPage"
+import { ProviderContestFormPage } from "@/pages/provider/ProviderContestFormPage"
 
 const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (
   <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>
@@ -131,6 +136,8 @@ export const router = createBrowserRouter([
           { path: routePaths.vehicleDetail, element: <PlaceholderPage title="Vehicle detail" /> },
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
           { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
+          { path: routePaths.contests, element: <PublicContestsPage /> },
+          { path: routePaths.contestDetail, element: <PublicContestDetailPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
           { path: routePaths.customerPolicy, element: <CustomerPolicyPage /> },
@@ -169,6 +176,7 @@ export const router = createBrowserRouter([
         children: [
           { path: routePaths.customerHome, element: <CustomerHomePage /> },
           { path: routePaths.customerBookings, element: <CustomerBookingsPage /> },
+          { path: routePaths.customerContestRegistrations, element: <CustomerContestRegistrationsPage /> },
           { path: routePaths.customerProfile, element: <CustomerProfilePage /> },
           { path: routePaths.customerBookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.customerPackages, element: <CustomerPackagesPage /> },
@@ -243,6 +251,9 @@ export const router = createBrowserRouter([
           { path: routePaths.providerStaff, element: providerGuardRoute(<ProviderStaffPage />) },
           { path: routePaths.providerStaffDetail, element: providerGuardRoute(<ProviderStaffDetailPage />) },
           { path: routePaths.providerRevenue, element: providerGuardRoute(<ProviderRevenuePage />) },
+          { path: routePaths.providerContests, element: providerGuardRoute(<ProviderContestsPage />) },
+          { path: routePaths.providerContestCreate, element: providerGuardRoute(<ProviderContestFormPage />) },
+          { path: routePaths.providerContestEdit, element: providerGuardRoute(<ProviderContestFormPage />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
           { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },
