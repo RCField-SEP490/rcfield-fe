@@ -13,6 +13,7 @@ import {
 } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { toast } from "sonner"
@@ -143,7 +144,10 @@ export function ContestMatchBoard({
                         }
                       />
                       <span>
-                        <span className="text-sm font-bold text-[#1c1b1b]">{getRegistrationDisplayName(registration)}</span>
+                        <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#1c1b1b]">
+                          <span>{getRegistrationDisplayName(registration)}</span>
+                          <DriverTitleChip label={registration.participant?.driverTitleLabel} />
+                        </span>
                         {registration.participant?.email ? (
                           <span className="block text-xs font-medium text-[#747878]">{registration.participant.email}</span>
                         ) : null}
@@ -210,9 +214,10 @@ export function ContestMatchBoard({
                       </div>
                       <div className="mt-3 space-y-1">
                         {match.participants.slice(0, 3).map((participant) => (
-                          <p key={participant.id} className="text-xs font-semibold text-[#5d5f5f]">
-                            {getMatchParticipantName(participant)}
-                          </p>
+                          <div key={participant.id} className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#5d5f5f]">
+                            <span>{getMatchParticipantName(participant)}</span>
+                            <DriverTitleChip label={participant.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
+                          </div>
                         ))}
                       </div>
                     </button>

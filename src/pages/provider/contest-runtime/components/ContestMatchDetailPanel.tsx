@@ -4,6 +4,7 @@ import type { ContestMatch, ContestMatchParticipant, ContestSubmitResultsBody } 
 import { formatDurationMs, getErrorMessage, getMatchParticipantName, getMatchParticipantSubtitle } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -240,7 +241,10 @@ export function ContestMatchDetailPanel({
                 <div key={participant.registration_id} className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-bold text-[#1c1b1b]">{snapshot ? getMatchParticipantName(snapshot) : participant.registration_id.slice(0, 8)}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-bold text-[#1c1b1b]">{snapshot ? getMatchParticipantName(snapshot) : participant.registration_id.slice(0, 8)}</p>
+                        <DriverTitleChip label={snapshot?.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
+                      </div>
                       {snapshot ? <p className="text-xs font-medium text-[#747878]">{getMatchParticipantSubtitle(snapshot) ?? "Chưa có email / check-in code"}</p> : null}
                     </div>
                     <p className="text-xs font-semibold text-[#747878]">{snapshot?.registration?.status ?? "--"}</p>
@@ -291,7 +295,10 @@ export function ContestMatchDetailPanel({
             {results.map((result) => (
               <div key={result.registration_id} className="rounded-lg border border-[#e5e2e1] p-3">
                 <div className="mb-3">
-                  <p className="text-sm font-bold text-[#1c1b1b]">{participantMap.get(result.registration_id) ? getMatchParticipantName(participantMap.get(result.registration_id)) : result.registration_id.slice(0, 8)}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-bold text-[#1c1b1b]">{participantMap.get(result.registration_id) ? getMatchParticipantName(participantMap.get(result.registration_id)) : result.registration_id.slice(0, 8)}</p>
+                    <DriverTitleChip label={participantMap.get(result.registration_id)?.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
+                  </div>
                   <p className="text-xs font-medium text-[#747878]">{participantMap.get(result.registration_id) ? getMatchParticipantSubtitle(participantMap.get(result.registration_id)) ?? "Chưa có email / check-in code" : "Chưa có thông tin bổ sung"}</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

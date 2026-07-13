@@ -69,6 +69,11 @@ export function useContestRuntime(
     onSuccess: invalidateRuntime,
   })
 
+  const syncRaceRecordsMutation = useMutation({
+    mutationFn: () => contestApi.syncRaceRecords(contestId!),
+    onSuccess: invalidateRuntime,
+  })
+
   const updateParticipantsMutation = useMutation({
     mutationFn: ({ matchId, body }: { matchId: string; body: ContestUpdateMatchParticipantsBody }) =>
       contestApi.updateMatchParticipants(matchId, body),
@@ -100,6 +105,7 @@ export function useContestRuntime(
     auditLogsQuery,
     generateMatchesMutation,
     publishLeaderboardMutation,
+    syncRaceRecordsMutation,
     updateParticipantsMutation,
     submitResultsMutation,
     correctResultsMutation,

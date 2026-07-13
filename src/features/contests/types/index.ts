@@ -175,6 +175,8 @@ export type ContestRegistrationParticipant = {
   fullName: string | null
   email: string | null
   avatarUrl: string | null
+  driverHandle?: string | null
+  driverTitleLabel?: string | null
 }
 
 export type ContestRegistrationLatestMatch = {
@@ -224,6 +226,8 @@ export type ContestMatchParticipantRegistrationSnapshot = {
   participant_name: string | null
   participant_email: string | null
   participant_avatar_url: string | null
+  driver_handle?: string | null
+  driver_title_label?: string | null
   status: ContestRegistrationStatus
   check_in_code: string | null
   checked_in_at: string | null
@@ -293,11 +297,21 @@ export type ContestMetrics = {
     entry_count: number
     mode: "BEST_LAP" | "TOTAL_TIME" | "KNOCKOUT_WINS"
   }
+  global_sync: {
+    synced: boolean
+    synced_at: string | null
+    synced_count: number
+    superseded_count: number
+  }
 }
 
 export type ContestLeaderboardEntry = {
   rank: number
   registration_id: string
+  user_id: string | null
+  display_name: string | null
+  driver_handle: string | null
+  driver_title_label: string | null
   wins: number
   best_lap_ms: number | null
   total_time_ms: number | null
@@ -395,4 +409,19 @@ export type ContestSubmitResultsBody = {
 
 export type ContestCorrectResultsBody = ContestSubmitResultsBody & {
   force_cascade?: boolean
+}
+
+export type ContestRaceRecordSyncResult = {
+  contest_id: string
+  synced_count: number
+  superseded_count: number
+  synced_at: string | null
+  achievement_evaluation: {
+    affected_users: number
+    users: Array<{
+      user_id: string
+      current_title_code: string | null
+      unlocked_achievement_count: number
+    }>
+  }
 }

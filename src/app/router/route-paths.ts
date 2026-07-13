@@ -7,6 +7,7 @@ export const routePaths = {
   bookingDetail: "/booking/:bookingId",
   contests: "/contests",
   contestDetail: "/contests/:contestId",
+  globalLeaderboard: "/leaderboards/global",
   paymentResult: "/payment/result",
   login: "/auth/login",
   register: "/auth/register",

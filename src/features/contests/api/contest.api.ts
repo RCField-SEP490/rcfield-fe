@@ -13,6 +13,7 @@ import type {
   ContestMetrics,
   ContestRegistration,
   ContestRegistrationsQuery,
+  ContestRaceRecordSyncResult,
   ContestSubmitResultsBody,
   ContestTemplate,
   ContestGenerateMatchesBody,
@@ -83,6 +84,8 @@ function mapContestRegistration(raw: any): ContestRegistration {
           fullName: raw.participant.full_name ?? raw.participant.fullName ?? null,
           email: raw.participant.email ?? null,
           avatarUrl: raw.participant.avatar_url ?? raw.participant.avatarUrl ?? null,
+          driverHandle: raw.participant.driver_handle ?? null,
+          driverTitleLabel: raw.participant.driver_title_label ?? null,
         }
       : null,
     contest: raw.contest ? mapContestItem(raw.contest) : null,
@@ -121,6 +124,8 @@ function mapContestMatch(raw: any): ContestMatch {
             participant_name: participant.registration.participant_name ?? null,
             participant_email: participant.registration.participant_email ?? null,
             participant_avatar_url: participant.registration.participant_avatar_url ?? null,
+            driver_handle: participant.registration.driver_handle ?? null,
+            driver_title_label: participant.registration.driver_title_label ?? null,
             status: participant.registration.status,
             check_in_code: participant.registration.check_in_code ?? null,
             checked_in_at: participant.registration.checked_in_at ?? null,
@@ -249,6 +254,11 @@ export const contestApi = {
 
   publishLeaderboard: async (contestId: string): Promise<ContestLeaderboardPayload> => {
     const res = await api.post<ApiEnvelope<ContestLeaderboardPayload>>(`/v1/contests/${contestId}/leaderboard/publish`)
+    return res.data.data
+  },
+
+  syncRaceRecords: async (contestId: string): Promise<ContestRaceRecordSyncResult> => {
+    const res = await api.post<ApiEnvelope<ContestRaceRecordSyncResult>>(`/v1/contests/${contestId}/sync-race-records`)
     return res.data.data
   },
 

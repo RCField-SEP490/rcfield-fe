@@ -27,6 +27,7 @@ const publicNavItems = [
   { label: "Chính sách", to: routePaths.customerPolicy },
   { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
   { label: "Giải đấu", to: routePaths.contests },
+  { label: "BXH Toàn Hệ Thống", to: routePaths.globalLeaderboard },
 ]
 
 // Items only for specific authenticated roles

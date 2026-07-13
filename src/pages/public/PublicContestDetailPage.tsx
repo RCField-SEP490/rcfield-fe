@@ -25,6 +25,7 @@ import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 
 export function PublicContestDetailPage() {
   const { contestId } = useParams()
@@ -189,12 +190,14 @@ export function PublicContestDetailPage() {
                                   title="Bạn"
                                   name={myParticipant ? getMatchParticipantName(myParticipant) : existingRegistration.participant?.fullName ?? "Bạn"}
                                   detail={myParticipant?.status ?? existingRegistration.status}
+                                  titleLabel={myParticipant?.registration?.driver_title_label ?? existingRegistration.participant?.driverTitleLabel ?? null}
                                   highlight
                                 />
                                 <BracketCard
                                   title="Đối thủ"
                                   name={opponents[0] ? getMatchParticipantName(opponents[0]) : "Đang chờ ghép"}
                                   detail={opponents[0]?.status ?? "PENDING"}
+                                  titleLabel={opponents[0]?.registration?.driver_title_label ?? null}
                                 />
                               </div>
                             </article>
@@ -324,17 +327,22 @@ function BracketCard({
   title,
   name,
   detail,
+  titleLabel,
   highlight = false,
 }: {
   title: string
   name: string
   detail: string
+  titleLabel?: string | null
   highlight?: boolean
 }) {
   return (
     <div className={`rounded-2xl border p-4 ${highlight ? "border-orange-200 bg-orange-50/70" : "border-slate-200 bg-white"}`}>
       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{title}</p>
-      <p className="mt-2 text-base font-extrabold text-slate-900">{name}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <p className="text-base font-extrabold text-slate-900">{name}</p>
+        <DriverTitleChip label={titleLabel} />
+      </div>
       <p className="mt-1 text-sm font-medium text-slate-500">{detail}</p>
     </div>
   )

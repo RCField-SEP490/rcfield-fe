@@ -84,6 +84,17 @@ export function ProviderContestRuntimePage() {
     }
   }
 
+  const handleSyncRaceRecords = async () => {
+    try {
+      const result = await runtime.syncRaceRecordsMutation.mutateAsync()
+      toast.success("Đã sync global race records", {
+        description: `${result.synced_count} record mới, ${result.superseded_count} record bị thay thế.`,
+      })
+    } catch (error) {
+      toast.error("Không thể sync global race records", { description: getErrorMessage(error).message })
+    }
+  }
+
   if (runtime.contestQuery.isLoading) {
     return (
       <ProviderShell>
@@ -138,6 +149,15 @@ export function ProviderContestRuntimePage() {
               <BarChart3 className="size-4" />
               Publish leaderboard
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 gap-2 rounded-lg border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+              onClick={() => void handleSyncRaceRecords()}
+              disabled={!metrics?.leaderboard.published}
+            >
+              Sync global records
+            </Button>
           </>
         }
       />
@@ -165,11 +185,11 @@ export function ProviderContestRuntimePage() {
           tone={metrics?.leaderboard.published ? "success" : "warning"}
         />
         <MetricCard
-          label="Host branch"
-          value={contest.host_branch?.cafe?.name ?? "--"}
-          helper={contest.contest_format?.name ?? "Contest format"}
+          label="Global sync"
+          value={metrics?.global_sync.synced ? "Synced" : "Pending"}
+          helper={metrics?.global_sync.synced_at ? new Date(metrics.global_sync.synced_at).toLocaleString("vi-VN") : "Chưa sync race records"}
           icon={<CalendarCheck2 />}
-          tone="neutral"
+          tone={metrics?.global_sync.synced ? "success" : "neutral"}
         />
       </section>
 

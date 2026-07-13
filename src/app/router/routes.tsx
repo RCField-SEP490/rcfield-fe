@@ -98,6 +98,7 @@ import { PartnerLandingPage } from "@/pages/public/PartnerLandingPage"
 import { CustomerPolicyPage } from "@/pages/public/CustomerPolicyPage"
 import { PublicContestsPage } from "@/pages/public/PublicContestsPage"
 import { PublicContestDetailPage } from "@/pages/public/PublicContestDetailPage"
+import { PublicGlobalLeaderboardPage } from "@/pages/public/PublicGlobalLeaderboardPage"
 import { PendingReviewPage } from "@/pages/auth/PendingReviewPage"
 import { RejectedPage } from "@/pages/auth/RejectedPage"
 import { SuspendedPage } from "@/pages/auth/SuspendedPage"
@@ -142,6 +143,7 @@ export const router = createBrowserRouter([
           { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.contests, element: <PublicContestsPage /> },
           { path: routePaths.contestDetail, element: <PublicContestDetailPage /> },
+          { path: routePaths.globalLeaderboard, element: <PublicGlobalLeaderboardPage /> },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
           { path: routePaths.customerPolicy, element: <CustomerPolicyPage /> },

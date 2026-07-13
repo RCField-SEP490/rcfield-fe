@@ -27,6 +27,17 @@ export function ContestLeaderboardPanel({
     }
   }
 
+  const handleSync = async () => {
+    try {
+      const result = await runtime.syncRaceRecordsMutation.mutateAsync()
+      toast.success("Đã sync race records lên global leaderboard", {
+        description: `Synced ${result.synced_count} record, superseded ${result.superseded_count} record.`,
+      })
+    } catch (error) {
+      toast.error("Không thể sync global leaderboard", { description: getErrorMessage(error).message })
+    }
+  }
+
   return (
     <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
       <Panel>
@@ -36,9 +47,19 @@ export function ContestLeaderboardPanel({
           <StatusRow label="Mode" value={leaderboard?.mode ?? metrics?.leaderboard.mode ?? "--"} />
           <StatusRow label="Published" value={leaderboard ? "Đã publish" : "Chưa publish"} />
           <StatusRow label="Published at" value={leaderboard?.published_at ?? "--"} />
+          <StatusRow label="Global sync" value={metrics?.global_sync.synced ? "Đã sync" : "Chưa sync"} />
+          <StatusRow label="Last sync" value={metrics?.global_sync.synced_at ?? "--"} />
         </div>
         <Button className="mt-4 h-10 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]" onClick={() => void handlePublish()}>
           Publish leaderboard
+        </Button>
+        <Button
+          variant="outline"
+          className="mt-2 h-10 rounded-lg border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+          onClick={() => void handleSync()}
+          disabled={!leaderboard}
+        >
+          {metrics?.global_sync.synced ? "Sync lại global records" : "Sync to global leaderboard"}
         </Button>
       </Panel>
 
@@ -50,7 +71,7 @@ export function ContestLeaderboardPanel({
               <thead>
                 <tr className="border-b border-[#e5e2e1] text-left text-xs font-extrabold uppercase tracking-wider text-[#747878]">
                   <th className="pb-3">Rank</th>
-                  <th className="pb-3">Registration</th>
+                  <th className="pb-3">Driver</th>
                   <th className="pb-3">Wins</th>
                   <th className="pb-3">Best lap</th>
                   <th className="pb-3">Total time</th>
@@ -62,7 +83,12 @@ export function ContestLeaderboardPanel({
                 {leaderboard.entries.map((entry) => (
                   <tr key={entry.registration_id}>
                     <td className="py-3 font-bold text-[#1c1b1b]">{entry.rank}</td>
-                    <td className="py-3 font-semibold text-[#1c1b1b]">{entry.registration_id.slice(0, 8)}</td>
+                    <td className="py-3">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-[#1c1b1b]">{entry.display_name ?? entry.registration_id.slice(0, 8)}</p>
+                        {entry.driver_title_label ? <p className="text-xs font-bold text-orange-700">{entry.driver_title_label}</p> : null}
+                      </div>
+                    </td>
                     <td className="py-3 text-[#5d5f5f]">{entry.wins}</td>
                     <td className="py-3 text-[#5d5f5f]">{entry.best_lap_ms ?? "--"}</td>
                     <td className="py-3 text-[#5d5f5f]">{entry.total_time_ms ?? "--"}</td>
