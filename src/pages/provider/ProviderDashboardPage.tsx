@@ -61,7 +61,7 @@ export function ProviderDashboardPage() {
   // Lấy dữ liệu danh sách chi nhánh của Provider để check onboarding thật
   const { data: cafesData, isLoading: isLoadingCafes } = useQuery({
     queryKey: ["provider-cafes-list-onboarding"],
-    queryFn: () => cafeApi.listCafes({ scope: "managed" } as any),
+    queryFn: () => cafeApi.listCafes({ scope: "managed", limit: 100 } as any),
     staleTime: 30000,
   })
   const cafes = cafesData?.data ?? []
@@ -324,7 +324,7 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
 
   const { data: cafesData } = useQuery({
     queryKey: ["provider-cafes-list"],
-    queryFn: () => cafeApi.listCafes({ scope: "managed" } as any),
+    queryFn: () => cafeApi.listCafes({ scope: "managed", limit: 100 } as any),
     staleTime: 300_000,
   })
   const cafes = cafesData?.data ?? []

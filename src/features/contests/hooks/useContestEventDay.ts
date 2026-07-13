@@ -57,6 +57,14 @@ export function useContestEventDay(contestId?: string) {
     onSuccess: invalidateEventDay,
   })
 
+  const cancelRegistrationMutation = useMutation({
+    mutationFn: (registrationId: string) => contestApi.cancelRegistration(registrationId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: contestQueryKeys.myRegistrations() })
+      await invalidateEventDay()
+    },
+  })
+
   return {
     lookupMutation,
     checkInMutation,
@@ -64,5 +72,6 @@ export function useContestEventDay(contestId?: string) {
     waiveFeeMutation,
     approveMutation,
     rejectMutation,
+    cancelRegistrationMutation,
   }
 }

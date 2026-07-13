@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import type { ContestCorrectResultsBody, ContestMatch, ContestMatchParticipant, ContestSubmitResultsBody } from "@/features/contests/types"
+import { contestCorrectResultsSchema, contestSubmitResultsSchema } from "@/features/contests/schemas/contest.schema"
+import type { ContestMatch, ContestMatchParticipant, ContestSubmitResultsBody } from "@/features/contests/types"
 import { formatDurationMs, getErrorMessage } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
@@ -142,10 +143,18 @@ export function ContestMatchDetailPanel({
   })
 
   const handleSubmitResults = async () => {
+    const rawPayload = buildResultPayload()
+    const result = contestSubmitResultsSchema.safeParse(rawPayload)
+    if (!result.success) {
+      const firstError = result.error.issues[0]
+      toast.error(`Lỗi validation: ${firstError.message}`)
+      return
+    }
+
     try {
       await runtime.submitResultsMutation.mutateAsync({
         matchId: match.id,
-        body: buildResultPayload(),
+        body: result.data,
       })
       toast.success("Đã submit result")
     } catch (error) {
@@ -154,13 +163,20 @@ export function ContestMatchDetailPanel({
   }
 
   const handleCorrectResults = async () => {
-    const payload: ContestCorrectResultsBody = {
+    const rawPayload = {
       ...buildResultPayload(),
       force_cascade: forceCascade,
     }
 
+    const result = contestCorrectResultsSchema.safeParse(rawPayload)
+    if (!result.success) {
+      const firstError = result.error.issues[0]
+      toast.error(`Lỗi validation: ${firstError.message}`)
+      return
+    }
+
     try {
-      await runtime.correctResultsMutation.mutateAsync({ matchId: match.id, body: payload })
+      await runtime.correctResultsMutation.mutateAsync({ matchId: match.id, body: result.data })
       toast.success("Đã correct result")
     } catch (error) {
       toast.error("Không thể correct result", { description: getErrorMessage(error).message })

@@ -2,7 +2,7 @@ import type { Cafe, CafeSearchParams, Vehicle } from "@/shared/data/explore-data
 import { PRICE_SLIDER_MAX, PRICE_SLIDER_MIN } from "./constants"
 
 export type CafeViewMode = "grid" | "list"
-export type SearchTarget = "cafes" | "vehicles"
+export type SearchTarget = "cafes" | "contests"
 export type VehicleWithCafe = Vehicle & { cafe: Cafe }
 export type UserLocation = { lat: number; lng: number }
 export type MapBounds = { north: number; south: number; east: number; west: number }

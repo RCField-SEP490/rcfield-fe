@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Flag, PlayCircle } from "lucide-react"
+import { contestGenerateMatchesSchema } from "@/features/contests/schemas/contest.schema"
 import type { ContestItem, ContestMatch, ContestRegistration } from "@/features/contests/types"
 import {
   formatContestDateTime,
@@ -52,13 +53,22 @@ export function ContestMatchBoard({
   const matchGroups = useMemo(() => groupMatchesByRound(matches), [matches])
 
   const handleGenerate = async () => {
+    const rawData = {
+      cafe_id: selectedCafeId,
+      registration_ids: selectedRegistrationIds,
+      drivers_per_match: driversPerMatch,
+      seeding_mode: seedingMode,
+    }
+
+    const result = contestGenerateMatchesSchema.safeParse(rawData)
+    if (!result.success) {
+      const firstError = result.error.issues[0]
+      toast.error(`Lỗi: ${firstError.message}`)
+      return
+    }
+
     try {
-      await runtime.generateMatchesMutation.mutateAsync({
-        cafe_id: selectedCafeId,
-        registration_ids: selectedRegistrationIds,
-        drivers_per_match: driversPerMatch,
-        seeding_mode: seedingMode,
-      })
+      await runtime.generateMatchesMutation.mutateAsync(result.data)
       toast.success("Đã generate contest runtime")
     } catch (error) {
       toast.error("Không thể generate matches", { description: getErrorMessage(error).message })

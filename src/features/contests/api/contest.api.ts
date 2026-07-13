@@ -225,4 +225,11 @@ export const contestApi = {
     )
     return res.data.data
   },
+
+  cancelRegistration: async (registrationId: string): Promise<ContestRegistration> => {
+    const res = await api.post<ApiEnvelope<ContestRegistration>>(
+      `/v1/contest-registrations/${registrationId}/cancel`
+    )
+    return res.data.data
+  },
 }

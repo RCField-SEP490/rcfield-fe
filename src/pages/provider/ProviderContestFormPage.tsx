@@ -8,9 +8,11 @@ import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import { cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import { contestUpsertSchema } from "@/features/contests/schemas/contest.schema"
 import type { ContestUpsertBody } from "@/features/contests/types"
 import { Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
+import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -62,6 +64,7 @@ export function ProviderContestFormPage() {
   const { contestId } = useParams()
   const isEdit = Boolean(contestId)
   const [form, setForm] = useState<ContestFormState>(defaultForm)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   const typesQuery = useQuery({
     queryKey: contestQueryKeys.catalogTypes(),
@@ -141,10 +144,68 @@ export function ProviderContestFormPage() {
       void queryClient.invalidateQueries({ queryKey: contestQueryKeys.all })
     },
   })
+
   const handleSubmit = async () => {
+    let parsedConfig: Record<string, unknown> = {}
     try {
-      const payload = toPayload(form)
-      await saveMutation.mutateAsync(payload)
+      parsedConfig = JSON.parse(form.config_text || "{}") as Record<string, unknown>
+    } catch {
+      toast.error("Cấu hình JSON không hợp lệ")
+      setValidationErrors({ config_text: "Cấu hình JSON không hợp lệ" })
+      return
+    }
+
+    let startsAt = ""
+    let endsAt = ""
+    let regOpen = ""
+    let regClose = ""
+    try {
+      if (form.starts_at) startsAt = new Date(form.starts_at).toISOString()
+      if (form.ends_at) endsAt = new Date(form.ends_at).toISOString()
+      if (form.registration_opens_at) regOpen = new Date(form.registration_opens_at).toISOString()
+      if (form.registration_closes_at) regClose = new Date(form.registration_closes_at).toISOString()
+    } catch {
+      // ignore mapping errors
+    }
+
+    const rawData = {
+      name: form.name.trim(),
+      description: form.description.trim() || null,
+      contest_type_id: form.contest_type_id,
+      contest_format_id: form.contest_format_id,
+      contest_template_id: form.contest_template_id,
+      track_type_id: form.track_type_id,
+      participating_cafe_ids: form.participating_cafe_ids,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      registration_opens_at: regOpen,
+      registration_closes_at: regClose,
+      capacity: form.capacity ? Number(form.capacity) : NaN,
+      entry_fee: form.entry_fee ? Number(form.entry_fee) : NaN,
+      banner_image_url: form.banner_image_url.trim() || null,
+      vehicle_rule: {
+        vehicle_policy: form.vehicle_policy,
+        assignment_policy: form.assignment_policy,
+      },
+      config: parsedConfig,
+    }
+
+    const result = contestUpsertSchema.safeParse(rawData)
+    if (!result.success) {
+      const newErrors: Record<string, string> = {}
+      result.error.issues.forEach((err) => {
+        const path = err.path.join(".")
+        newErrors[path] = err.message
+      })
+      setValidationErrors(newErrors)
+      const firstError = result.error.issues[0]
+      toast.error(`Lỗi validation: ${firstError.message}`)
+      return
+    }
+
+    setValidationErrors({})
+    try {
+      await saveMutation.mutateAsync(result.data as ContestUpsertBody)
       toast.success(isEdit ? "Đã cập nhật contest" : "Đã tạo contest")
       navigate(routePaths.providerContests)
     } catch (error) {
@@ -199,10 +260,10 @@ export function ProviderContestFormPage() {
         <Panel>
           <PanelTitle title="Thông tin contest" subtitle="Thiết lập nghiệp vụ và lịch mở đăng ký." />
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Tên contest">
+            <Field label="Tên contest" error={validationErrors["name"]}>
               <Input value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))} />
             </Field>
-            <Field label="Track type">
+            <Field label="Track type" error={validationErrors["track_type_id"]}>
               <select
                 className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                 value={form.track_type_id}
@@ -216,7 +277,7 @@ export function ProviderContestFormPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Contest type">
+            <Field label="Contest type" error={validationErrors["contest_type_id"]}>
               <select
                 className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                 value={form.contest_type_id}
@@ -230,7 +291,7 @@ export function ProviderContestFormPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Format">
+            <Field label="Format" error={validationErrors["contest_format_id"]}>
               <select
                 className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                 value={form.contest_format_id}
@@ -244,7 +305,7 @@ export function ProviderContestFormPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Template" className="md:col-span-2">
+            <Field label="Template" className="md:col-span-2" error={validationErrors["contest_template_id"]}>
               <select
                 className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                 value={form.contest_template_id}
@@ -258,28 +319,28 @@ export function ProviderContestFormPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Bắt đầu">
+            <Field label="Bắt đầu" error={validationErrors["starts_at"]}>
               <Input type="datetime-local" value={form.starts_at} onChange={(e) => setForm((s) => ({ ...s, starts_at: e.target.value }))} />
             </Field>
-            <Field label="Kết thúc">
+            <Field label="Kết thúc" error={validationErrors["ends_at"]}>
               <Input type="datetime-local" value={form.ends_at} onChange={(e) => setForm((s) => ({ ...s, ends_at: e.target.value }))} />
             </Field>
-            <Field label="Mở đăng ký">
+            <Field label="Mở đăng ký" error={validationErrors["registration_opens_at"]}>
               <Input type="datetime-local" value={form.registration_opens_at} onChange={(e) => setForm((s) => ({ ...s, registration_opens_at: e.target.value }))} />
             </Field>
-            <Field label="Đóng đăng ký">
+            <Field label="Đóng đăng ký" error={validationErrors["registration_closes_at"]}>
               <Input type="datetime-local" value={form.registration_closes_at} onChange={(e) => setForm((s) => ({ ...s, registration_closes_at: e.target.value }))} />
             </Field>
-            <Field label="Sức chứa">
+            <Field label="Sức chứa" error={validationErrors["capacity"]}>
               <Input value={form.capacity} onChange={(e) => setForm((s) => ({ ...s, capacity: e.target.value }))} />
             </Field>
-            <Field label="Entry fee (VND)">
+            <Field label="Entry fee (VND)" error={validationErrors["entry_fee"]}>
               <Input value={form.entry_fee} onChange={(e) => setForm((s) => ({ ...s, entry_fee: e.target.value }))} />
             </Field>
-            <Field label="Banner image URL" className="md:col-span-2">
+            <Field label="Banner image URL" className="md:col-span-2" error={validationErrors["banner_image_url"]}>
               <Input value={form.banner_image_url} onChange={(e) => setForm((s) => ({ ...s, banner_image_url: e.target.value }))} />
             </Field>
-            <Field label="Mô tả" className="md:col-span-2">
+            <Field label="Mô tả" className="md:col-span-2" error={validationErrors["description"]}>
               <Textarea rows={4} value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} />
             </Field>
           </div>
@@ -288,6 +349,9 @@ export function ProviderContestFormPage() {
         <div className="space-y-4">
           <Panel>
             <PanelTitle title="Chi nhánh tham gia" subtitle="Chọn một hoặc nhiều cơ sở provider đang quản lý." />
+            {validationErrors["participating_cafe_ids"] && (
+              <p className="text-xs font-semibold text-red-500 mb-2">{validationErrors["participating_cafe_ids"]}</p>
+            )}
             <div className="space-y-2">
               {cafes.map((cafe) => {
                 const checked = form.participating_cafe_ids.includes(cafe.id)
@@ -300,8 +364,8 @@ export function ProviderContestFormPage() {
                         setForm((current) => ({
                           ...current,
                           participating_cafe_ids: e.target.checked
-                            ? [...current.participating_cafe_ids, cafe.id]
-                            : current.participating_cafe_ids.filter((id) => id !== cafe.id),
+                             ? [...current.participating_cafe_ids, cafe.id]
+                             : current.participating_cafe_ids.filter((id) => id !== cafe.id),
                         }))
                       }
                     />
@@ -320,7 +384,7 @@ export function ProviderContestFormPage() {
           <Panel>
             <PanelTitle title="Vehicle policy và config" subtitle="Config JSON này lưu thẳng theo contest để phase sau mở rộng không phải hardcode ở FE." />
             <div className="space-y-4">
-              <Field label="Vehicle policy">
+              <Field label="Vehicle policy" error={validationErrors["vehicle_rule.vehicle_policy"]}>
                 <select
                   className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                   value={form.vehicle_policy}
@@ -331,7 +395,7 @@ export function ProviderContestFormPage() {
                   <option value="BYOC_ONLY">BYOC_ONLY</option>
                 </select>
               </Field>
-              <Field label="Assignment policy">
+              <Field label="Assignment policy" error={validationErrors["vehicle_rule.assignment_policy"]}>
                 <select
                   className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                   value={form.assignment_policy}
@@ -341,7 +405,7 @@ export function ProviderContestFormPage() {
                   <option value="PRE_ASSIGNED">PRE_ASSIGNED</option>
                 </select>
               </Field>
-              <Field label="Config JSON">
+              <Field label="Config JSON" error={validationErrors["config_text"]}>
                 <Textarea rows={14} value={form.config_text} onChange={(e) => setForm((s) => ({ ...s, config_text: e.target.value }))} />
               </Field>
             </div>
@@ -374,45 +438,16 @@ export function ProviderContestFormPage() {
   )
 }
 
-function Field({ label, className, children }: { label: string; className?: string; children: ReactNode }) {
+function Field({ label, className, error, children }: { label: string; className?: string; error?: string; children: ReactNode }) {
   return (
-    <div className={className}>
-      <Label className="mb-2 block text-sm font-bold text-[#1c1b1b]">{label}</Label>
+    <div className={cn("space-y-1.5", className)}>
+      <Label className="block text-sm font-bold text-[#1c1b1b]">{label}</Label>
       {children}
+      {error && <p className="text-xs font-semibold text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
 
-function toPayload(form: ContestFormState): ContestUpsertBody {
-  let parsedConfig: Record<string, unknown> = {}
-  try {
-    parsedConfig = JSON.parse(form.config_text || "{}") as Record<string, unknown>
-  } catch {
-    parsedConfig = {}
-  }
-
-  return {
-    name: form.name.trim(),
-    description: form.description.trim() || null,
-    contest_type_id: form.contest_type_id,
-    contest_format_id: form.contest_format_id,
-    contest_template_id: form.contest_template_id,
-    track_type_id: form.track_type_id,
-    participating_cafe_ids: form.participating_cafe_ids,
-    starts_at: new Date(form.starts_at).toISOString(),
-    ends_at: new Date(form.ends_at).toISOString(),
-    registration_opens_at: new Date(form.registration_opens_at).toISOString(),
-    registration_closes_at: new Date(form.registration_closes_at).toISOString(),
-    capacity: Number(form.capacity),
-    entry_fee: Number(form.entry_fee),
-    banner_image_url: form.banner_image_url.trim() || null,
-    vehicle_rule: {
-      vehicle_policy: form.vehicle_policy,
-      assignment_policy: form.assignment_policy,
-    },
-    config: parsedConfig,
-  }
-}
 
 function toInputDateTime(value: string) {
   const date = new Date(value)

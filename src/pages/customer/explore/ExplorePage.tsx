@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { getCafes } from "@/features/explore/api/explore.api"
+import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
 import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { ExploreMapOverlay } from "./components/ExploreMapOverlay"
@@ -10,6 +11,7 @@ import { ExploreLeftSidebar } from "./components/ExploreLeftSidebar"
 import { ExploreResultsHeader } from "./components/ExploreResultsHeader"
 import { CafeHorizontalCard } from "./components/CafeHorizontalCard"
 import { CafeGridCard } from "./components/CafeGridCard"
+import { ContestExploreCard } from "./components/ContestExploreCard"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
 import { buildBookingUrl, cafeInBounds, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
@@ -132,6 +134,25 @@ export function ExplorePage() {
     queryFn: () => getCafes(filters.params),
   })
 
+  const { data: contestsData, isLoading: isLoadingContests, isError: isErrorContests } = useQuery({
+    queryKey: contestQueryKeys.list({ public: true }),
+    queryFn: () => contestApi.listContests({ limit: 100 }),
+    enabled: filters.searchTarget === "contests",
+  })
+
+  const contests = contestsData?.data ?? []
+
+  const filteredContests = useMemo(() => {
+    const query = filters.query.trim().toLowerCase()
+    if (!query) return contests
+    return contests.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        (c.description && c.description.toLowerCase().includes(query)) ||
+        (c.host_branch?.cafe?.name && c.host_branch.cafe.name.toLowerCase().includes(query))
+    )
+  }, [contests, filters.query])
+
   useEffect(() => {
     if (searchOnMove) listRef.current?.scrollTo({ top: 0, behavior: "smooth" })
   }, [mapBounds, searchOnMove])
@@ -181,125 +202,200 @@ export function ExplorePage() {
 
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
         {/* LEFT — Sidebar with map + filters (desktop only) */}
-        <div className="hidden w-[280px] shrink-0 lg:block">
-          <div className="sticky top-[96px] max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-            <ExploreLeftSidebar
-              cafes={filteredCafes}
-              onSelectCafe={setQuickViewCafe}
-              userLocation={userLocation}
-              onUserLocation={setUserLocation}
-              hoveredCafeId={hoveredCafeId}
-              onBoundsChange={handleBoundsChange}
-              searchOnMove={searchOnMove}
-              onSearchOnMoveChange={setSearchOnMove}
-              priceMin={filters.priceMin}
-              priceMax={filters.priceMax}
-              onPriceMinChange={filters.setPriceMin}
-              onPriceMaxChange={filters.setPriceMax}
-              onResetPrice={filters.resetPriceSlider}
-              popularFilters={filters.popularFilters}
-              onTogglePopularFilter={filters.togglePopularFilter}
-              activeFilterCount={filters.activeFilterCount}
-              onClearAll={filters.clearFilters}
-            />
+        {filters.searchTarget === "cafes" && (
+          <div className="hidden w-[280px] shrink-0 lg:block">
+            <div className="sticky top-[96px] max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+              <ExploreLeftSidebar
+                cafes={filteredCafes}
+                onSelectCafe={setQuickViewCafe}
+                userLocation={userLocation}
+                onUserLocation={setUserLocation}
+                hoveredCafeId={hoveredCafeId}
+                onBoundsChange={handleBoundsChange}
+                searchOnMove={searchOnMove}
+                onSearchOnMoveChange={setSearchOnMove}
+                priceMin={filters.priceMin}
+                priceMax={filters.priceMax}
+                onPriceMinChange={filters.setPriceMin}
+                onPriceMaxChange={filters.setPriceMax}
+                onResetPrice={filters.resetPriceSlider}
+                popularFilters={filters.popularFilters}
+                onTogglePopularFilter={filters.togglePopularFilter}
+                activeFilterCount={filters.activeFilterCount}
+                onClearAll={filters.clearFilters}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* CENTER — Results list */}
         <div ref={listRef} className="flex-1 min-w-0">
-          {/* Results header */}
-          <div className="sticky top-[68px] lg:top-[80px] z-20 bg-slate-50 pb-3 pt-2 mb-4 relative before:absolute before:bottom-full before:left-[-9999px] before:right-[-9999px] before:h-[200px] before:bg-slate-50 before:z-[-1]">
-            <ExploreResultsHeader
-              city={filters.city}
-              resultCount={filteredCafes.length}
-              sortBy={filters.sortBy}
-              onSortByChange={filters.setSortBy}
-              viewMode={viewMode}
-              onViewModeChange={handleViewModeChange}
-              trackType={filters.trackType}
-              onTrackTypeChange={filters.setTrackType}
-              feature={filters.feature}
-              onFeatureChange={filters.setFeature}
-              vehicleType={filters.vehicleType}
-              onVehicleTypeChange={filters.setVehicleType}
-              priceRange={filters.priceRange}
-              onPriceRangeChange={filters.setPriceRange}
-              query={filters.query}
-              onQueryChange={filters.setQuery}
-            />
+          {/* Premium Segmented Switcher */}
+          <div className="mb-6 flex items-center justify-between border-b border-slate-200/80 pb-4">
+            <div className="flex gap-2 rounded-xl bg-slate-200/60 p-1">
+              <button
+                type="button"
+                onClick={() => filters.setSearchTarget("cafes")}
+                className={`rounded-lg px-4 py-2 text-xs font-bold transition-all duration-200 ${
+                  filters.searchTarget === "cafes"
+                    ? "bg-white text-orange-600 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Cơ sở RC Cafe
+              </button>
+              <button
+                type="button"
+                onClick={() => filters.setSearchTarget("contests")}
+                className={`rounded-lg px-4 py-2 text-xs font-bold transition-all duration-200 ${
+                  filters.searchTarget === "contests"
+                    ? "bg-white text-orange-600 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Giải đấu RC
+              </button>
+            </div>
+            {filters.searchTarget === "contests" && (
+              <span className="text-xs font-semibold text-slate-500">
+                {filteredContests.length} giải đấu khả dụng
+              </span>
+            )}
           </div>
 
-          {/* Card list */}
-          <main className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
-            {isLoading ? (
-              <ExploreLoadingState viewMode={viewMode} />
-            ) : isError ? (
-              <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
-                <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
-                <button
-                  type="button"
-                  onClick={() => void refetch()}
-                  className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
-                >
-                  Tải lại
-                </button>
+          {filters.searchTarget === "cafes" ? (
+            <>
+              {/* Results header */}
+              <div className="sticky top-[68px] lg:top-[80px] z-20 bg-slate-50 pb-3 pt-2 mb-4 relative before:absolute before:bottom-full before:left-[-9999px] before:right-[-9999px] before:h-[200px] before:bg-slate-50 before:z-[-1]">
+                <ExploreResultsHeader
+                  city={filters.city}
+                  resultCount={filteredCafes.length}
+                  sortBy={filters.sortBy}
+                  onSortByChange={filters.setSortBy}
+                  viewMode={viewMode}
+                  onViewModeChange={handleViewModeChange}
+                  trackType={filters.trackType}
+                  onTrackTypeChange={filters.setTrackType}
+                  feature={filters.feature}
+                  onFeatureChange={filters.setFeature}
+                  vehicleType={filters.vehicleType}
+                  onVehicleTypeChange={filters.setVehicleType}
+                  priceRange={filters.priceRange}
+                  onPriceRangeChange={filters.setPriceRange}
+                  query={filters.query}
+                  onQueryChange={filters.setQuery}
+                />
               </div>
-            ) : filteredCafes.length === 0 ? (
-              <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
-                </p>
-              </div>
-            ) : (
-              filteredCafes.map((cafe) => {
-                const dist =
-                  userLocation && cafe.latitude && cafe.longitude
-                    ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
-                    : undefined
-                return viewMode === "grid" ? (
-                  <CafeGridCard
-                    key={cafe.id}
-                    cafe={cafe}
-                    isFavorite={favoriteIds.includes(cafe.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                    distanceKm={dist}
-                    onQuickView={setQuickViewCafe}
-                    onBookNow={handleBookNow}
-                    onHover={setHoveredCafeId}
-                  />
+
+              {/* Card list */}
+              <main className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
+                {isLoading ? (
+                  <ExploreLoadingState viewMode={viewMode} />
+                ) : isError ? (
+                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                    <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
+                    <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                    <button
+                      type="button"
+                      onClick={() => void refetch()}
+                      className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
+                    >
+                      Tải lại
+                    </button>
+                  </div>
+                ) : filteredCafes.length === 0 ? (
+                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                    <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
+                    <p className="mt-2 text-sm text-slate-500">
+                      {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                    </p>
+                  </div>
                 ) : (
-                  <CafeHorizontalCard
-                    key={cafe.id}
-                    cafe={cafe}
-                    isFavorite={favoriteIds.includes(cafe.id)}
-                    onToggleFavorite={handleToggleFavorite}
-                    distanceKm={dist}
-                    onQuickView={setQuickViewCafe}
-                    onBookNow={handleBookNow}
-                    onHover={setHoveredCafeId}
-                  />
-                )
-              })
-            )}
-          </main>
+                  filteredCafes.map((cafe) => {
+                    const dist =
+                      userLocation && cafe.latitude && cafe.longitude
+                        ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
+                        : undefined
+                    return viewMode === "grid" ? (
+                      <CafeGridCard
+                        key={cafe.id}
+                        cafe={cafe}
+                        isFavorite={favoriteIds.includes(cafe.id)}
+                        onToggleFavorite={handleToggleFavorite}
+                        distanceKm={dist}
+                        onQuickView={setQuickViewCafe}
+                        onBookNow={handleBookNow}
+                        onHover={setHoveredCafeId}
+                      />
+                    ) : (
+                      <CafeHorizontalCard
+                        key={cafe.id}
+                        cafe={cafe}
+                        isFavorite={favoriteIds.includes(cafe.id)}
+                        onToggleFavorite={handleToggleFavorite}
+                        distanceKm={dist}
+                        onQuickView={setQuickViewCafe}
+                        onBookNow={handleBookNow}
+                        onHover={setHoveredCafeId}
+                      />
+                    )
+                  })
+                )}
+              </main>
+            </>
+          ) : (
+            <>
+              {/* Contest results list */}
+              <div className="mb-4">
+                <h2 className="text-lg font-extrabold text-slate-950">Giải đấu RC nổi bật</h2>
+                <p className="text-xs text-slate-500">Các cuộc đua tốc độ và kỹ thuật diễn ra tại các chi nhánh RC Cafe</p>
+              </div>
+
+              <main>
+                {isLoadingContests ? (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-64 animate-pulse rounded-xl bg-slate-200/50" />
+                    ))}
+                  </div>
+                ) : isErrorContests ? (
+                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                    <h3 className="text-lg font-semibold">Không tải được dữ liệu giải đấu</h3>
+                    <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                  </div>
+                ) : filteredContests.length === 0 ? (
+                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
+                    <h3 className="text-lg font-semibold">Chưa tìm thấy giải đấu nào</h3>
+                    <p className="mt-2 text-sm text-slate-500">Thử thay đổi từ khóa tìm kiếm ở thanh trên.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredContests.map((contest) => (
+                      <ContestExploreCard key={contest.id} contest={contest} />
+                    ))}
+                  </div>
+                )}
+              </main>
+            </>
+          )}
         </div>
       </div>
 
       {/* Mobile: floating "Xem bản đồ" button */}
-      <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setShowMap(true)}
-          className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-slate-800"
-        >
-          <Map className="h-4 w-4" /> Xem bản đồ
-        </button>
-      </div>
+      {filters.searchTarget === "cafes" && (
+        <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setShowMap(true)}
+            className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-slate-800"
+          >
+            <Map className="h-4 w-4" /> Xem bản đồ
+          </button>
+        </div>
+      )}
 
       {/* Mobile full-screen map overlay */}
-      {showMap && (
+      {showMap && filters.searchTarget === "cafes" && (
         <ExploreMapOverlay
           cafes={filteredCafes}
           userLocation={userLocation}

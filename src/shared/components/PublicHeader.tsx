@@ -26,6 +26,7 @@ const publicNavItems = [
   { label: "Khám phá", to: routePaths.cafes },
   { label: "Chính sách", to: routePaths.customerPolicy },
   { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
+  { label: "Giải đấu", to: routePaths.contests },
 ]
 
 // Items only for specific authenticated roles

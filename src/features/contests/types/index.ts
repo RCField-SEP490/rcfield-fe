@@ -177,6 +177,7 @@ export type ContestRegistration = {
   cancellationReason: string | null
   createdAt: string
   updatedAt: string
+  contest?: ContestItem
 }
 
 export type ContestMatchParticipantRegistrationSnapshot = {
