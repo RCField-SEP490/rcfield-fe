@@ -89,7 +89,7 @@ function CancelDialog({
             <span className="font-mono font-semibold">{formatCurrency(refund.slotFee)}</span>
           </div>
           <div className="flex justify-between text-slate-600">
-            <span>Hoàn phí khác (thuê xe, cọc, F&B)</span>
+            <span>Hoàn phí khác (thuê xe, F&B)</span>
             <span className="font-mono font-semibold">{formatCurrency(refund.rest)}</span>
           </div>
           <div className="border-t border-dashed border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
@@ -187,11 +187,15 @@ export function BookingDetailPage() {
       const plannedTime = new Date(sessionDetail.plannedEnd).getTime()
       const actualStart = sessionDetail.actualStart ? new Date(sessionDetail.actualStart).getTime() : Date.now()
       const now = Date.now()
-      setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
-      setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
+      queueMicrotask(() => {
+        setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
+        setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
+      })
     } else {
-      setSecondsLeft(0)
-      setTotalDuration(1)
+      queueMicrotask(() => {
+        setSecondsLeft(0)
+        setTotalDuration(1)
+      })
     }
   }, [sessionDetail])
 
@@ -236,18 +240,12 @@ export function BookingDetailPage() {
     snapshot?.rental_fee ??
     0
   )
-  const snapshotDeposit = Number(
-    (snapshot?.vehicles as Array<Record<string, unknown>> | undefined)?.reduce((sum: number, v: Record<string, unknown>) => sum + Number(v.security_deposit ?? 0), 0) ??
-    snapshot?.deposit_amount ??
-    0
-  )
   const snapshotFnbPreorder = Number(snapshot?.fnb_total ?? snapshot?.fnb_preorder_fee ?? 0)
 
   const slotFee = Number(booking?.payment_components?.find((c) => c.type === "SLOT_FEE")?.amount ?? snapshotSlotFee)
   const rentalFee = Number(booking?.payment_components?.find((c) => c.type === "RENTAL_FEE")?.amount ?? snapshotRentalFee)
   const discountAmount = Number(booking?.discountAmount ?? 0)
-  const depositComponent = booking?.payment_components?.find((c) => c.type === "SECURITY_DEPOSIT")
-  const depositAmount = Number(depositComponent?.amount ?? snapshotDeposit)
+  const depositAmount = 0
   const fnbPreorderFee = Number(
     booking?.payment_components?.find(
       (c) =>
@@ -944,7 +942,7 @@ export function BookingDetailPage() {
                         )}
                         {damageExceedingDeposit > 0 && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Hư hỏng vượt cọc</span>
+                            <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
                             <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
                           </div>
                         )}
