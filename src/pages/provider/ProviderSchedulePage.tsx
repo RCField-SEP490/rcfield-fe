@@ -1,5 +1,5 @@
 ﻿import type { MouseEvent as ReactMouseEvent, ReactNode } from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { addDays, format, startOfWeek } from "date-fns"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { DndProvider, useDrag, useDragLayer, useDrop } from "react-dnd"
@@ -89,6 +89,12 @@ function formatVietnameseShiftTime(time: string) {
 
 function formatShiftPresetLabel(preset: ShiftTimeOption) {
   return `${preset.label} (${formatVietnameseShiftTime(preset.start)} -> ${formatVietnameseShiftTime(preset.end)})`
+}
+
+function getScheduleErrorMessage(error: unknown, fallback: string) {
+  if (typeof error !== "object" || error === null) return fallback
+  const response = (error as { response?: { data?: { message?: unknown } } }).response
+  return typeof response?.data?.message === "string" ? response.data.message : fallback
 }
 
 function cellKey(positionId: string, date: string) {
@@ -185,11 +191,11 @@ function ProviderScheduleBoard() {
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
     queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
   })
-  const cafes = cafesResp?.data ?? []
+  const cafes = useMemo(() => cafesResp?.data ?? [], [cafesResp?.data])
 
   useEffect(() => {
     if (!selectedCafeId && cafes.length > 0) {
-      setSelectedCafeId(cafes[0].id)
+      queueMicrotask(() => setSelectedCafeId(cafes[0].id))
     }
   }, [cafes, selectedCafeId])
 
@@ -228,8 +234,8 @@ function ProviderScheduleBoard() {
       setAddingPosition(false)
       toast.success("Đã thêm vị trí mới.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể thêm vị trí.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể thêm vị trí."))
     },
   })
 
@@ -242,8 +248,8 @@ function ProviderScheduleBoard() {
       setEditingPositionName("")
       toast.success("Đã đổi tên vị trí.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể đổi tên vị trí.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể đổi tên vị trí."))
     },
   })
 
@@ -254,8 +260,8 @@ function ProviderScheduleBoard() {
       setDeletingPosition(null)
       toast.success("Đã xóa vị trí và các ca trong hàng.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể xóa vị trí.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể xóa vị trí."))
     },
   })
 
@@ -265,8 +271,8 @@ function ProviderScheduleBoard() {
       queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.week(weekStart, selectedCafeId) })
       toast.success("Đã phân công nhân viên.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể phân công nhân viên.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể phân công nhân viên."))
     },
   })
 
@@ -277,8 +283,8 @@ function ProviderScheduleBoard() {
       setTimeTarget(null)
       toast.success("Đã cập nhật khung giờ.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể cập nhật khung giờ.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể cập nhật khung giờ."))
     },
   })
 
@@ -288,8 +294,8 @@ function ProviderScheduleBoard() {
       queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.shiftTimePresets() })
       toast.success("Đã thêm ca làm.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể thêm ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể thêm ca làm."))
     },
   })
 
@@ -304,8 +310,8 @@ function ProviderScheduleBoard() {
       queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.shiftTimePresets() })
       toast.success("Đã cập nhật ca làm.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể cập nhật ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể cập nhật ca làm."))
     },
   })
 
@@ -315,8 +321,8 @@ function ProviderScheduleBoard() {
       queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.shiftTimePresets() })
       toast.success("Đã xóa ca làm.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể xóa ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể xóa ca làm."))
     },
   })
 
@@ -326,8 +332,8 @@ function ProviderScheduleBoard() {
       queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.week(weekStart, selectedCafeId) })
       toast.success("Đã di chuyển ca làm.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể di chuyển ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể di chuyển ca làm."))
     },
   })
 
@@ -337,8 +343,8 @@ function ProviderScheduleBoard() {
       queryClient.invalidateQueries({ queryKey: scheduleQueryKeys.week(weekStart, selectedCafeId) })
       toast.success("Đã dán ca làm.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể dán ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể dán ca làm."))
     },
   })
 
@@ -350,8 +356,8 @@ function ProviderScheduleBoard() {
       setFillTarget(null)
       toast.success("Đã sao chép ca làm.")
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể sao chép ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể sao chép ca làm."))
     },
   })
 
@@ -363,8 +369,8 @@ function ProviderScheduleBoard() {
       setDeleteConfirmation(null)
       toast.success(`Đã xóa ${data.deletedCount} ca làm.`)
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể xóa ca làm.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể xóa ca làm."))
     },
   })
 
@@ -376,13 +382,13 @@ function ProviderScheduleBoard() {
       setDeleteConfirmation(null)
       toast.success(`Đã xóa ${data.deletedCount} ca trong tuần.`)
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message ?? "Không thể xóa ca trong tuần.")
+    onError: (error: unknown) => {
+      toast.error(getScheduleErrorMessage(error, "Không thể xóa ca trong tuần."))
     },
   })
 
-  const positions = weekData?.positions ?? []
-  const shifts = weekData?.shifts ?? []
+  const positions = useMemo(() => weekData?.positions ?? [], [weekData?.positions])
+  const shifts = useMemo(() => weekData?.shifts ?? [], [weekData?.shifts])
   const shiftTimeOptions = useMemo<ShiftTimeOption[]>(() => {
     if (shiftTimePresets.length === 0) return defaultShiftPresets
     return shiftTimePresets.map((preset) => ({
@@ -405,6 +411,21 @@ function ProviderScheduleBoard() {
     if (!fillSource || !fillTarget) return new Set<string>()
     return buildFillTargetCells(fillSource, fillTarget, positions, weekDays)
   }, [fillSource, fillTarget, positions, weekDays])
+
+  function requestDeleteShifts(shiftIds: string[]) {
+    const uniqueShiftIds = [...new Set(shiftIds)]
+    if (uniqueShiftIds.length === 0) return
+    setOpenShiftMenuId(null)
+    setDeleteConfirmation({
+      type: "bulk",
+      shiftIds: uniqueShiftIds,
+      title: uniqueShiftIds.length === 1 ? "Xóa ca làm" : "Xóa nhiều ca làm",
+      description:
+        uniqueShiftIds.length === 1
+          ? "Bạn có chắc chắn muốn xóa ca làm này không?"
+          : `Bạn có chắc chắn muốn xóa ${uniqueShiftIds.length} ca làm đang chọn không?`,
+    })
+  }
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -505,21 +526,6 @@ function ProviderScheduleBoard() {
         else next.add(shiftId)
       }
       return [...next]
-    })
-  }
-
-  const requestDeleteShifts = (shiftIds: string[]) => {
-    const uniqueShiftIds = [...new Set(shiftIds)]
-    if (uniqueShiftIds.length === 0) return
-    setOpenShiftMenuId(null)
-    setDeleteConfirmation({
-      type: "bulk",
-      shiftIds: uniqueShiftIds,
-      title: uniqueShiftIds.length === 1 ? "Xóa ca làm" : "Xóa nhiều ca làm",
-      description:
-        uniqueShiftIds.length === 1
-          ? "Bạn có chắc chắn muốn xóa ca làm này không?"
-          : `Bạn có chắc chắn muốn xóa ${uniqueShiftIds.length} ca làm đang chọn không?`,
     })
   }
 
@@ -959,7 +965,6 @@ function ScheduleRow({
 }
 
 function DraggableEmployeeCard({ employee }: { employee: StaffListItem }) {
-  const cardRef = useRef<HTMLDivElement | null>(null)
   const [{ isDragging }, drag] = useDrag(() => ({
     type: employeeDragType,
     item: { type: employeeDragType, staffId: employee.id, name: employee.fullName } satisfies DragEmployee,
@@ -967,11 +972,13 @@ function DraggableEmployeeCard({ employee }: { employee: StaffListItem }) {
       isDragging: monitor.isDragging(),
     }),
   }), [employee.id, employee.fullName])
-  drag(cardRef)
+  const setCardRef = useCallback((node: HTMLDivElement | null) => {
+    drag(node)
+  }, [drag])
 
   return (
     <div
-      ref={cardRef}
+      ref={setCardRef}
       className={cn(
         "group flex cursor-grab items-center gap-3 rounded-lg border border-[#c4c7c8] bg-[#fcf8f8] p-3 transition-all hover:border-[#5d5f5f] hover:shadow-sm active:cursor-grabbing",
         isDragging && "scale-[0.98] opacity-50 shadow-md",
@@ -1033,7 +1040,6 @@ function DropZoneCell({
   onOpenTime: (shift: StaffShift) => void
 }) {
   const isEmpty = shifts.length === 0
-  const cellRef = useRef<HTMLDivElement | null>(null)
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: [employeeDragType, shiftDragType],
     canDrop: () => true,
@@ -1046,11 +1052,13 @@ function DropZoneCell({
       canDrop: monitor.canDrop(),
     }),
   }), [onDropEmployee, onMoveShift])
-  drop(cellRef)
+  const setCellRef = useCallback((node: HTMLDivElement | null) => {
+    drop(node)
+  }, [drop])
 
   return (
     <div
-      ref={cellRef}
+      ref={setCellRef}
       onClick={onSelectCell}
       onMouseEnter={onEnterFill}
       className={cn(
@@ -1128,7 +1136,6 @@ function ShiftCard({
   onClearEmployeeWeek: () => void
 }) {
   const label = shift.shiftLabel ?? "Chưa set giờ"
-  const cardRef = useRef<HTMLDivElement | null>(null)
   const [{ isDragging }, drag] = useDrag(() => ({
     type: shiftDragType,
     item: { type: shiftDragType, shiftId: shift.id } satisfies DragShift,
@@ -1136,11 +1143,13 @@ function ShiftCard({
       isDragging: monitor.isDragging(),
     }),
   }), [shift.id])
-  drag(cardRef)
+  const setCardRef = useCallback((node: HTMLDivElement | null) => {
+    drag(node)
+  }, [drag])
 
   return (
     <div
-      ref={cardRef}
+      ref={setCardRef}
       onDoubleClick={(event) => {
         event.stopPropagation()
         onSelect(event)
@@ -1313,18 +1322,20 @@ function ShiftTimePresetModal({
   const [newPreset, setNewPreset] = useState<ShiftTimeOption>({ label: "", start: "08:00", end: "14:00" })
 
   useEffect(() => {
-    setDrafts(
-      Object.fromEntries(
-        presets.map((preset) => [
-          preset.id,
-          {
-            label: preset.label,
-            start: preset.startTime,
-            end: preset.endTime,
-          },
-        ]),
-      ),
-    )
+    queueMicrotask(() => {
+      setDrafts(
+        Object.fromEntries(
+          presets.map((preset) => [
+            preset.id,
+            {
+              label: preset.label,
+              start: preset.startTime,
+              end: preset.endTime,
+            },
+          ]),
+        ),
+      )
+    })
   }, [presets])
 
   const updateDraft = (presetId: string, next: Partial<ShiftTimeOption>) => {

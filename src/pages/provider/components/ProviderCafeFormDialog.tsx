@@ -71,19 +71,19 @@ export function ProviderCafeFormDialog({
     if (!open) return
 
     if (!cafe) {
-      setValues(defaultValues)
-      setOpenTime("09:00")
-      setCloseTime("22:00")
-      setFiles([])
+      queueMicrotask(() => {
+        setValues(defaultValues)
+        setOpenTime("09:00")
+        setCloseTime("22:00")
+        setFiles([])
+      })
       return
     }
 
     const sampleHours = cafe.operatingHours.mon ?? Object.values(cafe.operatingHours)[0]
     const nextOpen = sampleHours?.open ?? "09:00"
     const nextClose = sampleHours?.close ?? "22:00"
-    setOpenTime(nextOpen)
-    setCloseTime(nextClose)
-    setValues({
+    const nextValues = {
       name: cafe.name,
       description: cafe.description ?? "",
       phone: cafe.phone ?? "",
@@ -100,8 +100,13 @@ export function ProviderCafeFormDialog({
       max_concurrent_bookings: cafe.maxConcurrentBookings,
       min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
       byoc_capacity: cafe.byocCapacity,
+    }
+    queueMicrotask(() => {
+      setOpenTime(nextOpen)
+      setCloseTime(nextClose)
+      setValues(nextValues)
+      setFiles([])
     })
-    setFiles([])
   }, [cafe, open])
 
   const title = cafe ? "Cập nhật cơ sở" : "Thêm cơ sở"

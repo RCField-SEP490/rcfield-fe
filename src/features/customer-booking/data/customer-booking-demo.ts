@@ -130,7 +130,7 @@ export function getDemoBookingSnapshot(): CustomerBookingSnapshot {
     checkInCode: "RC8492-TXM",
     paymentComponents: [
       { id: "pc-1", type: "SLOT_FEE", label: "Gói trải nghiệm", amount: 500000, status: "CAPTURED" },
-      { id: "pc-2", type: "SECURITY_DEPOSIT", label: "Cọc xe dự phòng", amount: 100000, status: "HELD" },
+      { id: "pc-2", type: "SECURITY_DEPOSIT", label: "Cọc xe dự phòng", amount: 0, status: "HELD" },
       { id: "pc-3", type: "VAT", label: "Thuế VAT 10%", amount: 60000, status: "CAPTURED" },
     ],
   }

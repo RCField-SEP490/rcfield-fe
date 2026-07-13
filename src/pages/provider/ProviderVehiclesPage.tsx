@@ -82,8 +82,10 @@ export function ProviderVehiclesPage() {
   const deleteCatalogMutation = useDeleteVehicleCatalog(selectedCafeId)
 
   useEffect(() => {
-    setCurrentPage(1)
-    setCurrentCatalogPage(1)
+    queueMicrotask(() => {
+      setCurrentPage(1)
+      setCurrentCatalogPage(1)
+    })
   }, [selectedCafeId])
 
   const getCatalogForUnit = (unit: VehicleUnit) => {
@@ -140,7 +142,9 @@ export function ProviderVehiclesPage() {
       await deleteCatalogMutation.mutateAsync(catalogToDelete.id)
       setIsCatalogDeleteOpen(false)
       setCatalogToDelete(null)
-    } catch {}
+    } catch {
+      // Mutation already surfaces failure state through its own handlers.
+    }
   }
 
   const formatVND = (value: number) => {
@@ -310,20 +314,20 @@ export function ProviderVehiclesPage() {
 
                   {/* Filter Tabs */}
                   <div className="flex items-center gap-1 overflow-x-auto rounded-xl bg-zinc-100 p-1">
-                    {[
+                    {([
                       { value: "ALL", label: "Tất cả", count: units.length },
                       { value: "AVAILABLE", label: "Sẵn sàng", count: units.filter(u => u.status === "AVAILABLE").length },
                       { value: "IN_USE", label: "Đang thuê", count: units.filter(u => u.status === "IN_USE").length },
                       { value: "MAINTENANCE", label: "Bảo trì", count: units.filter(u => u.status === "MAINTENANCE").length },
                       { value: "RETIRED", label: "Ngừng chạy", count: units.filter(u => u.status === "RETIRED").length },
-                    ].map((f) => {
+                    ] as const).map((f) => {
                       const isActive = statusFilter === f.value
                       return (
                         <button
                           key={f.value}
                           type="button"
                           onClick={() => {
-                            setStatusFilter(f.value as any)
+                            setStatusFilter(f.value)
                             setCurrentPage(1)
                           }}
                           className={cn(
@@ -937,4 +941,3 @@ function QueueItem({
     </Link>
   )
 }
-

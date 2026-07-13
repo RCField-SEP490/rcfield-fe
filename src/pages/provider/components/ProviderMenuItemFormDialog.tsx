@@ -42,18 +42,19 @@ export function ProviderMenuItemFormDialog({
   useEffect(() => {
     if (!open) return
     if (!item) {
-      setValues(defaultValues)
+      queueMicrotask(() => setValues(defaultValues))
       return
     }
 
-    setValues({
+    const nextValues = {
       name: item.name,
       description: item.description ?? "",
       price: Number(item.price),
       category: item.category ?? "",
       image_url: item.imageUrl ?? null,
       is_available: item.isAvailable,
-    })
+    }
+    queueMicrotask(() => setValues(nextValues))
   }, [item, open])
 
   const setField = <K extends keyof MenuUpsertBody>(field: K, value: MenuUpsertBody[K]) => {

@@ -10,6 +10,10 @@ import {
   StaffButton,
 } from "./components/StaffUI"
 
+type IncidentType = "CRASH" | "EQUIPMENT_DAMAGE" | "MISCONDUCT" | "TRACK_VIOLATION"
+type IncidentSeverity = "LOW" | "MEDIUM" | "HIGH"
+type IncidentStatusFilter = "ALL" | "UNRESOLVED" | "RESOLVED"
+
 export default function StaffIncidentsPage() {
   const { incidents, logIncident, resolveIncident, sessions, bookings } = useStaffOperations()
 
@@ -18,13 +22,13 @@ export default function StaffIncidentsPage() {
   const [selectedSessionId, setSelectedSessionId] = useState("")
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
-  const [type, setType] = useState<"CRASH" | "EQUIPMENT_DAMAGE" | "MISCONDUCT" | "TRACK_VIOLATION">("CRASH")
-  const [severity, setSeverity] = useState<"LOW" | "MEDIUM" | "HIGH">("LOW")
+  const [type, setType] = useState<IncidentType>("CRASH")
+  const [severity, setSeverity] = useState<IncidentSeverity>("LOW")
   const [description, setDescription] = useState("")
   const [fineAmount, setFineAmount] = useState(0)
 
   // Filter states
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "UNRESOLVED" | "RESOLVED">("ALL")
+  const [statusFilter, setStatusFilter] = useState<IncidentStatusFilter>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
 
   // Handle session selection to auto-fill customer info
@@ -33,11 +37,12 @@ export default function StaffIncidentsPage() {
     if (!sessId) return
 
     const session = sessions.find((s) => s.sessionId === sessId)
-    const booking = bookings.find((b) => b.sessions?.some((s) => s.sessionId === sessId)) as any
+    const booking = bookings.find((b) => b.sessions?.some((s) => s.sessionId === sessId))
 
     if (session) {
-      setCustomerName(booking?.customerName || session.participants[0]?.name || booking?.plannedParticipants?.[0] || "Khách lẻ")
-      setCustomerPhone(booking?.customerPhone || "")
+      const primaryParticipant = booking?.participantDetails?.[0]
+      setCustomerName(primaryParticipant?.name || session.participants[0]?.name || booking?.plannedParticipants?.[0] || "Khách lẻ")
+      setCustomerPhone(primaryParticipant?.phone || "")
     }
   }
 
@@ -181,7 +186,7 @@ export default function StaffIncidentsPage() {
                 </label>
                 <select
                   value={type}
-                  onChange={(e) => setType(e.target.value as any)}
+                  onChange={(e) => setType(e.target.value as IncidentType)}
                   className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                 >
                   <option value="CRASH">Va chạm phương tiện (Crash)</option>
@@ -198,7 +203,7 @@ export default function StaffIncidentsPage() {
                 </label>
                 <select
                   value={severity}
-                  onChange={(e) => setSeverity(e.target.value as any)}
+                  onChange={(e) => setSeverity(e.target.value as IncidentSeverity)}
                   className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                 >
                   <option value="LOW">Thấp (LOW)</option>
@@ -252,14 +257,14 @@ export default function StaffIncidentsPage() {
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
           <Filter className="size-4 text-[#6b7280] shrink-0" />
-          {[
+          {([
             { code: "ALL", label: "Tất cả" },
             { code: "UNRESOLVED", label: "Chưa giải quyết" },
             { code: "RESOLVED", label: "Đã giải quyết" },
-          ].map((tab) => (
+          ] as const).map((tab) => (
             <button
               key={tab.code}
-              onClick={() => setStatusFilter(tab.code as any)}
+              onClick={() => setStatusFilter(tab.code)}
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-bold transition-all border shrink-0",
                 statusFilter === tab.code

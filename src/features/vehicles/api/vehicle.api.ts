@@ -86,7 +86,7 @@ export const vehicleApi = {
 
   listUnits: async (
     cafeId: string,
-    filters?: { status?: VehicleStatus; catalog_id?: string; search?: string },
+    filters?: { status?: VehicleStatus; catalog_id?: string; search?: string; exclude_retired?: boolean },
   ): Promise<VehicleUnit[]> => {
     const res = await api.get<ApiResponse<VehicleUnit[]>>(`/v1/cafes/${cafeId}/vehicles`, {
       params: filters,

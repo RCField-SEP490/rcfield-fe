@@ -24,11 +24,10 @@ import {
 } from "lucide-react"
 import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
-import { cafeApi } from "@/features/cafes/api/cafe.api"
-import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
-import type { BackendCafe } from "@/features/cafes/types"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
@@ -100,7 +99,11 @@ function getVehicleCount(booking: any): number {
 }
 
 function getFnbAmount(booking: any): number {
-  return Number(booking.fnbPreorderAmount ?? booking.fnbPreorderFee ?? 0)
+  return Number(booking.fnbPreorderFee ?? 0)
+}
+
+function getFnbOnsiteAmount(booking: any): number {
+  return Number(booking.fnbOnsiteFee ?? 0)
 }
 
 export default function StaffTodayBookingsPage() {
@@ -170,10 +173,20 @@ export default function StaffTodayBookingsPage() {
   const [selectedVehicles, setSelectedVehicles] = useState<VehicleUnit[]>([])
   const bookingDate = getTodayString()
 
-  // Branch data
-  const [cafeDetails, setCafeDetails] = useState<BackendCafe | null>(null)
-  const [availableVehicles, setAvailableVehicles] = useState<VehicleUnit[]>([])
-  const [loadingVehicles, setLoadingVehicles] = useState(false)
+
+  // Cafe details — dùng useQuery thay vì useEffect+setState
+  const { data: cafeDetails, isLoading: isLoadingCafe } = useQuery({
+    queryKey: cafeQueryKeys.detail(assignedCafeId ?? ""),
+    queryFn: () => cafeApi.getCafe(assignedCafeId!),
+    enabled: !!assignedCafeId,
+    staleTime: 5 * 60 * 1000, // 5 phút
+  })
+
+  // Available vehicles — dùng useQuery thay vì useEffect+setState
+  const { data: availableVehicles = [], isLoading: loadingVehicles } = useVehicleUnits(
+    assignedCafeId ?? "",
+    { exclude_retired: true },
+  )
 
   // Track configs (must be before useEffects that reference it)
   const { data: trackConfigs = [] } = useTrackConfigs(assignedCafeId ?? "")
@@ -204,26 +217,9 @@ export default function StaffTodayBookingsPage() {
         }
       }
     }
-  }, [activeTab, trackConfigs, searchParams])
+  }, [activeTab, selectedTrackCode, trackConfigs, searchParams])
 
-  // Fetch Cafe Details & available Vehicles
-  useEffect(() => {
-    if (assignedCafeId) {
-      cafeApi
-        .getCafe(assignedCafeId)
-        .then((data) => setCafeDetails(data))
-        .catch((err) => console.error("Error loading cafe details:", err))
 
-      setLoadingVehicles(true)
-      vehicleApi
-        .listUnits(assignedCafeId)
-        .then((units) => {
-          setAvailableVehicles(units)
-        })
-        .catch((err) => console.error("Error loading fleet units:", err))
-        .finally(() => setLoadingVehicles(false))
-    }
-  }, [assignedCafeId])
 
   // Reset Walk-in form
   const resetWalkinForm = () => {
@@ -242,14 +238,15 @@ export default function StaffTodayBookingsPage() {
     return trackConfigs.find((c) => c.track_type?.code === selectedTrackCode) || null
   }, [trackConfigs, selectedTrackCode])
 
-  const { openHour, closeHour } = useMemo(() => {
+  const { openHour, closeHour, isClosedToday } = useMemo(() => {
     const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
     const dayKey = DAY_KEYS[new Date().getDay()]
-    const hours = (cafeDetails?.operatingHours as Record<string, { open?: string; close?: string }> | undefined)?.[dayKey]
+    const hours = (cafeDetails?.operatingHours as Record<string, { open?: string; close?: string; is_closed?: boolean }> | undefined)?.[dayKey]
     const parseHour = (t?: string) => (t ? parseInt(t.split(":")[0], 10) : undefined)
     return {
       openHour: parseHour(hours?.open) ?? 8,
       closeHour: parseHour(hours?.close) ?? 22,
+      isClosedToday: !!hours?.is_closed,
     }
   }, [cafeDetails])
 
@@ -267,9 +264,9 @@ export default function StaffTodayBookingsPage() {
   }, [dailyAvailability, openHour, closeHour, playMode])
 
   const calculateDurationFromSlots = (start: string, end: string | null): number => {
-    if (!start) return 60
+    if (!start) return 0
     const [startH, startM] = start.split(":").map(Number)
-    const slotDuration = cafeDetails?.slotDurationMinutes || 30
+    const slotDuration = cafeDetails?.slotDurationMinutes || 60
     if (!end) return slotDuration
     const [endH, endM] = end.split(":").map(Number)
     const startTotal = startH * 60 + startM
@@ -278,15 +275,16 @@ export default function StaffTodayBookingsPage() {
   }
 
   // Calculate pricing values
-  const slotFeeRate = cafeDetails ? Number(cafeDetails.slotFeeRate) || 80000 : 80000
-  const slotDuration = cafeDetails?.slotDurationMinutes || 30
+  // Không dùng fallback giá giả — nếu chưa load cafe thì hiện 0
+  const slotFeeRate = cafeDetails ? Number(cafeDetails.slotFeeRate) || 0 : 0
+  const slotDuration = cafeDetails?.slotDurationMinutes || 60
   const computedDuration = calculateDurationFromSlots(selectedSlot, selectedSlotEnd)
   const slotCount = Math.ceil(computedDuration / slotDuration)
   const slotFeeTotal = slotCount * slotFeeRate
 
-  // Calculate rental fees
+  // Không dùng fallback giá giả — nếu catalog chưa có hourlyRate thì tính 0
   const rentalFeeTotal = selectedVehicles.reduce((total, unit) => {
-    const hourly = unit.catalog?.hourlyRate || 75000
+    const hourly = unit.catalog?.hourlyRate ?? 0
     return total + hourly * (computedDuration / 60)
   }, 0)
 
@@ -629,6 +627,7 @@ export default function StaffTodayBookingsPage() {
                   const participantCount = getParticipantCount(b)
                   const vehicleCount = getVehicleCount(b)
                   const fnbAmount = getFnbAmount(b)
+                  const fnbOnsiteAmount = getFnbOnsiteAmount(b)
                   const activeSession = !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(b.status)
                     ? b.sessions?.find((session: any) => ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(session.status))
                     : undefined
@@ -662,6 +661,7 @@ export default function StaffTodayBookingsPage() {
                     : "warning"
 
                   const hasFnb = fnbAmount > 0
+                  const hasOnsiteFnb = fnbOnsiteAmount > 0
                   const countdown = activeSession ? null : getSlotCountdown(slotStart)
                   const remainingMs = activeSession ? new Date(slotEnd).getTime() - nowTime : null
                   const remainingMinutes = remainingMs !== null ? Math.ceil(remainingMs / 60000) : null
@@ -763,6 +763,12 @@ export default function StaffTodayBookingsPage() {
                           <span className="flex items-center gap-1 rounded-md bg-orange-50 border border-orange-200 px-2 py-1 text-[11px] font-bold text-orange-700">
                             <UtensilsCrossed className="size-3" />
                             F&B đặt trước · {formatCurrency(fnbAmount)}
+                          </span>
+                        )}
+                        {hasOnsiteFnb && (
+                          <span className="flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-bold text-amber-700">
+                            <UtensilsCrossed className="size-3" />
+                            F&B gọi tại ca · {formatCurrency(fnbOnsiteAmount)}
                           </span>
                         )}
                         <div className="ml-auto">
@@ -893,10 +899,22 @@ export default function StaffTodayBookingsPage() {
                     onChange={(e) => {
                       const match = trackConfigs.find((c) => c.track_type?.code === e.target.value)
                       if (match) {
-                        setSelectedTrackCode(match.track_type?.code ?? "")
+                        const targetTrackCode = match.track_type?.code ?? ""
+                        setSelectedTrackCode(targetTrackCode)
                         setSelectedTrackName(match.track_type?.name ?? "")
                         setSelectedSlot("")
                         setSelectedSlotEnd(null)
+                        // Filter out incompatible vehicles
+                        setSelectedVehicles((prev) =>
+                          prev.filter((v) => {
+                            const compat = v.catalog?.compatibleTrackTypes
+                            return (
+                              !compat ||
+                              compat.length === 0 ||
+                              compat.some((t) => typeof t === "string" ? t === targetTrackCode : t.code === targetTrackCode || t.id === targetTrackCode)
+                            )
+                          })
+                        )
                       }
                     }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
@@ -945,7 +963,16 @@ export default function StaffTodayBookingsPage() {
                   </span>
                 </div>
 
-                <div className={cn("transition-opacity", isLoadingAvailability && "pointer-events-none opacity-40")}>
+                {isClosedToday && (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-700">
+                    Cửa hàng hôm nay đóng cửa (Theo lịch hoạt động). Không thể khởi tạo ca chơi trực tiếp.
+                  </div>
+                )}
+
+                <div className={cn(
+                  "transition-opacity",
+                  (isLoadingAvailability || isClosedToday) && "pointer-events-none opacity-40"
+                )}>
                   {isLoadingAvailability && (
                     <div className="flex items-center gap-2 text-xs text-[#6b7280] mb-2 animate-pulse font-semibold">
                       <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
@@ -986,19 +1013,28 @@ export default function StaffTodayBookingsPage() {
                         const currentStatus = fleetStates[unit.id] || unit.status
                         const isSelected = selectedVehicles.some((v) => v.id === unit.id)
                         const isBusy = currentStatus === "IN_USE" || currentStatus === "MAINTENANCE"
+                        const isRetired = currentStatus === "RETIRED"
+                        const isCompatible =
+                          !selectedTrackCode ||
+                          !unit.catalog?.compatibleTrackTypes ||
+                          unit.catalog.compatibleTrackTypes.length === 0 ||
+                          unit.catalog.compatibleTrackTypes.some(
+                            (t) => typeof t === "string" ? t === selectedTrackCode : t.code === selectedTrackCode || t.id === selectedTrackCode
+                          )
+                        const isDisabled = isBusy || isRetired || !isCompatible
 
                         return (
                           <div
                             key={unit.id}
                             onClick={() => {
-                              if (!isBusy) toggleVehicle(unit)
+                              if (!isDisabled) toggleVehicle(unit)
                             }}
                             className={cn(
                               "flex items-center gap-3 rounded-lg border p-3 transition-all select-none cursor-pointer",
                               isSelected
                                 ? "border-[#ea580c] bg-[#fff3eb]/30 text-[#ea580c]"
                                 : "border-[#e5e2e1] bg-white hover:border-[#a09e9d]",
-                              isBusy && "opacity-40 cursor-not-allowed pointer-events-none"
+                              isDisabled && "opacity-40 cursor-not-allowed pointer-events-none"
                             )}
                           >
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#f5f3f2] border border-[#e5e2e1]">
@@ -1012,11 +1048,17 @@ export default function StaffTodayBookingsPage() {
                                 ID: {unit.identifier} | {unit.color}
                               </p>
                               <p className="text-[10px] font-bold text-[#ea580c] mt-0.5">
-                                {unit.catalog?.hourlyRate?.toLocaleString("vi-VN") || "75.000"} đ/h
+                                {unit.catalog?.hourlyRate != null
+                                  ? unit.catalog.hourlyRate.toLocaleString("vi-VN") + " đ/h"
+                                  : "— đ/h"}
                               </p>
                             </div>
                             <div className="text-right font-mono text-[9px] font-bold">
-                              {isBusy ? (
+                              {isRetired ? (
+                                <span className="text-gray-400">NGỪNG HĐ</span>
+                              ) : !isCompatible ? (
+                                <span className="text-amber-600">K.TƯƠNG THÍCH</span>
+                              ) : isBusy ? (
                                 <span className="text-rose-600">ĐANG BẬN</span>
                               ) : (
                                 <span className="text-emerald-600">SẴN SÀNG</span>
@@ -1050,27 +1092,34 @@ export default function StaffTodayBookingsPage() {
               {/* BILLING BREAKDOWN PREVIEW */}
               <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 space-y-2">
                 <h5 className="text-xs font-extrabold uppercase tracking-wider text-[#6b7280]">Chi tiết hóa đơn dự kiến</h5>
-                
-                <div className="space-y-1.5 text-xs font-bold">
-                  <div className="flex justify-between text-[#4c4a49]">
-                    <span>
-                      Phí giờ chơi ({slotCount} slots x {slotFeeRate.toLocaleString("vi-VN")} đ)
-                    </span>
-                    <span>{slotFeeTotal.toLocaleString("vi-VN")} đ</span>
+
+                {isLoadingCafe ? (
+                  <div className="flex items-center gap-2 text-xs text-[#6b7280] py-2 animate-pulse font-semibold">
+                    <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
+                    Đang tải thông tin giá...
                   </div>
-                  {playMode !== "BYOC" && (
+                ) : (
+                  <div className="space-y-1.5 text-xs font-bold">
                     <div className="flex justify-between text-[#4c4a49]">
-                      <span>Phí thuê xe ({selectedVehicles.length} xe)</span>
-                      <span>{rentalFeeTotal.toLocaleString("vi-VN")} đ</span>
+                      <span>
+                        Phí giờ chơi ({slotCount} slots x {slotFeeRate.toLocaleString("vi-VN")} đ)
+                      </span>
+                      <span>{slotFeeTotal.toLocaleString("vi-VN")} đ</span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-[#1c1b1b] border-t border-[#e5e2e1] pt-2">
-                    <span>Tổng thanh toán tại quầy:</span>
-                    <span className="text-[#ea580c] text-sm font-black">
-                      {totalAmount.toLocaleString("vi-VN")} đ
-                    </span>
+                    {playMode !== "BYOC" && (
+                      <div className="flex justify-between text-[#4c4a49]">
+                        <span>Phí thuê xe ({selectedVehicles.length} xe)</span>
+                        <span>{rentalFeeTotal.toLocaleString("vi-VN")} đ</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-[#1c1b1b] border-t border-[#e5e2e1] pt-2">
+                      <span>Tổng thanh toán tại quầy:</span>
+                      <span className="text-[#ea580c] text-sm font-black">
+                        {totalAmount.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Form Actions */}
@@ -1086,8 +1135,18 @@ export default function StaffTodayBookingsPage() {
                 >
                   Hủy bỏ
                 </StaffButton>
-                <StaffButton type="submit" variant="primary" className="flex-1 uppercase tracking-wider">
-                  Khởi tạo & Nhận ca chạy
+                <StaffButton
+                  type="submit"
+                  variant="primary"
+                  className="flex-1 uppercase tracking-wider"
+                  disabled={isLoadingCafe || !cafeDetails || isClosedToday}
+                >
+                  {isLoadingCafe ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Đang tải...
+                    </>
+                  ) : "Khởi tạo & Nhận ca chạy"}
                 </StaffButton>
               </div>
             </form>

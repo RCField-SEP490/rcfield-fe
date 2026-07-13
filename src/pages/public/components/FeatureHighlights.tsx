@@ -11,7 +11,7 @@ const features = [
     icon: CalendarCheck,
     color: "bg-emerald-500",
     title: "Đặt lịch & giữ chỗ",
-    desc: "Chọn khung giờ, đặt xe thuê (RENTAL) hoặc mang xe cá nhân (BYOC). Thanh toán cọc online, slot giữ ngay.",
+    desc: "Chọn khung giờ, đặt xe thuê (RENTAL) hoặc mang xe cá nhân (BYOC). Thanh toán online, slot giữ ngay.",
   },
   {
     icon: Camera,
@@ -29,7 +29,7 @@ const features = [
     icon: Receipt,
     color: "bg-amber-500",
     title: "Thanh toán rõ ràng",
-    desc: "Hóa đơn chi tiết từng khoản. Tiền cọc hoàn tự động nếu xe không có hư hỏng.",
+    desc: "Hóa đơn chi tiết từng khoản dịch vụ. Thanh toán bồi thường nếu xe có hư hỏng.",
   },
 ]
 

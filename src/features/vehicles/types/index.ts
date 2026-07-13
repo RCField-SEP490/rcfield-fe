@@ -29,9 +29,9 @@ export interface VehicleCatalog {
   securityDeposit: number
   damageMultiplier: number
   tier: VehicleTier
-  compatibleTrackTypes: TrackType[]
+  compatibleTrackTypes: Array<TrackType | string>
   coverImageUrl?: string | null
-  images: any[]
+  images: CatalogImage[]
   createdAt: string
   updatedAt: string
   total_units?: number
@@ -52,7 +52,7 @@ export interface VehicleUnit {
   notes: string | null
   createdAt: string
   updatedAt: string
-  catalog?: VehicleCatalog
+  catalog: VehicleCatalog
 }
 
 export interface CreateVehicleCatalogDto {

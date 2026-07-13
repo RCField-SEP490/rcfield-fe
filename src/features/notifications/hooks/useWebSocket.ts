@@ -27,7 +27,10 @@ function buildWsUrl(): string | null {
 
 export function useWebSocket(onMessage: (msg: WsMessage) => void, enabled = true): void {
   const handlerRef = useRef(onMessage)
-  handlerRef.current = onMessage
+
+  useEffect(() => {
+    handlerRef.current = onMessage
+  }, [onMessage])
 
   const url = enabled ? buildWsUrl() : null
 

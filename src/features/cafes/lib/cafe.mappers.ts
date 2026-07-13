@@ -127,7 +127,21 @@ function formatCompactCurrency(value: number) {
   return String(value)
 }
 
-export function mapCatalogToExploreVehicle(catalog: any): Vehicle {
+type ExploreVehicleCatalog = {
+  id: string
+  name?: string | null
+  tier?: string | null
+  compatibleTrackTypes?: Array<TrackType | string>
+  total_units?: number | null
+  _count?: { units?: number | null } | null
+  hourlyRate?: number | string | null
+  securityDeposit?: number | string | null
+  coverImageUrl?: string | null
+  cover_image_url?: string | null
+  images?: Array<string | { url?: string | null; cover_image_url?: string | null; coverImageUrl?: string | null }>
+}
+
+export function mapCatalogToExploreVehicle(catalog: ExploreVehicleCatalog): Vehicle {
   const brandName = catalog.name ? catalog.name.split(" ")[0] : "Tamiya"
   let specBattery = "2S LiPo"
   let specMotor = "Brushed 540"
@@ -147,8 +161,11 @@ export function mapCatalogToExploreVehicle(catalog: any): Vehicle {
     specScale = "1/10"
   }
 
-  const compatibleTrack = (Array.isArray(catalog.compatibleTrackTypes) && catalog.compatibleTrackTypes.length > 0)
-    ? formatTrackType(catalog.compatibleTrackTypes[0])
+  const firstCompatibleTrack = Array.isArray(catalog.compatibleTrackTypes) ? catalog.compatibleTrackTypes[0] : undefined
+  const compatibleTrack = firstCompatibleTrack
+    ? typeof firstCompatibleTrack === "string"
+      ? firstCompatibleTrack
+      : formatTrackType(firstCompatibleTrack)
     : "Drift"
 
   const countVal = catalog.total_units ?? catalog._count?.units ?? 0
@@ -167,5 +184,12 @@ export function mapCatalogToExploreVehicle(catalog: any): Vehicle {
       motor: specMotor,
       brand: brandName,
     },
+    compatibleTrackTypes: (Array.isArray(catalog.compatibleTrackTypes)
+      ? catalog.compatibleTrackTypes.filter((t): t is TrackType => typeof t !== "string").map((t) => ({
+          id: t.id,
+          code: t.code,
+          name: t.name,
+        }))
+      : []),
   }
 }

@@ -75,18 +75,20 @@ export function ProviderVehicleCatalogFormPage() {
   // Pre-populate fields in edit mode
   useEffect(() => {
     if (isEdit && catalog) {
-      setFormName(catalog.name)
-      setFormTier(catalog.tier)
-      setFormHourlyRate(catalog.hourlyRate)
-      setFormDamageMultiplier(catalog.damageMultiplier)
-      if (catalog.images && catalog.images.length > 0) {
-        setFormImages(catalog.images.map((img: any) => img.url))
-      } else if (catalog.coverImageUrl) {
-        setFormImages([catalog.coverImageUrl])
-      } else {
-        setFormImages([])
-      }
-      setFormTracks((catalog.compatibleTrackTypes || []).map((t: any) => typeof t === "string" ? t : t.id))
+      queueMicrotask(() => {
+        setFormName(catalog.name)
+        setFormTier(catalog.tier)
+        setFormHourlyRate(catalog.hourlyRate)
+        setFormDamageMultiplier(catalog.damageMultiplier)
+        if (catalog.images && catalog.images.length > 0) {
+          setFormImages(catalog.images.map((img) => img.url))
+        } else if (catalog.coverImageUrl) {
+          setFormImages([catalog.coverImageUrl])
+        } else {
+          setFormImages([])
+        }
+        setFormTracks((catalog.compatibleTrackTypes || []).map((trackType) => typeof trackType === "string" ? trackType : trackType.id))
+      })
     }
   }, [isEdit, catalog])
 

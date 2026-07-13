@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate, Link, useSearchParams } from "react-router"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { motion, AnimatePresence } from "framer-motion"
@@ -25,6 +25,7 @@ import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { env } from "@/shared/lib/env"
 import { storageKeys } from "@/shared/lib/storage"
+import { getApiErrorInfo } from "@/shared/lib/utils"
 import type { UserRole } from "@/shared/types/common"
 import { toast } from "sonner"
 
@@ -58,7 +59,7 @@ const rotatingTaglines = [
   },
   {
     title: "Quản Trị Doanh Thu",
-    desc: "Tự động phân tách phí dịch vụ, cọc và F&B qua hệ thống Ledger chi tiết.",
+    desc: "Tự động phân tách phí dịch vụ, thuê xe và F&B qua hệ thống Ledger chi tiết.",
     icon: Zap,
     color: "from-indigo-500 to-blue-500"
   }
@@ -83,7 +84,7 @@ export function LoginPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<LoginFormValues>({
+  const { register, handleSubmit, setValue, control, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: localStorage.getItem(storageKeys.lastEmail) ?? "",
@@ -91,7 +92,7 @@ export function LoginPage() {
       rememberMe: localStorage.getItem(storageKeys.rememberMe) === "true",
     },
   })
-  const rememberMe = watch("rememberMe")
+  const rememberMe = useWatch({ control, name: "rememberMe" })
 
   const completeLogin = useCallback(
     (auth: LoginResponse, remember: boolean) => {
@@ -139,9 +140,8 @@ export function LoginPage() {
       try {
         const auth = await loginWithGoogle({ idToken: credential })
         completeLogin(auth, rememberMe === true)
-      } catch (error: any) {
-        const code = error?.response?.data?.code
-        const message = error?.response?.data?.message
+      } catch (error: unknown) {
+        const { code, message } = getApiErrorInfo(error)
 
         if (code === "GOOGLE_AUTH_FAILED") {
           toast.error("Không thể xác thực Google", {
@@ -231,9 +231,8 @@ export function LoginPage() {
       })
 
       completeLogin(auth, data.rememberMe === true)
-    } catch (error: any) {
-      const code = error?.response?.data?.code
-      const message = error?.response?.data?.message
+    } catch (error: unknown) {
+      const { code, message } = getApiErrorInfo(error)
 
       if (code === "INVALID_CREDENTIALS") {
         toast.error("Email hoặc mật khẩu không đúng", {

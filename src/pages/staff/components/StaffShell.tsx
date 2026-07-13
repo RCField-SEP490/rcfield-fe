@@ -29,7 +29,7 @@ import { Button } from "@/shared/ui/button"
 import { StaffAccountMenu } from "./StaffUI"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 
-type NavItem = { label: string; icon: React.ComponentType<any>; path: string }
+type NavItem = { label: string; icon: React.ComponentType<{ className?: string }>; path: string }
 type NavGroup = { heading: string; items: NavItem[] }
 
 const staffNavGroups: NavGroup[] = [
@@ -73,7 +73,6 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
   const navigate = useNavigate()
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
 
-  const [cafes, setCafes] = useState<BackendCafe[]>([])
   const [activeCafe, setActiveCafe] = useState<BackendCafe | null>(null)
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scanCode, setScanCode] = useState("")
@@ -106,24 +105,29 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
     return () => cancelAnimationFrame(frame)
   }, [location.pathname, mobileMenuOpen])
 
-  // Fetch cafes to display branch name in header
   useEffect(() => {
-    cafeApi
-      .listCafes()
-      .then((res) => {
-        setCafes(res.data)
-      })
-      .catch((err) => console.error("Error loading cafes in StaffShell", err))
-  }, [])
-
-  useEffect(() => {
-    if (assignedCafeId && cafes.length > 0) {
-      const match = cafes.find((c) => c.id === assignedCafeId)
-      setActiveCafe(match || null)
-    } else {
-      setActiveCafe(null)
+    if (!assignedCafeId) {
+      queueMicrotask(() => setActiveCafe(null))
+      return
     }
-  }, [assignedCafeId, cafes])
+
+    let mounted = true
+    cafeApi
+      .getCafe(assignedCafeId)
+      .then((cafe) => {
+        if (mounted) setActiveCafe(cafe)
+      })
+      .catch((err) => {
+        console.error("Error loading cafe in StaffShell", err)
+        if (mounted) {
+          setActiveCafe(null)
+        }
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [assignedCafeId])
 
   const handleLogout = () => {
     clearAuthenticated()

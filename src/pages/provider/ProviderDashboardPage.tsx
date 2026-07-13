@@ -46,6 +46,7 @@ import { useProviderDashboard } from "@/features/dashboard/hooks/useProviderDash
 import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
+import type { CafeListParams } from "@/features/cafes/types"
 import type { RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
 import { AiInsightsPanel } from "@/features/dashboard/components/AiInsightsPanel"
 
@@ -61,7 +62,7 @@ export function ProviderDashboardPage() {
   // Lấy dữ liệu danh sách chi nhánh của Provider để check onboarding thật
   const { data: cafesData, isLoading: isLoadingCafes } = useQuery({
     queryKey: ["provider-cafes-list-onboarding"],
-    queryFn: () => cafeApi.listCafes({ scope: "managed" } as any),
+    queryFn: () => cafeApi.listCafes({ scope: "managed" } satisfies CafeListParams),
     staleTime: 30000,
   })
   const cafes = cafesData?.data ?? []
@@ -95,8 +96,10 @@ export function ProviderDashboardPage() {
   useEffect(() => {
     if (allStepsCompleted && !onboardingCompleted && !viewSetup) {
       localStorage.setItem("onboarding_completed", "true")
-      setOnboardingCompleted(true)
-      toast.success("Chúc mừng! Bạn đã hoàn thành tất cả các bước thiết lập cơ bản. Kích hoạt Dashboard thành công!")
+      queueMicrotask(() => {
+        setOnboardingCompleted(true)
+        toast.success("Chúc mừng! Bạn đã hoàn thành tất cả các bước thiết lập cơ bản. Kích hoạt Dashboard thành công!")
+      })
     }
   }, [allStepsCompleted, onboardingCompleted, viewSetup])
 
@@ -324,7 +327,7 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
 
   const { data: cafesData } = useQuery({
     queryKey: ["provider-cafes-list"],
-    queryFn: () => cafeApi.listCafes({ scope: "managed" } as any),
+    queryFn: () => cafeApi.listCafes({ scope: "managed" } satisfies CafeListParams),
     staleTime: 300_000,
   })
   const cafes = cafesData?.data ?? []
@@ -551,13 +554,15 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     tick={{ fontSize: 10 }}
                   />
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(v: any, n: any) => [formatCurrency(Number(v || 0)), String(n || "")]}
+                    formatter={(v: unknown, n: unknown) => [formatCurrency(Number(v || 0)), String(n || "")]}
                     contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
                   />
                   <Legend
                     wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                    onMouseEnter={(o: any) => setHoveredSeries(o.dataKey)}
+                    onMouseEnter={(o: unknown) => {
+                      const dataKey = typeof o === "object" && o !== null ? (o as { dataKey?: unknown }).dataKey : undefined
+                      setHoveredSeries(typeof dataKey === "string" ? dataKey : null)
+                    }}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
                   <Area
@@ -662,14 +667,14 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     ))}
                   </Pie>
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(v: any) => formatCurrency(Number(v || 0))}
+                    formatter={(v: unknown) => formatCurrency(Number(v || 0))}
                     contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
                   />
                   <Legend
                     wrapperStyle={{ fontSize: 10 }}
-                    onMouseEnter={(o: any) => {
-                      const match = breakdown.find((item) => item.label === o.value)
+                    onMouseEnter={(o: unknown) => {
+                      const value = typeof o === "object" && o !== null ? (o as { value?: unknown }).value : undefined
+                      const match = breakdown.find((item) => item.label === value)
                       if (match) setHoveredPieType(match.type)
                     }}
                     onMouseLeave={() => setHoveredPieType(null)}

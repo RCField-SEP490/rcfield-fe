@@ -131,7 +131,7 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setPackages([])
+      queueMicrotask(() => setPackages([]))
       return
     }
 
@@ -156,11 +156,13 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
   }, [selectedCafeId])
 
   useEffect(() => {
-    setSelectedPackageIds([])
-    setDeleteMode(null)
-    setDeleteTarget(null)
+    queueMicrotask(() => {
+      setSelectedPackageIds([])
+      setDeleteMode(null)
+      setDeleteTarget(null)
+    })
     if (selectedCafeId && !propCafeId) setSearchParams({ cafeId: selectedCafeId }, { replace: true })
-  }, [selectedCafeId, propCafeId])
+  }, [selectedCafeId, propCafeId, setSearchParams])
 
   const startCreate = () => {
     navigate(`${routePaths.providerPackageCreate}?cafeId=${selectedCafeId}`)
@@ -487,9 +489,9 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
       try {
         const data = await packageApi.listProviderCafes()
         if (!mounted) return
-        const cafeId = selectedCafeId || data[0]?.id || ""
+        const cafeId = data[0]?.id || ""
         setCafes(data)
-        setSelectedCafeId(cafeId)
+        setSelectedCafeId((current) => current || cafeId)
       } catch {
         toast.error("Không tải được danh sách chi nhánh")
       }
@@ -508,8 +510,10 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setPackages([])
-      setLoading(false)
+      queueMicrotask(() => {
+        setPackages([])
+        setLoading(false)
+      })
       return
     }
 
@@ -665,17 +669,19 @@ export function ProviderPackageCopyPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [selectedCafeId])
 
   useEffect(() => {
     if (!selectedCafeId) return
     setSearchParams({ cafeId: selectedCafeId }, { replace: true })
-    setSourceCafeId((current) => (current && current !== selectedCafeId ? current : cafes.find((cafe) => cafe.id !== selectedCafeId)?.id ?? ""))
+    queueMicrotask(() => {
+      setSourceCafeId((current) => (current && current !== selectedCafeId ? current : cafes.find((cafe) => cafe.id !== selectedCafeId)?.id ?? ""))
+    })
   }, [cafes, selectedCafeId, setSearchParams])
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setTargetPackages([])
+      queueMicrotask(() => setTargetPackages([]))
       return
     }
 
@@ -694,8 +700,10 @@ export function ProviderPackageCopyPage() {
 
   useEffect(() => {
     if (!sourceCafeId) {
-      setSourcePackages([])
-      setSelectedSourcePackageId("")
+      queueMicrotask(() => {
+        setSourcePackages([])
+        setSelectedSourcePackageId("")
+      })
       return
     }
 

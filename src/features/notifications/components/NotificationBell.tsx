@@ -22,6 +22,7 @@ function timeAgo(dateStr: string): string {
 
 export function NotificationBell() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -59,8 +60,6 @@ export function NotificationBell() {
 
   const notifications = data?.data ?? []
   const unreadCount = data?.unreadCount ?? 0
-
-  const navigate = useNavigate()
 
   const handleNotificationClick = async (n: Notification) => {
     if (!n.readAt) markReadMutation.mutate(n.id)

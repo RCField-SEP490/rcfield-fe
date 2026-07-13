@@ -55,20 +55,47 @@ export interface CreateWalkInBookingResponse {
 }
 
 export interface TodayBookingItem {
-  id: string
-  shortCode?: string
-  customerName: string
-  customerPhone: string | null
-  startTime: string
-  endTime: string
-  createdAt: string
-  status: string
-  mode: string
-  vehicleName: string | null
-  trackTypeName: string | null
-  participantCount: number
-  vehicleCount: number
-  fnbPreorderAmount: number
+  bookingId: string
+  shortCode: string
+  cafeId: string
+  cafeName: string
+  cafeAddress: string
+  cafePhone: string
+  trackName: string
+  trackType: string
+  bookingMode: "SINGLE" | "PACKAGE" | "SUBSCRIPTION"
+  playMode: "RENTAL" | "BYOC" | "MIXED"
+  source: "APP" | "STAFF_MANUAL"
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "AWAITING_PAYMENT" | "COMPLETED"
+  slotStart: string
+  slotEnd: string
+  slotCount: number
+  depositAmount: number
+  slotFee: number
+  rentalFee: number
+  fnbPreorderFee: number
+  fnbOnsiteFee: number
+  discountAmount: number
+  totalAmount: number
+  paymentStatus: "UNPAID" | "PAID" | "REFUNDED"
+  payment_components?: any[]
+  plannedParticipants: string[]
+  participantDetails?: { name: string; phone?: string; isBooker: boolean }[]
+  plannedVehicles: string[]
+  sessions: any[]
+
+  // Legacy aliases used by older UI widgets/mocks while the staff API was stabilizing.
+  id?: string
+  customerName?: string
+  customerPhone?: string | null
+  startTime?: string
+  endTime?: string
+  createdAt?: string
+  mode?: string
+  vehicleName?: string | null
+  trackTypeName?: string | null
+  participantCount?: number
+  vehicleCount?: number
 }
 
 export interface FnbOrderItemDetail {
@@ -175,8 +202,8 @@ export const staffApi = {
     return res.data.data
   },
 
-  getTodayBookings: async (): Promise<any[]> => {
-    const res = await api.get<{ success: boolean; data: any[] }>("/v1/staff/today-bookings")
+  getTodayBookings: async (): Promise<TodayBookingItem[]> => {
+    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/today-bookings")
     return res.data.data
   },
 
@@ -235,7 +262,7 @@ export const staffApi = {
     return res.data.data
   },
 
-  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee: number; direct?: boolean }): Promise<any> => {
+  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee?: number; direct?: boolean }): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/extensions`, data)
     return res.data.data
   },
