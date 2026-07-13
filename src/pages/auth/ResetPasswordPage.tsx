@@ -34,7 +34,7 @@ export function ResetPasswordPage() {
     defaultValues: { password: "", confirmPassword: "" }
   })
 
-  const onSubmit = (_data: ResetPasswordValues) => {
+  const onSubmit = () => {
     setIsLoading(true)
     
     // Simulate password reset api
