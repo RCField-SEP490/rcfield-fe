@@ -14,6 +14,7 @@ export interface Vehicle {
     motor: string
     brand: string
   }
+  compatibleTrackTypes?: { id: string; code: string; name: string }[]
 }
 
 export type CafeOperatingHour = {

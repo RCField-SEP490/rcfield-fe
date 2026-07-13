@@ -1,3 +1,5 @@
+import type { PaymentComponentResponse } from "@/features/booking/types/booking.types";
+
 export interface InspectionPhoto {
   direction: "FRONT" | "BACK" | "LEFT" | "RIGHT";
   url: string;
@@ -64,6 +66,21 @@ export interface MockSessionDetail {
   }[];
   inspections: MockInspection[];
   extensionProposal?: MockExtensionProposal;
+  approvedExtensionFee?: number;
+  approvedExtensionMinutes?: number;
+  approvedExtensions?: {
+    proposalId: string;
+    extraMinutes: number;
+    additionalFee: number;
+    approvedAt?: string;
+  }[];
+  extensionPricingOptions?: {
+    extraMinutes: number;
+    additionalFee: number;
+    newPlannedEnd: string;
+    available?: boolean;
+    blockedReason?: string;
+  }[];
   damageClaim?: MockDamageClaim;
   fnbOrders?: {
     orderId: string;
@@ -97,7 +114,8 @@ export interface CustomerBookingDetail {
   discountAmount: number;
   totalAmount: number;
   paymentStatus: "UNPAID" | "PAID" | "REFUNDED";
-  payment_components?: any[];
+  source?: string;
+  payment_components?: PaymentComponentResponse[];
   plannedParticipants: string[];
   participantDetails?: { name: string; phone?: string; isBooker: boolean }[];
   plannedVehicles: string[];
@@ -125,7 +143,7 @@ export const mockCustomerBookingDetails: CustomerBookingDetail[] = [
     slotStart: "2026-05-24T14:00:00Z",
     slotEnd: "2026-05-24T15:30:00Z",
     slotCount: 3, // 30-min slots
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 120000,
     rentalFee: 200000,
     fnbPreorderFee: 0,
@@ -205,7 +223,7 @@ export const mockCustomerBookingDetails: CustomerBookingDetail[] = [
     slotStart: "2026-05-24T16:00:00Z",
     slotEnd: "2026-05-24T17:00:00Z",
     slotCount: 2,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 80000,
     rentalFee: 150000,
     fnbPreorderFee: 0,
@@ -273,7 +291,7 @@ export const mockCustomerBookingDetails: CustomerBookingDetail[] = [
     slotStart: "2026-05-24T18:00:00Z",
     slotEnd: "2026-05-24T19:00:00Z",
     slotCount: 2,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 80000,
     rentalFee: 150000,
     fnbPreorderFee: 0,
@@ -348,7 +366,7 @@ export const mockCustomerBookingDetails: CustomerBookingDetail[] = [
     slotStart: "2026-05-24T11:00:00Z",
     slotEnd: "2026-05-24T12:00:00Z",
     slotCount: 2,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 80000,
     rentalFee: 150000,
     fnbPreorderFee: 0,
@@ -446,7 +464,7 @@ export const mockCustomerBookingDetails: CustomerBookingDetail[] = [
     slotStart: "2026-05-25T10:00:00Z",
     slotEnd: "2026-05-25T11:00:00Z",
     slotCount: 2,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 80000,
     rentalFee: 150000,
     fnbPreorderFee: 45000, // Preordered bánh ngọt
