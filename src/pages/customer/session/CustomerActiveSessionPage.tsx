@@ -65,7 +65,9 @@ export function CustomerActiveSessionPage() {
   }, [sessionId])
 
   useEffect(() => {
-    void loadSession()
+    queueMicrotask(() => {
+      void loadSession()
+    })
   }, [loadSession])
 
   useEffect(() => {

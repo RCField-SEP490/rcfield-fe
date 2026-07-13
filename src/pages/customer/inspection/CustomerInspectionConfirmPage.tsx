@@ -73,7 +73,9 @@ export function CustomerInspectionConfirmPage() {
   }, [sessionId, targetInspectionId])
 
   useEffect(() => {
-    void loadSession()
+    queueMicrotask(() => {
+      void loadSession()
+    })
   }, [loadSession])
 
   useEffect(() => {

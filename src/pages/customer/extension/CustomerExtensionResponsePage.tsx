@@ -61,7 +61,9 @@ export function CustomerExtensionResponsePage() {
   }, [sessionId])
 
   useEffect(() => {
-    void loadSession()
+    queueMicrotask(() => {
+      void loadSession()
+    })
   }, [loadSession])
 
   useEffect(() => {
