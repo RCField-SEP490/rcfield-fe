@@ -183,7 +183,7 @@ export function WidgetConfigForm({ cafeId }: { cafeId: string }) {
   }, [templateOpen])
 
   useEffect(() => {
-    if (config) setForm(toFormState(config))
+    if (config) queueMicrotask(() => setForm(toFormState(config)))
   }, [config])
 
   const mutation = useMutation({

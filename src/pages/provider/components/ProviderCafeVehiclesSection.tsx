@@ -77,7 +77,9 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
       await deleteCatalogMutation.mutateAsync(catalogToDelete.id)
       setIsCatalogDeleteOpen(false)
       setCatalogToDelete(null)
-    } catch {}
+    } catch {
+      // Mutation already surfaces failure state through its own handlers.
+    }
   }
 
   const formatVND = (value: number) =>

@@ -47,22 +47,26 @@ export function ProviderComboFormDialog({
   useEffect(() => {
     if (!open) return
     if (!combo) {
-      setValues(defaultValues)
-      setComponents([])
-      setAddingItemId("")
+      queueMicrotask(() => {
+        setValues(defaultValues)
+        setComponents([])
+        setAddingItemId("")
+      })
       return
     }
-    setValues({
+    const nextValues = {
       name: combo.name,
       description: combo.description ?? "",
       price: Number(combo.price),
       image_url: combo.imageUrl ?? null,
       is_available: combo.isAvailable,
+    }
+    const nextComponents = (combo.components ?? []).map((c) => ({ item_id: c.itemId, quantity: c.quantity }))
+    queueMicrotask(() => {
+      setValues(nextValues)
+      setComponents(nextComponents)
+      setAddingItemId("")
     })
-    setComponents(
-      (combo.components ?? []).map((c) => ({ item_id: c.itemId, quantity: c.quantity })),
-    )
-    setAddingItemId("")
   }, [combo, open])
 
   const addComponent = () => {

@@ -131,9 +131,11 @@ export function ProviderCafeForm({
 
   useEffect(() => {
     if (!cafe) {
-      setValues(defaultValues)
-      setSnap(defaultValues)
-      setFiles([])
+      queueMicrotask(() => {
+        setValues(defaultValues)
+        setSnap(defaultValues)
+        setFiles([])
+      })
       return
     }
 
@@ -168,9 +170,11 @@ export function ProviderCafeForm({
       rules: cafe.rules ?? [],
     }
 
-    setValues(nextValues)
-    setSnap(nextValues)
-    setFiles([])
+    queueMicrotask(() => {
+      setValues(nextValues)
+      setSnap(nextValues)
+      setFiles([])
+    })
   }, [cafe])
 
   // Sync provinceCode when cafe data or provinces list becomes available
@@ -178,8 +182,8 @@ export function ProviderCafeForm({
     if (!provinces.length) return
     const cityName = cafe?.city ?? defaultValues.city
     const match = provinces.find((p) => p.name === cityName)
-    setProvinceCode(match?.code ?? null)
-  }, [cafe?.id, provinces])
+    queueMicrotask(() => setProvinceCode(match?.code ?? null))
+  }, [cafe?.city, provinces])
 
   const selectedFileLabel = useMemo(() => {
     if (files.length === 0) return "Chưa chọn ảnh"
@@ -648,5 +652,4 @@ function TextField({
     </label>
   )
 }
-
 
