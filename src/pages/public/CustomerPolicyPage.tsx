@@ -6,7 +6,7 @@ const sections = [
   { id: "booking", label: "Đặt lịch & Thanh toán" },
   { id: "cancellation", label: "Hủy lịch & Hoàn tiền" },
   { id: "checkin", label: "Check-in & Bàn giao xe" },
-  { id: "deposit", label: "Tiền cọc & Bồi thường" },
+  { id: "deposit", label: "Bồi thường hư hỏng" },
   { id: "session", label: "Phiên chơi & Gia hạn" },
   { id: "byoc", label: "Mang xe cá nhân (BYOC)" },
   { id: "noshow", label: "Không đến (No-show)" },
@@ -91,7 +91,7 @@ export function CustomerPolicyPage() {
 
               <h4>Thời hạn thanh toán</h4>
               <p>
-                Sau khi nhận yêu cầu đặt lịch, bạn có <strong>30 phút</strong> để hoàn tất thanh toán cọc.
+                Sau khi nhận yêu cầu đặt lịch, bạn có <strong>30 phút</strong> để hoàn tất thanh toán.
                 Nếu quá thời hạn, đặt lịch sẽ tự động bị hủy và slot được giải phóng.
               </p>
 
@@ -116,34 +116,29 @@ export function CustomerPolicyPage() {
                   <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-black uppercase tracking-wider text-slate-500">
                     <th className="px-4 py-3">Thời điểm hủy</th>
                     <th className="px-4 py-3">Phí slot</th>
-                    <th className="px-4 py-3">Phí thuê xe</th>
-                    <th className="px-4 py-3">Tiền cọc</th>
+                    <th className="px-4 py-3">Phí thuê xe & F&B</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   <tr className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-semibold text-emerald-700">Trước &gt; 24 giờ</td>
-                    <td className="px-4 py-3 text-emerald-600">Không thu</td>
-                    <td className="px-4 py-3 text-emerald-600">Không thu</td>
-                    <td className="px-4 py-3 text-emerald-600">Hoàn 100%</td>
+                    <td className="px-4 py-3 text-emerald-600">Không thu (Hoàn 100%)</td>
+                    <td className="px-4 py-3 text-emerald-600">Không thu (Hoàn 100%)</td>
                   </tr>
                   <tr className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-semibold text-amber-700">Trước 12–24 giờ</td>
-                    <td className="px-4 py-3 text-amber-600">Phạt 50%</td>
-                    <td className="px-4 py-3 text-emerald-600">Không thu</td>
-                    <td className="px-4 py-3 text-emerald-600">Hoàn 100%</td>
+                    <td className="px-4 py-3 text-amber-600">Phạt 50% (Hoàn 50%)</td>
+                    <td className="px-4 py-3 text-emerald-600">Không thu (Hoàn 100%)</td>
                   </tr>
                   <tr className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-semibold text-red-700">Trước &lt; 12 giờ</td>
-                    <td className="px-4 py-3 text-red-600">Phạt 100%</td>
-                    <td className="px-4 py-3 text-emerald-600">Không thu</td>
-                    <td className="px-4 py-3 text-emerald-600">Hoàn 100%</td>
+                    <td className="px-4 py-3 text-red-600">Phạt 100% (Không hoàn)</td>
+                    <td className="px-4 py-3 text-emerald-600">Không thu (Hoàn 100%)</td>
                   </tr>
                   <tr className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-semibold text-red-700">Sau khi check-in (thoát sớm)</td>
                     <td className="px-4 py-3 text-amber-600">Tính theo giờ thực tế</td>
-                    <td className="px-4 py-3 text-red-600">Thu 100%</td>
-                    <td className="px-4 py-3 text-slate-500">Hoàn sau kiểm tra xe</td>
+                    <td className="px-4 py-3 text-red-600">Thu 100% (Không hoàn)</td>
                   </tr>
                 </tbody>
               </table>
@@ -186,26 +181,26 @@ export function CustomerPolicyPage() {
             </Prose>
           </section>
 
-          {/* 4. Tiền cọc & Bồi thường */}
+          {/* 4. Bồi thường hư hỏng xe thuê */}
           <section id="deposit" className="scroll-mt-24">
-            <SectionTitle>4. Tiền cọc & Bồi thường hư hỏng</SectionTitle>
+            <SectionTitle>4. Bồi thường hư hỏng xe thuê</SectionTitle>
             <Prose>
-              <h4>Mức tiền cọc</h4>
+              <h4>Trách nhiệm bảo quản</h4>
               <p>
-                Tiền cọc bảo đảm được tính bằng <strong>15% giá trị thị trường của xe</strong>.
-                Ví dụ: xe trị giá 2.000.000đ → cọc 300.000đ; xe trị giá 8.000.000đ → cọc 1.200.000đ.
+                Khách hàng chịu trách nhiệm bảo quản xe thuê trong suốt phiên chơi.
+                Nếu xảy ra hư hại, va chạm hoặc làm hỏng linh kiện do lỗi sử dụng,
+                khách hàng sẽ phải bồi thường chi phí sửa chữa.
               </p>
 
-              <h4>Xử lý tiền cọc sau phiên chơi</h4>
+              <h4>Quy trình xử lý bồi thường</h4>
               <ul>
-                <li><strong>Không có hư hỏng</strong> → Tiền cọc được giải phóng hoàn toàn, không trừ vào tài khoản.</li>
-                <li><strong>Có hư hỏng ≤ tiền cọc</strong> → Hệ thống thu phần bồi thường từ tiền cọc, phần còn lại được hoàn.</li>
-                <li><strong>Có hư hỏng &gt; tiền cọc</strong> → Thu toàn bộ tiền cọc; phần vượt quá sẽ được xử lý riêng theo thỏa thuận.</li>
+                <li><strong>Kiểm tra tại quầy</strong> — Nhân viên đối chiếu tình trạng xe dựa trên ảnh chụp check-in và check-out.</li>
+                <li><strong>Xác định chi phí</strong> — Phí bồi thường = <code>chi phí linh kiện/sửa chữa thực tế × hệ số xe</code>.</li>
+                <li><strong>Thanh toán</strong> — Khoản bồi thường được cộng vào hóa đơn dịch vụ tại quầy khi check-out.</li>
               </ul>
 
               <h4>Phí bồi thường hư hỏng</h4>
               <p>
-                Phí bồi thường = <code>chi phí sửa chữa thực tế × hệ số xe</code>.
                 Hệ số xe tăng theo phân cấp: Standard &lt; Premium &lt; Restricted.
                 Bạn có <strong>24 giờ</strong> để xem bằng chứng ảnh và xác nhận mức phí.
                 Nếu không phản hồi trong 24 giờ, hệ thống sẽ tự động xác nhận.
@@ -234,7 +229,6 @@ export function CustomerPolicyPage() {
                 Nếu không phản hồi, đề nghị sẽ tự động bị từ chối.
               </p>
               <ul>
-                <li>Phí gia hạn tổng cộng <strong>không vượt quá 50% tiền cọc</strong> của phiên đó.</li>
                 <li>Phí gia hạn được tính và thanh toán cùng lúc với checkout.</li>
               </ul>
 
@@ -256,7 +250,7 @@ export function CustomerPolicyPage() {
             <Prose>
               <p>
                 Chế độ BYOC (Bring Your Own Car) cho phép bạn mang xe RC cá nhân đến chơi tại sân.
-                Tiền cọc bảo đảm cho xe thuê <strong>không áp dụng</strong> trong chế độ này.
+                Quy định bồi thường cho xe thuê không áp dụng trong chế độ này.
               </p>
 
               <h4>Yêu cầu kỹ thuật xe</h4>
@@ -294,7 +288,6 @@ export function CustomerPolicyPage() {
                 <li><strong>Phí slot</strong>: Thu 100% — áp dụng như phí phạt no-show và được chuyển cho RC Cafe.</li>
                 <li><strong>Phí thuê xe</strong>: Không thu.</li>
                 <li><strong>F&B đặt trước</strong>: Không thu, đơn hàng bị hủy.</li>
-                <li><strong>Tiền cọc</strong>: Được giải phóng hoàn toàn (vì không có bàn giao xe).</li>
               </ul>
 
               <p>
