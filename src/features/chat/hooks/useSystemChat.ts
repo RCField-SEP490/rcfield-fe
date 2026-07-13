@@ -34,11 +34,13 @@ export function useSystemChat(cafeId?: string) {
   const prevCafeIdRef = useRef<string | undefined>(cafeId)
 
   // Reset chat state when cafeId changes so the correct greeting is loaded
-  if (prevCafeIdRef.current !== cafeId) {
-    prevCafeIdRef.current = cafeId
-    initializedRef.current = false
-    abortRef.current = true
-  }
+  useEffect(() => {
+    if (prevCafeIdRef.current !== cafeId) {
+      prevCafeIdRef.current = cafeId
+      initializedRef.current = false
+      abortRef.current = true
+    }
+  }, [cafeId])
 
   // Per-cafe config — enabled only when cafeId is provided
   const { data: cafeConfigData, isLoading: cafeConfigLoading, isError: cafeConfigError } = useQuery({
