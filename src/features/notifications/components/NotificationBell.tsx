@@ -9,27 +9,6 @@ import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { notificationApi } from "../api/notification.api"
 import type { Notification } from "../types"
 
-const TYPE_ICONS: Record<string, string> = {
-  ACCOUNT_APPROVED: "✅",
-  ACCOUNT_REJECTED: "❌",
-  ACCOUNT_SUSPENDED: "🔒",
-  ACCOUNT_UNSUSPENDED: "🔓",
-  TRIAL_EXPIRING_SOON: "⏰",
-  GRACE_PERIOD_STARTED: "⚠️",
-  SUBSCRIPTION_EXPIRED: "🚫",
-  SUBSCRIPTION_ACTIVATED: "🎉",
-  PAYMENT_REQUEST_CONFIRMED: "💳",
-  PAYMENT_REQUEST_REJECTED: "❌",
-  SESSION_CHECKOUT_INSPECTION: "🔑",
-  SESSION_EXTENSION_PROPOSED: "⏳",
-  SESSION_FNB_ORDER_ADDED: "🍔",
-  CUSTOMER_CHECKIN_CONFIRMED: "✅",
-  CUSTOMER_CHECKOUT_CONFIRMED: "🔑",
-  CUSTOMER_INSPECTION_DISPUTED: "⚠️",
-  CUSTOMER_EXTENSION_APPROVED: "⏰",
-  CUSTOMER_EXTENSION_REJECTED: "❌",
-  BOOKING_REVIEW_REQUEST: "⭐",
-}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -47,7 +26,7 @@ export function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null)
 
   const user = useAuthStore((state) => state.user)
-  const hasAccess = user?.role === "provider" || user?.role === "staff"
+  const hasAccess = user?.role === "provider" || user?.role === "staff" || user?.role === "customer"
 
   const { data } = useQuery({
     queryKey: ["notifications"],
@@ -137,31 +116,36 @@ export function NotificationBell() {
       n.type === "CUSTOMER_CHECKOUT_CONFIRMED" ||
       n.type === "CUSTOMER_INSPECTION_DISPUTED" ||
       n.type === "CUSTOMER_EXTENSION_APPROVED" ||
-      n.type === "CUSTOMER_EXTENSION_REJECTED"
+      n.type === "CUSTOMER_EXTENSION_REJECTED" ||
+      n.type === "CUSTOMER_PAYMENT_CONFIRMED"
     ) {
-      try {
-        const match = n.message.match(/phiên chơi ([a-f0-9]{8})/i)
-        const prefix = match ? match[1] : null
+      if (user?.role === "customer") {
+        navigate("/customer/bookings")
+      } else {
+        try {
+          const match = n.message.match(/phiên chơi ([a-f0-9]{8})/i)
+          const prefix = match ? match[1] : null
 
-        const bookings = await staffApi.getTodayBookings()
-        let targetSessionId: string | null = null
-        for (const b of bookings) {
-          if (b.sessions) {
-            for (const s of b.sessions) {
-              if (prefix && s.sessionId.startsWith(prefix)) {
-                targetSessionId = s.sessionId
-                break
+          const bookings = await staffApi.getTodayBookings()
+          let targetSessionId: string | null = null
+          for (const b of bookings) {
+            if (b.sessions) {
+              for (const s of b.sessions) {
+                if (prefix && s.sessionId.startsWith(prefix)) {
+                  targetSessionId = s.sessionId
+                  break
+                }
               }
             }
+            if (targetSessionId) break
           }
-          if (targetSessionId) break
-        }
 
-        if (targetSessionId) {
-          navigate(`/staff/sessions/${targetSessionId}`)
+          if (targetSessionId) {
+            navigate(`/staff/sessions/${targetSessionId}`)
+          }
+        } catch (err) {
+          console.error("Lỗi điều hướng phiên chơi cho staff:", err)
         }
-      } catch (err) {
-        console.error("Lỗi điều hướng phiên chơi cho staff:", err)
       }
     }
   }
@@ -214,7 +198,6 @@ export function NotificationBell() {
                   onClick={() => handleNotificationClick(n)}
                 >
                   <div className="flex items-start gap-2.5">
-                    <span className="text-base leading-none mt-0.5">{TYPE_ICONS[n.type] ?? "🔔"}</span>
                     <div className="flex-1 min-w-0">
                       <p className={cn("text-xs font-bold truncate", !n.readAt ? "text-slate-800" : "text-slate-600")}>
                         {n.title}

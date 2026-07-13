@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Calendar, Star } from "lucide-react"
+import { Calendar, MapPin, Star } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { StarRating } from "@/features/booking-review/components/StarRating"
 import { getCustomerReviews } from "@/features/booking-review/api/review.api"
@@ -86,6 +86,13 @@ function ReviewCard({ review }: { review: Review }) {
           </span>
         )}
       </div>
+
+      {review.cafeName && (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+          <MapPin className="h-3 w-3 text-orange-400 shrink-0" />
+          {review.cafeName}
+        </div>
+      )}
 
       {review.note && (
         <p className="text-xs leading-5 text-slate-600 italic">"{review.note}"</p>

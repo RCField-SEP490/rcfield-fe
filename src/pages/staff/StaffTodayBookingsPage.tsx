@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
+import { z } from "zod"
 import {
   Search as SearchIcon,
   Car,
@@ -151,6 +152,15 @@ export default function StaffTodayBookingsPage() {
   // Walk-in form states
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{ customerName?: string; customerPhone?: string }>({})
+
+  const walkInSchema = z.object({
+    customerName: z.string().min(1, "Vui lòng nhập tên khách hàng"),
+    customerPhone: z
+      .string()
+      .min(1, "Vui lòng nhập số điện thoại")
+      .regex(/^[0-9]{10}$/, "Số điện thoại phải gồm đúng 10 chữ số"),
+  })
   const [playMode, setPlayMode] = useState<"RENTAL" | "BYOC">("RENTAL")
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER">("CASH")
   const [selectedTrackCode, setSelectedTrackCode] = useState("")
@@ -165,6 +175,9 @@ export default function StaffTodayBookingsPage() {
   const [availableVehicles, setAvailableVehicles] = useState<VehicleUnit[]>([])
   const [loadingVehicles, setLoadingVehicles] = useState(false)
 
+  // Track configs (must be before useEffects that reference it)
+  const { data: trackConfigs = [] } = useTrackConfigs(assignedCafeId ?? "")
+
   // Sync tab with URL query parameter
   useEffect(() => {
     const tabParam = searchParams.get("tab")
@@ -177,18 +190,21 @@ export default function StaffTodayBookingsPage() {
 
   // Get URL pre-selection data for track from dashboard
   useEffect(() => {
-    if (activeTab === "WALKIN" && cafeDetails) {
+    if (activeTab === "WALKIN") {
       const trackNameUrl = searchParams.get("track")
       const trackTypeUrl = searchParams.get("type")
       if (trackNameUrl && trackTypeUrl) {
         setSelectedTrackName(trackNameUrl)
         setSelectedTrackCode(trackTypeUrl)
-      } else if (cafeDetails.trackTypes && cafeDetails.trackTypes.length > 0) {
-        setSelectedTrackName(cafeDetails.trackTypes[0].name)
-        setSelectedTrackCode(cafeDetails.trackTypes[0].code)
+      } else {
+        const activeConfigs = trackConfigs.filter((c) => c.is_active)
+        if (activeConfigs.length > 0 && !selectedTrackCode) {
+          setSelectedTrackName(activeConfigs[0].track_type?.name ?? "")
+          setSelectedTrackCode(activeConfigs[0].track_type?.code ?? "")
+        }
       }
     }
-  }, [activeTab, cafeDetails, searchParams])
+  }, [activeTab, trackConfigs, searchParams])
 
   // Fetch Cafe Details & available Vehicles
   useEffect(() => {
@@ -213,6 +229,7 @@ export default function StaffTodayBookingsPage() {
   const resetWalkinForm = () => {
     setCustomerName("")
     setCustomerPhone("")
+    setFieldErrors({})
     setPlayMode("RENTAL")
     setPaymentMethod("CASH")
     setSelectedVehicles([])
@@ -221,9 +238,6 @@ export default function StaffTodayBookingsPage() {
     setSearchParams({})
   }
 
-  // Load track configs and daily availability
-  const { data: trackConfigs = [] } = useTrackConfigs(assignedCafeId ?? "")
-  
   const selectedTrackConfig = useMemo(() => {
     return trackConfigs.find((c) => c.track_type?.code === selectedTrackCode) || null
   }, [trackConfigs, selectedTrackCode])
@@ -282,20 +296,21 @@ export default function StaffTodayBookingsPage() {
   const handleWalkinSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!customerName.trim()) {
-      toast.error("Vui lòng nhập tên khách hàng!")
+    const parsed = walkInSchema.safeParse({
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+    })
+
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors
+      setFieldErrors({
+        customerName: errors.customerName?.[0],
+        customerPhone: errors.customerPhone?.[0],
+      })
       return
     }
 
-    if (!customerPhone.trim()) {
-      toast.error("Vui lòng nhập số điện thoại khách hàng!")
-      return
-    }
-
-    if (!/^[0-9]{10}$/.test(customerPhone.trim())) {
-      toast.error("Số điện thoại không hợp lệ (phải gồm 10 chữ số)!")
-      return
-    }
+    setFieldErrors({})
 
     if (!selectedSlot) {
       toast.error("Vui lòng chọn slot giờ chơi trên lịch!")
@@ -315,15 +330,14 @@ export default function StaffTodayBookingsPage() {
     const slotStart = startDateTime.toISOString()
     const slotEnd = new Date(startDateTime.getTime() + computedDuration * 60000).toISOString()
 
-    const matchedTrack = cafeDetails?.trackTypes.find((t) => t.code === selectedTrackCode)
-    if (!matchedTrack) {
+    if (!selectedTrackConfig) {
       toast.error("Không tìm thấy thông tin cấu hình đường đua!")
       return
     }
 
     createWalkInBooking({
       playMode,
-      trackTypeId: matchedTrack.id,
+      trackTypeId: selectedTrackConfig.track_type_id,
       slotStart,
       slotEnd,
       paymentMethod,
@@ -810,12 +824,19 @@ export default function StaffTodayBookingsPage() {
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="Nhập tên khách hàng"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                    onChange={(e) => { setCustomerName(e.target.value); setFieldErrors((p) => ({ ...p, customerName: undefined })) }}
+                    className={cn(
+                      "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                      fieldErrors.customerName
+                        ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                        : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]"
+                    )}
                   />
+                  {fieldErrors.customerName && (
+                    <p className="mt-1 text-xs text-rose-500">{fieldErrors.customerName}</p>
+                  )}
                 </div>
 
                 {/* Customer Phone */}
@@ -825,12 +846,19 @@ export default function StaffTodayBookingsPage() {
                   </label>
                   <input
                     type="tel"
-                    required
                     placeholder="Nhập số điện thoại khách hàng"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                    onChange={(e) => { setCustomerPhone(e.target.value); setFieldErrors((p) => ({ ...p, customerPhone: undefined })) }}
+                    className={cn(
+                      "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                      fieldErrors.customerPhone
+                        ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                        : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]"
+                    )}
                   />
+                  {fieldErrors.customerPhone && (
+                    <p className="mt-1 text-xs text-rose-500">{fieldErrors.customerPhone}</p>
+                  )}
                 </div>
               </div>
 
@@ -863,19 +891,19 @@ export default function StaffTodayBookingsPage() {
                   <select
                     value={selectedTrackCode}
                     onChange={(e) => {
-                      const match = cafeDetails?.trackTypes.find((t) => t.code === e.target.value)
+                      const match = trackConfigs.find((c) => c.track_type?.code === e.target.value)
                       if (match) {
-                        setSelectedTrackCode(match.code)
-                        setSelectedTrackName(match.name)
+                        setSelectedTrackCode(match.track_type?.code ?? "")
+                        setSelectedTrackName(match.track_type?.name ?? "")
                         setSelectedSlot("")
                         setSelectedSlotEnd(null)
                       }
                     }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
-                    {cafeDetails?.trackTypes.map((t) => (
-                      <option key={t.id} value={t.code}>
-                        {t.name}
+                    {trackConfigs.filter((c) => c.is_active).map((c) => (
+                      <option key={c.id} value={c.track_type?.code ?? ""}>
+                        {c.track_type?.name ?? c.id}
                       </option>
                     ))}
                   </select>
