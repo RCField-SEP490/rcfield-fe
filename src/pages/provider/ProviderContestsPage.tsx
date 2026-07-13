@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Flag, Pencil, Play, Plus, Square, Trash2 } from "lucide-react"
-import { Link, useNavigate } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
 import { getContestStatusClass } from "@/features/contests/lib/contest-status"
+import type { ContestStatus } from "@/features/contests/types"
 import { Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
@@ -14,10 +15,18 @@ import { Button } from "@/shared/ui/button"
 export function ProviderContestsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const query = searchParams.get("query") ?? ""
+  const status = searchParams.get("status") ?? ""
+  const formatId = searchParams.get("contest_format_id") ?? ""
+  const formatsQuery = useQuery({
+    queryKey: contestQueryKeys.catalogFormats(),
+    queryFn: contestApi.listContestFormats,
+  })
 
   const contestsQuery = useQuery({
-    queryKey: contestQueryKeys.list({ scope: "managed" }),
-    queryFn: () => contestApi.listContests({ scope: "managed", limit: 100 }),
+    queryKey: contestQueryKeys.list({ scope: "managed", query, status, contest_format_id: formatId }),
+    queryFn: () => contestApi.listContests({ scope: "managed", limit: 100, query: query || undefined, status: (status || undefined) as ContestStatus | undefined, contest_format_id: formatId || undefined }),
   })
 
   const updateStatusMutation = useMutation({
@@ -66,6 +75,39 @@ export function ProviderContestsPage() {
           title="Danh sách contest"
           subtitle="Danh sách này dùng dữ liệu thật từ BE, không có mock hoặc danh mục hardcode ở FE."
         />
+        <div className="mb-4 grid gap-3 lg:grid-cols-3">
+          <input
+            value={query}
+            onChange={(event) => updateContestFilters(searchParams, setSearchParams, { query: event.target.value })}
+            placeholder="Tìm theo tên contest"
+            className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+          />
+          <select
+            value={status}
+            onChange={(event) => updateContestFilters(searchParams, setSearchParams, { status: event.target.value })}
+            className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="OPEN">OPEN</option>
+            <option value="CLOSED">CLOSED</option>
+            <option value="RUNNING">RUNNING</option>
+            <option value="COMPLETED">COMPLETED</option>
+            <option value="CANCELLED">CANCELLED</option>
+          </select>
+          <select
+            value={formatId}
+            onChange={(event) => updateContestFilters(searchParams, setSearchParams, { contest_format_id: event.target.value })}
+            className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+          >
+            <option value="">Tất cả format</option>
+            {(formatsQuery.data ?? []).map((format) => (
+              <option key={format.id} value={format.id}>
+                {format.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {contestsQuery.isLoading ? (
           <div className="space-y-3">
@@ -168,6 +210,19 @@ export function ProviderContestsPage() {
       </Panel>
     </ProviderShell>
   )
+}
+
+function updateContestFilters(
+  currentParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string>,
+) {
+  const next = new URLSearchParams(currentParams)
+  for (const [key, value] of Object.entries(updates)) {
+    if (!value) next.delete(key)
+    else next.set(key, value)
+  }
+  setSearchParams(next)
 }
 
 function formatCurrency(value: number) {

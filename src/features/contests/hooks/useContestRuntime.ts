@@ -1,13 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { contestApi, contestQueryKeys } from "../api/contest.api"
 import type {
+  ContestMatchesQuery,
   ContestCorrectResultsBody,
   ContestGenerateMatchesBody,
+  ContestRegistrationsQuery,
   ContestSubmitResultsBody,
   ContestUpdateMatchParticipantsBody,
 } from "../types"
 
-export function useContestRuntime(contestId?: string) {
+export function useContestRuntime(
+  contestId?: string,
+  options?: {
+    registrations?: ContestRegistrationsQuery
+    matches?: ContestMatchesQuery
+  },
+) {
   const queryClient = useQueryClient()
 
   const contestQuery = useQuery({
@@ -17,14 +25,14 @@ export function useContestRuntime(contestId?: string) {
   })
 
   const registrationsQuery = useQuery({
-    queryKey: contestQueryKeys.registrations(contestId),
-    queryFn: () => contestApi.listContestRegistrations(contestId!),
+    queryKey: contestQueryKeys.registrations(contestId, options?.registrations),
+    queryFn: () => contestApi.listContestRegistrations(contestId!, options?.registrations),
     enabled: Boolean(contestId),
   })
 
   const matchesQuery = useQuery({
-    queryKey: contestQueryKeys.matches(contestId),
-    queryFn: () => contestApi.listMatches(contestId!),
+    queryKey: contestQueryKeys.matches(contestId, options?.matches),
+    queryFn: () => contestApi.listMatches(contestId!, options?.matches),
     enabled: Boolean(contestId),
   })
 

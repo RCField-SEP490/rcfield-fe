@@ -30,6 +30,7 @@ export const routePaths = {
   staffDashboard: "/staff/dashboard",
   staffContests: "/staff/contests",
   staffContestCheckIn: "/staff/contests/:contestId/check-in",
+  staffContestRuntime: "/staff/contests/:contestId/runtime",
   staffTodayBookings: "/staff/today-bookings",
   staffSessionDetail: "/staff/sessions/:sessionId",
   staffInspection: "/staff/inspections/:sessionId",

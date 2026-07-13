@@ -6,13 +6,17 @@ import type {
   ContestCatalogType,
   ContestItem,
   ContestLeaderboardPayload,
+  ContestListParams,
   ContestListResponse,
   ContestMatch,
+  ContestMatchesQuery,
   ContestMetrics,
   ContestRegistration,
+  ContestRegistrationsQuery,
   ContestSubmitResultsBody,
   ContestTemplate,
   ContestGenerateMatchesBody,
+  MyContestRegistrationsQuery,
   ContestUpdateMatchParticipantsBody,
   ContestUpsertBody,
 } from "../types"
@@ -31,17 +35,100 @@ export const contestQueryKeys = {
   all: ["contests"] as const,
   list: (params?: Record<string, unknown>) => [...contestQueryKeys.all, "list", params ?? {}] as const,
   detail: (contestId?: string) => [...contestQueryKeys.all, "detail", contestId] as const,
-  registrations: (contestId?: string) => [...contestQueryKeys.all, "registrations", contestId] as const,
-  matches: (contestId?: string) => [...contestQueryKeys.all, "matches", contestId] as const,
+  registrations: (contestId?: string, params?: Record<string, unknown>) =>
+    params ? [...contestQueryKeys.all, "registrations", contestId, params] as const : [...contestQueryKeys.all, "registrations", contestId] as const,
+  matches: (contestId?: string, params?: Record<string, unknown>) =>
+    params ? [...contestQueryKeys.all, "matches", contestId, params] as const : [...contestQueryKeys.all, "matches", contestId] as const,
   metrics: (contestId?: string) => [...contestQueryKeys.all, "metrics", contestId] as const,
   auditLogs: (contestId?: string) => [...contestQueryKeys.all, "audit-logs", contestId] as const,
   leaderboard: (contestId?: string) => [...contestQueryKeys.all, "leaderboard", contestId] as const,
   lookup: (contestId?: string, checkInCode?: string) =>
     [...contestQueryKeys.all, "lookup", contestId, checkInCode] as const,
-  myRegistrations: () => [...contestQueryKeys.all, "my-registrations"] as const,
+  myRegistrations: (params?: Record<string, unknown>) =>
+    params ? [...contestQueryKeys.all, "my-registrations", params] as const : [...contestQueryKeys.all, "my-registrations"] as const,
   catalogTypes: () => ["contest-catalog", "types"] as const,
   catalogFormats: () => ["contest-catalog", "formats"] as const,
   catalogTemplates: (params?: Record<string, unknown>) => ["contest-catalog", "templates", params ?? {}] as const,
+}
+
+function mapContestItem(raw: any): ContestItem {
+  return {
+    ...raw,
+    my_registration: raw.my_registration ? mapContestRegistration(raw.my_registration) : null,
+  }
+}
+
+function mapContestRegistration(raw: any): ContestRegistration {
+  return {
+    id: raw.id,
+    contestId: raw.contest_id ?? raw.contestId,
+    userId: raw.user_id ?? raw.userId,
+    participantRoleSnapshot: raw.participant_role_snapshot ?? raw.participantRoleSnapshot ?? "",
+    vehicleSource: raw.vehicle_source ?? raw.vehicleSource,
+    vehicleId: raw.vehicle_id ?? raw.vehicleId ?? null,
+    bookingId: raw.booking_id ?? raw.bookingId ?? null,
+    status: raw.status,
+    checkInCode: raw.check_in_code ?? raw.checkInCode ?? null,
+    paymentStatus: raw.payment_status ?? raw.paymentStatus,
+    entryFeeAmount: raw.entry_fee_amount ?? raw.entryFeeAmount ?? null,
+    checkedInCafeId: raw.checked_in_cafe_id ?? raw.checkedInCafeId ?? null,
+    checkedInAt: raw.checked_in_at ?? raw.checkedInAt ?? null,
+    cancellationReason: raw.cancellation_reason ?? raw.cancellationReason ?? null,
+    createdAt: raw.created_at ?? raw.createdAt,
+    updatedAt: raw.updated_at ?? raw.updatedAt,
+    metadata: raw.metadata ?? {},
+    participant: raw.participant
+      ? {
+          id: raw.participant.id,
+          fullName: raw.participant.full_name ?? raw.participant.fullName ?? null,
+          email: raw.participant.email ?? null,
+          avatarUrl: raw.participant.avatar_url ?? raw.participant.avatarUrl ?? null,
+        }
+      : null,
+    contest: raw.contest ? mapContestItem(raw.contest) : null,
+    latestMatch: raw.latest_match
+      ? {
+          matchId: raw.latest_match.match_id,
+          contestId: raw.latest_match.contest_id,
+          roundNo: raw.latest_match.round_no,
+          matchNo: raw.latest_match.match_no,
+          name: raw.latest_match.name ?? null,
+          status: raw.latest_match.status,
+          matchType: raw.latest_match.match_type,
+          scheduledAt: raw.latest_match.scheduled_at ?? null,
+          startedAt: raw.latest_match.started_at ?? null,
+          endedAt: raw.latest_match.ended_at ?? null,
+          nextMatchId: raw.latest_match.next_match_id ?? null,
+          participantStatus: raw.latest_match.participant_status ?? null,
+          finishPosition: raw.latest_match.finish_position ?? null,
+          isWinner: Boolean(raw.latest_match.is_winner),
+        }
+      : null,
+    customerJourneyStatus:
+      raw.customer_journey_status ?? raw.customerJourneyStatus ?? null,
+  }
+}
+
+function mapContestMatch(raw: any): ContestMatch {
+  return {
+    ...raw,
+    participants: (raw.participants ?? []).map((participant: any) => ({
+      ...participant,
+      registration: participant.registration
+        ? {
+            id: participant.registration.id,
+            user_id: participant.registration.user_id,
+            participant_name: participant.registration.participant_name ?? null,
+            participant_email: participant.registration.participant_email ?? null,
+            participant_avatar_url: participant.registration.participant_avatar_url ?? null,
+            status: participant.registration.status,
+            check_in_code: participant.registration.check_in_code ?? null,
+            checked_in_at: participant.registration.checked_in_at ?? null,
+            is_my_registration: Boolean(participant.registration.is_my_registration),
+          }
+        : null,
+    })),
+  }
 }
 
 export const contestApi = {
@@ -63,44 +150,44 @@ export const contestApi = {
     return res.data.data
   },
 
-  listContests: async (params?: Record<string, unknown>): Promise<ContestListResponse> => {
+  listContests: async (params?: ContestListParams): Promise<ContestListResponse> => {
     const res = await api.get<ContestListResponse>("/v1/contests", { params })
-    return res.data
+    return { ...res.data, data: (res.data.data ?? []).map(mapContestItem) }
   },
 
-  listCafeContests: async (cafeId: string, params?: Record<string, unknown>): Promise<ContestListResponse> => {
+  listCafeContests: async (cafeId: string, params?: ContestListParams): Promise<ContestListResponse> => {
     const res = await api.get<ContestListResponse>(`/v1/cafes/${cafeId}/contests`, { params })
-    return res.data
+    return { ...res.data, data: (res.data.data ?? []).map(mapContestItem) }
   },
 
   getContest: async (contestId: string): Promise<ContestItem> => {
     const res = await api.get<ApiEnvelope<ContestItem>>(`/v1/contests/${contestId}`)
-    return res.data.data
+    return mapContestItem(res.data.data)
   },
 
   createContest: async (body: ContestUpsertBody): Promise<ContestItem> => {
     const res = await api.post<ApiEnvelope<ContestItem>>("/v1/contests", body)
-    return res.data.data
+    return mapContestItem(res.data.data)
   },
 
   updateContest: async (contestId: string, body: Partial<ContestUpsertBody>): Promise<ContestItem> => {
     const res = await api.patch<ApiEnvelope<ContestItem>>(`/v1/contests/${contestId}`, body)
-    return res.data.data
+    return mapContestItem(res.data.data)
   },
 
   openContest: async (contestId: string): Promise<ContestItem> => {
     const res = await api.post<ApiEnvelope<ContestItem>>(`/v1/contests/${contestId}/open`)
-    return res.data.data
+    return mapContestItem(res.data.data)
   },
 
   closeContest: async (contestId: string): Promise<ContestItem> => {
     const res = await api.post<ApiEnvelope<ContestItem>>(`/v1/contests/${contestId}/close`)
-    return res.data.data
+    return mapContestItem(res.data.data)
   },
 
   cancelContest: async (contestId: string): Promise<ContestItem> => {
     const res = await api.post<ApiEnvelope<ContestItem>>(`/v1/contests/${contestId}/cancel`)
-    return res.data.data
+    return mapContestItem(res.data.data)
   },
 
   registerContest: async (
@@ -108,27 +195,27 @@ export const contestApi = {
     body: { booking_id: string; vehicle_id: string; vehicle_source?: "RENTAL" | "BYOC" },
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contests/${contestId}/register`, body)
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
-  listMyRegistrations: async (): Promise<ContestRegistration[]> => {
-    const res = await api.get<ApiEnvelope<ContestRegistration[]>>("/v1/me/contest-registrations")
-    return res.data.data
+  listMyRegistrations: async (params?: MyContestRegistrationsQuery): Promise<ContestRegistration[]> => {
+    const res = await api.get<ApiEnvelope<ContestRegistration[]>>("/v1/me/contest-registrations", { params })
+    return (res.data.data ?? []).map(mapContestRegistration)
   },
 
-  listContestRegistrations: async (contestId: string): Promise<ContestRegistration[]> => {
-    const res = await api.get<ApiEnvelope<ContestRegistration[]>>(`/v1/contests/${contestId}/registrations`)
-    return res.data.data
+  listContestRegistrations: async (contestId: string, params?: ContestRegistrationsQuery): Promise<ContestRegistration[]> => {
+    const res = await api.get<ApiEnvelope<ContestRegistration[]>>(`/v1/contests/${contestId}/registrations`, { params })
+    return (res.data.data ?? []).map(mapContestRegistration)
   },
 
-  listMatches: async (contestId: string): Promise<ContestMatch[]> => {
-    const res = await api.get<ApiEnvelope<ContestMatch[]>>(`/v1/contests/${contestId}/matches`)
-    return res.data.data
+  listMatches: async (contestId: string, params?: ContestMatchesQuery): Promise<ContestMatch[]> => {
+    const res = await api.get<ApiEnvelope<ContestMatch[]>>(`/v1/contests/${contestId}/matches`, { params })
+    return (res.data.data ?? []).map(mapContestMatch)
   },
 
   generateMatches: async (contestId: string, body: ContestGenerateMatchesBody): Promise<ContestMatch[]> => {
     const res = await api.post<ApiEnvelope<ContestMatch[]>>(`/v1/contests/${contestId}/matches/generate`, body)
-    return res.data.data
+    return (res.data.data ?? []).map(mapContestMatch)
   },
 
   updateMatchParticipants: async (
@@ -136,7 +223,7 @@ export const contestApi = {
     body: ContestUpdateMatchParticipantsBody,
   ): Promise<ContestMatch[]> => {
     const res = await api.patch<ApiEnvelope<ContestMatch[]>>(`/v1/contest-matches/${matchId}/participants`, body)
-    return res.data.data
+    return (res.data.data ?? []).map(mapContestMatch)
   },
 
   submitMatchResults: async (
@@ -144,7 +231,7 @@ export const contestApi = {
     body: ContestSubmitResultsBody,
   ): Promise<ContestMatch[]> => {
     const res = await api.post<ApiEnvelope<ContestMatch[]>>(`/v1/contest-matches/${matchId}/results`, body)
-    return res.data.data
+    return (res.data.data ?? []).map(mapContestMatch)
   },
 
   correctMatchResults: async (
@@ -152,12 +239,12 @@ export const contestApi = {
     body: ContestCorrectResultsBody,
   ): Promise<ContestMatch[]> => {
     const res = await api.post<ApiEnvelope<ContestMatch[]>>(`/v1/contest-matches/${matchId}/results/correct`, body)
-    return res.data.data
+    return (res.data.data ?? []).map(mapContestMatch)
   },
 
   advanceMatch: async (matchId: string): Promise<ContestMatch[]> => {
     const res = await api.post<ApiEnvelope<ContestMatch[]>>(`/v1/contest-matches/${matchId}/advance`)
-    return res.data.data
+    return (res.data.data ?? []).map(mapContestMatch)
   },
 
   publishLeaderboard: async (contestId: string): Promise<ContestLeaderboardPayload> => {
@@ -180,7 +267,7 @@ export const contestApi = {
       `/v1/contests/${contestId}/registrations/lookup`,
       { params: { check_in_code: checkInCode } },
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
   markEntryFeePaid: async (registrationId: string, note?: string): Promise<ContestRegistration> => {
@@ -188,7 +275,7 @@ export const contestApi = {
       `/v1/contest-registrations/${registrationId}/mark-entry-fee-paid`,
       { note },
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
   waiveEntryFee: async (registrationId: string, note?: string): Promise<ContestRegistration> => {
@@ -196,7 +283,7 @@ export const contestApi = {
       `/v1/contest-registrations/${registrationId}/waive-entry-fee`,
       { note },
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
   approveRegistration: async (registrationId: string, reason?: string): Promise<ContestRegistration> => {
@@ -204,7 +291,7 @@ export const contestApi = {
       `/v1/contest-registrations/${registrationId}/approve`,
       { reason },
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
   rejectRegistration: async (registrationId: string, reason?: string): Promise<ContestRegistration> => {
@@ -212,7 +299,7 @@ export const contestApi = {
       `/v1/contest-registrations/${registrationId}/reject`,
       { reason },
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
   checkInRegistration: async (
@@ -223,13 +310,13 @@ export const contestApi = {
       `/v1/contest-registrations/${registrationId}/check-in`,
       { checked_in_cafe_id: checkedInCafeId },
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 
   cancelRegistration: async (registrationId: string): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/cancel`
     )
-    return res.data.data
+    return mapContestRegistration(res.data.data)
   },
 }

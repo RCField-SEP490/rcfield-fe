@@ -3,6 +3,7 @@ import type {
   ContestItem,
   ContestLeaderboardPayload,
   ContestMatch,
+  ContestMatchParticipant,
   ContestRegistration,
 } from "../types"
 
@@ -42,6 +43,36 @@ export function formatDurationMs(value?: number | null) {
 
 export function formatMatchLabel(match: ContestMatch) {
   return match.name?.trim() || `Round ${match.round_no} · Match ${match.match_no}`
+}
+
+export function getRegistrationDisplayName(registration?: ContestRegistration | null) {
+  return (
+    registration?.participant?.fullName?.trim() ||
+    registration?.participant?.email?.trim() ||
+    registration?.checkInCode?.trim() ||
+    (registration?.id ? `Registration ${registration.id.slice(0, 8)}` : "Người chơi chưa xác định")
+  )
+}
+
+export function getRegistrationSubtitle(registration?: ContestRegistration | null) {
+  return registration?.participant?.email?.trim() || registration?.checkInCode?.trim() || null
+}
+
+export function getMatchParticipantName(participant?: ContestMatchParticipant | null) {
+  return (
+    participant?.registration?.participant_name?.trim() ||
+    participant?.registration?.participant_email?.trim() ||
+    `Registration ${participant?.registration_id.slice(0, 8) ?? "--"}`
+  )
+}
+
+export function getMatchParticipantSubtitle(participant?: ContestMatchParticipant | null) {
+  return participant?.registration?.participant_email?.trim() || participant?.registration?.check_in_code?.trim() || null
+}
+
+export function getOpponentsForRegistration(match: ContestMatch | null | undefined, registrationId: string) {
+  if (!match) return []
+  return match.participants.filter((participant) => participant.registration_id !== registrationId)
 }
 
 export function getPublishedLeaderboard(contest?: ContestItem | null) {

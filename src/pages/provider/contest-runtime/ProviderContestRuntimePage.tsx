@@ -7,7 +7,12 @@ import { useContestEventDay } from "@/features/contests/hooks/useContestEventDay
 import { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
 import { getPublishedLeaderboard, getErrorMessage } from "@/features/contests/lib/contest-runtime"
 import { getContestStatusClass } from "@/features/contests/lib/contest-status"
-import type { ContestRuntimeTab } from "@/features/contests/types"
+import type {
+  ContestEntryFeePaymentStatus,
+  ContestMatchStatus,
+  ContestRegistrationStatus,
+  ContestRuntimeTab,
+} from "@/features/contests/types"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
 import { ContestEventDayPanel } from "./components/ContestEventDayPanel"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
@@ -25,7 +30,24 @@ export function ProviderContestRuntimePage() {
   const { contestId } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const activeTab = (searchParams.get("tab") as ContestRuntimeTab | null) ?? "overview"
-  const runtime = useContestRuntime(contestId)
+  const registrationStatus = searchParams.get("registrationStatus") ?? ""
+  const paymentStatus = searchParams.get("paymentStatus") ?? ""
+  const registrationQuery = searchParams.get("registrationQuery") ?? ""
+  const matchStatus = searchParams.get("matchStatus") ?? ""
+  const participantQuery = searchParams.get("participantQuery") ?? ""
+  const roundNo = searchParams.get("roundNo") ?? ""
+  const runtime = useContestRuntime(contestId, {
+    registrations: {
+      status: (registrationStatus || undefined) as ContestRegistrationStatus | undefined,
+      payment_status: (paymentStatus || undefined) as ContestEntryFeePaymentStatus | undefined,
+      query: registrationQuery || undefined,
+    },
+    matches: {
+      status: (matchStatus || undefined) as ContestMatchStatus | undefined,
+      participant_query: participantQuery || undefined,
+      round_no: roundNo ? Number(roundNo) : undefined,
+    },
+  })
   const eventDay = useContestEventDay(contestId)
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
   const [selectedCafeId, setSelectedCafeId] = useState("")
@@ -103,7 +125,7 @@ export function ProviderContestRuntimePage() {
               type="button"
               variant="outline"
               className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]"
-              onClick={() => setSearchParams({ tab: "matches" })}
+              onClick={() => updateRuntimeSearchParams(searchParams, setSearchParams, { tab: "matches" })}
             >
               <PlayCircle className="size-4" />
               Generate matches
@@ -151,7 +173,7 @@ export function ProviderContestRuntimePage() {
         />
       </section>
 
-      <ContestRuntimeTabs activeTab={activeTab} onChange={(tab) => setSearchParams({ tab })} />
+      <ContestRuntimeTabs activeTab={activeTab} onChange={(tab) => updateRuntimeSearchParams(searchParams, setSearchParams, { tab })} />
 
       <div className="mt-4 space-y-4">
         {activeTab === "overview" ? (
@@ -159,17 +181,76 @@ export function ProviderContestRuntimePage() {
         ) : null}
 
         {activeTab === "event-day" ? (
-          <ContestEventDayPanel
-            contest={contest}
-            registrations={registrations}
-            selectedCafeId={selectedCafeId}
-            onChangeSelectedCafeId={setSelectedCafeId}
-            eventDay={eventDay}
-          />
+          <>
+            <section className="grid gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4 lg:grid-cols-3">
+              <input
+                value={registrationQuery}
+                onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { registrationQuery: event.target.value })}
+                placeholder="Tìm theo tên, email, check-in code"
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              />
+              <select
+                value={registrationStatus}
+                onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { registrationStatus: event.target.value })}
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              >
+                <option value="">Tất cả registration status</option>
+                <option value="PENDING">PENDING</option>
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="CHECKED_IN">CHECKED_IN</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+              <select
+                value={paymentStatus}
+                onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { paymentStatus: event.target.value })}
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              >
+                <option value="">Tất cả payment status</option>
+                <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
+                <option value="PENDING_REVIEW">PENDING_REVIEW</option>
+                <option value="WAIVED">WAIVED</option>
+                <option value="MARKED_PAID">MARKED_PAID</option>
+                <option value="NOT_REQUIRED">NOT_REQUIRED</option>
+              </select>
+            </section>
+            <ContestEventDayPanel
+              contest={contest}
+              registrations={registrations}
+              selectedCafeId={selectedCafeId}
+              onChangeSelectedCafeId={setSelectedCafeId}
+              eventDay={eventDay}
+            />
+          </>
         ) : null}
 
         {activeTab === "matches" ? (
           <div className="space-y-4">
+            <section className="grid gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4 lg:grid-cols-3">
+              <input
+                value={participantQuery}
+                onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { participantQuery: event.target.value })}
+                placeholder="Tìm theo tên participant"
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              />
+              <select
+                value={matchStatus}
+                onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { matchStatus: event.target.value })}
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              >
+                <option value="">Tất cả match status</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="READY">READY</option>
+                <option value="RUNNING">RUNNING</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+              <input
+                value={roundNo}
+                onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { roundNo: event.target.value.replace(/[^\d]/g, "") })}
+                placeholder="Lọc theo round"
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              />
+            </section>
             <ContestMatchBoard
               contest={contest}
               registrations={registrations}
@@ -190,4 +271,17 @@ export function ProviderContestRuntimePage() {
       </div>
     </ProviderShell>
   )
+}
+
+function updateRuntimeSearchParams(
+  currentParams: URLSearchParams,
+  setSearchParams: ReturnType<typeof useSearchParams>[1],
+  updates: Record<string, string>,
+) {
+  const next = new URLSearchParams(currentParams)
+  for (const [key, value] of Object.entries(updates)) {
+    if (!value) next.delete(key)
+    else next.set(key, value)
+  }
+  setSearchParams(next)
 }

@@ -111,6 +111,11 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     operations: true,
     business: true,
   })
+  const [expandedNavGroups, setExpandedNavGroups] = useState<Record<string, boolean>>({
+    "Tổng quan": true,
+    "Vận hành": true,
+    "Hệ thống": true,
+  })
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const desktopNavRef = useRef<HTMLElement | null>(null)
@@ -388,6 +393,40 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     )
   }
 
+  const renderContestSubMenu = (isMobile: boolean) => {
+    const rawContestId = location.pathname.startsWith("/provider/contests/") ? location.pathname.split("/")[3] ?? "" : ""
+    const contestId = rawContestId && rawContestId !== "new" ? rawContestId : ""
+    const isContestContext = Boolean(contestId)
+    const contestLinks = [
+      { label: "Danh sách contest", to: routePaths.providerContests },
+      { label: "Tạo contest", to: routePaths.providerContestCreate },
+      ...(isContestContext ? [{ label: "Runtime hiện tại", to: routePaths.providerContestRuntime.replace(":contestId", contestId) }] : []),
+    ]
+
+    return (
+      <div className="mt-1.5 ml-6 space-y-1 border-l border-[#e5e2e1] pl-3">
+        {contestLinks.map((link) => {
+          const active = location.pathname === link.to
+          return (
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={() => {
+                if (isMobile) setMobileMenuOpen(false)
+              }}
+              className={cn(
+                "flex rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                active ? "bg-orange-100/50 text-orange-700" : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700",
+              )}
+            >
+              {link.label}
+            </Link>
+          )
+        })}
+      </div>
+    )
+  }
+
   const childList = Children.toArray(children)
   const headerChildren = childList.filter(
     (child) => isValidElement(child) && (child.type === ProviderHeader || child.type === ProviderPageHeader)
@@ -416,10 +455,15 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         >
           {providerNavGroups.map((group) => (
             <div key={group.heading}>
-              <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
-                {group.heading}
-              </p>
-              <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => setExpandedNavGroups((current) => ({ ...current, [group.heading]: !current[group.heading] }))}
+                className="mb-1 flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4] hover:bg-orange-50/70"
+              >
+                <span>{group.heading}</span>
+                {expandedNavGroups[group.heading] ? <ChevronDown className="size-3.5 text-[#747878]" /> : <ChevronRight className="size-3.5 text-[#747878]" />}
+              </button>
+              {expandedNavGroups[group.heading] ? <div className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
                   const active = location.pathname === item.to || (item.to !== routePaths.providerDashboard && location.pathname.startsWith(item.to))
@@ -440,10 +484,11 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                         {item.label}
                       </Link>
                       {item.to === routePaths.providerCafes && renderSubMenu(false)}
+                      {item.to === routePaths.providerContests && renderContestSubMenu(false)}
                     </div>
                   )
                 })}
-              </div>
+              </div> : null}
             </div>
           ))}
         </nav>
@@ -500,10 +545,15 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             >
               {providerNavGroups.map((group) => (
                 <div key={group.heading}>
-                  <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
-                    {group.heading}
-                  </p>
-                  <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedNavGroups((current) => ({ ...current, [group.heading]: !current[group.heading] }))}
+                    className="mb-1 flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4] hover:bg-orange-50/70"
+                  >
+                    <span>{group.heading}</span>
+                    {expandedNavGroups[group.heading] ? <ChevronDown className="size-3.5 text-[#747878]" /> : <ChevronRight className="size-3.5 text-[#747878]" />}
+                  </button>
+                  {expandedNavGroups[group.heading] ? <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => {
                       const Icon = item.icon
                       const active = location.pathname === item.to || (item.to !== routePaths.providerDashboard && location.pathname.startsWith(item.to))
@@ -528,10 +578,11 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                             {item.label}
                           </Link>
                           {item.to === routePaths.providerCafes && renderSubMenu(true)}
+                          {item.to === routePaths.providerContests && renderContestSubMenu(true)}
                         </div>
                       )
                     })}
-                  </div>
+                  </div> : null}
                 </div>
               ))}
             </nav>

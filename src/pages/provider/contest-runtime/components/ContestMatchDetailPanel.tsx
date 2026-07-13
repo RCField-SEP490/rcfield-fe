@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { contestCorrectResultsSchema, contestSubmitResultsSchema } from "@/features/contests/schemas/contest.schema"
 import type { ContestMatch, ContestMatchParticipant, ContestSubmitResultsBody } from "@/features/contests/types"
-import { formatDurationMs, getErrorMessage } from "@/features/contests/lib/contest-runtime"
+import { formatDurationMs, getErrorMessage, getMatchParticipantName, getMatchParticipantSubtitle } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Badge } from "@/shared/ui/badge"
@@ -117,6 +117,12 @@ export function ContestMatchDetailPanel({
   }
 
   const handleSaveParticipants = async () => {
+    const slotNumbers = participants.map((participant) => participant.slot_no)
+    if (new Set(slotNumbers).size !== slotNumbers.length) {
+      toast.error("Mỗi participant phải có slot khác nhau")
+      return
+    }
+
     try {
       await runtime.updateParticipantsMutation.mutateAsync({
         matchId: match.id,
@@ -144,6 +150,20 @@ export function ContestMatchDetailPanel({
 
   const handleSubmitResults = async () => {
     const rawPayload = buildResultPayload()
+    const winners = rawPayload.results.filter((item) => item.is_winner)
+    const finishPositions = rawPayload.results
+      .map((item) => item.finish_position)
+      .filter((item): item is number => typeof item === "number")
+
+    if (match.match_type !== "TIME_ATTACK" && winners.length !== 1) {
+      toast.error("Match đối kháng cần chọn đúng 1 người thắng")
+      return
+    }
+    if (new Set(finishPositions).size !== finishPositions.length) {
+      toast.error("Finish position không được trùng nhau")
+      return
+    }
+
     const result = contestSubmitResultsSchema.safeParse(rawPayload)
     if (!result.success) {
       const firstError = result.error.issues[0]
@@ -184,6 +204,12 @@ export function ContestMatchDetailPanel({
   }
 
   const handleAdvance = async () => {
+    const hasWinner = results.some((result) => result.is_winner)
+    if (match.match_type !== "TIME_ATTACK" && !hasWinner) {
+      toast.error("Cần chọn winner trước khi advance match")
+      return
+    }
+
     try {
       await runtime.advanceMatchMutation.mutateAsync(match.id)
       toast.success("Đã advance match")
@@ -213,7 +239,10 @@ export function ContestMatchDetailPanel({
               return (
                 <div key={participant.registration_id} className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-[#1c1b1b]">{participant.registration_id.slice(0, 8)}</p>
+                    <div>
+                      <p className="text-sm font-bold text-[#1c1b1b]">{snapshot ? getMatchParticipantName(snapshot) : participant.registration_id.slice(0, 8)}</p>
+                      {snapshot ? <p className="text-xs font-medium text-[#747878]">{getMatchParticipantSubtitle(snapshot) ?? "Chưa có email / check-in code"}</p> : null}
+                    </div>
                     <p className="text-xs font-semibold text-[#747878]">{snapshot?.registration?.status ?? "--"}</p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-4">
@@ -261,7 +290,10 @@ export function ContestMatchDetailPanel({
           <div className="space-y-3">
             {results.map((result) => (
               <div key={result.registration_id} className="rounded-lg border border-[#e5e2e1] p-3">
-                <p className="mb-3 text-sm font-bold text-[#1c1b1b]">{result.registration_id.slice(0, 8)}</p>
+                <div className="mb-3">
+                  <p className="text-sm font-bold text-[#1c1b1b]">{participantMap.get(result.registration_id) ? getMatchParticipantName(participantMap.get(result.registration_id)) : result.registration_id.slice(0, 8)}</p>
+                  <p className="text-xs font-medium text-[#747878]">{participantMap.get(result.registration_id) ? getMatchParticipantSubtitle(participantMap.get(result.registration_id)) ?? "Chưa có email / check-in code" : "Chưa có thông tin bổ sung"}</p>
+                </div>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <Field label="Finish">
                     <Input

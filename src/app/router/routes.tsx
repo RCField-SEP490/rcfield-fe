@@ -22,6 +22,7 @@ import StaffByocPage from "@/pages/staff/StaffByocPage"
 import StaffPackagesPage from "@/pages/staff/StaffPackagesPage"
 import StaffContestsPage from "@/pages/staff/contest/StaffContestsPage"
 import StaffContestCheckInPage from "@/pages/staff/contest/StaffContestCheckInPage"
+import StaffContestRuntimePage from "@/pages/staff/contest/StaffContestRuntimePage"
 
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { RoleGuard } from "@/shared/components/RoleGuard"
@@ -208,6 +209,7 @@ export const router = createBrowserRouter([
           { path: routePaths.staffDashboard, element: <StaffDashboardPage /> },
           { path: routePaths.staffContests, element: <StaffContestsPage /> },
           { path: routePaths.staffContestCheckIn, element: <StaffContestCheckInPage /> },
+          { path: routePaths.staffContestRuntime, element: <StaffContestRuntimePage /> },
           { path: routePaths.staffTodayBookings, element: <StaffTodayBookingsPage /> },
           { path: routePaths.staffSessionDetail, element: <StaffSessionDetailPage /> },
           { path: routePaths.staffInspection, element: <StaffInspectionPage /> },

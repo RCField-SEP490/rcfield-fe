@@ -7,6 +7,8 @@ import {
   formatMatchLabel,
   getEligibleRuntimeRegistrations,
   getErrorMessage,
+  getMatchParticipantName,
+  getRegistrationDisplayName,
   groupMatchesByRound,
 } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
@@ -25,6 +27,7 @@ export function ContestMatchBoard({
   selectedMatchId,
   onSelectMatch,
   runtime,
+  showGenerate = true,
 }: {
   contest: ContestItem
   registrations: ContestRegistration[]
@@ -32,6 +35,7 @@ export function ContestMatchBoard({
   selectedMatchId: string | null
   onSelectMatch: (matchId: string) => void
   runtime: RuntimeHook
+  showGenerate?: boolean
 }) {
   const eligibleRegistrations = useMemo(
     () => getEligibleRuntimeRegistrations(registrations),
@@ -76,8 +80,8 @@ export function ContestMatchBoard({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-      <Panel>
+    <div className={`grid gap-4 ${showGenerate ? "xl:grid-cols-[0.9fr_1.1fr]" : ""}`}>
+      {showGenerate ? <Panel>
         <PanelTitle title="Generate runtime" subtitle="Chọn branch và registration hợp lệ để sinh runtime thật." />
         <div className="space-y-4">
           <Field label="Branch runtime">
@@ -138,7 +142,12 @@ export function ContestMatchBoard({
                           )
                         }
                       />
-                      <span className="text-sm font-bold text-[#1c1b1b]">{registration.id.slice(0, 8)}</span>
+                      <span>
+                        <span className="text-sm font-bold text-[#1c1b1b]">{getRegistrationDisplayName(registration)}</span>
+                        {registration.participant?.email ? (
+                          <span className="block text-xs font-medium text-[#747878]">{registration.participant.email}</span>
+                        ) : null}
+                      </span>
                     </span>
                     <span className="text-xs font-semibold text-[#747878]">
                       {registration.status} · {registration.checkInCode ?? "--"}
@@ -157,7 +166,7 @@ export function ContestMatchBoard({
             Generate matches
           </Button>
         </div>
-      </Panel>
+      </Panel> : null}
 
       <Panel>
         <PanelTitle title="Match board" subtitle="Theo dõi runtime theo round, chọn từng match để nhập kết quả." />
@@ -198,6 +207,13 @@ export function ContestMatchBoard({
                         <span>{match.match_type}</span>
                         <span>{match.participants.length} participants</span>
                         <span>Match #{match.match_no}</span>
+                      </div>
+                      <div className="mt-3 space-y-1">
+                        {match.participants.slice(0, 3).map((participant) => (
+                          <p key={participant.id} className="text-xs font-semibold text-[#5d5f5f]">
+                            {getMatchParticipantName(participant)}
+                          </p>
+                        ))}
                       </div>
                     </button>
                   ))}

@@ -4,6 +4,8 @@ import type { ContestItem, ContestRegistration } from "@/features/contests/types
 import {
   getErrorMessage,
   formatContestDateTime,
+  getRegistrationDisplayName,
+  getRegistrationSubtitle,
 } from "@/features/contests/lib/contest-runtime"
 import {
   getPaymentStatusClass,
@@ -46,10 +48,13 @@ export function ContestEventDayPanel({
 
   const filteredRegistrations = useMemo(() => {
     return registrations.filter((registration) => {
+      const normalizedSearch = search.toLowerCase()
       const matchesSearch =
         search.trim() === "" ||
-        registration.id.toLowerCase().includes(search.toLowerCase()) ||
-        (registration.checkInCode ?? "").toLowerCase().includes(search.toLowerCase())
+        registration.id.toLowerCase().includes(normalizedSearch) ||
+        (registration.checkInCode ?? "").toLowerCase().includes(normalizedSearch) ||
+        getRegistrationDisplayName(registration).toLowerCase().includes(normalizedSearch) ||
+        (registration.participant?.email ?? "").toLowerCase().includes(normalizedSearch)
       const matchesStatus = statusFilter === "ALL" || registration.status === statusFilter
       const matchesPayment = paymentFilter === "ALL" || registration.paymentStatus === paymentFilter
       return matchesSearch && matchesStatus && matchesPayment
@@ -149,10 +154,11 @@ export function ContestEventDayPanel({
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-extrabold text-[#1c1b1b]">{registration.id.slice(0, 8)}</p>
+                    <p className="text-sm font-extrabold text-[#1c1b1b]">{getRegistrationDisplayName(registration)}</p>
                     <Badge className={`border ${getRegistrationStatusClass(registration.status)}`}>{registration.status}</Badge>
                     <Badge className={`border ${getPaymentStatusClass(registration.paymentStatus)}`}>{registration.paymentStatus}</Badge>
                   </div>
+                  <p className="mt-1 text-xs font-semibold text-[#747878]">{getRegistrationSubtitle(registration) ?? `Registration ${registration.id.slice(0, 8)}`}</p>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-[#747878]">
                     <span>Check-in code: {registration.checkInCode ?? "--"}</span>
                     <span>Checked in: {formatContestDateTime(registration.checkedInAt)}</span>
@@ -161,15 +167,15 @@ export function ContestEventDayPanel({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <ActionButton label="Mark paid" onClick={() => setDialogState({ kind: "markPaid", registration })} />
-                  <ActionButton label="Waive" onClick={() => setDialogState({ kind: "waive", registration })} />
-                  <Button className="h-8 rounded-lg bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700" onClick={() => setDialogState({ kind: "approve", registration })}>
+                  <ActionButton label="Mark paid" disabled={registration.paymentStatus === "MARKED_PAID"} onClick={() => setDialogState({ kind: "markPaid", registration })} />
+                  <ActionButton label="Waive" disabled={registration.paymentStatus === "WAIVED"} onClick={() => setDialogState({ kind: "waive", registration })} />
+                  <Button disabled={registration.status !== "PENDING"} className="h-8 rounded-lg bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setDialogState({ kind: "approve", registration })}>
                     Approve
                   </Button>
-                  <Button variant="outline" className="h-8 rounded-lg border-red-200 bg-red-50 px-3 text-xs text-red-700 hover:bg-red-100" onClick={() => setDialogState({ kind: "reject", registration })}>
+                  <Button disabled={registration.status === "CANCELLED"} variant="outline" className="h-8 rounded-lg border-red-200 bg-red-50 px-3 text-xs text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setDialogState({ kind: "reject", registration })}>
                     Reject
                   </Button>
-                  <Button variant="outline" className="h-8 rounded-lg border-blue-200 bg-blue-50 px-3 text-xs text-blue-700 hover:bg-blue-100" onClick={() => void handleCheckIn(registration.id)}>
+                  <Button disabled={registration.status !== "CONFIRMED"} variant="outline" className="h-8 rounded-lg border-blue-200 bg-blue-50 px-3 text-xs text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void handleCheckIn(registration.id)}>
                     Check-in
                   </Button>
                 </div>
@@ -222,7 +228,7 @@ export function ContestEventDayPanel({
           ) : lookupRegistration ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-extrabold text-[#1c1b1b]">{lookupRegistration.id.slice(0, 8)}</p>
+                <p className="text-sm font-extrabold text-[#1c1b1b]">{getRegistrationDisplayName(lookupRegistration)}</p>
                 <Badge className={`border ${getRegistrationStatusClass(lookupRegistration.status)}`}>{lookupRegistration.status}</Badge>
                 <Badge className={`border ${getPaymentStatusClass(lookupRegistration.paymentStatus)}`}>{lookupRegistration.paymentStatus}</Badge>
               </div>
@@ -269,12 +275,13 @@ export function ContestEventDayPanel({
   )
 }
 
-function ActionButton({ label, onClick }: { label: string; onClick: () => void }) {
+function ActionButton({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <Button
       type="button"
       variant="outline"
-      className="h-8 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] px-3 text-xs text-[#1c1b1b] hover:bg-[#ebe7e7]"
+      disabled={disabled}
+      className="h-8 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] px-3 text-xs text-[#1c1b1b] hover:bg-[#ebe7e7] disabled:cursor-not-allowed disabled:opacity-50"
       onClick={onClick}
     >
       {label}

@@ -20,6 +20,15 @@ export type ContestMatchStatus = "DRAFT" | "READY" | "RUNNING" | "COMPLETED" | "
 export type ContestMatchType = "HEAD_TO_HEAD" | "MULTI_DRIVER" | "TIME_ATTACK" | "FINAL"
 export type ContestParticipantStatus = "READY" | "STARTED" | "FINISHED" | "DNS" | "DNF" | "DQ"
 export type ContestRuntimeTab = "overview" | "event-day" | "matches" | "leaderboard" | "audit"
+export type CustomerJourneyStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED_WAITING_CHECKIN"
+  | "READY_TO_RACE"
+  | "IN_BRACKET"
+  | "ADVANCED"
+  | "ELIMINATED"
+  | "FINISHED"
+  | "CANCELLED"
 
 export type ContestCatalogType = {
   id: string
@@ -124,6 +133,7 @@ export type ContestItem = {
     vehicle_policy_options: string[]
     feature_flags: Record<string, unknown>
   } | null
+  my_registration?: ContestRegistration | null
 }
 
 export type ContestListResponse = {
@@ -160,6 +170,30 @@ export type ContestUpsertBody = {
   config: Record<string, unknown>
 }
 
+export type ContestRegistrationParticipant = {
+  id: string
+  fullName: string | null
+  email: string | null
+  avatarUrl: string | null
+}
+
+export type ContestRegistrationLatestMatch = {
+  matchId: string
+  contestId: string
+  roundNo: number
+  matchNo: number
+  name: string | null
+  status: ContestMatchStatus
+  matchType: ContestMatchType
+  scheduledAt: string | null
+  startedAt: string | null
+  endedAt: string | null
+  nextMatchId: string | null
+  participantStatus: ContestParticipantStatus | null
+  finishPosition: number | null
+  isWinner: boolean
+}
+
 export type ContestRegistration = {
   id: string
   contestId: string
@@ -177,15 +211,23 @@ export type ContestRegistration = {
   cancellationReason: string | null
   createdAt: string
   updatedAt: string
-  contest?: ContestItem
+  metadata?: Record<string, unknown>
+  participant: ContestRegistrationParticipant | null
+  contest?: ContestItem | null
+  latestMatch: ContestRegistrationLatestMatch | null
+  customerJourneyStatus: CustomerJourneyStatus | null
 }
 
 export type ContestMatchParticipantRegistrationSnapshot = {
   id: string
   user_id: string
+  participant_name: string | null
+  participant_email: string | null
+  participant_avatar_url: string | null
   status: ContestRegistrationStatus
   check_in_code: string | null
   checked_in_at: string | null
+  is_my_registration: boolean
 }
 
 export type ContestMatchParticipant = {
@@ -293,6 +335,36 @@ export type ContestGenerateMatchesBody = {
   registration_ids: string[]
   drivers_per_match?: number
   seeding_mode?: "MANUAL" | "CHECK_IN_ORDER"
+}
+
+export type ContestListParams = {
+  page?: number
+  limit?: number
+  scope?: "managed"
+  status?: ContestStatus
+  contest_type_id?: string
+  contest_format_id?: string
+  cafe_id?: string
+  query?: string
+}
+
+export type MyContestRegistrationsQuery = {
+  query?: string
+  contest_status?: ContestStatus
+  customer_journey_status?: CustomerJourneyStatus
+}
+
+export type ContestRegistrationsQuery = {
+  query?: string
+  status?: ContestRegistrationStatus
+  payment_status?: ContestEntryFeePaymentStatus
+}
+
+export type ContestMatchesQuery = {
+  round_no?: number
+  status?: ContestMatchStatus
+  cafe_id?: string
+  participant_query?: string
 }
 
 export type ContestUpdateMatchParticipantsBody = {

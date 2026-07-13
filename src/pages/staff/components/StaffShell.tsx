@@ -17,6 +17,8 @@ import {
   CircleHelp,
   Menu,
   MonitorSmartphone,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import { useStaffOperations } from "../context/StaffOperationContext"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
@@ -80,6 +82,10 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
   const [scannerOpen, setScannerOpen] = useState(false)
   const [scanCode, setScanCode] = useState("")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [expandedNavGroups, setExpandedNavGroups] = useState<Record<string, boolean>>({
+    "Vận hành": true,
+    "Đội xe & Thiết bị": true,
+  })
 
   // Provider-impersonating-staff mode
   const staffImpersonationRaw = localStorage.getItem(storageKeys.staffImpersonation)
@@ -133,6 +139,40 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
     sessionStorage.removeItem("rcfield:auth")
     toast.success("Đã đăng xuất khỏi tài khoản nhân viên.")
     navigate(routePaths.login, { replace: true })
+  }
+
+  const renderContestSubMenu = (isMobile: boolean) => {
+    const contestId = location.pathname.startsWith("/staff/contests/") ? location.pathname.split("/")[3] ?? "" : ""
+    const links = [
+      { label: "Danh sách contest", path: routePaths.staffContests },
+      ...(contestId ? [
+        { label: "Check-in", path: routePaths.staffContestCheckIn.replace(":contestId", contestId) },
+        { label: "Match runtime", path: routePaths.staffContestRuntime.replace(":contestId", contestId) },
+      ] : []),
+    ]
+
+    return (
+      <div className="mt-1.5 ml-6 space-y-1 border-l border-[#e5e2e1] pl-3">
+        {links.map((link) => {
+          const active = location.pathname === link.path
+          return (
+            <Link
+              key={link.path}
+              to={link.path}
+              onClick={() => {
+                if (isMobile) setMobileMenuOpen(false)
+              }}
+              className={cn(
+                "flex rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                active ? "bg-orange-100/50 text-orange-700" : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700",
+              )}
+            >
+              {link.label}
+            </Link>
+          )
+        })}
+      </div>
+    )
   }
 
   const handleScanSubmit = async (e: React.FormEvent) => {
@@ -228,10 +268,15 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
         >
           {staffNavGroups.map((group) => (
             <div key={group.heading}>
-              <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
-                {group.heading}
-              </p>
-              <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => setExpandedNavGroups((current) => ({ ...current, [group.heading]: !current[group.heading] }))}
+                className="mb-1 flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4] hover:bg-orange-50/70"
+              >
+                <span>{group.heading}</span>
+                {expandedNavGroups[group.heading] ? <ChevronDown className="size-3.5 text-[#747878]" /> : <ChevronRight className="size-3.5 text-[#747878]" />}
+              </button>
+              {expandedNavGroups[group.heading] ? <div className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
                   const active = location.pathname === item.path || (item.path !== routePaths.staffDashboard && location.pathname.startsWith(item.path))
@@ -253,7 +298,8 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                     </Link>
                   )
                 })}
-              </div>
+                {group.items.some((item) => item.path === routePaths.staffContests) ? renderContestSubMenu(false) : null}
+              </div> : null}
             </div>
           ))}
         </nav>
@@ -319,10 +365,15 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
             >
               {staffNavGroups.map((group) => (
                 <div key={group.heading}>
-                  <p className="mb-1 px-4 text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4]">
-                    {group.heading}
-                  </p>
-                  <div className="flex flex-col gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedNavGroups((current) => ({ ...current, [group.heading]: !current[group.heading] }))}
+                    className="mb-1 flex w-full items-center justify-between rounded-lg px-4 py-2 text-left text-[10px] font-extrabold uppercase tracking-widest text-[#b0b4b4] hover:bg-orange-50/70"
+                  >
+                    <span>{group.heading}</span>
+                    {expandedNavGroups[group.heading] ? <ChevronDown className="size-3.5 text-[#747878]" /> : <ChevronRight className="size-3.5 text-[#747878]" />}
+                  </button>
+                  {expandedNavGroups[group.heading] ? <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => {
                       const Icon = item.icon
                       const active = location.pathname === item.path || (item.path !== routePaths.staffDashboard && location.pathname.startsWith(item.path))
@@ -347,7 +398,8 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                         </Link>
                       )
                     })}
-                  </div>
+                    {group.items.some((item) => item.path === routePaths.staffContests) ? renderContestSubMenu(true) : null}
+                  </div> : null}
                 </div>
               ))}
             </nav>
