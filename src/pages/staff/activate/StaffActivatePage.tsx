@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { staffApi } from "@/features/staff/api/staff.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
+import { getApiErrorInfo } from "@/shared/lib/utils"
 import { routePaths } from "@/app/router/route-paths"
 
 type PageState = "loading" | "valid" | "invalid" | "expired" | "activating" | "done"
@@ -25,7 +26,7 @@ export function StaffActivatePage() {
 
   useEffect(() => {
     if (!token) {
-      setState("invalid")
+      queueMicrotask(() => setState("invalid"))
       return
     }
 
@@ -85,8 +86,8 @@ export function StaffActivatePage() {
       setState("done")
       toast.success("Tài khoản đã được kích hoạt thành công!")
       setTimeout(() => navigate(routePaths.staffDashboard), 1500)
-    } catch (err: any) {
-      const code = err?.response?.data?.code
+    } catch (err: unknown) {
+      const { code } = getApiErrorInfo(err)
       if (code === "INVITE_TOKEN_EXPIRED") {
         setState("expired")
       } else if (code === "INVITE_TOKEN_INVALID") {
