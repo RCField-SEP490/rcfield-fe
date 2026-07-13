@@ -98,7 +98,7 @@ export function ProviderStaffPage() {
         staffName: staff.fullName,
         cafeName: staff.cafeName,
       }))
-      window.location.href = routePaths.staffDashboard
+      window.location.assign(routePaths.staffDashboard)
     } catch {
       toast.error("Không thể mở phiên xem với tư cách nhân viên.")
       setImpersonatingId(null)

@@ -60,7 +60,6 @@ export function ProviderPageHeader({
   title,
   description,
   actions,
-  flush: _flush = false,
 }: {
   title: string
   description: string
