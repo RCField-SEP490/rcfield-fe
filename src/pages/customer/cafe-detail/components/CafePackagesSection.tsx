@@ -43,7 +43,7 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
     setPurchasingId(pkg.id)
     try {
       const result = await purchaseMutation.mutateAsync({ cafeId, packageId: pkg.id })
-      window.location.href = result.payment_url
+      window.location.assign(result.payment_url)
     } catch (err) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
       if (code === "PACKAGE_ALREADY_OWNED") {
