@@ -1,9 +1,11 @@
 import {
   AlertCircle,
+  ArrowRight,
   CalendarDays,
   Car,
   CheckCircle2,
   Clock,
+  CreditCard,
   Eye,
   Hash,
   Home,
@@ -11,15 +13,15 @@ import {
   Loader2,
   MapPin,
   QrCode,
+  ReceiptText,
   RotateCcw,
-  ShieldCheck,
   Tag,
   Users,
 } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/shared/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import { Card, CardContent } from "@/shared/ui/card"
 import { Badge } from "@/shared/ui/badge"
 import { Separator } from "@/shared/ui/separator"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
@@ -32,8 +34,9 @@ export function PaymentResultPage() {
   const reason = searchParams.get("reason")
   const responseCode = searchParams.get("response_code")
   const isSuccess = status === "success"
+  const isCounterPayment = txnRef?.startsWith("ctr_") ?? false
 
-  const resourceId = txnRef ? txnRefToBookingId(txnRef) : undefined
+  const resourceId = searchParams.get("booking_id") ?? (txnRef ? txnRefToBookingId(txnRef) : undefined)
 
   const { data: booking, isFetching, isError: bookingError } = useQuery({
     queryKey: bookingQueryKeys.detail(resourceId),
@@ -48,6 +51,7 @@ export function PaymentResultPage() {
   })
 
   const isPackagePurchase = isSuccess && bookingError && !isFetching
+  const showGenericSuccess = isSuccess && !booking && !isPackagePurchase && (!resourceId || bookingError)
   const paymentComponents = booking?.payment_components ?? []
   const discountAmount = Number(booking?.discountAmount ?? 0)
   const grossTotal = paymentComponents.reduce((sum, c) => sum + Number(c.amount), 0)
@@ -66,251 +70,277 @@ export function PaymentResultPage() {
   const isRental = booking?.playMode === "RENTAL"
 
   return (
-    <div className="min-h-screen bg-muted/30 px-4 py-8 md:px-6">
-      <div className="mx-auto max-w-2xl space-y-4">
+    <div className="min-h-screen bg-[#f3f6f8] px-4 py-8 md:px-6">
+      <div className="mx-auto max-w-4xl">
+        <Card className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <CardContent className="p-0">
+            <section className="grid lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="px-6 py-8 md:px-8 md:py-10">
+                <div className={`flex size-14 items-center justify-center rounded-lg ${isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+                  {isSuccess ? <CheckCircle2 className="size-8" /> : <AlertCircle className="size-8" />}
+                </div>
 
-        {/* ── Status header ── */}
-        <Card className="overflow-hidden rounded-xl shadow-sm">
-          <CardHeader className="border-b bg-background py-10 text-center">
-            <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${isSuccess ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
-              {isSuccess ? <CheckCircle2 className="h-8 w-8" /> : <AlertCircle className="h-8 w-8" />}
-            </div>
-            <CardTitle className="mt-4 text-3xl">
-              {isSuccess ? "Thanh toán thành công" : "Thanh toán thất bại"}
-            </CardTitle>
-            {txnRef && (
-              <p className="text-sm text-muted-foreground">
-                Mã giao dịch: <span className="font-semibold text-foreground">{txnRef}</span>
-              </p>
-            )}
-            {!isSuccess && (reason || responseCode) && (
-              <p className="mt-2 text-sm text-red-600">
-                {reason ? `Lý do: ${reason}` : `Mã lỗi: ${responseCode}`}
-              </p>
-            )}
-          </CardHeader>
-        </Card>
+                <div className="mt-6 space-y-3">
+                  <h1 className="text-3xl font-black leading-tight text-slate-950 md:text-4xl">
+                    {isSuccess ? "Thanh toán thành công" : "Thanh toán thất bại"}
+                  </h1>
+                  <p className="max-w-xl text-sm font-medium leading-6 text-slate-600">
+                    {isSuccess
+                      ? isCounterPayment
+                        ? "Khoản phát sinh tại quầy đã được ghi nhận và cập nhật vào hóa đơn."
+                        : isPackagePurchase
+                          ? "Gói slot đã được kích hoạt và sẵn sàng sử dụng cho các lượt đặt tiếp theo."
+                          : "Giao dịch đã được xử lý. Thông tin đặt chỗ sẽ được cập nhật trong lịch của bạn."
+                      : "Giao dịch không hoàn tất. Bạn có thể thử thanh toán lại hoặc chọn phương thức khác."}
+                  </p>
+                </div>
 
-        {/* ── Package purchase (no booking) ── */}
-        {isPackagePurchase && (
-          <Card className="rounded-xl shadow-sm">
-            <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
-              <Layers className="h-8 w-8 text-orange-500" />
-              <p className="text-sm font-semibold text-slate-700">Gói slot đã được kích hoạt!</p>
-              <p className="text-xs text-muted-foreground">
-                Bạn có thể dùng gói này khi đặt lịch tại cơ sở tương ứng.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Loading state ── */}
-        {isSuccess && !booking && !bookingError && (
-          <Card className="rounded-xl shadow-sm">
-            <CardContent className="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
-              {isFetching && <Loader2 className="h-5 w-5 animate-spin" />}
-              <p>Đang xác nhận thanh toán{isFetching ? "..." : ". Vui lòng chờ."}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Booking detail ── */}
-        {isSuccess && booking && (
-          <Card className="rounded-xl shadow-sm">
-            <CardContent className="pt-5 space-y-4">
-
-              {/* Booking info */}
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Thông tin đặt chỗ</p>
-
-                {booking.cafe && (
-                  <>
-                    <InfoRow icon={<MapPin className="size-4 text-orange-500" />} label="Cơ sở">
-                      <span className="font-semibold">{booking.cafe.name}</span>
-                    </InfoRow>
-                    <InfoRow icon={<MapPin className="size-4 text-muted-foreground/40" />} label="Địa chỉ">
-                      {booking.cafe.address}, {booking.cafe.city}
-                    </InfoRow>
-                  </>
+                {txnRef && (
+                  <div className="mt-6 border-y border-slate-200 py-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Mã giao dịch</p>
+                    <p className="mt-1 break-all font-mono text-sm font-bold text-slate-900">{txnRef}</p>
+                  </div>
                 )}
 
-                <InfoRow icon={<CalendarDays className="size-4 text-orange-500" />} label="Ngày">
-                  {new Date(booking.slotStart).toLocaleDateString("vi-VN", {
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                  })}
-                </InfoRow>
-
-                <InfoRow icon={<Clock className="size-4 text-orange-500" />} label="Khung giờ">
-                  <span className="font-semibold">
-                    {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
-                  </span>
-                </InfoRow>
-
-                {booking.track_type_name && (
-                  <InfoRow icon={<Layers className="size-4 text-orange-500" />} label="Loại sân">
-                    {booking.track_type_name}
-                  </InfoRow>
-                )}
-
-                <InfoRow icon={<Car className="size-4 text-orange-500" />} label="Hình thức">
-                  {isRental ? "Thuê xe của quán" : "Mang xe cá nhân"}
-                </InfoRow>
-
-                {participants.length > 0 && (
-                  <InfoRow icon={<Users className="size-4 text-orange-500" />} label="Người tham gia">
-                    {participants.length} người
-                  </InfoRow>
-                )}
-
-                {pricingLabel && slotMultiplier > 1 && (
-                  <InfoRow icon={<Tag className="size-4 text-amber-500" />} label="Phụ thu">
-                    <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs font-medium">
-                      {pricingLabel} ×{slotMultiplier}
-                    </Badge>
-                  </InfoRow>
+                {!isSuccess && (reason || responseCode) && (
+                  <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    {reason ? `Lý do: ${reason}` : `Mã lỗi: ${responseCode}`}
+                  </div>
                 )}
               </div>
 
-              {/* Vehicles (RENTAL only) */}
-              {isRental && vehicles.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Xe đã đặt</p>
-                    {vehicles.map((v) => (
-                      <div key={v.id} className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2.5">
-                        <Car className="size-4 shrink-0 text-orange-500" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold">{v.catalogName ?? "Xe thuê"}</p>
-                          {(v.identifier || v.color) && (
-                            <p className="text-xs text-muted-foreground">
-                              {[v.identifier, v.color].filter(Boolean).join(" · ")}
-                            </p>
-                          )}
-                        </div>
-                        {v.tier && (
-                          <Badge variant="outline" className="text-[10px] shrink-0">
-                            {v.tier}
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
+              <aside className="border-t border-slate-200 bg-slate-50 px-6 py-8 md:px-8 lg:border-l lg:border-t-0">
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Trạng thái</p>
+                    <p className={`mt-1 text-lg font-black ${isSuccess ? "text-emerald-700" : "text-red-600"}`}>
+                      {isSuccess ? "Đã hoàn tất" : "Không thành công"}
+                    </p>
                   </div>
-                </>
-              )}
 
-              {/* Check-in code */}
-              {booking.checkInCode && (
-                <>
-                  <Separator />
-                  <div className="flex items-center justify-between rounded-lg bg-orange-50 border border-orange-100 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <QrCode className="size-5 text-orange-600" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Mã check-in</p>
-                        <p className="font-mono text-lg font-bold tracking-widest text-orange-700">
-                          {booking.checkInCode}
-                        </p>
-                      </div>
-                    </div>
-                    <Hash className="size-4 text-orange-300" />
-                  </div>
-                </>
-              )}
-
-              {/* Invoice */}
-              {paymentComponents.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Chi tiết hóa đơn</p>
-                    <div className="rounded-xl border divide-y">
-                      {paymentComponents.map((line) => (
-                        <InvoiceLine
-                          key={line.id}
-                          type={line.type}
-                          amount={Number(line.amount)}
-                          pricingLabel={line.type === "SLOT_FEE" && pricingLabel && slotMultiplier > 1 ? pricingLabel : undefined}
-                          slotMultiplier={line.type === "SLOT_FEE" && slotMultiplier > 1 ? slotMultiplier : undefined}
-                          isDeposit={line.type === "SECURITY_DEPOSIT"}
-                        />
-                      ))}
-
-                      {discountAmount > 0 && (
-                        <div className="flex items-center justify-between px-4 py-3 text-sm">
-                          <span className="flex items-center gap-1.5 text-emerald-600">
-                            <Tag className="size-3.5" />
-                            {promoApplied?.code ?? "Mã ưu đãi"}
-                          </span>
-                          <span className="font-medium text-emerald-600">−{formatCurrency(discountAmount)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between rounded-lg bg-muted px-4 py-3 mt-2">
-                      <span className="font-semibold">Tổng thanh toán</span>
-                      <span className="text-xl font-semibold">{formatCurrency(total)}</span>
-                    </div>
-
-                    {paymentComponents.some((c) => c.type === "SECURITY_DEPOSIT") && (
-                      <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800 mt-2">
-                        <ShieldCheck className="size-4 shrink-0 mt-0.5 text-emerald-600" />
-                        <p>
-                          Tiền cọc xe được <strong>giữ lại</strong> và sẽ được hoàn trả hoặc khấu trừ sau khi kiểm tra tình trạng xe khi trả.
-                        </p>
-                      </div>
+                  <div className="divide-y divide-slate-200 border-y border-slate-200">
+                    <ResultMetaRow
+                      icon={<CreditCard className="size-4" />}
+                      label="Loại thanh toán"
+                      value={isCounterPayment ? "Khoản phát sinh tại quầy" : isPackagePurchase ? "Mua gói slot" : "Đặt lịch chơi"}
+                    />
+                    <ResultMetaRow
+                      icon={<ReceiptText className="size-4" />}
+                      label="Cập nhật hệ thống"
+                      value={isSuccess ? "Đã ghi nhận" : "Chưa ghi nhận"}
+                    />
+                    {booking?.id && (
+                      <ResultMetaRow
+                        icon={<Hash className="size-4" />}
+                        label="Mã đặt chỗ"
+                        value={`#${booking.id.slice(0, 8).toUpperCase()}`}
+                      />
                     )}
                   </div>
-                </>
+
+                  {isSuccess && !!resourceId && !booking && !bookingError && (
+                    <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                      {isFetching && <Loader2 className="size-5 animate-spin text-orange-500" />}
+                      <span>Đang đồng bộ dữ liệu đặt chỗ...</span>
+                    </div>
+                  )}
+
+                  {showGenericSuccess && (
+                    <p className="text-sm font-medium leading-6 text-slate-600">
+                      {isCounterPayment
+                        ? "Hóa đơn dịch vụ tại quầy đã được cập nhật. Bạn có thể quay lại lịch đặt để xem trạng thái mới nhất."
+                        : "Bạn có thể quay lại lịch đặt để xem trạng thái mới nhất của đơn."}
+                    </p>
+                  )}
+
+                  {isPackagePurchase && (
+                    <p className="text-sm font-medium leading-6 text-slate-600">
+                      Bạn có thể dùng gói này khi đặt lịch tại cơ sở tương ứng.
+                    </p>
+                  )}
+                </div>
+              </aside>
+            </section>
+
+            {isSuccess && booking && (
+              <section className="border-t border-slate-200 px-6 py-6 md:px-8">
+                <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Thông tin đặt chỗ</p>
+                      <div className="mt-4 space-y-3">
+                        {booking.cafe && (
+                          <>
+                            <InfoRow icon={<MapPin className="size-4 text-orange-500" />} label="Cơ sở">
+                              <span className="font-semibold">{booking.cafe.name}</span>
+                            </InfoRow>
+                            <InfoRow icon={<MapPin className="size-4 text-slate-400" />} label="Địa chỉ">
+                              {booking.cafe.address}, {booking.cafe.city}
+                            </InfoRow>
+                          </>
+                        )}
+
+                        <InfoRow icon={<CalendarDays className="size-4 text-orange-500" />} label="Ngày">
+                          {new Date(booking.slotStart).toLocaleDateString("vi-VN", {
+                            weekday: "long",
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </InfoRow>
+
+                        <InfoRow icon={<Clock className="size-4 text-orange-500" />} label="Khung giờ">
+                          <span className="font-semibold">
+                            {formatTime(booking.slotStart)} - {formatTime(booking.slotEnd)}
+                          </span>
+                        </InfoRow>
+
+                        {booking.track_type_name && (
+                          <InfoRow icon={<Layers className="size-4 text-orange-500" />} label="Loại sân">
+                            {booking.track_type_name}
+                          </InfoRow>
+                        )}
+
+                        <InfoRow icon={<Car className="size-4 text-orange-500" />} label="Hình thức">
+                          {isRental ? "Thuê xe của quán" : "Mang xe cá nhân"}
+                        </InfoRow>
+
+                        {participants.length > 0 && (
+                          <InfoRow icon={<Users className="size-4 text-orange-500" />} label="Người tham gia">
+                            {participants.length} người
+                          </InfoRow>
+                        )}
+
+                        {pricingLabel && slotMultiplier > 1 && (
+                          <InfoRow icon={<Tag className="size-4 text-amber-500" />} label="Phụ thu">
+                            <Badge className="border-amber-200 bg-amber-100 text-xs font-medium text-amber-800">
+                              {pricingLabel} x{slotMultiplier}
+                            </Badge>
+                          </InfoRow>
+                        )}
+                      </div>
+                    </div>
+
+                    {isRental && vehicles.length > 0 && (
+                      <>
+                        <Separator />
+                        <div className="space-y-3">
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Xe đã đặt</p>
+                          <div className="divide-y divide-slate-200 border-y border-slate-200">
+                            {vehicles.map((v) => (
+                              <div key={v.id} className="flex items-center gap-3 py-3">
+                                <Car className="size-4 shrink-0 text-orange-500" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-bold text-slate-900">{v.catalogName ?? "Xe thuê"}</p>
+                                  {(v.identifier || v.color) && (
+                                    <p className="text-xs font-medium text-slate-500">
+                                      {[v.identifier, v.color].filter(Boolean).join(" - ")}
+                                    </p>
+                                  )}
+                                </div>
+                                {v.tier && (
+                                  <Badge variant="outline" className="shrink-0 text-[10px]">
+                                    {v.tier}
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {booking.checkInCode && (
+                      <>
+                        <Separator />
+                        <div className="flex items-center justify-between rounded-lg border border-orange-100 bg-orange-50 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <QrCode className="size-5 text-orange-600" />
+                            <div>
+                              <p className="text-xs font-medium text-slate-500">Mã check-in</p>
+                              <p className="font-mono text-lg font-bold tracking-widest text-orange-700">
+                                {booking.checkInCode}
+                              </p>
+                            </div>
+                          </div>
+                          <Hash className="size-4 text-orange-300" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {paymentComponents.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Chi tiết hóa đơn</p>
+                      <div className="divide-y divide-slate-200 border-y border-slate-200">
+                        {paymentComponents.map((line) => (
+                          <InvoiceLine
+                            key={line.id}
+                            type={line.type}
+                            amount={Number(line.amount)}
+                            pricingLabel={line.type === "SLOT_FEE" && pricingLabel && slotMultiplier > 1 ? pricingLabel : undefined}
+                            slotMultiplier={line.type === "SLOT_FEE" && slotMultiplier > 1 ? slotMultiplier : undefined}
+                          />
+                        ))}
+
+                        {discountAmount > 0 && (
+                          <div className="flex items-center justify-between py-3 text-sm">
+                            <span className="flex items-center gap-1.5 text-emerald-600">
+                              <Tag className="size-3.5" />
+                              {promoApplied?.code ?? "Mã ưu đãi"}
+                            </span>
+                            <span className="font-medium text-emerald-600">-{formatCurrency(discountAmount)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between rounded-lg bg-slate-100 px-4 py-3">
+                        <span className="font-bold text-slate-700">Tổng thanh toán</span>
+                        <span className="text-xl font-black text-slate-950">{formatCurrency(total)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-6 py-5 md:flex-row md:items-center md:justify-between md:px-8">
+              {isPackagePurchase ? (
+                <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
+                  <Link to="/customer/packages">
+                    <Layers className="size-4" /> Xem gói của tôi
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
+                  <Link to="/customer/bookings">
+                    <Home className="size-4" /> Quay lại lịch đặt
+                  </Link>
+                </Button>
               )}
 
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Failure state ── */}
-        {!isSuccess && (
-          <Card className="rounded-xl shadow-sm">
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              Thanh toán không thành công. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Actions ── */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {isPackagePurchase ? (
-            <Button asChild size="lg" className="sm:col-span-2">
-              <Link to="/customer/packages">
-                <Layers className="h-4 w-4" /> Xem gói của tôi
-              </Link>
-            </Button>
-          ) : (
-            <>
-              <Button asChild size="lg">
-                <Link to="/customer/bookings">
-                  <Home className="h-4 w-4" /> Quay lại lịch đặt
-                </Link>
-              </Button>
               {isSuccess && booking ? (
-                <Button asChild size="lg" variant="outline">
+                <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
                   <Link to={`/booking/${booking.id}`}>
-                    <Eye className="h-4 w-4" /> Xem chi tiết đặt chỗ
+                    Xem chi tiết đặt chỗ <ArrowRight className="size-4" />
                   </Link>
                 </Button>
               ) : !isSuccess ? (
-                <Button asChild size="lg" variant="outline">
+                <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
                   <Link to="/booking/new">
-                    <RotateCcw className="h-4 w-4" /> Đặt lại
+                    <RotateCcw className="size-4" /> Đặt lại
                   </Link>
                 </Button>
-              ) : null}
-            </>
-          )}
-        </div>
+              ) : (
+                <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
+                  <Link to="/customer/bookings">
+                    Xem trạng thái <Eye className="size-4" />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
@@ -338,18 +368,36 @@ function InfoRow({
   )
 }
 
+function ResultMetaRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-3 py-3 text-sm">
+      <span className="shrink-0 text-slate-400">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="mt-0.5 truncate font-bold text-slate-900">{value}</p>
+      </div>
+    </div>
+  )
+}
+
 function InvoiceLine({
   type,
   amount,
   pricingLabel,
   slotMultiplier,
-  isDeposit,
 }: {
   type: string
   amount: number
   pricingLabel?: string
   slotMultiplier?: number
-  isDeposit?: boolean
 }) {
   return (
     <div className="flex items-center justify-between px-4 py-3 text-sm">
@@ -359,9 +407,6 @@ function InvoiceLine({
           <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px] font-medium shrink-0">
             {pricingLabel} ×{slotMultiplier}
           </Badge>
-        )}
-        {isDeposit && (
-          <span className="text-[10px] text-muted-foreground/70 shrink-0">(hoàn trả sau)</span>
         )}
       </div>
       <span className="font-medium shrink-0">{formatCurrency(amount)}</span>
