@@ -1,4 +1,4 @@
-import { CalendarCheck, Car, LogOut, Menu, Package, UserRound, X } from "lucide-react"
+import { CalendarCheck, Car, LogOut, Menu, Package, Trophy, UserRound, X } from "lucide-react"
 import { useState } from "react"
 import { NavLink, useNavigate } from "react-router"
 import { toast } from "sonner"
@@ -40,6 +40,7 @@ const authNavItems = [
 const customerMenuItems = [
   { label: "Hồ sơ cá nhân", to: routePaths.profile, icon: UserRound },
   { label: "Lịch đặt sân", to: routePaths.customerBookings, icon: CalendarCheck },
+  { label: "Giải đấu tham gia", to: routePaths.customerContestRegistrations, icon: Trophy },
   { label: "Xe cá nhân", to: routePaths.customerVehicles, icon: Car },
   { label: "Gói hội viên", to: routePaths.customerPackages, icon: Package },
 ]
@@ -158,17 +159,20 @@ export function PublicHeader() {
                     <p className="truncate text-xs text-slate-500">{user.email}</p>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <Button asChild variant="outline" className="rounded-xl text-xs font-semibold">
+                <div className="mt-3 grid grid-cols-3 gap-1.5">
+                  <Button asChild variant="outline" className="rounded-xl text-[10px] sm:text-xs px-1 font-semibold">
                     <NavLink to={routePaths.profile} onClick={() => setIsOpen(false)}>Hồ sơ</NavLink>
                   </Button>
-                  <Button asChild variant="outline" className="rounded-xl text-xs font-semibold">
+                  <Button asChild variant="outline" className="rounded-xl text-[10px] sm:text-xs px-1 font-semibold">
                     <NavLink to={routePaths.customerBookings} onClick={() => setIsOpen(false)}>Lịch đặt</NavLink>
+                  </Button>
+                  <Button asChild variant="outline" className="rounded-xl text-[10px] sm:text-xs px-1 font-semibold">
+                    <NavLink to={routePaths.customerContestRegistrations} onClick={() => setIsOpen(false)}>Giải đấu</NavLink>
                   </Button>
                   <Button
                     type="button"
                     variant="destructive"
-                    className="col-span-2 rounded-xl text-xs font-semibold"
+                    className="col-span-3 rounded-xl text-xs font-semibold"
                     onClick={() => {
                       setIsOpen(false)
                       void handleLogout()
