@@ -23,7 +23,7 @@ export type ContestRuntimeTab = "overview" | "event-day" | "matches" | "leaderbo
 export type CustomerJourneyStatus =
   | "PENDING_APPROVAL"
   | "APPROVED_WAITING_CHECKIN"
-  | "READY_TO_RACE"
+  | "CHECKED_IN_WAITING_BRACKET"
   | "IN_BRACKET"
   | "ADVANCED"
   | "ELIMINATED"

@@ -21,37 +21,37 @@ export function ContestLeaderboardPanel({
   const handlePublish = async () => {
     try {
       await runtime.publishLeaderboardMutation.mutateAsync()
-      toast.success("Đã publish leaderboard")
+      toast.success("Đã công bố bảng xếp hạng")
     } catch (error) {
-      toast.error("Không thể publish leaderboard", { description: getErrorMessage(error).message })
+      toast.error("Không thể công bố bảng xếp hạng", { description: getErrorMessage(error).message })
     }
   }
 
   const handleSync = async () => {
     try {
       const result = await runtime.syncRaceRecordsMutation.mutateAsync()
-      toast.success("Đã sync race records lên global leaderboard", {
-        description: `Synced ${result.synced_count} record, superseded ${result.superseded_count} record.`,
+      toast.success("Đã đồng bộ thành tích lên toàn hệ thống", {
+        description: `${result.synced_count} record mới, ${result.superseded_count} record bị thay thế.`,
       })
     } catch (error) {
-      toast.error("Không thể sync global leaderboard", { description: getErrorMessage(error).message })
+      toast.error("Không thể đồng bộ thành tích toàn hệ thống", { description: getErrorMessage(error).message })
     }
   }
 
   return (
     <div className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
       <Panel>
-        <PanelTitle title="Publish state" subtitle="Trạng thái leaderboard local của contest." />
+        <PanelTitle title="Trạng thái công bố" subtitle="Theo dõi bảng xếp hạng nội bộ của giải đấu." />
         <div className="space-y-3 text-sm font-semibold text-[#5d5f5f]">
-          <StatusRow label="Contest" value={contest.name} />
-          <StatusRow label="Mode" value={leaderboard?.mode ?? metrics?.leaderboard.mode ?? "--"} />
-          <StatusRow label="Published" value={leaderboard ? "Đã publish" : "Chưa publish"} />
-          <StatusRow label="Published at" value={leaderboard?.published_at ?? "--"} />
-          <StatusRow label="Global sync" value={metrics?.global_sync.synced ? "Đã sync" : "Chưa sync"} />
-          <StatusRow label="Last sync" value={metrics?.global_sync.synced_at ?? "--"} />
+          <StatusRow label="Giải đấu" value={contest.name} />
+          <StatusRow label="Cách xếp hạng" value={leaderboard?.mode ?? metrics?.leaderboard.mode ?? "--"} />
+          <StatusRow label="Đã công bố" value={leaderboard ? "Rồi" : "Chưa"} />
+          <StatusRow label="Thời điểm công bố" value={leaderboard?.published_at ?? "--"} />
+          <StatusRow label="Đồng bộ toàn hệ thống" value={metrics?.global_sync.synced ? "Đã đồng bộ" : "Chưa đồng bộ"} />
+          <StatusRow label="Lần đồng bộ gần nhất" value={metrics?.global_sync.synced_at ?? "--"} />
         </div>
         <Button className="mt-4 h-10 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]" onClick={() => void handlePublish()}>
-          Publish leaderboard
+          Công bố bảng xếp hạng
         </Button>
         <Button
           variant="outline"
@@ -59,24 +59,24 @@ export function ContestLeaderboardPanel({
           onClick={() => void handleSync()}
           disabled={!leaderboard}
         >
-          {metrics?.global_sync.synced ? "Sync lại global records" : "Sync to global leaderboard"}
+          {metrics?.global_sync.synced ? "Đồng bộ lại thành tích" : "Đồng bộ lên toàn hệ thống"}
         </Button>
       </Panel>
 
       <Panel>
-        <PanelTitle title="Leaderboard entries" subtitle="Bảng xếp hạng local publish cho runtime hiện tại." />
+        <PanelTitle title="Danh sách xếp hạng" subtitle="Kết quả hiện tại sau khi công bố bảng xếp hạng." />
         {leaderboard?.entries?.length ? (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-sm">
               <thead>
                 <tr className="border-b border-[#e5e2e1] text-left text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-                  <th className="pb-3">Rank</th>
-                  <th className="pb-3">Driver</th>
-                  <th className="pb-3">Wins</th>
-                  <th className="pb-3">Best lap</th>
-                  <th className="pb-3">Total time</th>
-                  <th className="pb-3">Matches</th>
-                  <th className="pb-3">Round</th>
+                  <th className="pb-3">Hạng</th>
+                  <th className="pb-3">Người chơi</th>
+                  <th className="pb-3">Số trận thắng</th>
+                  <th className="pb-3">Lap tốt nhất</th>
+                  <th className="pb-3">Tổng thời gian</th>
+                  <th className="pb-3">Số trận</th>
+                  <th className="pb-3">Vòng cao nhất</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f0eeee]">

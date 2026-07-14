@@ -15,6 +15,7 @@ import type {
 } from "@/features/contests/types"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
 import { ContestEventDayPanel } from "./components/ContestEventDayPanel"
+import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
 import { ContestMatchBoard } from "./components/ContestMatchBoard"
 import { ContestMatchDetailPanel } from "./components/ContestMatchDetailPanel"
@@ -24,6 +25,7 @@ import { MetricCard, ProviderPageHeader } from "@/pages/provider/components/Prov
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
+import { getContestStatusLabel } from "@/features/contests/lib/contest-status"
 
 export function ProviderContestRuntimePage() {
   const navigate = useNavigate()
@@ -62,6 +64,8 @@ export function ProviderContestRuntimePage() {
     () => matches.find((match) => match.id === selectedMatchId) ?? null,
     [matches, selectedMatchId],
   )
+  const runtimeFormat = String(contest?.config?.runtime_format ?? contest?.config?.format ?? contest?.contest_format?.code ?? "KNOCKOUT")
+  const isKnockoutRuntime = runtimeFormat === "KNOCKOUT"
 
   useEffect(() => {
     if (contest && !selectedCafeId) {
@@ -118,19 +122,19 @@ export function ProviderContestRuntimePage() {
 
   return (
     <ProviderShell>
-      <ProviderPageHeader
+        <ProviderPageHeader
         title={contest.name}
-        description="Workspace riêng cho event-day, match runtime, leaderboard và audit của contest."
+        description="Khu vận hành riêng cho tiếp nhận thi đấu, nhánh đấu, bảng xếp hạng và nhật ký của giải đấu."
         actions={
           <>
-            <Badge className={`border ${getContestStatusClass(contest.status)}`}>{contest.status}</Badge>
+            <Badge className={`border ${getContestStatusClass(contest.status)}`}>{getContestStatusLabel(contest.status)}</Badge>
             <Button
               type="button"
               variant="outline"
               className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]"
               onClick={() => navigate(routePaths.providerContestEdit.replace(":contestId", contest.id))}
             >
-              Chỉnh sửa contest
+              Chỉnh sửa giải đấu
             </Button>
             <Button
               type="button"
@@ -139,7 +143,7 @@ export function ProviderContestRuntimePage() {
               onClick={() => updateRuntimeSearchParams(searchParams, setSearchParams, { tab: "matches" })}
             >
               <PlayCircle className="size-4" />
-              Generate matches
+              {isKnockoutRuntime ? "Tạo nhánh đấu" : "Tạo lượt thi đấu"}
             </Button>
             <Button
               type="button"
@@ -147,7 +151,7 @@ export function ProviderContestRuntimePage() {
               onClick={() => void handlePublishLeaderboard()}
             >
               <BarChart3 className="size-4" />
-              Publish leaderboard
+              Công bố bảng xếp hạng
             </Button>
             <Button
               type="button"
@@ -156,7 +160,7 @@ export function ProviderContestRuntimePage() {
               onClick={() => void handleSyncRaceRecords()}
               disabled={!metrics?.leaderboard.published}
             >
-              Sync global records
+              Đồng bộ thành tích toàn hệ thống
             </Button>
           </>
         }
@@ -164,30 +168,30 @@ export function ProviderContestRuntimePage() {
 
       <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
         <MetricCard
-          label="Registrations"
+          label="Đăng ký"
           value={String(metrics?.registration_counts.total ?? registrations.length)}
-          helper={`${metrics?.registration_counts.confirmed ?? 0} confirmed / ${metrics?.registration_counts.checked_in ?? 0} checked-in`}
+          helper={`${metrics?.registration_counts.confirmed ?? 0} đã duyệt / ${metrics?.registration_counts.checked_in ?? 0} đã check-in`}
           icon={<Flag />}
           tone="info"
         />
         <MetricCard
-          label="Match runtime"
+          label="Thi đấu"
           value={String(metrics?.match_counts.total ?? matches.length)}
-          helper={`${metrics?.match_counts.completed ?? 0} completed`}
+          helper={`${metrics?.match_counts.completed ?? 0} đã hoàn tất`}
           icon={<PlayCircle />}
           tone="success"
         />
         <MetricCard
-          label="Leaderboard"
-          value={metrics?.leaderboard.published ? "Published" : "Draft"}
-          helper={metrics?.leaderboard.published_at ? new Date(metrics.leaderboard.published_at).toLocaleString("vi-VN") : "Chưa publish"}
+          label="Bảng xếp hạng"
+          value={metrics?.leaderboard.published ? "Đã công bố" : "Bản nháp"}
+          helper={metrics?.leaderboard.published_at ? new Date(metrics.leaderboard.published_at).toLocaleString("vi-VN") : "Chưa công bố"}
           icon={<BarChart3 />}
           tone={metrics?.leaderboard.published ? "success" : "warning"}
         />
         <MetricCard
-          label="Global sync"
-          value={metrics?.global_sync.synced ? "Synced" : "Pending"}
-          helper={metrics?.global_sync.synced_at ? new Date(metrics.global_sync.synced_at).toLocaleString("vi-VN") : "Chưa sync race records"}
+          label="Đồng bộ toàn hệ thống"
+          value={metrics?.global_sync.synced ? "Đã đồng bộ" : "Chưa đồng bộ"}
+          helper={metrics?.global_sync.synced_at ? new Date(metrics.global_sync.synced_at).toLocaleString("vi-VN") : "Chưa đồng bộ thành tích"}
           icon={<CalendarCheck2 />}
           tone={metrics?.global_sync.synced ? "success" : "neutral"}
         />
@@ -249,7 +253,7 @@ export function ProviderContestRuntimePage() {
               <input
                 value={participantQuery}
                 onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { participantQuery: event.target.value })}
-                placeholder="Tìm theo tên participant"
+                placeholder="Tìm theo tên người thi đấu"
                 className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
               />
               <select
@@ -257,7 +261,7 @@ export function ProviderContestRuntimePage() {
                 onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { matchStatus: event.target.value })}
                 className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
               >
-                <option value="">Tất cả match status</option>
+                <option value="">Tất cả trạng thái trận</option>
                 <option value="DRAFT">DRAFT</option>
                 <option value="READY">READY</option>
                 <option value="RUNNING">RUNNING</option>
@@ -267,18 +271,37 @@ export function ProviderContestRuntimePage() {
               <input
                 value={roundNo}
                 onChange={(event) => updateRuntimeSearchParams(searchParams, setSearchParams, { roundNo: event.target.value.replace(/[^\d]/g, "") })}
-                placeholder="Lọc theo round"
+                placeholder="Lọc theo vòng"
                 className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
               />
             </section>
-            <ContestMatchBoard
-              contest={contest}
-              registrations={registrations}
-              matches={matches}
-              selectedMatchId={selectedMatchId}
-              onSelectMatch={setSelectedMatchId}
-              runtime={runtime}
-            />
+            {isKnockoutRuntime ? (
+              <div className="space-y-4">
+                <ContestMatchBoard
+                  contest={contest}
+                  registrations={registrations}
+                  matches={matches}
+                  selectedMatchId={selectedMatchId}
+                  onSelectMatch={setSelectedMatchId}
+                  runtime={runtime}
+                  showGenerate
+                />
+                <ContestKnockoutBracket
+                  matches={matches}
+                  selectedMatchId={selectedMatchId}
+                  onSelectMatch={setSelectedMatchId}
+                />
+              </div>
+            ) : (
+              <ContestMatchBoard
+                contest={contest}
+                registrations={registrations}
+                matches={matches}
+                selectedMatchId={selectedMatchId}
+                onSelectMatch={setSelectedMatchId}
+                runtime={runtime}
+              />
+            )}
             <ContestMatchDetailPanel match={selectedMatch} runtime={runtime} />
           </div>
         ) : null}

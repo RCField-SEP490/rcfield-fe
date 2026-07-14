@@ -21,32 +21,32 @@ export function ContestRuntimeOverview({
       <Panel>
         <PanelTitle title="Contest summary" subtitle="Thông tin contest và các tham số vận hành đang áp dụng." />
         <div className="grid gap-4 md:grid-cols-2">
-          <Info label="Contest type" value={contest.contest_type?.name ?? "--"} />
-          <Info label="Format" value={contest.contest_format?.name ?? "--"} />
-          <Info label="Template" value={contest.contest_template?.name ?? "--"} />
-          <Info label="Host branch" value={contest.host_branch?.cafe?.name ?? "--"} />
+          <Info label="Loại giải" value={contest.contest_type?.name ?? "--"} />
+          <Info label="Hình thức thi đấu" value={contest.contest_format?.name ?? "--"} />
+          <Info label="Mẫu vận hành" value={contest.contest_template?.name ?? "--"} />
+          <Info label="Chi nhánh tổ chức" value={contest.host_branch?.cafe?.name ?? "--"} />
           <Info label="Bắt đầu" value={formatContestDateTime(contest.starts_at)} />
           <Info label="Kết thúc" value={formatContestDateTime(contest.ends_at)} />
           <Info label="Mở đăng ký" value={formatContestDateTime(contest.registration_opens_at)} />
           <Info label="Đóng đăng ký" value={formatContestDateTime(contest.registration_closes_at)} />
-          <Info label="Entry fee" value={formatCurrency(contest.entry_fee)} />
-          <Info label="Vehicle policy" value={String(contest.vehicle_rule?.vehicle_policy ?? "--")} />
+          <Info label="Lệ phí tham gia" value={formatCurrency(contest.entry_fee)} />
+          <Info label="Quy tắc xe" value={String(contest.vehicle_rule?.vehicle_policy ?? "--")} />
         </div>
       </Panel>
 
       <div className="space-y-4">
         <Panel>
-          <PanelTitle title="Runtime readiness" subtitle="Xác nhận contest đủ dữ liệu để vận hành runtime thật." />
+          <PanelTitle title="Mức sẵn sàng vận hành" subtitle="Xác nhận giải đấu đã đủ dữ liệu để chuyển sang thi đấu thật." />
           <div className="space-y-3 text-sm font-semibold text-[#5d5f5f]">
-            <StatusRow label="Eligible registrations" value={`${eligibleRegistrations.length}/${registrations.length}`} good={eligibleRegistrations.length > 0} />
-            <StatusRow label="Runtime generated" value={matches.length > 0 ? `${matches.length} matches` : "Chưa generate"} good={matches.length > 0} />
-            <StatusRow label="Format runtime" value={String(contest.config?.format ?? contest.contest_format?.code ?? "--")} good />
-            <StatusRow label="Leaderboard published" value={metrics?.leaderboard.published ? "Đã publish" : "Chưa publish"} good={Boolean(metrics?.leaderboard.published)} />
+            <StatusRow label="Người chơi đã check-in" value={`${eligibleRegistrations.length}/${registrations.length}`} good={eligibleRegistrations.length > 0} />
+            <StatusRow label="Nhánh đấu đã tạo" value={matches.length > 0 ? `${matches.length} lượt/trận` : "Chưa tạo"} good={matches.length > 0} />
+            <StatusRow label="Runtime thực tế" value={String(contest.config?.runtime_format ?? contest.config?.format ?? contest.contest_format?.code ?? "--")} good />
+            <StatusRow label="Bảng xếp hạng" value={metrics?.leaderboard.published ? "Đã công bố" : "Chưa công bố"} good={Boolean(metrics?.leaderboard.published)} />
           </div>
         </Panel>
 
         <Panel>
-          <PanelTitle title="Participating branches" subtitle="Các branch đang tham gia contest." />
+          <PanelTitle title="Chi nhánh tham gia" subtitle="Các địa điểm đang tham gia giải đấu." />
           <div className="space-y-2">
             {contest.participating_branches.map((branch) => (
               <div key={branch.id} className="flex items-center justify-between rounded-lg border border-[#e5e2e1] px-3 py-2">

@@ -80,7 +80,7 @@ export function ContestMatchDetailPanel({
   if (!match) {
     return (
       <Panel>
-        <PanelTitle title="Match detail" subtitle="Chọn một match từ board để xem chi tiết." />
+        <PanelTitle title="Chi tiết trận đấu" subtitle="Chọn một trận hoặc lượt thi đấu để xem chi tiết." />
         <p className="text-sm font-semibold text-[#747878]">Chưa có match nào được chọn.</p>
       </Panel>
     )
@@ -129,14 +129,14 @@ export function ContestMatchDetailPanel({
         matchId: match.id,
         body: { participants },
       })
-      toast.success("Đã cập nhật participant ordering")
+      toast.success("Đã cập nhật thứ tự thi đấu")
     } catch (error) {
       toast.error("Không thể cập nhật participant", { description: getErrorMessage(error).message })
     }
   }
 
   const buildResultPayload = (): ContestSubmitResultsBody => ({
-    reason: reason.trim() || "Contest runtime result submission",
+    reason: reason.trim() || "Cập nhật kết quả thi đấu",
     results: results.map((result) => ({
       registration_id: result.registration_id,
       finish_position: result.finish_position,
@@ -177,7 +177,7 @@ export function ContestMatchDetailPanel({
         matchId: match.id,
         body: result.data,
       })
-      toast.success("Đã submit result")
+      toast.success("Đã lưu kết quả")
     } catch (error) {
       toast.error("Không thể submit result", { description: getErrorMessage(error).message })
     }
@@ -198,7 +198,7 @@ export function ContestMatchDetailPanel({
 
     try {
       await runtime.correctResultsMutation.mutateAsync({ matchId: match.id, body: result.data })
-      toast.success("Đã correct result")
+      toast.success("Đã sửa kết quả")
     } catch (error) {
       toast.error("Không thể correct result", { description: getErrorMessage(error).message })
     }
@@ -207,13 +207,13 @@ export function ContestMatchDetailPanel({
   const handleAdvance = async () => {
     const hasWinner = results.some((result) => result.is_winner)
     if (match.match_type !== "TIME_ATTACK" && !hasWinner) {
-      toast.error("Cần chọn winner trước khi advance match")
+      toast.error("Cần chọn người thắng trước khi đẩy sang vòng sau")
       return
     }
 
     try {
       await runtime.advanceMatchMutation.mutateAsync(match.id)
-      toast.success("Đã advance match")
+      toast.success("Đã đẩy người thắng vào vòng sau")
     } catch (error) {
       toast.error("Không thể advance match", { description: getErrorMessage(error).message })
     }
@@ -222,8 +222,8 @@ export function ContestMatchDetailPanel({
   return (
     <Panel>
       <PanelTitle
-        title={match.name ?? `Round ${match.round_no} · Match ${match.match_no}`}
-        subtitle="Participant ordering, result entry và correction."
+        title={match.name ?? `Vòng ${match.round_no} · Trận ${match.match_no}`}
+        subtitle="Sắp thứ tự thi đấu, nhập kết quả và chỉnh sửa khi cần."
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -233,7 +233,7 @@ export function ContestMatchDetailPanel({
 
       <div className="space-y-4">
         <section>
-          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">Participant ordering</h4>
+          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">Thứ tự thi đấu</h4>
           <div className="space-y-3">
             {participants.map((participant) => {
               const snapshot = participantMap.get(participant.registration_id)
@@ -250,27 +250,27 @@ export function ContestMatchDetailPanel({
                     <p className="text-xs font-semibold text-[#747878]">{snapshot?.registration?.status ?? "--"}</p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-4">
-                    <Field label="Slot">
+                    <Field label="Vị trí">
                       <Input
                         type="number"
                         value={participant.slot_no}
                         onChange={(event) => updateParticipantValue(participant.registration_id, "slot_no", Number(event.target.value))}
                       />
                     </Field>
-                    <Field label="Lane">
+                    <Field label="Làn">
                       <Input
                         value={participant.lane ?? ""}
                         onChange={(event) => updateParticipantValue(participant.registration_id, "lane", event.target.value || null)}
                       />
                     </Field>
-                    <Field label="Grid">
+                    <Field label="Ô xuất phát">
                       <Input
                         type="number"
                         value={participant.grid_position ?? ""}
                         onChange={(event) => updateParticipantValue(participant.registration_id, "grid_position", event.target.value ? Number(event.target.value) : null)}
                       />
                     </Field>
-                    <Field label="Seed">
+                    <Field label="Hạt giống">
                       <Input
                         type="number"
                         value={participant.seed_no ?? ""}
@@ -284,13 +284,13 @@ export function ContestMatchDetailPanel({
           </div>
           <div className="mt-3">
             <Button variant="outline" className="rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]" onClick={() => void handleSaveParticipants()}>
-              Lưu participant ordering
+              Lưu thứ tự thi đấu
             </Button>
           </div>
         </section>
 
         <section>
-          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">Result entry</h4>
+          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">Nhập kết quả</h4>
           <div className="space-y-3">
             {results.map((result) => (
               <div key={result.registration_id} className="rounded-lg border border-[#e5e2e1] p-3">
@@ -302,28 +302,28 @@ export function ContestMatchDetailPanel({
                   <p className="text-xs font-medium text-[#747878]">{participantMap.get(result.registration_id) ? getMatchParticipantSubtitle(participantMap.get(result.registration_id)) ?? "Chưa có email / check-in code" : "Chưa có thông tin bổ sung"}</p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <Field label="Finish">
+                  <Field label="Về đích">
                     <Input
                       type="number"
                       value={result.finish_position ?? ""}
                       onChange={(event) => updateResultValue(result.registration_id, "finish_position", event.target.value ? Number(event.target.value) : null)}
                     />
                   </Field>
-                  <Field label="Score">
+                  <Field label="Điểm">
                     <Input
                       type="number"
                       value={result.score ?? ""}
                       onChange={(event) => updateResultValue(result.registration_id, "score", event.target.value ? Number(event.target.value) : null)}
                     />
                   </Field>
-                  <Field label="Best lap ms">
+                  <Field label="Lap tốt nhất (ms)">
                     <Input
                       type="number"
                       value={result.best_lap_ms ?? ""}
                       onChange={(event) => updateResultValue(result.registration_id, "best_lap_ms", event.target.value ? Number(event.target.value) : null)}
                     />
                   </Field>
-                  <Field label="Total time ms">
+                  <Field label="Tổng thời gian (ms)">
                     <Input
                       type="number"
                       value={result.total_time_ms ?? ""}
@@ -332,7 +332,7 @@ export function ContestMatchDetailPanel({
                   </Field>
                 </div>
                 <div className="mt-3 grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
-                  <Field label="Participant status">
+                  <Field label="Trạng thái người chơi">
                     <select
                       className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                       value={result.status}
@@ -346,7 +346,7 @@ export function ContestMatchDetailPanel({
                       <option value="DQ">DQ</option>
                     </select>
                   </Field>
-                  <Field label="Result note">
+                  <Field label="Ghi chú kết quả">
                     <Input
                       value={result.result_note ?? ""}
                       onChange={(event) => updateResultValue(result.registration_id, "result_note", event.target.value || null)}
@@ -359,10 +359,10 @@ export function ContestMatchDetailPanel({
                     checked={result.is_winner}
                     onChange={(event) => updateResultValue(result.registration_id, "is_winner", event.target.checked)}
                   />
-                  Mark as winner
+                  Đánh dấu người thắng
                 </label>
                 <div className="mt-2 text-xs font-semibold text-[#747878]">
-                  Best lap: {formatDurationMs(result.best_lap_ms)} · Total time: {formatDurationMs(result.total_time_ms)}
+                  Lap tốt nhất: {formatDurationMs(result.best_lap_ms)} · Tổng thời gian: {formatDurationMs(result.total_time_ms)}
                 </div>
               </div>
             ))}
@@ -370,22 +370,22 @@ export function ContestMatchDetailPanel({
         </section>
 
         <section className="space-y-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-          <Field label="Reason">
+          <Field label="Lý do cập nhật">
             <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />
           </Field>
           <label className="flex items-center gap-2 text-sm font-semibold text-[#1c1b1b]">
             <input type="checkbox" checked={forceCascade} onChange={(event) => setForceCascade(event.target.checked)} />
-            Force cascade khi correction có downstream match
+            Cho phép làm mới nhánh kế tiếp khi sửa kết quả
           </label>
           <div className="flex flex-wrap gap-2">
             <Button className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]" onClick={() => void handleSubmitResults()}>
-              Submit result
+              Lưu kết quả
             </Button>
             <Button variant="outline" className="rounded-lg border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={() => void handleCorrectResults()}>
-              Correct result
+              Sửa kết quả
             </Button>
             <Button variant="outline" className="rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" onClick={() => void handleAdvance()}>
-              Advance
+              Đẩy người thắng vào vòng sau
             </Button>
           </div>
         </section>

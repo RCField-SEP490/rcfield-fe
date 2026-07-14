@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CreditCard, ShieldCheck, Swords, Trophy } from "lucide-react"
+import { ArrowLeft, CalendarClock, CreditCard, Info as InfoIcon, ShieldCheck, Swords, Trophy } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { toast } from "sonner"
 
@@ -45,8 +45,8 @@ export function PublicContestDetailPage() {
     enabled: Boolean(contestId) && role === "customer",
   })
   const myBookingsQuery = useQuery({
-    queryKey: bookingQueryKeys.mine({ status: "CONFIRMED", page: 1, limit: 100 }),
-    queryFn: () => bookingApi.listMyBookings({ status: "CONFIRMED", page: 1, limit: 100 }),
+    queryKey: bookingQueryKeys.mine({ status: "CONFIRMED", page: 1, limit: 50 }),
+    queryFn: () => bookingApi.listMyBookings({ status: "CONFIRMED", page: 1, limit: 50 }),
     enabled: role === "customer",
   })
   const bookingDetailQuery = useQuery({
@@ -88,6 +88,16 @@ export function PublicContestDetailPage() {
     () => matches.filter((match) => match.participants.some((participant) => participant.registration?.is_my_registration)),
     [matches],
   )
+  const selectedVehicle = selectedBooking?.vehicles.find((vehicle) => vehicle.vehicleId === selectedVehicleId) ?? null
+  const bookingHelperMessage = useMemo(() => {
+    if (!contest) return null
+    if (myBookingsQuery.isLoading) return "Đang tải danh sách booking phù hợp..."
+    if (bookingOptions.length > 0) return null
+
+    const branchName = contest.host_branch?.cafe?.name ?? "chi nhánh tổ chức"
+    const trackName = contest.track_type?.name ?? "track tương ứng"
+    return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Hãy tạo booking trước rồi quay lại đăng ký contest.`
+  }, [contest, myBookingsQuery.isLoading, bookingOptions.length])
 
   const handleRegister = async () => {
     try {
@@ -101,8 +111,7 @@ export function PublicContestDetailPage() {
   }
 
   return (
-    <main className="w-full bg-slate-50/50 py-10">
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
+    <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <Link
           to={routePaths.contests}
           className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
@@ -145,8 +154,10 @@ export function PublicContestDetailPage() {
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <Info label="Chi nhánh tổ chức" value={contest.host_branch?.cafe?.name ?? "--"} />
                     <Info label="Loại đường đua" value={contest.track_type?.name ?? "--"} />
+                    <Info label="Mở đăng ký" value={formatContestDateTime(contest.registration_opens_at)} />
                     <Info label="Luật sử dụng xe" value={getVehiclePolicyLabel(contest.vehicle_rule?.vehicle_policy as string)} />
                     <Info label="Hạn chót đăng ký" value={formatContestDateTime(contest.registration_closes_at)} />
+                    <Info label="Thời gian bắt đầu" value={formatContestDateTime(contest.starts_at)} />
                   </div>
                 </Card>
 
@@ -250,6 +261,21 @@ export function PublicContestDetailPage() {
                     </div>
                   ) : (
                     <div className="space-y-4">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                        <div className="flex items-start gap-3">
+                          <CalendarClock className="mt-0.5 size-4 shrink-0 text-orange-500" />
+                          <div className="space-y-1 text-sm">
+                            <p className="font-bold text-slate-900">Điều kiện đăng ký</p>
+                            <p className="text-slate-600">
+                              Cần có booking <span className="font-semibold">CONFIRMED</span> đúng chi nhánh, đúng loại track và khung giờ giao với contest.
+                            </p>
+                            <p className="text-slate-600">
+                              Sau khi gửi đăng ký, bạn còn phải chờ duyệt, đến nơi check-in rồi mới được xếp vào thi đấu.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
                       <div>
                         <Label className="mb-2 block text-xs font-bold text-slate-700">Lịch đặt đã xác nhận</Label>
                         <select
@@ -267,6 +293,12 @@ export function PublicContestDetailPage() {
                             </option>
                           ))}
                         </select>
+                        {bookingHelperMessage ? (
+                          <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+                            <span>{bookingHelperMessage}</span>
+                          </div>
+                        ) : null}
                       </div>
 
                       <div>
@@ -286,6 +318,31 @@ export function PublicContestDetailPage() {
                         </select>
                       </div>
 
+                      {selectedBooking ? (
+                        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm sm:grid-cols-2">
+                          <MiniInfo
+                            label="Booking đã chọn"
+                            value={new Date(selectedBooking.slotStart).toLocaleString("vi-VN", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })}
+                          />
+                          <MiniInfo
+                            label="Chi nhánh"
+                            value={selectedBooking.cafe?.name ?? contest.host_branch?.cafe?.name ?? "--"}
+                          />
+                          <MiniInfo label="Track" value={selectedBooking.track_type_name ?? contest.track_type?.name ?? "--"} />
+                          <MiniInfo
+                            label="Xe thi đấu"
+                            value={
+                              selectedVehicle?.catalogName ??
+                              selectedVehicle?.identifier ??
+                              (selectedVehicle ? `Xe #${selectedVehicle.vehicleId.slice(0, 8)}` : "--")
+                            }
+                          />
+                        </div>
+                      ) : null}
+
                       <div>
                         <Label className="mb-2 block text-xs font-bold text-slate-700">Lệ phí giải đấu</Label>
                         <div className="relative">
@@ -300,7 +357,7 @@ export function PublicContestDetailPage() {
                         disabled={!selectedBookingId || !selectedVehicleId || registerMutation.isPending}
                         onClick={() => void handleRegister()}
                       >
-                        {registerMutation.isPending ? "Đang gửi đăng ký..." : "Đăng ký tham gia ngay"}
+                        {registerMutation.isPending ? "Đang gửi đăng ký..." : "Gửi đăng ký tham gia"}
                       </Button>
                     </div>
                   )}
@@ -309,8 +366,7 @@ export function PublicContestDetailPage() {
             </div>
           </div>
         )}
-      </section>
-    </main>
+    </section>
   )
 }
 
@@ -353,6 +409,15 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl border border-slate-200/60 bg-slate-50/40 p-4">
       <p className="text-2xs font-bold uppercase tracking-wider text-slate-400">{label}</p>
       <p className="mt-1 text-sm font-extrabold text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+function MiniInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold text-slate-900">{value}</p>
     </div>
   )
 }

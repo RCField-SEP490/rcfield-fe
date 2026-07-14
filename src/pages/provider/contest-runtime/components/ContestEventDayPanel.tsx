@@ -111,7 +111,7 @@ export function ContestEventDayPanel({
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
       <Panel>
-        <PanelTitle title="Registrations live" subtitle="Xử lý payment status, approval và check-in theo dữ liệu thật." />
+        <PanelTitle title="Danh sách đăng ký trực tiếp" subtitle="Duyệt tham gia, xử lý lệ phí và điểm danh theo dữ liệu thật." />
 
         <div className="mb-4 flex flex-col gap-3 lg:flex-row">
           <div className="relative flex-1">
@@ -139,7 +139,7 @@ export function ContestEventDayPanel({
             value={paymentFilter}
             onChange={(event) => setPaymentFilter(event.target.value as typeof paymentFilter)}
           >
-            <option value="ALL">Tất cả payment</option>
+            <option value="ALL">Tất cả trạng thái phí</option>
             <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
             <option value="PENDING_REVIEW">PENDING_REVIEW</option>
             <option value="WAIVED">WAIVED</option>
@@ -161,22 +161,22 @@ export function ContestEventDayPanel({
                   <p className="mt-1 text-xs font-semibold text-[#747878]">{getRegistrationSubtitle(registration) ?? `Registration ${registration.id.slice(0, 8)}`}</p>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-[#747878]">
                     <span>Check-in code: {registration.checkInCode ?? "--"}</span>
-                    <span>Checked in: {formatContestDateTime(registration.checkedInAt)}</span>
-                    <span>Fee: {registration.entryFeeAmount ? formatCurrency(registration.entryFeeAmount) : "--"}</span>
+                    <span>Đã check-in: {formatContestDateTime(registration.checkedInAt)}</span>
+                    <span>Lệ phí: {registration.entryFeeAmount ? formatCurrency(registration.entryFeeAmount) : "--"}</span>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <ActionButton label="Mark paid" disabled={registration.paymentStatus === "MARKED_PAID"} onClick={() => setDialogState({ kind: "markPaid", registration })} />
-                  <ActionButton label="Waive" disabled={registration.paymentStatus === "WAIVED"} onClick={() => setDialogState({ kind: "waive", registration })} />
+                  <ActionButton label="Đánh dấu đã thu" disabled={registration.paymentStatus === "MARKED_PAID"} onClick={() => setDialogState({ kind: "markPaid", registration })} />
+                  <ActionButton label="Miễn phí" disabled={registration.paymentStatus === "WAIVED"} onClick={() => setDialogState({ kind: "waive", registration })} />
                   <Button disabled={registration.status !== "PENDING"} className="h-8 rounded-lg bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setDialogState({ kind: "approve", registration })}>
-                    Approve
+                    Duyệt vào giải
                   </Button>
                   <Button disabled={registration.status === "CANCELLED"} variant="outline" className="h-8 rounded-lg border-red-200 bg-red-50 px-3 text-xs text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setDialogState({ kind: "reject", registration })}>
-                    Reject
+                    Từ chối
                   </Button>
                   <Button disabled={registration.status !== "CONFIRMED"} variant="outline" className="h-8 rounded-lg border-blue-200 bg-blue-50 px-3 text-xs text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => void handleCheckIn(registration.id)}>
-                    Check-in
+                    Điểm danh
                   </Button>
                 </div>
               </div>
@@ -193,9 +193,9 @@ export function ContestEventDayPanel({
 
       <div className="space-y-4">
         <Panel>
-          <PanelTitle title="Quick lookup" subtitle="Tra cứu nhanh theo check-in code và xác nhận tại branch hiện trường." />
+          <PanelTitle title="Tra cứu nhanh" subtitle="Tra cứu theo mã check-in và xác nhận ngay tại chi nhánh hiện trường." />
           <div className="space-y-3">
-            <Label className="text-sm font-bold text-[#1c1b1b]">Branch check-in</Label>
+            <Label className="text-sm font-bold text-[#1c1b1b]">Chi nhánh check-in</Label>
             <select
               className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
               value={selectedCafeId}
@@ -222,7 +222,7 @@ export function ContestEventDayPanel({
         </Panel>
 
         <Panel>
-          <PanelTitle title="Lookup result" subtitle="Kết quả tra cứu mới nhất từ API event-day." />
+          <PanelTitle title="Kết quả tra cứu" subtitle="Kết quả tra cứu mới nhất để điểm danh tại hiện trường." />
           {eventDay.lookupMutation.isPending ? (
             <p className="text-sm font-semibold text-[#747878]">Đang tra cứu...</p>
           ) : lookupRegistration ? (
@@ -233,13 +233,13 @@ export function ContestEventDayPanel({
                 <Badge className={`border ${getPaymentStatusClass(lookupRegistration.paymentStatus)}`}>{lookupRegistration.paymentStatus}</Badge>
               </div>
               <div className="space-y-2 text-sm font-semibold text-[#5d5f5f]">
-                <p>Check-in code: {lookupRegistration.checkInCode ?? "--"}</p>
-                <p>Checked in: {formatContestDateTime(lookupRegistration.checkedInAt)}</p>
-                <p>Payment status: {lookupRegistration.paymentStatus}</p>
+                <p>Mã check-in: {lookupRegistration.checkInCode ?? "--"}</p>
+                <p>Đã check-in: {formatContestDateTime(lookupRegistration.checkedInAt)}</p>
+                <p>Trạng thái phí: {lookupRegistration.paymentStatus}</p>
               </div>
               <Button className="h-10 gap-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700" onClick={() => void handleCheckIn(lookupRegistration.id)}>
                 <CheckCircle2 className="size-4" />
-                Xác nhận check-in
+                Xác nhận điểm danh
               </Button>
             </div>
           ) : (
@@ -253,12 +253,12 @@ export function ContestEventDayPanel({
           <DialogHeader>
             <DialogTitle>
               {dialogState.kind === "markPaid"
-                ? "Mark entry fee paid"
+                ? "Đánh dấu đã thu lệ phí"
                 : dialogState.kind === "waive"
-                  ? "Waive entry fee"
+                  ? "Miễn lệ phí tham gia"
                   : dialogState.kind === "approve"
-                    ? "Approve registration"
-                    : "Reject registration"}
+                    ? "Duyệt người chơi vào giải"
+                    : "Từ chối đăng ký"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-2">

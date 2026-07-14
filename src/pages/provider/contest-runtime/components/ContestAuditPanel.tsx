@@ -13,7 +13,7 @@ export function ContestAuditPanel({ logs }: { logs: ContestAuditLogItem[] }) {
 
   return (
     <Panel>
-      <PanelTitle title="Audit logs" subtitle="Theo dõi mutation log từ contest runtime và event-day." />
+      <PanelTitle title="Nhật ký thao tác" subtitle="Theo dõi mọi thay đổi phát sinh trong quá trình vận hành giải đấu." />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {(["all", "contest", "registration", "match"] as const).map((value) => (
@@ -27,7 +27,7 @@ export function ContestAuditPanel({ logs }: { logs: ContestAuditLogItem[] }) {
                 : "border-[#e5e2e1] bg-white text-[#5d5f5f] hover:bg-[#fcf8f8]"
             }`}
           >
-            {value.toUpperCase()}
+            {value === "all" ? "Tất cả" : value === "contest" ? "Giải đấu" : value === "registration" ? "Đăng ký" : "Trận đấu"}
           </button>
         ))}
       </div>

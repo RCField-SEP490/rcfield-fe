@@ -135,7 +135,7 @@ export function getMatchStatusLabel(status: ContestMatchStatus): string {
 
 export function getJourneyStatusClass(status: CustomerJourneyStatus | null) {
   switch (status) {
-    case "READY_TO_RACE":
+    case "CHECKED_IN_WAITING_BRACKET":
     case "ADVANCED":
       return "bg-emerald-50 text-emerald-700 border-emerald-200"
     case "IN_BRACKET":
@@ -159,10 +159,10 @@ export function getJourneyStatusLabel(status: CustomerJourneyStatus | null) {
       return "Chờ duyệt"
     case "APPROVED_WAITING_CHECKIN":
       return "Đã duyệt, chờ check-in"
-    case "READY_TO_RACE":
-      return "Sẵn sàng thi đấu"
+    case "CHECKED_IN_WAITING_BRACKET":
+      return "Đã check-in, chờ xếp nhánh"
     case "IN_BRACKET":
-      return "Đang trong bracket"
+      return "Đang thi đấu"
     case "ADVANCED":
       return "Đã vào vòng tiếp"
     case "ELIMINATED":

@@ -8,9 +8,7 @@ import type {
 } from "../types"
 
 export function getEligibleRuntimeRegistrations(registrations: ContestRegistration[]) {
-  return registrations.filter((registration) =>
-    registration.status === "CONFIRMED" || registration.status === "CHECKED_IN",
-  )
+  return registrations.filter((registration) => registration.status === "CHECKED_IN")
 }
 
 export function groupMatchesByRound(matches: ContestMatch[]) {

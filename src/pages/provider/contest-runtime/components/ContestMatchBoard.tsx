@@ -83,9 +83,9 @@ export function ContestMatchBoard({
   return (
     <div className={`grid gap-4 ${showGenerate ? "xl:grid-cols-[0.9fr_1.1fr]" : ""}`}>
       {showGenerate ? <Panel>
-        <PanelTitle title="Generate runtime" subtitle="Chọn branch và registration hợp lệ để sinh runtime thật." />
+        <PanelTitle title="Tạo nhánh thi đấu" subtitle="Chỉ người chơi đã check-in mới được đưa vào thi đấu." />
         <div className="space-y-4">
-          <Field label="Branch runtime">
+          <Field label="Chi nhánh vận hành">
             <select
               className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
               value={selectedCafeId}
@@ -100,7 +100,7 @@ export function ContestMatchBoard({
           </Field>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Drivers per match">
+            <Field label="Số người mỗi trận/lượt">
               <input
                 type="number"
                 min={1}
@@ -110,21 +110,21 @@ export function ContestMatchBoard({
                 onChange={(event) => setDriversPerMatch(Number(event.target.value))}
               />
             </Field>
-            <Field label="Seeding mode">
+            <Field label="Cách xếp thứ tự">
               <select
                 className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                 value={seedingMode}
                 onChange={(event) => setSeedingMode(event.target.value as typeof seedingMode)}
               >
-                <option value="CHECK_IN_ORDER">CHECK_IN_ORDER</option>
-                <option value="MANUAL">MANUAL</option>
+                <option value="CHECK_IN_ORDER">Theo thứ tự check-in</option>
+                <option value="MANUAL">Theo danh sách đã chọn</option>
               </select>
             </Field>
           </div>
 
           <div>
             <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-              Eligible registrations
+              Người chơi đủ điều kiện vào thi đấu
             </p>
             <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
               {eligibleRegistrations.map((registration) => {
@@ -167,13 +167,13 @@ export function ContestMatchBoard({
 
           <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]" onClick={() => void handleGenerate()}>
             <PlayCircle className="size-4" />
-            Generate matches
+            Tạo nhánh thi đấu
           </Button>
         </div>
       </Panel> : null}
 
       <Panel>
-        <PanelTitle title="Match board" subtitle="Theo dõi runtime theo round, chọn từng match để nhập kết quả." />
+        <PanelTitle title="Danh sách trận/lượt" subtitle="Theo dõi theo từng vòng và chọn để nhập kết quả." />
         {matches.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[#c4c7c8] p-10 text-center">
             <Flag className="mx-auto size-8 text-[#c4c7c8]" />
@@ -202,15 +202,15 @@ export function ContestMatchBoard({
                         <div className="min-w-0">
                           <p className="text-sm font-extrabold text-[#1c1b1b]">{formatMatchLabel(match)}</p>
                           <p className="mt-1 text-xs font-semibold text-[#747878]">
-                            Scheduled: {formatContestDateTime(match.scheduled_at)}
+                            Dự kiến: {formatContestDateTime(match.scheduled_at)}
                           </p>
                         </div>
                         <Badge className={`border ${getMatchStatusClass(match.status)}`}>{match.status}</Badge>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#5d5f5f]">
                         <span>{match.match_type}</span>
-                        <span>{match.participants.length} participants</span>
-                        <span>Match #{match.match_no}</span>
+                        <span>{match.participants.length} người thi đấu</span>
+                        <span>Trận #{match.match_no}</span>
                       </div>
                       <div className="mt-3 space-y-1">
                         {match.participants.slice(0, 3).map((participant) => (

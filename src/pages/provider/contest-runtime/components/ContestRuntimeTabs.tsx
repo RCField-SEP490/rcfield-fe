@@ -3,10 +3,10 @@ import { cn } from "@/shared/lib/utils"
 
 const tabs: Array<{ id: ContestRuntimeTab; label: string }> = [
   { id: "overview", label: "Tổng quan" },
-  { id: "event-day", label: "Event-day" },
-  { id: "matches", label: "Matches" },
-  { id: "leaderboard", label: "Leaderboard" },
-  { id: "audit", label: "Audit" },
+  { id: "event-day", label: "Tiếp nhận thi đấu" },
+  { id: "matches", label: "Nhánh đấu" },
+  { id: "leaderboard", label: "Bảng xếp hạng" },
+  { id: "audit", label: "Nhật ký" },
 ]
 
 export function ContestRuntimeTabs({
