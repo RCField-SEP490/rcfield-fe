@@ -182,7 +182,7 @@ export function ExploreMapOverlay({
 
       markersRef.current.set(cafe.id, marker)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [cafes])
 
   // Update active marker icon + clear route when selection changes
@@ -196,8 +196,10 @@ export function ExploreMapOverlay({
     // Clear previous route
     routeLayerRef.current?.remove()
     routeLayerRef.current = null
-    setRouteInfo(null)
-    setRouteLoading(false)
+    queueMicrotask(() => {
+      setRouteInfo(null)
+      setRouteLoading(false)
+    })
   }, [activeCafeId])
 
   // Update user marker

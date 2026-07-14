@@ -352,8 +352,8 @@ export function AdminDisputesPage() {
                     onChange={(e) => setResolutionFavor(e.target.value)}
                     className="w-full h-10 rounded-lg border border-[#e5e2e1] bg-white px-2.5 text-xs font-bold text-[#1c1b1b] outline-none focus:border-orange-500"
                   >
-                    <option value="PROVIDER">Gửi trả chủ quán (Phạt cọc khách)</option>
-                    <option value="CUSTOMER">Hoàn trả khách hàng (Hủy cọc/Phạt quán)</option>
+                    <option value="PROVIDER">Gửi trả chủ quán (Phạt khách hàng)</option>
+                    <option value="CUSTOMER">Khấu trừ cho khách hàng (Hủy phạt/Phạt quán)</option>
                     <option value="SPLIT">Chia đôi chi phí (Split)</option>
                   </select>
                 </div>

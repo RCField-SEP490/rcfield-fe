@@ -27,6 +27,7 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { env } from "@/shared/lib/env"
+import { getApiErrorInfo } from "@/shared/lib/utils"
 import { toast } from "sonner"
 
 const emailSchema = z.object({
@@ -164,9 +165,9 @@ export function ForgotPasswordPage() {
       toast.success("Đã gửi mã xác nhận", {
         description: `Vui lòng kiểm tra email ${normalizedEmail}.`,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Không thể gửi mã xác nhận", {
-        description: error?.response?.data?.message ?? "Vui lòng kiểm tra email và thử lại.",
+        description: getApiErrorInfo(error).message ?? "Vui lòng kiểm tra email và thử lại.",
       })
     } finally {
       setIsSendingEmail(false)
@@ -181,9 +182,9 @@ export function ForgotPasswordPage() {
       setVerificationCode(values.code)
       setStep("password")
       toast.success("Mã xác nhận hợp lệ")
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Mã xác nhận không hợp lệ", {
-        description: error?.response?.data?.message ?? "Vui lòng kiểm tra lại mã 6 chữ số trong email.",
+        description: getApiErrorInfo(error).message ?? "Vui lòng kiểm tra lại mã 6 chữ số trong email.",
       })
     } finally {
       setIsVerifyingCode(false)
@@ -203,9 +204,9 @@ export function ForgotPasswordPage() {
       toast.success("Đặt lại mật khẩu thành công", {
         description: "Bạn có thể đăng nhập bằng mật khẩu mới.",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Không thể đặt lại mật khẩu", {
-        description: error?.response?.data?.message ?? "Mã xác nhận có thể đã hết hạn. Vui lòng thử lại.",
+        description: getApiErrorInfo(error).message ?? "Mã xác nhận có thể đã hết hạn. Vui lòng thử lại.",
       })
     } finally {
       setIsResettingPassword(false)

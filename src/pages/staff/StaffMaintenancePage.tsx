@@ -295,15 +295,15 @@ export default function StaffMaintenancePage() {
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-between rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
               <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
                 <Filter className="size-4 text-[#6b7280] shrink-0" />
-                {[
+                {([
                   { code: "ALL", label: "Tất cả" },
                   { code: "SCHEDULED", label: "Chờ sửa" },
                   { code: "IN_PROGRESS", label: "Đang sửa" },
                   { code: "COMPLETED", label: "Đã xong" },
-                ].map((item) => (
+                ] as const).map((item) => (
                   <button
                     key={item.code}
-                    onClick={() => setStatusFilter(item.code as any)}
+                    onClick={() => setStatusFilter(item.code)}
                     className={cn(
                       "rounded-full px-3 py-1 text-xs font-bold transition-all border shrink-0",
                       statusFilter === item.code

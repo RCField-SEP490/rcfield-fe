@@ -89,6 +89,7 @@ export function ProviderBookingsPage() {
   const [selectedCafeId, setSelectedCafeId] = useState<string>("")
   const [cancelTarget, setCancelTarget] = useState<CafeBookingListItem | null>(null)
   const [page, setPage] = useState(1)
+  const [now] = useState(() => Date.now())
   const limit = 20
 
   const { data: cafesData } = useQuery({
@@ -112,7 +113,7 @@ export function ProviderBookingsPage() {
   const pendingCount = bookings.filter((b) => b.status === "PENDING").length
   const noShowRisk = bookings.filter((b) => {
     if (b.status !== "CONFIRMED") return false
-    const diff = (new Date(b.slotStart).getTime() - Date.now()) / 60000
+    const diff = (new Date(b.slotStart).getTime() - now) / 60000
     return diff < 30 && diff > 0
   }).length
 

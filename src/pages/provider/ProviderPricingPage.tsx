@@ -45,13 +45,15 @@ export function ProviderPricingPage() {
 
   // Cafe list
   const cafesQuery = useQuery({
-    queryKey: cafeQueryKeys.list({ page: 1, limit: 100 }),
-    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100 }),
+    queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
+    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
   })
   const cafes = (cafesQuery.data?.data ?? []).filter((c) => !providerId || c.providerId === providerId)
 
   useEffect(() => {
-    if (!selectedCafeId && cafes.length > 0) setSelectedCafeId(cafes[0].id)
+    if (!selectedCafeId && cafes.length > 0) {
+      queueMicrotask(() => setSelectedCafeId(cafes[0].id))
+    }
   }, [cafes, selectedCafeId])
 
   // Pricing rules
@@ -182,8 +184,10 @@ function WeekendRulePanel({
   const [multiplier, setMultiplier] = useState(weekendRule?.multiplier ?? 1.5)
 
   useEffect(() => {
-    setEnabled(!!weekendRule)
-    setMultiplier(weekendRule?.multiplier ?? 1.5)
+    queueMicrotask(() => {
+      setEnabled(!!weekendRule)
+      setMultiplier(weekendRule?.multiplier ?? 1.5)
+    })
   }, [weekendRule])
 
   const updateMutation = useMutation({
@@ -274,13 +278,15 @@ function PeakHoursPanel({
   const [peaks, setPeaks] = useState<PeakHourInput[]>([])
 
   useEffect(() => {
-    setPeaks(
-      peakRules.map((r) => ({
-        start: r.peak_start_time ?? "18:00",
-        end: r.peak_end_time ?? "21:00",
-        multiplier: r.multiplier,
-      })),
-    )
+    queueMicrotask(() => {
+      setPeaks(
+        peakRules.map((r) => ({
+          start: r.peak_start_time ?? "18:00",
+          end: r.peak_end_time ?? "21:00",
+          multiplier: r.multiplier,
+        })),
+      )
+    })
   }, [peakRules])
 
   const updateMutation = useMutation({
@@ -762,8 +768,10 @@ function EditHolidayDialog({
   const [name, setName] = useState(holiday.name)
 
   useEffect(() => {
-    setMultiplier(holiday.override_multiplier ?? holiday.multiplier)
-    setName(holiday.name)
+    queueMicrotask(() => {
+      setMultiplier(holiday.override_multiplier ?? holiday.multiplier)
+      setName(holiday.name)
+    })
   }, [holiday])
 
   const updateMutation = useMutation({

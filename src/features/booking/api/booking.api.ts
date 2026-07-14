@@ -32,9 +32,20 @@ export const bookingApi = {
     cafeId: string,
     params: CheckAvailabilityParams,
   ): Promise<AvailabilityResponse> => {
+    const searchParams = new URLSearchParams()
+    searchParams.append('slot_start', params.slot_start)
+    searchParams.append('slot_end', params.slot_end)
+    searchParams.append('play_mode', params.play_mode)
+    if (params.track_type_id) {
+      searchParams.append('track_type_id', params.track_type_id)
+    }
+    if (params.track_config_id) {
+      searchParams.append('track_config_id', params.track_config_id)
+    }
+
     const res = await api.get<ApiEnvelope<AvailabilityResponse>>(
       `/v1/cafes/${cafeId}/availability`,
-      { params },
+      { params: searchParams },
     )
     return res.data.data
   },

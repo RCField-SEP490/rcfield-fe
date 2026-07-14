@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState } from "react"
 import { useParams, useNavigate, Link, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
@@ -130,7 +129,7 @@ export function ProviderVehicleCatalogDetailPage() {
   }
 
   const catalogImages = catalog.images && catalog.images.length > 0
-    ? catalog.images.map((img: any) => img.url)
+    ? catalog.images.map((img) => img.url)
     : catalog.coverImageUrl
       ? [catalog.coverImageUrl]
       : []
@@ -218,7 +217,7 @@ export function ProviderVehicleCatalogDetailPage() {
 
               <div>
                 <span className="text-[10px] font-extrabold text-[#747878] uppercase tracking-wider block mb-1">
-                  Đơn giá thuê & Cọc
+                  Đơn giá thuê & Hệ số
                 </span>
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-sm">

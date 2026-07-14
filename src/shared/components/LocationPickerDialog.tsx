@@ -48,7 +48,7 @@ export function LocationPickerDialog({ open, onOpenChange, initialLat, initialLn
   // Sync selected when props change while dialog is closed
   useEffect(() => {
     if (!open) {
-      setSelected(initialLat != null && initialLng != null ? { lat: initialLat, lng: initialLng } : null)
+      queueMicrotask(() => setSelected(initialLat != null && initialLng != null ? { lat: initialLat, lng: initialLng } : null))
     }
   }, [open, initialLat, initialLng])
 

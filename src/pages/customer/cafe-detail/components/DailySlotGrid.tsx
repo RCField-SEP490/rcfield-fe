@@ -58,7 +58,7 @@ export function DailySlotGrid({
   onSelectRange,
   minBookingNoticeMinutes = 0,
 }: DailySlotGridProps) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date().toLocaleDateString("sv-SE")
   const isToday = date === today
 
   const visibleSlots = slots.filter((s) => {
@@ -156,13 +156,18 @@ export function DailySlotGrid({
 
       <div className="grid grid-cols-4 gap-1.5">
         {visibleSlots.map((slot) => {
-          const isPast = isToday && (() => {
-            const now = new Date()
-            const [hh, mm] = slot.startTime.split(":").map(Number)
-            const cutoff = now.getHours() * 60 + now.getMinutes() + minBookingNoticeMinutes
-            return hh * 60 + mm <= cutoff
-          })()
-          const isBooked = slot.status === "booked" || slot.status === "closed" || isPast
+          const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
+          const [hh, mm] = slot.startTime.split(":").map(Number)
+          const slotMinutes = hh * 60 + mm
+
+          // Slot thực sự đã qua: thời điểm bắt đầu nhỏ hơn giờ hiện tại
+          const isPast = isToday && slotMinutes < nowMinutes
+
+          // Slot chưa qua nhưng không đặt được vì quá sát giờ đặt
+          const isTooSoon = isToday && !isPast && minBookingNoticeMinutes > 0
+            && (slotMinutes - nowMinutes) < minBookingNoticeMinutes
+
+          const isBooked = slot.status === "booked" || slot.status === "closed" || isPast || isTooSoon
           const isSelected = isInSelectedRange(slot.id)
           const isAnchor = slot.id === selectedSlotId && isSelected
 
@@ -182,7 +187,9 @@ export function DailySlotGrid({
               )}
             >
               <span>{slot.startTime}</span>
-              <span className="text-[10px] font-medium opacity-80">{slotAvailabilityLabel(slot)}</span>
+              <span className="text-[10px] font-medium opacity-80">
+                {isPast ? "Đã qua" : isTooSoon ? "Quá sát" : slotAvailabilityLabel(slot)}
+              </span>
             </Button>
           )
         })}

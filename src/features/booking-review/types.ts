@@ -2,6 +2,7 @@ export interface Review {
   id: string;
   bookingId: string;
   cafeId: string;
+  cafeName?: string;
   customerId: string;
   customerName: string;
   overallScore: number;

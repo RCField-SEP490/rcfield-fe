@@ -7,8 +7,6 @@ export function ProviderStatusGuard({ children }: { children: React.ReactNode })
   const impersonation = useAuthStore((state) => state.impersonation)
   const user = useAuthStore((state) => state.user)
   const role = useAuthStore((state) => state.role)
-
-  if (impersonation) return <>{children}</>
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [loading, setLoading] = useState(true)
@@ -20,7 +18,7 @@ export function ProviderStatusGuard({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (role !== "provider" || !userId) {
-      setLoading(false)
+      queueMicrotask(() => setLoading(false))
       return
     }
 
@@ -40,9 +38,10 @@ export function ProviderStatusGuard({ children }: { children: React.ReactNode })
             }
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to check provider status", err)
-        if (err?.response?.status === 401) {
+        const response = typeof err === "object" && err !== null ? (err as { response?: { status?: number } }).response : undefined
+        if (response?.status === 401) {
           clearAuthenticated()
         }
       } finally {
@@ -55,7 +54,9 @@ export function ProviderStatusGuard({ children }: { children: React.ReactNode })
     return () => {
       isMounted = false
     }
-  }, [role, userId, userEmail, userRegistrationStatus, setAuthenticated, clearAuthenticated])
+  }, [role, user, userId, userEmail, userRegistrationStatus, setAuthenticated, clearAuthenticated])
+
+  if (impersonation) return <>{children}</>
 
   if (role !== "provider") {
     return <>{children}</>

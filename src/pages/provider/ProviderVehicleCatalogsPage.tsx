@@ -82,7 +82,7 @@ export function ProviderVehicleCatalogsPage() {
   )
 
   useEffect(() => {
-    setCurrentPage(1)
+    queueMicrotask(() => setCurrentPage(1))
   }, [selectedCafeId])
 
   // Mutations

@@ -1,5 +1,5 @@
 import { ChevronLeft } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { Link, useSearchParams } from "react-router"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import { bookingCatalog } from "@/features/booking/data/booking-options"
@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { LoginPromptDialog } from "./components/LoginPromptDialog"
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 
 // "track" step now includes date + slot selection — no separate "schedule" step
 const ALL_STEPS: CheckoutStep[] = ["track", "participants", "fnb", "payment"]
@@ -79,7 +80,7 @@ export function CreateBookingPage() {
     queryFn: () => menuApi.listMenuItems(cafeId, { available: true, limit: 50 }),
     enabled: !isMockId && !!cafeId,
   })
-  const menuItems = menuData?.data ?? []
+  const menuItems = useMemo(() => menuData?.data ?? [], [menuData?.data])
 
   const cafe = useMemo(() => {
     if (!isMockId && realCafe) {
@@ -118,7 +119,7 @@ export function CreateBookingPage() {
   )
   const [mode] = useState<BookingMode>(modeParam ?? "hourly")
   const [planId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
-  const [date, setDate] = useState(searchParams.get("date") ?? new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(searchParams.get("date") ?? new Date().toLocaleDateString("sv-SE"))
   const [time, setTime] = useState(searchParams.get("slot") ?? bookingCatalog.timeOptions[0])
   const [preselectedSlotEnd, setPreselectedSlotEnd] = useState(searchParams.get("slotEnd") ?? null)
   const [playMode, setPlayMode] = useState<CustomerPlayMode>("RENTAL")
@@ -133,7 +134,6 @@ export function CreateBookingPage() {
 
   const [pendingPlayMode, setPendingPlayMode] = useState<CustomerPlayMode | null>(null)
 
-  const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
   const { openHour, closeHour } = useMemo(() => {
     const dayKey = DAY_KEYS[new Date(date).getDay()]
     const hours = (cafe.operatingHours as Record<string, { open?: string; close?: string }> | undefined)?.[dayKey]
@@ -143,6 +143,30 @@ export function CreateBookingPage() {
       closeHour: parseHour(hours?.close) ?? 22,
     }
   }, [date, cafe.operatingHours])
+
+  // Deselect incompatible vehicles when track config changes
+  useEffect(() => {
+    if (selectedTrackConfig && selectedVehicleIds.length > 0) {
+      queueMicrotask(() => {
+        setSelectedVehicleIds((prev) =>
+          prev.filter((vehicleId) => {
+            const vehicle = cafe.availableVehicles.find((v) => v.id === vehicleId)
+            if (!vehicle) return true
+            const compat = vehicle.compatibleTrackTypes
+            return (
+              !compat ||
+              compat.length === 0 ||
+              compat.some(
+                (t) =>
+                  t.id === selectedTrackConfig.track_type_id ||
+                  t.code === selectedTrackConfig.track_type?.code
+              )
+            )
+          })
+        )
+      })
+    }
+  }, [selectedTrackConfig, selectedVehicleIds.length, cafe.availableVehicles])
 
   const handlePlayModeChange = (mode: CustomerPlayMode) => {
     if (mode === "BYOC" && selectedVehicleIds.length > 0) {
@@ -191,7 +215,10 @@ export function CreateBookingPage() {
   const pricingLabel = pricingPreview?.label ?? null
   const effectivePricePerHour = pricingPreview?.effective_price_per_hour ?? (cafe.slotFeeRate ?? 0)
 
-  const selectedVehicles = cafe.availableVehicles.filter((v) => selectedVehicleIds.includes(v.id))
+  const selectedVehicles = useMemo(
+    () => cafe.availableVehicles.filter((v) => selectedVehicleIds.includes(v.id)),
+    [cafe.availableVehicles, selectedVehicleIds],
+  )
   const fnbTotal = useMemo(
     () =>
       menuItems.reduce((sum, item) => {
@@ -234,7 +261,17 @@ export function CreateBookingPage() {
       })
     }
     return components
-  }, [fnbTotal, mode, planId, selectedVehicles, cafe.slotFeeRate, numSlots, participants, selectedPackageId])
+  }, [
+    effectivePricePerHour,
+    fnbTotal,
+    mode,
+    planId,
+    selectedVehicles,
+    cafe.slotDurationMinutes,
+    numSlots,
+    participants,
+    selectedPackageId,
+  ])
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
@@ -454,6 +491,7 @@ export function CreateBookingPage() {
               selectedVehicleIds={selectedVehicleIds}
               onVehicleSelect={setSelectedVehicleIds}
               byocRemaining={byocRemaining}
+              selectedTrackConfig={selectedTrackConfig}
             />
           )}
           {currentStep === "fnb" && (

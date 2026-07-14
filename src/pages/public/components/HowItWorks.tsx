@@ -14,7 +14,7 @@ const steps = [
   {
     n: "03",
     title: "Thanh toán & nhận lịch",
-    desc: "Thanh toán cọc qua VNPay. Lịch giữ ngay lập tức, nhận email xác nhận và mã check-in.",
+    desc: "Thanh toán qua VNPay. Lịch giữ ngay lập tức, nhận email xác nhận và mã check-in.",
     tag: "Xác nhận",
   },
   {

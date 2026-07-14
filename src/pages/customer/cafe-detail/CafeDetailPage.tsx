@@ -74,7 +74,7 @@ export function CafeDetailPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
   const [bookingMode, setBookingMode] = useState<BookingMode>("hourly")
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10))
+  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString("sv-SE"))
   const [selectedSlotId, setSelectedSlotId] = useState("")
 
   if (listLoading || detailLoading) {

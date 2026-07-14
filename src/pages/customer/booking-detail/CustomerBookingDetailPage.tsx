@@ -38,7 +38,7 @@ const STATUS_CONFIG = {
   PENDING: {
     label: "Chờ thanh toán",
     color: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-    desc: "Đơn đặt của bạn đang chờ thanh toán cọc trong 30 phút.",
+    desc: "Đơn đặt của bạn đang chờ thanh toán trong 30 phút.",
   },
   CONFIRMED: {
     label: "Đã duyệt / Sẵn sàng",
@@ -164,7 +164,7 @@ export function CustomerBookingDetailPage() {
 
   const slotFee = sumComponents(booking.payment_components, "SLOT_FEE")
   const rentalFee = sumComponents(booking.payment_components, "RENTAL_FEE")
-  const depositAmount = sumComponents(booking.payment_components, "SECURITY_DEPOSIT")
+  const depositAmount = 0
   const fnbPreorderFee = sumComponents(booking.payment_components, "FNB_PREORDER", "FB_PREORDER")
   const totalAmount = slotFee + rentalFee + fnbPreorderFee
 
@@ -217,11 +217,11 @@ export function CustomerBookingDetailPage() {
               </Badge>
               {isPaid ? (
                 <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold text-xs uppercase tracking-wide">
-                  Đã cọc
+                  Đã thanh toán
                 </Badge>
               ) : (
                 <Badge className="bg-rose-100 text-rose-800 border-none font-bold text-xs uppercase tracking-wide animate-pulse">
-                  Chờ cọc
+                  Chờ thanh toán
                 </Badge>
               )}
             </div>

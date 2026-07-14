@@ -239,7 +239,7 @@ function SlotPicker({
         <Input
           type="date"
           value={date}
-          min={new Date().toISOString().slice(0, 10)}
+          min={new Date().toLocaleDateString("sv-SE")}
           onChange={(e) => {
             setDate(e.target.value)
             setSelectedSlot("")

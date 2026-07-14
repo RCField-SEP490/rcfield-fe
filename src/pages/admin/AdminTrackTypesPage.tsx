@@ -11,6 +11,7 @@ import { Label } from "@/shared/ui/label"
 import { Textarea } from "@/shared/ui/textarea"
 import { Switch } from "@/shared/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
+import { getApiErrorInfo } from "@/shared/lib/utils"
 import { AdminShell } from "./components/AdminShell"
 
 type FormState = {
@@ -56,8 +57,8 @@ export function AdminTrackTypesPage() {
       invalidate()
       setDialogState(null)
     },
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message || "Thêm thất bại"
+    onError: (error: unknown) => {
+      const msg = getApiErrorInfo(error).message || "Thêm thất bại"
       toast.error(msg)
     },
   })
@@ -70,8 +71,8 @@ export function AdminTrackTypesPage() {
       invalidate()
       setDialogState(null)
     },
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message || "Cập nhật thất bại"
+    onError: (error: unknown) => {
+      const msg = getApiErrorInfo(error).message || "Cập nhật thất bại"
       toast.error(msg)
     },
   })

@@ -49,10 +49,12 @@ export default function StaffInspectionPage() {
     const names = booking.participantDetails?.map((p) => p.name) ??
       booking.plannedParticipants ??
       ["Người chơi"]
-    setByocPhotos((prev) =>
-      names.map((name) => prev.find((p) => p.participantName === name) ?? { participantName: name, url: "", notes: "" })
-    )
-  }, [booking?.bookingId, isByoc])
+    queueMicrotask(() => {
+      setByocPhotos((prev) =>
+        names.map((name) => prev.find((p) => p.participantName === name) ?? { participantName: name, url: "", notes: "" })
+      )
+    })
+  }, [booking, isByoc])
 
   const [checklist, setChecklist] = useState<
     { id: string; label: string; checked: boolean; notes?: string }[]
@@ -65,31 +67,38 @@ export default function StaffInspectionPage() {
   const [estimatedCost, setEstimatedCost] = useState(50000)
   const [damageMultiplier, setDamageMultiplier] = useState(1.0)
   const [showCheckInBaselines, setShowCheckInBaselines] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
 
   useEffect(() => {
     if (isByoc) {
-      setChecklist([
-        { id: "byoc-1", label: "Khách đến đúng giờ và xuất trình xe cá nhân", checked: true },
-        { id: "byoc-2", label: "Xe của khách đã được kiểm tra an toàn cơ bản (pin, remote)", checked: true },
-        { id: "byoc-3", label: "Khách đã xác nhận tự chịu trách nhiệm về xe cá nhân", checked: true },
-      ])
+      queueMicrotask(() => {
+        setChecklist([
+          { id: "byoc-1", label: "Khách đến đúng giờ và xuất trình xe cá nhân", checked: true },
+          { id: "byoc-2", label: "Xe của khách đã được kiểm tra an toàn cơ bản (pin, remote)", checked: true },
+          { id: "byoc-3", label: "Khách đã xác nhận tự chịu trách nhiệm về xe cá nhân", checked: true },
+        ])
+      })
       return
     }
 
     if (type === "CHECK_IN") {
-      setChecklist([
-        { id: "ck-1", label: "Pin đã được sạc đầy 100% trước ca chạy", checked: true },
-        { id: "ck-2", label: "Hệ thống lái Servo nhạy bén, kiểm tra bẻ cua mượt mà", checked: true },
-        { id: "ck-3", label: "Bộ lốp drift/onroad lắp ráp chắc chắn, không bị rơ", checked: true },
-        { id: "ck-4", label: "Điều khiển từ xa (Remote) đã bật kết nối sóng ổn định", checked: true },
-      ])
+      queueMicrotask(() => {
+        setChecklist([
+          { id: "ck-1", label: "Pin đã được sạc đầy 100% trước ca chạy", checked: true },
+          { id: "ck-2", label: "Hệ thống lái Servo nhạy bén, kiểm tra bẻ cua mượt mà", checked: true },
+          { id: "ck-3", label: "Bộ lốp drift/onroad lắp ráp chắc chắn, không bị rơ", checked: true },
+          { id: "ck-4", label: "Điều khiển từ xa (Remote) đã bật kết nối sóng ổn định", checked: true },
+        ])
+      })
     } else if (type === "CHECK_OUT") {
-      setChecklist([
-        { id: "ck-o1", label: "Khung gầm xe nguyên vẹn, không nứt nẻ gãy vỡ", checked: true },
-        { id: "ck-o2", label: "Cánh gió vững chãi, không móp méo rơi rụng", checked: true },
-        { id: "ck-o3", label: "Động cơ điện (motor) hoạt động bình thường, không tỏa khét", checked: true },
-        { id: "ck-o4", label: "Vỏ nhựa (Shell) không có vết xước sâu hoặc móp rách mới", checked: true },
-      ])
+      queueMicrotask(() => {
+        setChecklist([
+          { id: "ck-o1", label: "Khung gầm xe nguyên vẹn, không nứt nẻ gãy vỡ", checked: true },
+          { id: "ck-o2", label: "Cánh gió vững chãi, không móp méo rơi rụng", checked: true },
+          { id: "ck-o3", label: "Động cơ điện (motor) hoạt động bình thường, không tỏa khét", checked: true },
+          { id: "ck-o4", label: "Vỏ nhựa (Shell) không có vết xước sâu hoặc móp rách mới", checked: true },
+        ])
+      })
     }
   }, [type, isByoc])
 
@@ -98,7 +107,7 @@ export default function StaffInspectionPage() {
       const hasPremium = session.vehicles.some(
         (v) => v.name.toLowerCase().includes("premium") || v.name.toLowerCase().includes("gtr")
       )
-      setDamageMultiplier(hasPremium ? 1.5 : 1.0)
+      queueMicrotask(() => setDamageMultiplier(hasPremium ? 1.5 : 1.0))
     }
   }, [type, session, isByoc])
 
@@ -114,8 +123,6 @@ export default function StaffInspectionPage() {
 
   // BYOC không có checkout inspection — staff đóng phiên trực tiếp
   if (isByoc && type === "CHECK_OUT") {
-    const [isClosing, setIsClosing] = React.useState(false)
-
     const handleCloseByocSession = async () => {
       setIsClosing(true)
       try {

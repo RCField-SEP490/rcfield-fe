@@ -87,14 +87,14 @@ function UploadPanel({
     onError: () => toast.error("Upload thất bại. Kiểm tra lại file và thử lại."),
   })
 
-  const pickFile = (f: File) => {
+  const pickFile = useCallback((f: File) => {
     if (f.size > MAX_MB * 1024 * 1024) {
       toast.error(`File quá lớn (tối đa ${MAX_MB}MB)`)
       return
     }
     setFile(f)
     if (!title) setTitle(f.name.replace(/\.[^/.]+$/, ""))
-  }
+  }, [title])
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
@@ -103,7 +103,7 @@ function UploadPanel({
       const f = e.dataTransfer.files[0]
       if (f) pickFile(f)
     },
-    [title],
+    [pickFile],
   )
 
   const canSubmit = !!file && title.trim().length > 0 && !isPending

@@ -1,4 +1,4 @@
-import { ArrowRight, Layers, Loader2, MapPin, ShieldCheck, Tag } from "lucide-react"
+import { ArrowRight, Layers, Loader2, MapPin, Tag } from "lucide-react"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import type { CustomerPlayMode, CheckoutStep, PaymentComponentLine } from "@/features/customer-booking/data/customer-booking-demo"
 import type { Cafe, Vehicle } from "@/shared/data/explore-data"
@@ -138,9 +138,7 @@ export function CheckoutSummaryCard({
           </div>
         </div>
 
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          <ShieldCheck className="mr-1 inline h-4 w-4" /> Tiền cọc được giữ lại, hoàn trả hoặc khấu trừ sau khi kiểm tra xe khi trả.
-        </div>
+
       </CardContent>
       <CardFooter className="grid gap-2">
         <Button
