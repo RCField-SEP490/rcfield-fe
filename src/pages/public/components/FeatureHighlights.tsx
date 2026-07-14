@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { CalendarCheck, Camera, Clock, MapPin, Receipt, Trophy, ChevronLeft, ChevronRight } from "lucide-react"
-import { motion, useScroll, useSpring } from "framer-motion"
+import { motion } from "framer-motion"
 
 const features = [
   {

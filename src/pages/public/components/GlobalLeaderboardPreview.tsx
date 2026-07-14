@@ -74,7 +74,6 @@ export function GlobalLeaderboardPreview() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {rows.slice(0, 5).map((entry, index) => {
-                    const isPodium = entry.rank <= 3
                     const rankBg =
                       entry.rank === 1
                         ? "bg-amber-500 text-white font-black shadow-md shadow-amber-500/20"

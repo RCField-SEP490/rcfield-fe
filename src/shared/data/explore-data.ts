@@ -72,10 +72,11 @@ export type CafeSearchParams = {
   priceMin?: number
   priceMax?: number
   popularFilters?: string[]
+  page?: number
+  limit?: number
 }
 
 export type ExploreCafe = Cafe
 export type ExploreVehicle = Vehicle
 
 export { mockCafes } from "./mock-cafes"
-

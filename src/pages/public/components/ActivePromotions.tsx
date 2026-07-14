@@ -6,18 +6,6 @@ import { getCafes } from "@/features/explore/api/explore.api"
 import { promotionApi } from "@/features/promotions/api/promotion.api"
 import { toast } from "sonner"
 
-type PromoItem = {
-  cafeName: string
-  cafeId: string
-  code: string
-  description: string | null
-  discount_type: "PERCENT" | "FIXED"
-  discount_value: number
-  max_discount_amount: number | null
-  min_order_amount: number | null
-  expires_at: string | null
-}
-
 export function ActivePromotions() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
 

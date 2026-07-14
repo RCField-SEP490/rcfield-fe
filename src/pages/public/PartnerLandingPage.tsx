@@ -1,5 +1,5 @@
 import { PartnerHero } from "./components/partner/PartnerHero"
-import { PartnerPainPoints } from "./components/partner/PartnerPainPoints"
+import { PartnerValueProp } from "./components/partner/PartnerValueProp"
 import { PartnerHowItWorks } from "./components/partner/PartnerHowItWorks"
 import { PartnerFeatures } from "./components/partner/PartnerFeatures"
 import { PartnerTestimonials } from "./components/partner/PartnerTestimonials"
@@ -10,7 +10,7 @@ export function PartnerLandingPage() {
   return (
     <div className="partner-page">
       <PartnerHero />
-      <PartnerPainPoints />
+      <PartnerValueProp />
       <PartnerHowItWorks />
       <PartnerFeatures />
       <PartnerTestimonials />

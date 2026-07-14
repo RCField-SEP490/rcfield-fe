@@ -1,38 +1,71 @@
-import { HOW_IT_WORKS } from "./partner-data"
+import { motion } from "framer-motion"
+
+const steps = [
+  {
+    number: 1,
+    title: "Đăng ký & Cấu hình",
+    desc: "Tạo tài khoản Provider, nhập thông tin sân và danh sách xe trong vài phút.",
+  },
+  {
+    number: 2,
+    title: "Nhận đặt lịch tự động",
+    desc: "Khách tìm sân, chọn xe, đặt lịch và thanh toán online — không cần nhân viên can thiệp.",
+  },
+  {
+    number: 3,
+    title: "Bàn giao có bằng chứng",
+    desc: "Check-in/out bằng ảnh trực tiếp trên app — bảo vệ tài sản sân, không còn tranh chấp.",
+  },
+]
 
 export function PartnerHowItWorks() {
   return (
-    <section className="bg-white py-20 md:py-28">
-      <div className="mx-auto max-w-7xl px-4 md:px-6">
+    <section className="bg-slate-900 py-24 text-white relative overflow-hidden">
+      {/* Subtle background glow */}
+      <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[#ff6b00]/10 blur-3xl pointer-events-none" />
+      <div className="absolute -left-32 -bottom-32 h-96 w-96 rounded-full bg-orange-600/5 blur-3xl pointer-events-none" />
+      
+      <div className="mx-auto max-w-7xl px-4 md:px-6 relative z-10">
         {/* Header */}
-        <div className="mb-16 text-center">
-          <p className="mb-3 text-xs font-black uppercase tracking-widest text-orange-500">
+        <div className="mb-20 text-center">
+          <p className="mb-3 text-xs font-extrabold uppercase tracking-[0.2em] text-[#ff6b00]">
             Quy trình
           </p>
-          <h2 className="text-3xl font-black text-slate-900 md:text-4xl">
+          <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">
             Bắt đầu trong 3 bước đơn giản
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-base text-slate-500">
-            Từ đăng ký đến nhận booking đầu tiên — thường mất chưa đến 1 giờ.
-          </p>
         </div>
 
-        {/* Steps */}
-        <div className="relative grid grid-cols-1 gap-8 lg:grid-cols-3">
-          {/* Connector line — desktop only */}
-          <div
-            className="pointer-events-none absolute top-8 left-0 right-0 hidden h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent lg:block"
-            aria-hidden
-          />
+        {/* Steps Horizontal Roadmap */}
+        <div className="relative grid grid-cols-1 gap-12 md:grid-cols-3">
+          {/* Connecting lines for desktop (md and up) */}
+          <div className="absolute top-8 left-[16.6%] right-[16.6%] hidden h-0.5 bg-slate-800 md:block" aria-hidden="true">
+            <motion.div 
+              initial={{ width: 0 }}
+              whileInView={{ width: "100%" }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="h-full bg-gradient-to-r from-[#ff6b00] to-orange-500"
+            />
+          </div>
 
-          {HOW_IT_WORKS.map((step) => (
-            <div key={step.number} className="relative flex flex-col items-center text-center lg:items-center">
-              {/* Number bubble */}
-              <div className="relative mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-orange-200 bg-orange-50">
-                <span className="text-2xl font-black text-orange-500">{step.number}</span>
+          {steps.map((step) => (
+            <div
+              key={step.number}
+              className="relative flex flex-col items-center text-center group"
+            >
+              {/* Numbered circle anchor */}
+              <div className="relative z-10 mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#ff6b00] text-xl font-black text-white shadow-lg shadow-[#ff6b00]/25 ring-8 ring-slate-900 transition-transform duration-300 group-hover:scale-110">
+                {step.number}
               </div>
-              <h3 className="mb-3 text-xl font-black text-slate-900">{step.title}</h3>
-              <p className="max-w-xs text-sm leading-6 text-slate-600">{step.description}</p>
+
+              {/* Step contents */}
+              <h3 className="mb-3 text-xl font-bold text-white group-hover:text-[#ff6b00] transition-colors duration-300">
+                {step.title}
+              </h3>
+              <p className="max-w-xs text-sm font-medium leading-relaxed text-slate-400">
+                {step.desc}
+              </p>
             </div>
           ))}
         </div>

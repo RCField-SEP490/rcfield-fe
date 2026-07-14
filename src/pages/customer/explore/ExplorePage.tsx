@@ -20,6 +20,8 @@ import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { favoriteApi } from "@/features/explore/api/favorite.api"
 
+const emphasizedEase: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
 const cardVariants = {
   hidden: { opacity: 0, y: 24, scale: 0.97 },
   visible: (i: number) => ({
@@ -29,7 +31,7 @@ const cardVariants = {
     transition: {
       delay: i * 0.06,
       duration: 0.4,
-      ease: [0.22, 1, 0.36, 1],
+      ease: emphasizedEase,
     },
   }),
   exit: { opacity: 0, y: -12, scale: 0.97, transition: { duration: 0.2 } },
@@ -156,7 +158,7 @@ export function ExplorePage() {
     enabled: filters.searchTarget === "contests",
   })
 
-  const contests = contestsData?.data ?? []
+  const contests = useMemo(() => contestsData?.data ?? [], [contestsData?.data])
 
   const filteredContests = useMemo(() => {
     const query = filters.query.trim().toLowerCase()
@@ -298,7 +300,7 @@ export function ExplorePage() {
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 16 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.3, ease: emphasizedEase }}
               >
                 {/* Results header */}
                 <div className="sticky top-[68px] lg:top-[80px] z-20 bg-gradient-to-b from-slate-50 via-slate-50 to-slate-50/95 pb-3 pt-2 mb-4 backdrop-blur-sm">
@@ -416,7 +418,7 @@ export function ExplorePage() {
                 initial={{ opacity: 0, x: 16 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -16 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.3, ease: emphasizedEase }}
               >
                 {/* Contest results list */}
                 <div className="mb-4">

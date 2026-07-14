@@ -58,7 +58,6 @@ export function FeaturedCafes() {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {topCafes.map((cafe, index) => {
-              const starCount = Math.round(cafe.rating)
               return (
                 <motion.div
                   key={cafe.id}
