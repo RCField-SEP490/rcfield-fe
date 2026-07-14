@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
 import { getCafes } from "@/features/explore/api/explore.api"
+import { QuickSearchPanel } from "./QuickSearchPanel"
 
 const FALLBACK_CAFES = [
   {
@@ -175,6 +176,11 @@ export function LandingHero() {
             <p className="text-xs text-orange-400 font-semibold">Track Drift · 14:00 – 16:00</p>
           </div>
         </div>
+      </div>
+
+      {/* Quick Search Panel (Centered horizontally at the bottom of the Hero section) */}
+      <div className="relative mx-auto max-w-7xl px-4 md:px-6 pb-20">
+        <QuickSearchPanel />
       </div>
     </section>
   )
