@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
+import { motion, AnimatePresence } from "framer-motion"
 import { getCafes } from "@/features/explore/api/explore.api"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
 import { toast } from "sonner"
@@ -18,6 +19,21 @@ import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { favoriteApi } from "@/features/explore/api/favorite.api"
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.4,
+      ease: [0.22, 1, 0.36, 1],
+    },
+  }),
+  exit: { opacity: 0, y: -12, scale: 0.97, transition: { duration: 0.2 } },
+}
 
 export function ExplorePage() {
   const navigate = useNavigate()
@@ -161,7 +177,6 @@ export function ExplorePage() {
     let visible = cafes
     if (searchOnMove && mapBounds) visible = visible.filter((c) => cafeInBounds(c, mapBounds))
 
-    // Favourites first, then by distance when available; server already handles query filters/sort.
     return [...visible].sort((a, b) => {
       const isFavA = favoriteIds.includes(a.id)
       const isFavB = favoriteIds.includes(b.id)
@@ -189,7 +204,7 @@ export function ExplorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/50 flex flex-col">
       {/* Top search bar */}
       <ExploreSearchBar
         city={filters.city}
@@ -231,12 +246,17 @@ export function ExplorePage() {
         {/* CENTER — Results list */}
         <div ref={listRef} className="flex-1 min-w-0">
           {/* Premium Segmented Switcher */}
-          <div className="mb-6 flex items-center justify-between border-b border-slate-200/80 pb-4">
-            <div className="flex gap-2 rounded-xl bg-slate-200/60 p-1">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.35 }}
+            className="mb-6 flex items-center justify-between border-b border-slate-200/60 pb-4"
+          >
+            <div className="flex gap-1 rounded-xl bg-slate-200/50 p-1">
               <button
                 type="button"
                 onClick={() => filters.setSearchTarget("cafes")}
-                className={`rounded-lg px-4 py-2 text-xs font-bold transition-all duration-200 ${
+                className={`relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   filters.searchTarget === "cafes"
                     ? "bg-white text-orange-600 shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
@@ -247,7 +267,7 @@ export function ExplorePage() {
               <button
                 type="button"
                 onClick={() => filters.setSearchTarget("contests")}
-                className={`rounded-lg px-4 py-2 text-xs font-bold transition-all duration-200 ${
+                className={`relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   filters.searchTarget === "contests"
                     ? "bg-white text-orange-600 shadow-sm"
                     : "text-slate-600 hover:text-slate-900"
@@ -256,142 +276,209 @@ export function ExplorePage() {
                 Giải đấu RC
               </button>
             </div>
-            {filters.searchTarget === "contests" && (
-              <span className="text-xs font-semibold text-slate-500">
-                {filteredContests.length} giải đấu khả dụng
-              </span>
-            )}
-          </div>
+            <AnimatePresence mode="wait">
+              {filters.searchTarget === "contests" && (
+                <motion.span
+                  key="contest-count"
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 8 }}
+                  className="text-xs font-semibold text-slate-500"
+                >
+                  {filteredContests.length} giải đấu khả dụng
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
-          {filters.searchTarget === "cafes" ? (
-            <>
-              {/* Results header */}
-              <div className="sticky top-[68px] lg:top-[80px] z-20 bg-slate-50 pb-3 pt-2 mb-4 relative before:absolute before:bottom-full before:left-[-9999px] before:right-[-9999px] before:h-[200px] before:bg-slate-50 before:z-[-1]">
-                <ExploreResultsHeader
-                  city={filters.city}
-                  resultCount={filteredCafes.length}
-                  sortBy={filters.sortBy}
-                  onSortByChange={filters.setSortBy}
-                  viewMode={viewMode}
-                  onViewModeChange={handleViewModeChange}
-                  trackType={filters.trackType}
-                  onTrackTypeChange={filters.setTrackType}
-                  feature={filters.feature}
-                  onFeatureChange={filters.setFeature}
-                  vehicleType={filters.vehicleType}
-                  onVehicleTypeChange={filters.setVehicleType}
-                  priceRange={filters.priceRange}
-                  onPriceRangeChange={filters.setPriceRange}
-                  query={filters.query}
-                  onQueryChange={filters.setQuery}
-                />
-              </div>
+          <AnimatePresence mode="wait">
+            {filters.searchTarget === "cafes" ? (
+              <motion.div
+                key="cafes-tab"
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 16 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {/* Results header */}
+                <div className="sticky top-[68px] lg:top-[80px] z-20 bg-gradient-to-b from-slate-50 via-slate-50 to-slate-50/95 pb-3 pt-2 mb-4 backdrop-blur-sm">
+                  <ExploreResultsHeader
+                    city={filters.city}
+                    resultCount={filteredCafes.length}
+                    sortBy={filters.sortBy}
+                    onSortByChange={filters.setSortBy}
+                    viewMode={viewMode}
+                    onViewModeChange={handleViewModeChange}
+                    trackType={filters.trackType}
+                    onTrackTypeChange={filters.setTrackType}
+                    feature={filters.feature}
+                    onFeatureChange={filters.setFeature}
+                    vehicleType={filters.vehicleType}
+                    onVehicleTypeChange={filters.setVehicleType}
+                    priceRange={filters.priceRange}
+                    onPriceRangeChange={filters.setPriceRange}
+                    query={filters.query}
+                    onQueryChange={filters.setQuery}
+                  />
+                </div>
 
-              {/* Card list */}
-              <main className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}>
-                {isLoading ? (
-                  <ExploreLoadingState viewMode={viewMode} />
-                ) : isError ? (
-                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                    <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
-                    <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
-                    <button
-                      type="button"
-                      onClick={() => void refetch()}
-                      className="mt-4 rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700"
+                {/* Card list */}
+                <AnimatePresence mode="popLayout">
+                  {isLoading ? (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                     >
-                      Tải lại
-                    </button>
-                  </div>
-                ) : filteredCafes.length === 0 ? (
-                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                    <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
-                    <p className="mt-2 text-sm text-slate-500">
-                      {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
-                    </p>
-                  </div>
-                ) : (
-                  filteredCafes.map((cafe) => {
-                    const dist =
-                      userLocation && cafe.latitude && cafe.longitude
-                        ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
-                        : undefined
-                    return viewMode === "grid" ? (
-                      <CafeGridCard
-                        key={cafe.id}
-                        cafe={cafe}
-                        isFavorite={favoriteIds.includes(cafe.id)}
-                        onToggleFavorite={handleToggleFavorite}
-                        distanceKm={dist}
-                        onQuickView={setQuickViewCafe}
-                        onBookNow={handleBookNow}
-                        onHover={setHoveredCafeId}
-                      />
-                    ) : (
-                      <CafeHorizontalCard
-                        key={cafe.id}
-                        cafe={cafe}
-                        isFavorite={favoriteIds.includes(cafe.id)}
-                        onToggleFavorite={handleToggleFavorite}
-                        distanceKm={dist}
-                        onQuickView={setQuickViewCafe}
-                        onBookNow={handleBookNow}
-                        onHover={setHoveredCafeId}
-                      />
-                    )
-                  })
-                )}
-              </main>
-            </>
-          ) : (
-            <>
-              {/* Contest results list */}
-              <div className="mb-4">
-                <h2 className="text-lg font-extrabold text-slate-950">Giải đấu RC nổi bật</h2>
-                <p className="text-xs text-slate-500">Các cuộc đua tốc độ và kỹ thuật diễn ra tại các chi nhánh RC Cafe</p>
-              </div>
+                      <ExploreLoadingState viewMode={viewMode} />
+                    </motion.div>
+                  ) : isError ? (
+                    <motion.div
+                      key="error"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm"
+                    >
+                      <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
+                      <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                      <button
+                        type="button"
+                        onClick={() => void refetch()}
+                        className="mt-4 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-orange-700 hover:-translate-y-0.5 hover:shadow-md"
+                      >
+                        Tải lại
+                      </button>
+                    </motion.div>
+                  ) : filteredCafes.length === 0 ? (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm"
+                    >
+                      <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.main
+                      key={`results-${viewMode}`}
+                      className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}
+                    >
+                      {filteredCafes.map((cafe, index) => {
+                        const dist =
+                          userLocation && cafe.latitude && cafe.longitude
+                            ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
+                            : undefined
+                        return (
+                          <motion.div
+                            key={cafe.id}
+                            custom={index}
+                            variants={cardVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            layout
+                          >
+                            {viewMode === "grid" ? (
+                              <CafeGridCard
+                                cafe={cafe}
+                                isFavorite={favoriteIds.includes(cafe.id)}
+                                onToggleFavorite={handleToggleFavorite}
+                                distanceKm={dist}
+                                onQuickView={setQuickViewCafe}
+                                onBookNow={handleBookNow}
+                                onHover={setHoveredCafeId}
+                              />
+                            ) : (
+                              <CafeHorizontalCard
+                                cafe={cafe}
+                                isFavorite={favoriteIds.includes(cafe.id)}
+                                onToggleFavorite={handleToggleFavorite}
+                                distanceKm={dist}
+                                onQuickView={setQuickViewCafe}
+                                onBookNow={handleBookNow}
+                                onHover={setHoveredCafeId}
+                              />
+                            )}
+                          </motion.div>
+                        )
+                      })}
+                    </motion.main>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="contests-tab"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {/* Contest results list */}
+                <div className="mb-4">
+                  <h2 className="text-lg font-extrabold text-slate-950">Giải đấu RC nổi bật</h2>
+                  <p className="text-xs text-slate-500">Các cuộc đua tốc độ và kỹ thuật diễn ra tại các chi nhánh RC Cafe</p>
+                </div>
 
-              <main>
-                {isLoadingContests ? (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-64 animate-pulse rounded-xl bg-slate-200/50" />
-                    ))}
-                  </div>
-                ) : isErrorContests ? (
-                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                    <h3 className="text-lg font-semibold">Không tải được dữ liệu giải đấu</h3>
-                    <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
-                  </div>
-                ) : filteredContests.length === 0 ? (
-                  <div className="rounded-xl border bg-white p-12 text-center shadow-sm">
-                    <h3 className="text-lg font-semibold">Chưa tìm thấy giải đấu nào</h3>
-                    <p className="mt-2 text-sm text-slate-500">Thử thay đổi từ khóa tìm kiếm ở thanh trên.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    {filteredContests.map((contest) => (
-                      <ContestExploreCard key={contest.id} contest={contest} />
-                    ))}
-                  </div>
-                )}
-              </main>
-            </>
-          )}
+                <main>
+                  {isLoadingContests ? (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-64 animate-pulse rounded-2xl bg-slate-200/50" />
+                      ))}
+                    </div>
+                  ) : isErrorContests ? (
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+                      <h3 className="text-lg font-semibold">Không tải được dữ liệu giải đấu</h3>
+                      <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                    </div>
+                  ) : filteredContests.length === 0 ? (
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+                      <h3 className="text-lg font-semibold">Chưa tìm thấy giải đấu nào</h3>
+                      <p className="mt-2 text-sm text-slate-500">Thử thay đổi từ khóa tìm kiếm ở thanh trên.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {filteredContests.map((contest, index) => (
+                        <motion.div
+                          key={contest.id}
+                          custom={index}
+                          variants={cardVariants}
+                          initial="hidden"
+                          animate="visible"
+                        >
+                          <ContestExploreCard contest={contest} />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </main>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Mobile: floating "Xem bản đồ" button */}
       {filters.searchTarget === "cafes" && (
-        <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:hidden">
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.4 }}
+          className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:hidden"
+        >
           <button
             type="button"
             onClick={() => setShowMap(true)}
-            className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl hover:bg-slate-800"
+            className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/30 transition-all hover:bg-slate-800 hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.97]"
           >
             <Map className="h-4 w-4" /> Xem bản đồ
           </button>
-        </div>
+        </motion.div>
       )}
 
       {/* Mobile full-screen map overlay */}
@@ -415,18 +502,24 @@ function ExploreLoadingState({ viewMode }: { viewMode: "grid" | "list" }) {
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm h-full">
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.3 }}
+            className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm h-full"
+          >
             <div className="aspect-[16/10] w-full animate-pulse bg-slate-100" />
             <div className="flex-1 space-y-3 p-4">
-              <div className="h-5 w-2/3 animate-pulse rounded bg-slate-100" />
-              <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100" />
-              <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+              <div className="h-5 w-2/3 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-4 w-1/3 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100" />
               <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
-                <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100" />
-                <div className="h-8 w-1/2 animate-pulse rounded bg-slate-100" />
+                <div className="h-4 w-1/3 animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-8 w-1/2 animate-pulse rounded-lg bg-slate-100" />
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     )
@@ -435,23 +528,29 @@ function ExploreLoadingState({ viewMode }: { viewMode: "grid" | "list" }) {
   return (
     <div className="space-y-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex overflow-hidden rounded-xl border bg-white shadow-sm">
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.08, duration: 0.3 }}
+          className="flex overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+        >
           <div className="h-[200px] w-[280px] shrink-0 animate-pulse bg-slate-100" />
           <div className="flex-1 space-y-3 p-4">
-            <div className="h-5 w-2/3 animate-pulse rounded bg-slate-100" />
-            <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+            <div className="h-5 w-2/3 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-4 w-1/3 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100" />
             <div className="flex gap-2">
-              <div className="h-6 w-16 animate-pulse rounded bg-slate-100" />
-              <div className="h-6 w-16 animate-pulse rounded bg-slate-100" />
+              <div className="h-6 w-16 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-6 w-16 animate-pulse rounded-lg bg-slate-100" />
             </div>
           </div>
           <div className="w-[180px] shrink-0 border-l p-4">
-            <div className="h-6 w-full animate-pulse rounded bg-slate-100" />
-            <div className="mt-2 h-8 w-full animate-pulse rounded bg-slate-100" />
-            <div className="mt-auto h-10 w-full animate-pulse rounded bg-slate-100" />
+            <div className="h-6 w-full animate-pulse rounded-lg bg-slate-100" />
+            <div className="mt-2 h-8 w-full animate-pulse rounded-lg bg-slate-100" />
+            <div className="mt-auto h-10 w-full animate-pulse rounded-lg bg-slate-100" />
           </div>
-        </div>
+        </motion.div>
       ))}
     </div>
   )

@@ -1,5 +1,6 @@
 import { Bookmark, Heart, MapPin, Star } from "lucide-react"
 import { Link } from "react-router"
+import { motion } from "framer-motion"
 import type { Cafe } from "@/shared/data/explore-data"
 import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
 import { formatCurrency } from "@/shared/lib/format"
@@ -30,17 +31,21 @@ export function CafeHorizontalCard({
   const bestPromo = cafe.promotions?.[0] ?? null
   const hasPromo = !!bestPromo
 
-  // Calculate discounted price
   const discountedPrice = hasPromo ? computeDiscountedPrice(slotPrice, bestPromo) : null
   const ratingLabel = getRatingLabel(cafe.rating)
 
   const starCount = Math.round(cafe.rating)
 
   return (
-    <div
-      className="group flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+    <motion.div
+      className="group flex overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm will-change-transform"
       onMouseEnter={() => onHover(cafe.id)}
       onMouseLeave={() => onHover(null)}
+      whileHover={{
+        y: -3,
+        boxShadow: "0 12px 40px -8px rgba(0,0,0,0.1), 0 4px 16px -4px rgba(0,0,0,0.06)",
+        transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+      }}
     >
       {/* LEFT — Image */}
       <Link
@@ -50,25 +55,35 @@ export function CafeHorizontalCard({
         <img
           src={cafe.image}
           alt={cafe.name}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
         />
 
+        {/* Gradient overlay on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
         {/* Bookmark / Favorite */}
-        <button
+        <motion.button
           type="button"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
             onToggleFavorite(cafe.id)
           }}
-          className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded bg-white/80 shadow-sm backdrop-blur-sm transition hover:scale-110 active:scale-95"
+          whileTap={{ scale: 0.85 }}
+          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur-sm transition-all hover:bg-white"
         >
           {isFavorite ? (
-            <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 15 }}
+            >
+              <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+            </motion.div>
           ) : (
             <Bookmark className="h-4 w-4 text-slate-500" />
           )}
-        </button>
+        </motion.button>
 
         {/* Image gallery mini dots */}
         {cafe.images && cafe.images.length > 1 && (
@@ -76,13 +91,13 @@ export function CafeHorizontalCard({
             {cafe.images.slice(0, 3).map((img, i) => (
               <div
                 key={i}
-                className="h-8 w-8 overflow-hidden rounded border border-white/70 bg-white/80 shadow-sm"
+                className="h-8 w-8 overflow-hidden rounded-lg border border-white/70 bg-white/80 shadow-sm"
               >
                 <img src={img} alt="" className="h-full w-full object-cover" />
               </div>
             ))}
             {cafe.images.length > 3 && (
-              <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-800/70 text-[10px] font-bold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800/70 text-[10px] font-bold text-white backdrop-blur-sm">
                 Xem ảnh
               </div>
             )}
@@ -91,7 +106,7 @@ export function CafeHorizontalCard({
 
         {/* Promo overlay badge */}
         {hasPromo && bestPromo.discount_type === "PERCENT" && Number(bestPromo.discount_value) >= 40 && (
-          <div className="absolute bottom-3 right-3 rounded bg-orange-500 px-2 py-1 text-[10px] font-bold text-white shadow-sm">
+          <div className="absolute bottom-3 right-3 rounded-lg bg-orange-500 px-2 py-1 text-[10px] font-bold text-white shadow-md">
             7.7
           </div>
         )}
@@ -104,13 +119,13 @@ export function CafeHorizontalCard({
           <div className="flex items-start justify-between gap-3">
             <Link
               to={buildCafeDetailPath(cafe)}
-              className="line-clamp-1 text-base font-bold text-slate-900 hover:text-orange-600 hover:underline"
+              className="line-clamp-1 text-base font-bold text-slate-900 transition-colors hover:text-orange-600"
             >
               {cafe.name}
             </Link>
             {cafe.rating > 0 && (
               <div className="flex shrink-0 items-center gap-1.5">
-                <span className="rounded bg-orange-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                <span className="rounded-lg bg-orange-600 px-1.5 py-0.5 text-xs font-bold text-white">
                   {cafe.rating.toFixed(1)}/5
                 </span>
                 <span className="text-xs font-semibold text-slate-600">{ratingLabel}</span>
@@ -127,7 +142,7 @@ export function CafeHorizontalCard({
 
           {/* RC CAFE badge + stars */}
           <div className="mt-1.5 flex items-center gap-2">
-            <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">
+            <span className="rounded-md bg-orange-50 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">
               RC CAFE
             </span>
             {starCount > 0 && (
@@ -162,7 +177,7 @@ export function CafeHorizontalCard({
               {cafe.trackTypes.slice(0, 2).map((track) => (
                 <span
                   key={track}
-                  className="rounded border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600"
+                  className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600"
                 >
                   {track}
                 </span>
@@ -170,13 +185,13 @@ export function CafeHorizontalCard({
               {cafe.features.slice(0, 2).map((feat) => (
                 <span
                   key={feat}
-                  className="rounded border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600"
+                  className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-600"
                 >
                   {feat}
                 </span>
               ))}
               {(cafe.trackTypes.length + cafe.features.length) > 4 && (
-                <span className="rounded border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-400">
+                <span className="rounded-md border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-400">
                   +{cafe.trackTypes.length + cafe.features.length - 4}
                 </span>
               )}
@@ -186,8 +201,8 @@ export function CafeHorizontalCard({
 
         {/* Promo banner (7.7 style) */}
         {hasPromo && bestPromo.discount_type === "PERCENT" && Number(bestPromo.discount_value) >= 40 && (
-          <div className="mt-3 flex items-center gap-2 rounded-md bg-orange-50 px-2.5 py-1.5">
-            <span className="rounded bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">7.7</span>
+          <div className="mt-3 flex items-center gap-2 rounded-xl bg-orange-50 px-2.5 py-1.5">
+            <span className="rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white">7.7</span>
             <span className="text-xs font-semibold text-orange-700">
               Deal hot chỉ có ở 7.7 EPIC
             </span>
@@ -229,20 +244,20 @@ export function CafeHorizontalCard({
               e.stopPropagation()
               onQuickView(cafe)
             }}
-            className="w-full rounded-lg border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+            className="w-full rounded-xl border border-slate-200 bg-white py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-[0.97]"
           >
             Xem nhanh
           </button>
           <button
             type="button"
             onClick={() => onBookNow(cafe.id)}
-            className="w-full rounded-lg bg-orange-600 py-2.5 text-sm font-bold text-white transition hover:bg-orange-700"
+            className="w-full rounded-xl bg-orange-600 py-2.5 text-sm font-bold text-white transition-all hover:bg-orange-700 hover:shadow-md hover:shadow-orange-600/20 active:scale-[0.97]"
           >
             Chọn sân
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

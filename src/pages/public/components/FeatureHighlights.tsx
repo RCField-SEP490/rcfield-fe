@@ -1,4 +1,4 @@
-import { CalendarCheck, Camera, Clock, MapPin, Receipt } from "lucide-react"
+import { CalendarCheck, Camera, Clock, MapPin, Receipt, Trophy } from "lucide-react"
 
 const features = [
   {
@@ -15,21 +15,27 @@ const features = [
   },
   {
     icon: Camera,
-    color: "bg-violet-500",
+    color: "bg-teal-500",
     title: "Kiểm tra xe minh bạch",
-    desc: "Chụp ảnh 4 góc xe trước và sau phiên chơi. Không còn tranh chấp không đáng có.",
+    desc: "Chụp ảnh 4 góc xe trước và sau phiên chơi. Tránh tranh chấp không đáng có, bảo vệ tài sản của bạn.",
   },
   {
     icon: Clock,
     color: "bg-sky-500",
     title: "Theo dõi phiên live",
-    desc: "Nhận thông báo đếm ngược thời gian. Gia hạn phiên hoặc order F&B ngay trên app.",
+    desc: "Nhận thông báo đếm ngược thời gian. Gia hạn phiên hoặc order F&B ngay trên app cực kỳ tiện lợi.",
   },
   {
     icon: Receipt,
     color: "bg-amber-500",
     title: "Thanh toán rõ ràng",
-    desc: "Hóa đơn chi tiết từng khoản. Tiền cọc hoàn tự động nếu xe không có hư hỏng.",
+    desc: "Hóa đơn chi tiết từng khoản. Tiền cọc hoàn tự động sau khi đối soát tình trạng xe xong xuôi.",
+  },
+  {
+    icon: Trophy,
+    color: "bg-rose-500",
+    title: "Giải đấu & Vinh danh",
+    desc: "Tham gia các giải đấu phong trào tại quán, tranh tài trên bảng xếp hạng Global và tích lũy danh hiệu độc bản.",
   },
 ]
 
@@ -43,14 +49,14 @@ export function FeatureHighlights() {
             Mọi thứ bạn cần
           </p>
           <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-            Từ tìm sân đến checkout — <br className="hidden md:block" />
-            một luồng, không đứt quãng.
+            Từ tìm sân đến vinh danh giải đấu — <br className="hidden md:block" />
+            hệ sinh thái RC toàn diện.
           </h2>
         </div>
 
-        {/* 5 features — first 3 big, last 2 wide */}
-        <div className="grid gap-4 md:grid-cols-3">
-          {features.slice(0, 3).map(({ icon: Icon, color, title, desc }) => (
+        {/* 6 features in grid 3x2 */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {features.map(({ icon: Icon, color, title, desc }) => (
             <div
               key={title}
               className="group rounded-3xl border border-slate-100 bg-slate-50/60 p-7 transition-all duration-300 hover:bg-white hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-1"
@@ -60,23 +66,6 @@ export function FeatureHighlights() {
               </div>
               <h3 className="mb-2 text-lg font-black text-slate-900">{title}</h3>
               <p className="text-sm font-medium leading-6 text-slate-500">{desc}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          {features.slice(3).map(({ icon: Icon, color, title, desc }) => (
-            <div
-              key={title}
-              className="group flex items-start gap-5 rounded-3xl border border-slate-100 bg-slate-50/60 p-7 transition-all duration-300 hover:bg-white hover:shadow-lg hover:shadow-slate-200/60 hover:-translate-y-1"
-            >
-              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ${color}`}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="mb-1.5 text-lg font-black text-slate-900">{title}</h3>
-                <p className="text-sm font-medium leading-6 text-slate-500">{desc}</p>
-              </div>
             </div>
           ))}
         </div>

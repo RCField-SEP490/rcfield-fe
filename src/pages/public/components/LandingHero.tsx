@@ -1,23 +1,25 @@
 import { ArrowRight, MapPin, Star } from "lucide-react"
 import { Link } from "react-router"
+import { useQuery } from "@tanstack/react-query"
 import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
+import { getCafes } from "@/features/explore/api/explore.api"
 
-const CAFE_IMAGES = [
+const FALLBACK_CAFES = [
   {
-    src: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=600",
+    image: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=600",
     name: "RC Tân Bình",
     city: "TP. Hồ Chí Minh",
     rating: 4.9,
   },
   {
-    src: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&q=80&w=600",
+    image: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&q=80&w=600",
     name: "RC Arena Sài Gòn",
     city: "TP. Hồ Chí Minh",
     rating: 4.8,
   },
   {
-    src: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=600",
+    image: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=600",
     name: "PlayZone RC Cafe",
     city: "Hà Nội",
     rating: 4.7,
@@ -25,6 +27,26 @@ const CAFE_IMAGES = [
 ]
 
 export function LandingHero() {
+  const { data: cafes = [] } = useQuery({
+    queryKey: ["explore", "cafes", { limit: 3 }],
+    queryFn: () => getCafes({ limit: 3 }),
+  })
+
+  // Merge loaded cafes with fallback ones if list is short
+  const heroCafes = Array.from({ length: 3 }).map((_, idx) => {
+    const loaded = cafes[idx]
+    if (loaded) {
+      return {
+        id: loaded.id,
+        image: loaded.image,
+        name: loaded.name,
+        city: loaded.city || loaded.district,
+        rating: loaded.rating || 4.5,
+      }
+    }
+    return FALLBACK_CAFES[idx]
+  })
+
   return (
     <section className="relative overflow-hidden bg-slate-950">
       {/* Ambient glows */}
@@ -57,7 +79,7 @@ export function LandingHero() {
             <Button
               asChild
               size="lg"
-              className="group h-13 rounded-xl bg-orange-600 px-7 font-black text-white shadow-xl shadow-orange-600/30 transition-all hover:bg-orange-500 hover:shadow-orange-500/40 hover:shadow-2xl hover:-translate-y-0.5"
+              className="group h-13 rounded-xl bg-orange-600 px-7 font-black text-white shadow-xl shadow-orange-600/30 transition-all hover:bg-orange-50 hover:shadow-orange-500/40 hover:shadow-2xl hover:-translate-y-0.5"
             >
               <Link to={routePaths.cafes}>
                 Khám phá sân RC
@@ -95,18 +117,18 @@ export function LandingHero() {
           <div className="absolute right-0 top-1/2 w-72 -translate-y-1/2 overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl shadow-black/50">
             <div className="relative aspect-[4/3] overflow-hidden">
               <img
-                src={CAFE_IMAGES[0].src}
-                alt={CAFE_IMAGES[0].name}
+                src={heroCafes[0].image}
+                alt={heroCafes[0].name}
                 className="h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
               <div className="absolute bottom-3 left-3 right-3">
-                <p className="font-black text-white">{CAFE_IMAGES[0].name}</p>
+                <p className="font-black text-white">{heroCafes[0].name}</p>
                 <div className="mt-1 flex items-center gap-1.5">
                   <MapPin className="h-3 w-3 text-slate-300" />
-                  <span className="text-xs text-slate-300">{CAFE_IMAGES[0].city}</span>
+                  <span className="text-xs text-slate-300">{heroCafes[0].city}</span>
                   <span className="ml-auto flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-400">
-                    <Star className="h-3 w-3 fill-amber-400" /> {CAFE_IMAGES[0].rating}
+                    <Star className="h-3 w-3 fill-amber-400" /> {heroCafes[0].rating.toFixed(1)}
                   </span>
                 </div>
               </div>
@@ -116,8 +138,8 @@ export function LandingHero() {
                 <span className="text-xs font-semibold text-slate-400">Slot trống hôm nay</span>
                 <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-black text-emerald-400">● Còn chỗ</span>
               </div>
-              <Button className="mt-3 w-full rounded-xl bg-orange-600 font-black text-white hover:bg-orange-500" size="sm">
-                Đặt lịch ngay
+              <Button asChild className="mt-3 w-full rounded-xl bg-orange-600 font-black text-white hover:bg-orange-500" size="sm">
+                <Link to={routePaths.cafes}>Đặt lịch ngay</Link>
               </Button>
             </div>
           </div>
@@ -125,11 +147,11 @@ export function LandingHero() {
           {/* Card 2 — top left */}
           <div className="absolute left-4 top-12 w-52 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 shadow-xl shadow-black/40 backdrop-blur-sm">
             <div className="relative aspect-[4/3] overflow-hidden">
-              <img src={CAFE_IMAGES[1].src} alt={CAFE_IMAGES[1].name} className="h-full w-full object-cover opacity-90" />
+              <img src={heroCafes[1].image} alt={heroCafes[1].name} className="h-full w-full object-cover opacity-90" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
               <div className="absolute bottom-2 left-2 right-2">
-                <p className="text-sm font-black text-white">{CAFE_IMAGES[1].name}</p>
-                <p className="text-[10px] text-slate-300">{CAFE_IMAGES[1].city}</p>
+                <p className="text-sm font-black text-white">{heroCafes[1].name}</p>
+                <p className="text-[10px] text-slate-300">{heroCafes[1].city}</p>
               </div>
             </div>
           </div>
@@ -137,11 +159,11 @@ export function LandingHero() {
           {/* Card 3 — bottom left */}
           <div className="absolute bottom-16 left-0 w-52 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 shadow-xl shadow-black/40 backdrop-blur-sm">
             <div className="relative aspect-[4/3] overflow-hidden">
-              <img src={CAFE_IMAGES[2].src} alt={CAFE_IMAGES[2].name} className="h-full w-full object-cover opacity-90" />
+              <img src={heroCafes[2].image} alt={heroCafes[2].name} className="h-full w-full object-cover opacity-90" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
               <div className="absolute bottom-2 left-2 right-2">
-                <p className="text-sm font-black text-white">{CAFE_IMAGES[2].name}</p>
-                <p className="text-[10px] text-slate-300">{CAFE_IMAGES[2].city}</p>
+                <p className="text-sm font-black text-white">{heroCafes[2].name}</p>
+                <p className="text-[10px] text-slate-300">{heroCafes[2].city}</p>
               </div>
             </div>
           </div>
@@ -149,7 +171,7 @@ export function LandingHero() {
           {/* Floating badge */}
           <div className="absolute bottom-28 right-4 rounded-2xl border border-white/10 bg-slate-800/90 px-4 py-3 shadow-xl backdrop-blur-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Vừa đặt xong</p>
-            <p className="mt-1 text-sm font-black text-white">Nguyễn Minh Tuấn</p>
+            <p className="mt-1 text-sm font-black text-white font-display">Nguyễn Minh Tuấn</p>
             <p className="text-xs text-orange-400 font-semibold">Track Drift · 14:00 – 16:00</p>
           </div>
         </div>

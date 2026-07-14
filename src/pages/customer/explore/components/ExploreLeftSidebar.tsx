@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronUp, MapPin, RotateCcw } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { trackTypeApi, trackTypeQueryKeys, amenityApi, amenityQueryKeys } from "@/features/cafes/api/cafe.api"
 import { PRICE_SLIDER_MAX, PRICE_SLIDER_MIN, PRICE_SLIDER_STEP } from "../constants"
 import { ExploreMapPanel } from "./ExploreMapPanel"
@@ -8,7 +9,6 @@ import type { Cafe } from "@/shared/data/explore-data"
 import type { UserLocation, MapBounds } from "../explore-utils"
 
 interface ExploreLeftSidebarProps {
-  // Map
   cafes: Cafe[]
   onSelectCafe: (cafe: Cafe) => void
   userLocation: UserLocation | null;
@@ -17,18 +17,29 @@ interface ExploreLeftSidebarProps {
   onBoundsChange: (bounds: MapBounds) => void
   searchOnMove: boolean
   onSearchOnMoveChange: (v: boolean) => void
-  // Price slider
   priceMin: number
   priceMax: number
   onPriceMinChange: (v: number) => void
   onPriceMaxChange: (v: number) => void
   onResetPrice: () => void
-  // Popular filters
   popularFilters: string[]
   onTogglePopularFilter: (filter: string) => void
-  // General
   activeFilterCount: number
   onClearAll: () => void
+}
+
+const sidebarVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { staggerChildren: 0.08, delayChildren: 0.15 },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
 }
 
 export function ExploreLeftSidebar({
@@ -52,7 +63,6 @@ export function ExploreLeftSidebar({
 }: ExploreLeftSidebarProps) {
   const [showAllPopular, setShowAllPopular] = useState(false)
 
-  // Fetch track types & amenities from API (NOT hardcoded)
   const { data: trackTypes = [] } = useQuery({
     queryKey: trackTypeQueryKeys.all,
     queryFn: () => trackTypeApi.listAll(),
@@ -63,7 +73,6 @@ export function ExploreLeftSidebar({
     queryFn: () => amenityApi.listAll(),
   })
 
-  // Build popular filter tags dynamically from track types + amenities
   const popularOptions = useMemo(() => {
     const trackTags = trackTypes
       .filter((t) => t.isActive)
@@ -87,10 +96,18 @@ export function ExploreLeftSidebar({
 
 
   return (
-    <aside className="flex w-full flex-col gap-4 py-2">
-      {/* Map mini */}
-      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-        <div className="h-[180px]">
+    <motion.aside
+      variants={sidebarVariants}
+      initial="hidden"
+      animate="visible"
+      className="flex w-full flex-col gap-4 py-2"
+    >
+      {/* Map — enlarged to 280px */}
+      <motion.div
+        variants={itemVariants}
+        className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-100 shadow-sm"
+      >
+        <div className="h-[280px]">
           <ExploreMapPanel
             cafes={cafes}
             onSelectCafe={onSelectCafe}
@@ -105,38 +122,44 @@ export function ExploreLeftSidebar({
         <button
           type="button"
           onClick={() => {/* Parent handles full map */}}
-          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-orange-600/95 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm transition hover:bg-orange-700/95"
+          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-slate-900/90 via-slate-900/70 to-transparent px-3 py-3 text-xs font-bold text-white transition-all hover:from-slate-900/95"
         >
           <MapPin className="h-3.5 w-3.5" />
-          Explore on Map
+          Mở bản đồ toàn màn hình
         </button>
-      </div>
+      </motion.div>
 
       {/* Price range */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-bold text-slate-900">Khoảng giá</h4>
-          {isPriceModified && (
-            <button
-              type="button"
-              onClick={onResetPrice}
-              className="text-xs font-semibold text-orange-600 hover:text-orange-700"
-            >
-              Đặt lại
-            </button>
-          )}
+          <AnimatePresence>
+            {isPriceModified && (
+              <motion.button
+                type="button"
+                onClick={onResetPrice}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors"
+              >
+                Đặt lại
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
         <p className="mt-1 text-xs text-slate-500">Giá mỗi slot</p>
 
         {/* Dual range slider */}
         <div className="relative mt-4 h-1.5">
           <div className="absolute inset-0 rounded-full bg-slate-200" />
-          <div
+          <motion.div
             className="absolute h-full rounded-full bg-orange-600"
-            style={{
+            animate={{
               left: `${(priceMin / PRICE_SLIDER_MAX) * 100}%`,
               right: `${100 - (priceMax / PRICE_SLIDER_MAX) * 100}%`,
             }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
           />
           <input
             type="range"
@@ -192,67 +215,79 @@ export function ExploreLeftSidebar({
             <span className="ml-1 text-xs text-slate-400">VND</span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Popular filters */}
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-bold text-slate-900">Lọc phổ biến</h4>
           <button
             type="button"
             onClick={() => setShowAllPopular(!showAllPopular)}
-            className="text-slate-400 hover:text-slate-600"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             {showAllPopular ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
 
-        <div className="mt-3 space-y-2">
+        <div className="mt-3 space-y-1">
           {visibleOptions.length === 0 && (
             <p className="text-xs text-slate-400">Đang tải bộ lọc...</p>
           )}
-          {visibleOptions.map((opt) => {
-            const isSelected = popularFilters.includes(opt.id)
-            return (
-              <label
-                key={opt.id}
-                className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1 transition hover:bg-slate-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => onTogglePopularFilter(opt.id)}
-                  className="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-200 accent-orange-600"
-                />
-                <span className="text-sm leading-none">{opt.icon}</span>
-                <span className="text-sm font-medium text-slate-700">{opt.label}</span>
-              </label>
-            )
-          })}
+          <AnimatePresence mode="popLayout">
+            {visibleOptions.map((opt, index) => {
+              const isSelected = popularFilters.includes(opt.id)
+              return (
+                <motion.label
+                  key={opt.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ delay: index * 0.03, duration: 0.2 }}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1.5 transition-colors hover:bg-slate-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => onTogglePopularFilter(opt.id)}
+                    className="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-200 accent-orange-600"
+                  />
+                  <span className="text-sm leading-none">{opt.icon}</span>
+                  <span className="text-sm font-medium text-slate-700">{opt.label}</span>
+                </motion.label>
+              )
+            })}
+          </AnimatePresence>
         </div>
 
         {popularOptions.length > 5 && (
           <button
             type="button"
             onClick={() => setShowAllPopular(!showAllPopular)}
-            className="mt-2 text-xs font-semibold text-orange-600 hover:text-orange-700"
+            className="mt-2 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors"
           >
             {showAllPopular ? "Thu gọn" : `Xem Tất cả (${popularOptions.length})`}
           </button>
         )}
-      </div>
+      </motion.div>
 
       {/* Clear all */}
-      {activeFilterCount > 0 && (
-        <button
-          type="button"
-          onClick={onClearAll}
-          className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 py-2.5 text-sm font-semibold text-slate-500 transition hover:border-red-300 hover:text-red-500"
-        >
-          <RotateCcw className="h-3.5 w-3.5" />
-          Xóa tất cả bộ lọc ({activeFilterCount})
-        </button>
-      )}
-    </aside>
+      <AnimatePresence>
+        {activeFilterCount > 0 && (
+          <motion.button
+            type="button"
+            onClick={onClearAll}
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.25 }}
+            className="flex items-center justify-center gap-1.5 rounded-2xl border border-dashed border-red-300 bg-red-50/50 py-2.5 text-sm font-semibold text-red-500 transition-all hover:bg-red-50 hover:border-red-400"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Xóa tất cả bộ lọc ({activeFilterCount})
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </motion.aside>
   )
 }
