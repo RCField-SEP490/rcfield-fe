@@ -40,10 +40,11 @@ const makeCafePin = (active: boolean, hovered = false) => {
 
 const USER_PIN = L.divIcon({
   className: "",
-  html: `<span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#2563eb;border:3.5px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.22)"></span>`,
+  html: `<span style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#ea580c;border:3.5px solid #fff;box-shadow:0 0 0 6px rgba(234,88,12,.22)"></span>`,
   iconSize: [26, 26],
   iconAnchor: [13, 13],
 })
+
 
 // Center of Đông Nam Bộ region (HCM + surrounding provinces)
 const DEFAULT_CENTER: L.LatLngTuple = [10.777999482727852, 106.68177572531806]
@@ -243,9 +244,9 @@ export function ExploreMapPanel({
           <button
             type="button"
             onClick={() => onUserLocation(null)}
-            className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-100"
+            className="flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700 shadow-sm hover:bg-orange-100"
           >
-            <Navigation className="h-3 w-3 fill-blue-600" />
+            <Navigation className="h-3 w-3 fill-orange-600" />
             Vị trí của bạn
             <X className="h-3 w-3" />
           </button>

@@ -130,56 +130,63 @@ export function ProviderCafeForm({
   })
 
   useEffect(() => {
-    if (!cafe) {
-      setValues(defaultValues)
-      setSnap(defaultValues)
-      setFiles([])
-      return
-    }
-
-    const loadedHours: CafeOperatingHours = {}
-    dayKeys.forEach((day) => {
-      const h = cafe.operatingHours[day]
-      loadedHours[day] = {
-        open: h?.open ?? "09:00",
-        close: h?.close ?? "22:00",
-        is_closed: h?.is_closed ?? false,
+    const timer = window.setTimeout(() => {
+      if (!cafe) {
+        setValues(defaultValues)
+        setSnap(defaultValues)
+        setFiles([])
+        return
       }
-    })
 
-    const nextValues: ProviderCafeFormValues = {
-      name: cafe.name,
-      description: cafe.description ?? "",
-      phone: cafe.phone ?? "",
-      cover_image_url: cafe.coverImageUrl ?? null,
-      address: cafe.address,
-      district: cafe.district,
-      city: cafe.city,
-      latitude: cafe.latitude === null ? null : Number(cafe.latitude),
-      longitude: cafe.longitude === null ? null : Number(cafe.longitude),
-      operating_hours: loadedHours,
-      track_types: cafe.trackTypes.map((t) => t.id),
-      slot_duration_minutes: cafe.slotDurationMinutes,
-      slot_fee_rate: Number(cafe.slotFeeRate),
-      max_concurrent_bookings: cafe.maxConcurrentBookings,
-      min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
-      byoc_capacity: cafe.byocCapacity,
-      amenity_ids: cafe.amenityIds ?? [],
-      rules: cafe.rules ?? [],
-    }
+      const loadedHours: CafeOperatingHours = {}
+      dayKeys.forEach((day) => {
+        const h = cafe.operatingHours[day]
+        loadedHours[day] = {
+          open: h?.open ?? "09:00",
+          close: h?.close ?? "22:00",
+          is_closed: h?.is_closed ?? false,
+        }
+      })
 
-    setValues(nextValues)
-    setSnap(nextValues)
-    setFiles([])
+      const nextValues: ProviderCafeFormValues = {
+        name: cafe.name,
+        description: cafe.description ?? "",
+        phone: cafe.phone ?? "",
+        cover_image_url: cafe.coverImageUrl ?? null,
+        address: cafe.address,
+        district: cafe.district,
+        city: cafe.city,
+        latitude: cafe.latitude === null ? null : Number(cafe.latitude),
+        longitude: cafe.longitude === null ? null : Number(cafe.longitude),
+        operating_hours: loadedHours,
+        track_types: cafe.trackTypes.map((t) => t.id),
+        slot_duration_minutes: cafe.slotDurationMinutes,
+        slot_fee_rate: Number(cafe.slotFeeRate),
+        max_concurrent_bookings: cafe.maxConcurrentBookings,
+        min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
+        byoc_capacity: cafe.byocCapacity,
+        amenity_ids: cafe.amenityIds ?? [],
+        rules: cafe.rules ?? [],
+      }
+
+      setValues(nextValues)
+      setSnap(nextValues)
+      setFiles([])
+    }, 0)
+
+    return () => window.clearTimeout(timer)
   }, [cafe])
 
   // Sync provinceCode when cafe data or provinces list becomes available
   useEffect(() => {
-    if (!provinces.length) return
-    const cityName = cafe?.city ?? defaultValues.city
-    const match = provinces.find((p) => p.name === cityName)
-    setProvinceCode(match?.code ?? null)
-  }, [cafe?.id, provinces])
+    const timer = window.setTimeout(() => {
+      if (!provinces.length) return
+      const cityName = cafe?.city ?? defaultValues.city
+      const match = provinces.find((p) => p.name === cityName)
+      setProvinceCode(match?.code ?? null)
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [cafe?.city, provinces])
 
   const selectedFileLabel = useMemo(() => {
     if (files.length === 0) return "Chưa chọn ảnh"
@@ -201,9 +208,17 @@ export function ProviderCafeForm({
       return a !== b
     })
   }, [values, snap, files, coverFile])
+  const hasValidCoordinates =
+    values.latitude !== null &&
+    values.longitude !== null &&
+    Number.isFinite(values.latitude) &&
+    Number.isFinite(values.longitude) &&
+    values.latitude !== 0 &&
+    values.longitude !== 0
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (!hasValidCoordinates) return
     const body: ProviderCafeFormValues = {
       ...values,
       description: values.description?.trim() ? values.description.trim() : null,
@@ -537,7 +552,7 @@ export function ProviderCafeForm({
             Hủy
           </Button>
         ) : null}
-        <Button type="submit" disabled={isPending || values.track_types.length === 0 || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+        <Button type="submit" disabled={isPending || values.track_types.length === 0 || !hasValidCoordinates || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           {isPending ? "Đang lưu..." : submitLabel ?? (cafe ? "Lưu thay đổi" : "Tạo cơ sở")}
         </Button>
       </div>

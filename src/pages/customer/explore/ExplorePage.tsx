@@ -1,16 +1,41 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
+import { motion, AnimatePresence } from "framer-motion"
 import { getCafes } from "@/features/explore/api/explore.api"
+import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { ExploreMapOverlay } from "./components/ExploreMapOverlay"
-import { ExploreMapPanel } from "./components/ExploreMapPanel"
-import { ExploreSearchHeader } from "./components/ExploreSearchHeader"
+import { ExploreSearchBar } from "./components/ExploreSearchBar"
+import { ExploreLeftSidebar } from "./components/ExploreLeftSidebar"
+import { ExploreResultsHeader } from "./components/ExploreResultsHeader"
+import { CafeHorizontalCard } from "./components/CafeHorizontalCard"
 import { CafeGridCard } from "./components/CafeGridCard"
+import { ContestExploreCard } from "./components/ContestExploreCard"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
-import { buildBookingUrl, cafeInBounds, filterCafes, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
+import { buildBookingUrl, cafeInBounds, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
+import { favoriteApi } from "@/features/explore/api/favorite.api"
+
+const emphasizedEase: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24, scale: 0.97 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.4,
+      ease: emphasizedEase,
+    },
+  }),
+  exit: { opacity: 0, y: -12, scale: 0.97, transition: { duration: 0.2 } },
+}
 
 export function ExplorePage() {
   const navigate = useNavigate()
@@ -20,9 +45,102 @@ export function ExplorePage() {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
   const [hoveredCafeId, setHoveredCafeId] = useState<string | null>(null)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
-  const [searchOnMove, setSearchOnMove] = useState(true)
+  const [searchOnMove, setSearchOnMove] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    return (localStorage.getItem("explore_view_mode") as "grid" | "list") || "list"
+  })
+
+  const handleViewModeChange = (mode: "grid" | "list") => {
+    setViewMode(mode)
+    localStorage.setItem("explore_view_mode", mode)
+  }
   const listRef = useRef<HTMLDivElement>(null)
   const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const favsStr = localStorage.getItem("rcfield_favorite_cafes")
+      if (favsStr) {
+        const parsed = JSON.parse(favsStr)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch (e) {
+      console.warn("Failed to load favorites from localStorage", e)
+    }
+    return []
+  })
+
+  useEffect(() => {
+    const loadFavs = async () => {
+      let localFavs: string[] = []
+      try {
+        const favsStr = localStorage.getItem("rcfield_favorite_cafes")
+        if (favsStr) {
+          const parsed = JSON.parse(favsStr)
+          if (Array.isArray(parsed)) localFavs = parsed
+        }
+      } catch (e) {
+        console.warn("Failed to parse local favorites", e)
+      }
+
+      if (isAuthenticated) {
+        try {
+          const isSynced = localStorage.getItem("rcfield_favorites_synced") === "true"
+          if (!isSynced) {
+            const mergedFavs = await favoriteApi.syncFavorites(localFavs)
+            setFavoriteIds(mergedFavs)
+            localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(mergedFavs))
+            localStorage.setItem("rcfield_favorites_synced", "true")
+          } else {
+            const dbFavs = await favoriteApi.getFavorites()
+            setFavoriteIds(dbFavs)
+            localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(dbFavs))
+          }
+        } catch (e) {
+          console.error("Failed to load favorites from backend", e)
+          setFavoriteIds(localFavs)
+        }
+      } else {
+        localStorage.removeItem("rcfield_favorites_synced")
+        setFavoriteIds(localFavs)
+      }
+    }
+
+    loadFavs()
+  }, [isAuthenticated])
+
+  const handleToggleFavorite = useCallback(
+    async (cafeId: string) => {
+      const isFav = favoriteIds.includes(cafeId)
+      const updated = isFav ? favoriteIds.filter((id) => id !== cafeId) : [...favoriteIds, cafeId]
+
+      setFavoriteIds(updated)
+      try {
+        localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(updated))
+        if (isFav) {
+          toast.success("Đã xóa khỏi danh sách yêu thích")
+          if (isAuthenticated) {
+            await favoriteApi.removeFavorite(cafeId)
+          }
+        } else {
+          toast.success("Đã thêm vào danh sách yêu thích")
+          if (isAuthenticated) {
+            await favoriteApi.addFavorite(cafeId)
+          }
+        }
+      } catch (e) {
+        console.error("Failed to toggle favorite:", e)
+        setFavoriteIds(favoriteIds)
+        try {
+          localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(favoriteIds))
+        } catch (err) {
+          console.error(err)
+        }
+      }
+    },
+    [favoriteIds, isAuthenticated],
+  )
 
   const handleBoundsChange = useCallback((bounds: MapBounds) => {
     clearTimeout(boundsTimerRef.current)
@@ -34,134 +152,339 @@ export function ExplorePage() {
     queryFn: () => getCafes(filters.params),
   })
 
-  // Scroll card list về đầu khi vùng map thay đổi
+  const { data: contestsData, isLoading: isLoadingContests, isError: isErrorContests } = useQuery({
+    queryKey: contestQueryKeys.list({ public: true }),
+    queryFn: () => contestApi.listContests({ limit: 100 }),
+    enabled: filters.searchTarget === "contests",
+  })
+
+  const contests = useMemo(() => contestsData?.data ?? [], [contestsData?.data])
+
+  const filteredContests = useMemo(() => {
+    const query = filters.query.trim().toLowerCase()
+    if (!query) return contests
+    return contests.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        (c.description && c.description.toLowerCase().includes(query)) ||
+        (c.host_branch?.cafe?.name && c.host_branch.cafe.name.toLowerCase().includes(query))
+    )
+  }, [contests, filters.query])
+
   useEffect(() => {
     if (searchOnMove) listRef.current?.scrollTo({ top: 0, behavior: "smooth" })
   }, [mapBounds, searchOnMove])
 
   const filteredCafes = useMemo(() => {
-    let filtered = filterCafes(cafes, filters.params)
-    if (searchOnMove && mapBounds) filtered = filtered.filter((c) => cafeInBounds(c, mapBounds))
-    if (!userLocation) return filtered
-    return [...filtered].sort((a, b) => {
-      const hasA = a.latitude && a.longitude
-      const hasB = b.latitude && b.longitude
-      if (!hasA && !hasB) return 0
-      if (!hasA) return 1
-      if (!hasB) return -1
-      return (
-        haversineKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) -
-        haversineKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!)
-      )
+    let visible = cafes
+    if (searchOnMove && mapBounds) visible = visible.filter((c) => cafeInBounds(c, mapBounds))
+
+    return [...visible].sort((a, b) => {
+      const isFavA = favoriteIds.includes(a.id)
+      const isFavB = favoriteIds.includes(b.id)
+
+      if (isFavA && !isFavB) return -1
+      if (!isFavA && isFavB) return 1
+
+      if (userLocation) {
+        const hasA = a.latitude && a.longitude
+        const hasB = b.latitude && b.longitude
+        if (!hasA && !hasB) return 0
+        if (!hasA) return 1
+        if (!hasB) return -1
+        return (
+          haversineKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) -
+          haversineKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!)
+        )
+      }
+      return 0
     })
-  }, [cafes, filters.params, userLocation, mapBounds, searchOnMove])
+  }, [cafes, userLocation, mapBounds, searchOnMove, favoriteIds])
 
   const handleBookNow = (cafeId: string, vehicleId?: string) => {
     navigate(buildBookingUrl(cafeId, vehicleId))
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden bg-background">
-      <ExploreSearchHeader
-        query={filters.query}
-        onQueryChange={filters.setQuery}
-        resultCount={filteredCafes.length}
-        onShowMap={() => setShowMap(true)}
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/50 flex flex-col">
+      {/* Top search bar */}
+      <ExploreSearchBar
         city={filters.city}
         onCityChange={filters.setCity}
-        trackType={filters.trackType}
-        onTrackTypeChange={filters.setTrackType}
-        priceRange={filters.priceRange}
-        onPriceRangeChange={filters.setPriceRange}
-        feature={filters.feature}
-        onFeatureChange={filters.setFeature}
-        vehicleType={filters.vehicleType}
-        onVehicleTypeChange={filters.setVehicleType}
         date={filters.date}
         onDateChange={filters.setDate}
-        activeFilterCount={filters.activeFilterCount}
-        onClear={filters.clearFilters}
+        query={filters.query}
+        onQueryChange={filters.setQuery}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* LEFT — scrollable list */}
-        <div ref={listRef} className="flex flex-1 flex-col overflow-y-auto">
-          <div className="px-6 py-6 md:px-8">
-            {/* Card grid */}
-            <main className="min-w-0">
-              {isLoading ? (
-                <ExploreLoadingState />
-              ) : isError ? (
-                <div className="rounded-xl border bg-card p-12 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
-                  <button
-                    type="button"
-                    onClick={() => void refetch()}
-                    className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                  >
-                    Tải lại
-                  </button>
-                </div>
-              ) : filteredCafes.length === 0 ? (
-                <div className="rounded-xl border bg-card p-12 text-center shadow-sm">
-                  <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2">
-                  {filteredCafes.map((cafe) => {
-                    const dist =
-                      userLocation && cafe.latitude && cafe.longitude
-                        ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
-                        : undefined
-                    return (
-                      <CafeGridCard
-                        key={cafe.id}
-                        cafe={cafe}
-                        distanceKm={dist}
-                        onQuickView={setQuickViewCafe}
-                        onBookNow={handleBookNow}
-                        onHover={setHoveredCafeId}
-                      />
-                    )
-                  })}
-                </div>
-              )}
-            </main>
+      <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
+        {/* LEFT — Sidebar with map + filters (desktop only) */}
+        {filters.searchTarget === "cafes" && (
+          <div className="hidden w-[280px] shrink-0 lg:block">
+            <div className="sticky top-[96px] max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+              <ExploreLeftSidebar
+                cafes={filteredCafes}
+                onSelectCafe={setQuickViewCafe}
+                userLocation={userLocation}
+                onUserLocation={setUserLocation}
+                hoveredCafeId={hoveredCafeId}
+                onBoundsChange={handleBoundsChange}
+                searchOnMove={searchOnMove}
+                onSearchOnMoveChange={setSearchOnMove}
+                priceMin={filters.priceMin}
+                priceMax={filters.priceMax}
+                onPriceMinChange={filters.setPriceMin}
+                onPriceMaxChange={filters.setPriceMax}
+                onResetPrice={filters.resetPriceSlider}
+                popularFilters={filters.popularFilters}
+                onTogglePopularFilter={filters.togglePopularFilter}
+                activeFilterCount={filters.activeFilterCount}
+                onClearAll={filters.clearFilters}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* RIGHT — sticky inline map (desktop only) */}
-        <div className="hidden h-full w-[42%] shrink-0 p-[30px] xl:w-[45%] lg:block">
-          <ExploreMapPanel
-            cafes={filteredCafes}
-            onSelectCafe={setQuickViewCafe}
-            userLocation={userLocation}
-            onUserLocation={setUserLocation}
-            hoveredCafeId={hoveredCafeId}
-            onBoundsChange={handleBoundsChange}
-            searchOnMove={searchOnMove}
-            onSearchOnMoveChange={setSearchOnMove}
-          />
+        {/* CENTER — Results list */}
+        <div ref={listRef} className="flex-1 min-w-0">
+          {/* Premium Segmented Switcher */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.35 }}
+            className="mb-6 flex items-center justify-between border-b border-slate-200/60 pb-4"
+          >
+            <div className="flex gap-1 rounded-xl bg-slate-200/50 p-1">
+              <button
+                type="button"
+                onClick={() => filters.setSearchTarget("cafes")}
+                className={`relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-300 ${
+                  filters.searchTarget === "cafes"
+                    ? "bg-white text-orange-600 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Cơ sở RC Cafe
+              </button>
+              <button
+                type="button"
+                onClick={() => filters.setSearchTarget("contests")}
+                className={`relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-300 ${
+                  filters.searchTarget === "contests"
+                    ? "bg-white text-orange-600 shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Giải đấu RC
+              </button>
+            </div>
+            <AnimatePresence mode="wait">
+              {filters.searchTarget === "contests" && (
+                <motion.span
+                  key="contest-count"
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 8 }}
+                  className="text-xs font-semibold text-slate-500"
+                >
+                  {filteredContests.length} giải đấu khả dụng
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          <AnimatePresence mode="wait">
+            {filters.searchTarget === "cafes" ? (
+              <motion.div
+                key="cafes-tab"
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 16 }}
+                transition={{ duration: 0.3, ease: emphasizedEase }}
+              >
+                {/* Results header */}
+                <div className="sticky top-[68px] lg:top-[80px] z-20 bg-gradient-to-b from-slate-50 via-slate-50 to-slate-50/95 pb-3 pt-2 mb-4 backdrop-blur-sm">
+                  <ExploreResultsHeader
+                    city={filters.city}
+                    resultCount={filteredCafes.length}
+                    sortBy={filters.sortBy}
+                    onSortByChange={filters.setSortBy}
+                    viewMode={viewMode}
+                    onViewModeChange={handleViewModeChange}
+                    trackType={filters.trackType}
+                    onTrackTypeChange={filters.setTrackType}
+                    feature={filters.feature}
+                    onFeatureChange={filters.setFeature}
+                    vehicleType={filters.vehicleType}
+                    onVehicleTypeChange={filters.setVehicleType}
+                    priceRange={filters.priceRange}
+                    onPriceRangeChange={filters.setPriceRange}
+                    query={filters.query}
+                    onQueryChange={filters.setQuery}
+                  />
+                </div>
+
+                {/* Card list */}
+                <AnimatePresence mode="popLayout">
+                  {isLoading ? (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <ExploreLoadingState viewMode={viewMode} />
+                    </motion.div>
+                  ) : isError ? (
+                    <motion.div
+                      key="error"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm"
+                    >
+                      <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
+                      <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                      <button
+                        type="button"
+                        onClick={() => void refetch()}
+                        className="mt-4 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-orange-700 hover:-translate-y-0.5 hover:shadow-md"
+                      >
+                        Tải lại
+                      </button>
+                    </motion.div>
+                  ) : filteredCafes.length === 0 ? (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm"
+                    >
+                      <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.main
+                      key={`results-${viewMode}`}
+                      className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}
+                    >
+                      {filteredCafes.map((cafe, index) => {
+                        const dist =
+                          userLocation && cafe.latitude && cafe.longitude
+                            ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
+                            : undefined
+                        return (
+                          <motion.div
+                            key={cafe.id}
+                            custom={index}
+                            variants={cardVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            layout
+                          >
+                            {viewMode === "grid" ? (
+                              <CafeGridCard
+                                cafe={cafe}
+                                isFavorite={favoriteIds.includes(cafe.id)}
+                                onToggleFavorite={handleToggleFavorite}
+                                distanceKm={dist}
+                                onQuickView={setQuickViewCafe}
+                                onBookNow={handleBookNow}
+                                onHover={setHoveredCafeId}
+                              />
+                            ) : (
+                              <CafeHorizontalCard
+                                cafe={cafe}
+                                isFavorite={favoriteIds.includes(cafe.id)}
+                                onToggleFavorite={handleToggleFavorite}
+                                distanceKm={dist}
+                                onQuickView={setQuickViewCafe}
+                                onBookNow={handleBookNow}
+                                onHover={setHoveredCafeId}
+                              />
+                            )}
+                          </motion.div>
+                        )
+                      })}
+                    </motion.main>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="contests-tab"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -16 }}
+                transition={{ duration: 0.3, ease: emphasizedEase }}
+              >
+                {/* Contest results list */}
+                <div className="mb-4">
+                  <h2 className="text-lg font-extrabold text-slate-950">Giải đấu RC nổi bật</h2>
+                  <p className="text-xs text-slate-500">Các cuộc đua tốc độ và kỹ thuật diễn ra tại các chi nhánh RC Cafe</p>
+                </div>
+
+                <main>
+                  {isLoadingContests ? (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="h-64 animate-pulse rounded-2xl bg-slate-200/50" />
+                      ))}
+                    </div>
+                  ) : isErrorContests ? (
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+                      <h3 className="text-lg font-semibold">Không tải được dữ liệu giải đấu</h3>
+                      <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                    </div>
+                  ) : filteredContests.length === 0 ? (
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+                      <h3 className="text-lg font-semibold">Chưa tìm thấy giải đấu nào</h3>
+                      <p className="mt-2 text-sm text-slate-500">Thử thay đổi từ khóa tìm kiếm ở thanh trên.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                      {filteredContests.map((contest, index) => (
+                        <motion.div
+                          key={contest.id}
+                          custom={index}
+                          variants={cardVariants}
+                          initial="hidden"
+                          animate="visible"
+                        >
+                          <ContestExploreCard contest={contest} />
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </main>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Mobile: floating "Xem bản đồ" button */}
-      <div className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setShowMap(true)}
-          className="flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background shadow-xl hover:bg-foreground/90"
+      {filters.searchTarget === "cafes" && (
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.4 }}
+          className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:hidden"
         >
-          <Map className="h-4 w-4" /> Xem bản đồ
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => setShowMap(true)}
+            className="flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/30 transition-all hover:bg-slate-800 hover:shadow-2xl hover:-translate-y-0.5 active:scale-[0.97]"
+          >
+            <Map className="h-4 w-4" /> Xem bản đồ
+          </button>
+        </motion.div>
+      )}
 
       {/* Mobile full-screen map overlay */}
-      {showMap && (
+      {showMap && filters.searchTarget === "cafes" && (
         <ExploreMapOverlay
           cafes={filteredCafes}
           userLocation={userLocation}
@@ -176,18 +499,60 @@ export function ExplorePage() {
   )
 }
 
-function ExploreLoadingState() {
+function ExploreLoadingState({ viewMode }: { viewMode: "grid" | "list" }) {
+  if (viewMode === "grid") {
+    return (
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.3 }}
+            className="flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm h-full"
+          >
+            <div className="aspect-[16/10] w-full animate-pulse bg-slate-100" />
+            <div className="flex-1 space-y-3 p-4">
+              <div className="h-5 w-2/3 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-4 w-1/3 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100" />
+              <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
+                <div className="h-4 w-1/3 animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-8 w-1/2 animate-pulse rounded-lg bg-slate-100" />
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div className="aspect-[4/3] animate-pulse bg-muted" />
-          <div className="space-y-2 p-3">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-            <div className="h-8 w-full animate-pulse rounded bg-muted" />
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.08, duration: 0.3 }}
+          className="flex overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+        >
+          <div className="h-[200px] w-[280px] shrink-0 animate-pulse bg-slate-100" />
+          <div className="flex-1 space-y-3 p-4">
+            <div className="h-5 w-2/3 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-4 w-1/3 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-4 w-1/2 animate-pulse rounded-lg bg-slate-100" />
+            <div className="flex gap-2">
+              <div className="h-6 w-16 animate-pulse rounded-lg bg-slate-100" />
+              <div className="h-6 w-16 animate-pulse rounded-lg bg-slate-100" />
+            </div>
           </div>
-        </div>
+          <div className="w-[180px] shrink-0 border-l p-4">
+            <div className="h-6 w-full animate-pulse rounded-lg bg-slate-100" />
+            <div className="mt-2 h-8 w-full animate-pulse rounded-lg bg-slate-100" />
+            <div className="mt-auto h-10 w-full animate-pulse rounded-lg bg-slate-100" />
+          </div>
+        </motion.div>
       ))}
     </div>
   )

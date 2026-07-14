@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
+import { QRCodeSVG } from "qrcode.react"
 import {
   MapPin,
   Car,
@@ -37,7 +38,7 @@ const STATUS_CONFIG = {
   PENDING: {
     label: "Chờ thanh toán",
     color: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-    desc: "Đơn đặt của bạn đang chờ thanh toán cọc trong 30 phút.",
+    desc: "Đơn đặt của bạn đang chờ thanh toán trong 30 phút.",
   },
   CONFIRMED: {
     label: "Đã duyệt / Sẵn sàng",
@@ -163,7 +164,7 @@ export function CustomerBookingDetailPage() {
 
   const slotFee = sumComponents(booking.payment_components, "SLOT_FEE")
   const rentalFee = sumComponents(booking.payment_components, "RENTAL_FEE")
-  const depositAmount = sumComponents(booking.payment_components, "SECURITY_DEPOSIT")
+  const depositAmount = 0
   const fnbPreorderFee = sumComponents(booking.payment_components, "FNB_PREORDER", "FB_PREORDER")
   const totalAmount = slotFee + rentalFee + fnbPreorderFee
 
@@ -216,11 +217,11 @@ export function CustomerBookingDetailPage() {
               </Badge>
               {isPaid ? (
                 <Badge className="bg-emerald-100 text-emerald-800 border-none font-bold text-xs uppercase tracking-wide">
-                  Đã cọc
+                  Đã thanh toán
                 </Badge>
               ) : (
                 <Badge className="bg-rose-100 text-rose-800 border-none font-bold text-xs uppercase tracking-wide animate-pulse">
-                  Chờ cọc
+                  Chờ thanh toán
                 </Badge>
               )}
             </div>
@@ -425,7 +426,7 @@ export function CustomerBookingDetailPage() {
           <div className="space-y-6">
 
             {/* QR check-in */}
-            {booking.status === "CONFIRMED" && booking.checkInCode && (
+            {booking.status === "CONFIRMED" && new Date() < new Date(booking.slotEnd) && (
               <Card className="border-slate-200/80 shadow-md relative overflow-hidden bg-white text-center p-6 space-y-4">
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-orange-500 to-orange-600" />
                 <div className="space-y-1">
@@ -438,29 +439,14 @@ export function CustomerBookingDetailPage() {
                   </CardDescription>
                 </div>
 
-                <div className="h-44 w-44 mx-auto bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-center relative group">
-                  <div className="h-36 w-36 border-4 border-slate-900 p-2.5 rounded-lg flex items-center justify-center bg-white relative">
-                    <div className="grid grid-cols-3 gap-2.5 w-full h-full opacity-90">
-                      <div className="border-4 border-slate-950 w-8 h-8 rounded-xs" />
-                      <div className="w-8 h-8 flex flex-wrap gap-0.5 justify-end">
-                        <div className="w-1.5 h-1.5 bg-slate-950" /><div className="w-1.5 h-1.5 bg-slate-950" /><div className="w-1.5 h-1.5 bg-slate-950" />
-                      </div>
-                      <div className="border-4 border-slate-950 w-8 h-8 rounded-xs" />
-                      <div className="w-8 h-8 bg-slate-950 rounded-xs" />
-                      <div className="w-8 h-8 border border-slate-950 rounded-xs" />
-                      <div className="w-8 h-8 bg-slate-950 rounded-xs" />
-                      <div className="border-4 border-slate-950 w-8 h-8 rounded-xs" />
-                      <div className="w-8 h-8 bg-slate-950 rounded-xs" />
-                      <div className="w-8 h-8 border-4 border-slate-950 rounded-xs" />
-                    </div>
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-1 rounded-md border border-slate-200 shadow-sm">
-                      <div className="h-6 w-6 rounded-sm bg-orange-500 text-white flex items-center justify-center font-black text-[9px]">RC</div>
-                    </div>
-                  </div>
+                <div className="mx-auto p-3 bg-white border border-slate-200 rounded-2xl shadow-sm inline-block">
+                  <QRCodeSVG value={booking.id} size={200} level="M" includeMargin />
                 </div>
 
                 <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5">
-                  <code className="text-xs font-black text-slate-800 tracking-widest">{booking.checkInCode}</code>
+                  <code className="text-xs font-black text-slate-800 tracking-widest">
+                    #{booking.id.substring(0, 8).toUpperCase()}
+                  </code>
                 </div>
 
                 <p className="text-[10px] text-slate-400 font-semibold leading-normal px-2">

@@ -5,7 +5,7 @@ import type { VehicleStatus } from "../types"
 
 export function useVehicleUnits(
   cafeId: string,
-  filters?: { status?: VehicleStatus; catalog_id?: string; search?: string },
+  filters?: { status?: VehicleStatus; catalog_id?: string; search?: string; exclude_retired?: boolean },
 ) {
   return useQuery({
     queryKey: vehicleKeys.units(cafeId, filters),

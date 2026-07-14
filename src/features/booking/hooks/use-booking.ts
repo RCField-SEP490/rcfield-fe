@@ -40,9 +40,15 @@ export function useDailyAvailability(
       const results = await Promise.all(
         hours.map(async (h) => {
           const hh = String(h).padStart(2, '0')
-          const hh1 = String(h + 1).padStart(2, '0')
           const slotStart = `${date}T${hh}:00:00+07:00`
-          const slotEnd = `${date}T${hh1}:00:00+07:00`
+          const slotEnd =
+            h + 1 === 24
+              ? (() => {
+                  const nextDate = new Date(`${date}T00:00:00Z`)
+                  nextDate.setUTCDate(nextDate.getUTCDate() + 1)
+                  return `${nextDate.toISOString().slice(0, 10)}T00:00:00+07:00`
+                })()
+              : `${date}T${String(h + 1).padStart(2, '0')}:00:00+07:00`
           try {
             const [rental, byoc] = await Promise.all([
               bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'RENTAL', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
@@ -59,7 +65,8 @@ export function useDailyAvailability(
                 vehicles: rental.vehicles ?? [],
               } satisfies AvailabilityResponse,
             }
-          } catch {
+          } catch (err) {
+            console.error(`checkAvailability failed for hour ${h}:`, err)
             return { hour: h, data: null }
           }
         }),
@@ -91,7 +98,7 @@ export function useCafeBookings(cafeId: string | undefined, params: ListCafeBook
     queryKey: bookingQueryKeys.cafe(cafeId ?? '', params),
     queryFn: () => bookingApi.listCafeBookings(cafeId!, params),
     enabled: !!cafeId && !!params.date,
-    staleTime: 30_000,
+    staleTime: 0,
   })
 }
 

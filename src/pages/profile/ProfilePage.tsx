@@ -15,6 +15,7 @@ import { getMe, updateMe, changePassword, logoutSession } from "@/features/auth/
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { uploadImage } from "@/features/uploads/api/upload.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
+import type { BackendCafe } from "@/features/cafes/types"
 import { PublicPageShell } from "@/shared/components/PublicPageShell"
 import { storageKeys } from "@/shared/lib/storage"
 import { cn } from "@/shared/lib/utils"
@@ -100,7 +101,9 @@ function ProfileContent() {
         if (auth.accessToken && auth.refreshToken) {
           await logoutSession(auth.accessToken, auth.refreshToken)
         }
-      } catch {}
+      } catch {
+        // Best-effort remote logout; local session cleanup still runs below.
+      }
     }
     clearAuthenticated()
     localStorage.removeItem(storageKeys.auth)
@@ -130,25 +133,27 @@ function ProfileContent() {
       })
       toast.success("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.")
       await handleLogout()
-    } catch (e: any) {
-      const msg = e.response?.data?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại."
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại."
       toast.error(msg)
     } finally {
       setResettingPassword(false)
     }
   }
 
-  const [assignedCafe, setAssignedCafe] = useState<any>(null)
+  const [assignedCafe, setAssignedCafe] = useState<BackendCafe | null>(null)
   const [loadingCafe, setLoadingCafe] = useState(false)
 
   useEffect(() => {
     if (role === "staff" && user?.assignedCafeId) {
-      setLoadingCafe(true)
+      queueMicrotask(() => setLoadingCafe(true))
       cafeApi
         .getCafe(user.assignedCafeId)
-        .then((data) => setAssignedCafe(data))
+        .then((data) => queueMicrotask(() => setAssignedCafe(data)))
         .catch((err) => console.error("Error loading cafe in staff profile", err))
-        .finally(() => setLoadingCafe(false))
+        .finally(() => queueMicrotask(() => setLoadingCafe(false)))
     }
   }, [role, user?.assignedCafeId])
 
@@ -167,7 +172,8 @@ function ProfileContent() {
       const saved = localStorage.getItem(`rcfield:provider_profile:business:${user.id}`)
       if (saved) {
         try {
-          setBusinessForm(JSON.parse(saved))
+          const parsed = JSON.parse(saved) as typeof businessForm
+          queueMicrotask(() => setBusinessForm(parsed))
         } catch (e) {
           console.error("Error parsing provider business info", e)
         }
@@ -181,7 +187,7 @@ function ProfileContent() {
       await new Promise((resolve) => setTimeout(resolve, 500))
       localStorage.setItem(`rcfield:provider_profile:business:${user?.id}`, JSON.stringify(businessForm))
       toast.success("Đã cập nhật thông tin doanh nghiệp.")
-    } catch (e) {
+    } catch {
       toast.error("Không thể lưu thông tin.")
     } finally {
       setSavingBusiness(false)
@@ -219,12 +225,14 @@ function ProfileContent() {
   }, [setUser])
 
   useEffect(() => {
-    setForm({
-      firstName,
-      lastName,
-      email,
-      phone: user?.phone ?? "",
-      avatarUrl: user?.avatarUrl ?? "",
+    queueMicrotask(() => {
+      setForm({
+        firstName,
+        lastName,
+        email,
+        phone: user?.phone ?? "",
+        avatarUrl: user?.avatarUrl ?? "",
+      })
     })
   }, [email, firstName, lastName, user?.avatarUrl, user?.phone])
 

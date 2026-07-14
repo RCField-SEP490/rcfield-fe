@@ -117,9 +117,11 @@ function SlotSettingsPanel({
   const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
-    setSlotFee(Number(cafe.slotFeeRate))
-    setSlotDuration(cafe.slotDurationMinutes)
-    setBookingNotice(cafe.minBookingNoticeMinutes)
+    queueMicrotask(() => {
+      setSlotFee(Number(cafe.slotFeeRate))
+      setSlotDuration(cafe.slotDurationMinutes)
+      setBookingNotice(cafe.minBookingNoticeMinutes)
+    })
   }, [cafe])
 
   const updateMutation = useMutation({
@@ -297,8 +299,10 @@ function WeekendRulePanel({
   const [multiplier, setMultiplier] = useState(weekendRule?.multiplier ?? 1.5)
 
   useEffect(() => {
-    setEnabled(!!weekendRule)
-    setMultiplier(weekendRule?.multiplier ?? 1.5)
+    queueMicrotask(() => {
+      setEnabled(!!weekendRule)
+      setMultiplier(weekendRule?.multiplier ?? 1.5)
+    })
   }, [weekendRule])
 
   const updateMutation = useMutation({
@@ -887,8 +891,10 @@ function EditHolidayInline({
   const [name, setName] = useState(holiday.name)
 
   useEffect(() => {
-    setMultiplier(holiday.override_multiplier ?? holiday.multiplier)
-    setName(holiday.name)
+    queueMicrotask(() => {
+      setMultiplier(holiday.override_multiplier ?? holiday.multiplier)
+      setName(holiday.name)
+    })
   }, [holiday])
 
   const updateMutation = useMutation({

@@ -22,6 +22,7 @@ import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { menuApi } from "@/features/menu/api/menu.api"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import type { MenuItem } from "@/features/menu/types"
+import { getApiErrorInfo } from "@/shared/lib/utils"
 import { toast } from "sonner"
 import {
   StaffCard,
@@ -45,6 +46,7 @@ export default function StaffSessionDetailPage() {
   // Find corresponding session and booking
   const session = sessions.find((s) => s.sessionId === sessionId)
   const booking = session ? bookings.find((b) => b.bookingId === session.bookingId) : null
+  const isWalkInBooking = booking?.source === "STAFF_MANUAL"
 
   // Local state controls
   const [timeLeft, setTimeLeft] = useState("")
@@ -60,7 +62,7 @@ export default function StaffSessionDetailPage() {
 
   // Extension mode: false = propose to customer, true = direct (staff confirms in-person)
   const [directExtensionMode, setDirectExtensionMode] = useState(false)
-  const [pendingDirectExtension, setPendingDirectExtension] = useState<{ mins: number; fee: number } | null>(null)
+  const [pendingDirectExtension, setPendingDirectExtension] = useState<{ mins: number; fee: number; newPlannedEnd: string } | null>(null)
 
   // Swap Vehicle local modal state
   const [swapModalOpen, setSwapModalOpen] = useState(false)
@@ -71,7 +73,7 @@ export default function StaffSessionDetailPage() {
   // Real-time countdown timer
   useEffect(() => {
     if (!session || (session.status !== "ACTIVE" && session.status !== "EXTENDING")) {
-      setTimeLeft("")
+      queueMicrotask(() => setTimeLeft(""))
       return
     }
 
@@ -92,11 +94,18 @@ export default function StaffSessionDetailPage() {
     return () => clearInterval(interval)
   }, [session])
 
+  useEffect(() => {
+    queueMicrotask(() => {
+      setDirectExtensionMode(isWalkInBooking)
+      setPendingDirectExtension(null)
+    })
+  }, [isWalkInBooking])
+
   // Fetch branch catalog data (Menu & Fleet)
   useEffect(() => {
     if (booking?.cafeId) {
       // Menu Items
-      setLoadingMenu(true)
+      queueMicrotask(() => setLoadingMenu(true))
       menuApi
         .listMenuItems(booking.cafeId)
         .then((res) => {
@@ -160,8 +169,9 @@ export default function StaffSessionDetailPage() {
       await staffApi.settlePendingPayments(booking.bookingId)
       toast.success("Xác nhận thanh toán thành công!")
       await refreshData()
-    } catch (err: any) {
-      toast.error("Không thể quyết toán thanh toán: " + (err.message || err))
+    } catch (err: unknown) {
+      const message = getApiErrorInfo(err).message || (err instanceof Error ? err.message : String(err))
+      toast.error("Không thể quyết toán thanh toán: " + message)
     } finally {
       setSettlingPayment(false)
     }
@@ -211,35 +221,51 @@ export default function StaffSessionDetailPage() {
   const checkInDisputed = Boolean(checkInInspection && !checkInInspection.customerConfirmed && checkInInspection.customerConfirmedAt)
   const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
   const extensionPending = session.extensionProposal?.status === "PENDING"
-  const approvedExtensionFee = session.extensionProposal?.status === "APPROVED" ? session.extensionProposal.additionalFee : 0
+  const approvedExtensions = session.approvedExtensions ??
+    (session.extensionProposal?.status === "APPROVED" ? [session.extensionProposal] : [])
+  const approvedExtensionFee = Number(
+    session.approvedExtensionFee ??
+    approvedExtensions.reduce((sum, ext) => sum + Number(ext.additionalFee), 0)
+  )
 
-  // Extension fee derived from booking slot rate (placed after approvedExtensionFee to avoid TDZ)
-  const sessionDurationMinutes =
-    (new Date(booking.slotEnd).getTime() - new Date(booking.slotStart).getTime()) / 60000
-  const slotRatePerMinute = sessionDurationMinutes > 0 ? booking.slotFee / sessionDurationMinutes : 0
+  const currentPlannedEndMs = new Date(session.plannedEnd ?? booking.slotEnd).getTime()
+  const approvedExtensionMinutes = Number(
+    session.approvedExtensionMinutes ??
+    (session.extensionProposal?.status === "APPROVED" ? session.extensionProposal.extraMinutes : 0)
+  )
+  const currentDurationMinutes =
+    (currentPlannedEndMs - new Date(booking.slotStart).getTime()) / 60000
+  const baseDurationMinutes = Math.max(currentDurationMinutes - approvedExtensionMinutes, 1)
+  const slotRatePerMinute = booking.slotFee / baseDurationMinutes
   const calcExtensionFee = (mins: number) =>
     Math.round((slotRatePerMinute * mins) / 1000) * 1000
-  const maxExtensionFee = booking.depositAmount > 0 ? booking.depositAmount * 0.5 : Infinity
+  const maxExtensionFee = Infinity
   const remainingCap = Math.max(0, maxExtensionFee - approvedExtensionFee)
+  const quotedExtensionOptions = session.extensionPricingOptions ?? []
   const extensionOptions = ([15, 30, 60] as const).map((mins) => {
-    const fee = calcExtensionFee(mins)
-    return { mins, fee, blocked: fee > remainingCap }
+    const quoted = quotedExtensionOptions.find((option) => option.extraMinutes === mins)
+    const fee = Number(quoted?.additionalFee ?? calcExtensionFee(mins))
+    const newPlannedEnd = quoted?.newPlannedEnd ?? new Date(currentPlannedEndMs + mins * 60000).toISOString()
+    const blockedReason = quoted?.available === false ? quoted.blockedReason ?? "Không khả dụng" : undefined
+    return { mins, fee, newPlannedEnd, blockedReason, blocked: Boolean(blockedReason) || fee > remainingCap }
   })
-  const handleExtension = (mins: number, fee: number) => {
+  const handleExtension = (mins: number, fee: number, newPlannedEnd: string) => {
     if (directExtensionMode) {
-      setPendingDirectExtension({ mins, fee })
+      setPendingDirectExtension({ mins, fee, newPlannedEnd })
     } else {
       proposeExtension(session.sessionId, mins, fee)
     }
   }
-  const slotEndMs = new Date(booking.slotEnd).getTime()
-  const projectedEnd = (extraMins: number) =>
-    new Date(slotEndMs + extraMins * 60000).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
-  const fnbTotal = (session.fnbOrders || []).reduce((sum, order) => sum + order.total, 0)
+  const formatPlannedEnd = (value: string | number) =>
+    new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+  const onsiteFnbOrders = (session.fnbOrders || [])
+    .filter((order) => order.orderType !== "PRE_ORDER" && order.status !== "CANCELLED")
+  const fnbTotal = onsiteFnbOrders
+    .reduce((sum, order) => sum + order.total, 0)
   const damageCharge = session.damageClaim?.finalCharge ?? 0
 
   // ── Best Practice Billing Separation ──
-  const depositAmount = booking.depositAmount
+  const depositAmount = 0
 
   // Deposit ONLY offsets vehicle damage charge (asset protection)
   const depositConsumedByDamage = Math.min(depositAmount, damageCharge)
@@ -253,13 +279,14 @@ export default function StaffSessionDetailPage() {
 
   // UI flags
   const hasPendingCounterPayment = booking.payment_components?.some(
-    (c: any) => c.status === "PENDING"
+    (c) => c.status === "PENDING"
   ) ?? false
   const hasPendingDepositRefund = booking.payment_components?.some(
-    (c: any) => c.type === "SECURITY_DEPOSIT" && c.status === "PENDING_REFUND"
+    (c) => c.type === "SECURITY_DEPOSIT" && c.status === "PENDING_REFUND"
   ) ?? false
-  const isFullySettled = !hasPendingCounterPayment && !hasPendingDepositRefund &&
-    booking.payment_components?.some((c: any) => c.status === "DISBURSED")
+  const isFullySettled = session.status === "COMPLETED" &&
+    !hasPendingCounterPayment && !hasPendingDepositRefund &&
+    booking.payment_components?.some((c) => c.status === "DISBURSED")
 
   return (
     <div className="space-y-6">
@@ -412,10 +439,87 @@ export default function StaffSessionDetailPage() {
 
       {/* 4. CORE ACTION MODULES (F&B / Extensions / Fleet controls) */}
       {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Module 1: Fleet swap & Extension Controls */}
-          <div className="space-y-6">
-            {/* Extensions panel */}
+        <>
+          {/* Active Vehicles — position 2, right below session info */}
+          <StaffCard className="space-y-4">
+            {(() => {
+              const participantNames = booking.participantDetails?.map((p) => p.name)
+                ?? booking.plannedParticipants
+              const isByocMode = booking.playMode === "BYOC"
+              const displayVehicles = isByocMode && session.vehicles.length < participantNames.length
+                ? [
+                    ...session.vehicles,
+                    ...participantNames.slice(session.vehicles.length).map((name, i) => ({
+                      vehicleId: `byoc-placeholder-${i}`,
+                      name: `Xe của ${name} (BYOC)`,
+                      type: "BYOC" as const,
+                      imageUrl: undefined,
+                    })),
+                  ]
+                : session.vehicles
+
+              const checkInPhotos = session.inspections.find((i) => i.type === "CHECK_IN")?.photos ?? []
+              const byocDirections = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
+
+              return (
+                <>
+                  <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+                    <Car className="size-4.5 text-[#ea580c]" />
+                    Xe đang chạy trên làn đua ({displayVehicles.length})
+                  </h4>
+
+                  <div className="space-y-2">
+                    {displayVehicles.map((v, idx) => {
+                      const photoUrl = v.type === "RENT"
+                        ? v.imageUrl
+                        : checkInPhotos.find((p) => p.direction === byocDirections[idx])?.url
+                      return (
+                        <div
+                          key={v.vehicleId}
+                          className="flex items-center justify-between rounded-lg bg-[#fcf8f8] p-3 border border-[#e5e2e1]"
+                        >
+                          <div className="flex items-center gap-3">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={v.name}
+                                className="size-9 rounded-lg object-cover border border-[#e5e2e1] shrink-0"
+                              />
+                            ) : (
+                              <div className="flex size-9 items-center justify-center rounded-lg bg-white border border-[#e5e2e1] shrink-0">
+                                <Car className="size-4.5 text-[#6b7280]" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs font-bold text-[#1c1b1b]">{v.name}</p>
+                              <p className="text-[10px] text-[#6b7280] font-semibold">Mã ID: {v.vehicleId}</p>
+                            </div>
+                          </div>
+                          {v.type === "RENT" && (
+                            <StaffButton
+                              onClick={() => {
+                                setSwappingVehicleId(v.vehicleId)
+                                setSwapModalOpen(true)
+                              }}
+                              variant="secondary"
+                              size="sm"
+                              className="py-1 px-2.5 text-[10px] font-bold rounded-lg"
+                            >
+                              <ArrowLeftRight className="size-3" />
+                              Đổi Xe Khác
+                            </StaffButton>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+          </StaffCard>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Module 1: Extension Controls */}
             <StaffCard className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
@@ -425,35 +529,9 @@ export default function StaffSessionDetailPage() {
                 <span className="text-[11px] font-semibold text-[#6b7280]">
                   Kết thúc lúc{" "}
                   <span className="text-[#1c1b1b] font-extrabold">
-                    {new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    {formatPlannedEnd(currentPlannedEndMs)}
                   </span>
                 </span>
-              </div>
-
-              {/* Mode toggle */}
-              <div className="flex items-center gap-2 rounded-xl border border-[#e5e2e1] bg-[#f5f3f2] p-1">
-                <button
-                  type="button"
-                  onClick={() => { setDirectExtensionMode(false); setPendingDirectExtension(null) }}
-                  className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition-all ${
-                    !directExtensionMode
-                      ? "bg-white text-[#ea580c] shadow-sm border border-[#ffdbca]"
-                      : "text-[#6b7280]"
-                  }`}
-                >
-                  Gửi khách xác nhận
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setDirectExtensionMode(true); setPendingDirectExtension(null) }}
-                  className={`flex-1 rounded-lg py-1.5 text-[11px] font-bold transition-all ${
-                    directExtensionMode
-                      ? "bg-white text-[#ea580c] shadow-sm border border-[#ffdbca]"
-                      : "text-[#6b7280]"
-                  }`}
-                >
-                  Gia hạn trực tiếp
-                </button>
               </div>
 
               {extensionPending ? (
@@ -465,7 +543,7 @@ export default function StaffSessionDetailPage() {
                 <div className="rounded-xl border border-[#ea580c] bg-[#fff3eb] p-3 space-y-2.5">
                   <p className="text-xs font-bold text-[#1c1b1b]">
                     Xác nhận gia hạn trực tiếp: <span className="text-[#ea580c]">+{pendingDirectExtension.mins < 60 ? `${pendingDirectExtension.mins} phút` : "1 giờ"}</span>
-                    {" "}({pendingDirectExtension.fee.toLocaleString("vi-VN")} đ) → {projectedEnd(pendingDirectExtension.mins)}
+                    {" "}({pendingDirectExtension.fee.toLocaleString("vi-VN")} đ) → {formatPlannedEnd(pendingDirectExtension.newPlannedEnd)}
                   </p>
                   <p className="text-[10px] text-[#6b7280] font-semibold">Khách đã đồng ý tại chỗ — gia hạn ngay, không cần xác nhận qua app.</p>
                   <div className="flex gap-2">
@@ -492,13 +570,17 @@ export default function StaffSessionDetailPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
-                  {extensionOptions.map(({ mins, fee, blocked }) => (
+                  {extensionOptions.map(({ mins, fee, newPlannedEnd, blockedReason, blocked }) => (
                     <button
                       key={mins}
                       type="button"
                       disabled={blocked}
-                      onClick={() => !blocked && handleExtension(mins, fee)}
-                      title={blocked ? `Vượt giới hạn gia hạn (tối đa ${(maxExtensionFee === Infinity ? "—" : (maxExtensionFee).toLocaleString("vi-VN") + " đ")})` : undefined}
+                      onClick={() => !blocked && handleExtension(mins, fee, newPlannedEnd)}
+                      title={
+                        blocked
+                          ? blockedReason ?? `Vượt giới hạn gia hạn (tối đa ${(maxExtensionFee === Infinity ? "—" : (maxExtensionFee).toLocaleString("vi-VN") + " đ")})`
+                          : undefined
+                      }
                       className={`rounded-xl border transition-all p-2.5 text-center group ${
                         blocked
                           ? "border-[#e5e2e1] bg-[#f5f3f2] opacity-50 cursor-not-allowed"
@@ -509,10 +591,10 @@ export default function StaffSessionDetailPage() {
                         +{mins < 60 ? `${mins} phút` : "1 giờ"}
                       </span>
                       <span className="block text-[10px] text-[#6b7280] font-semibold mt-0.5">
-                        → {projectedEnd(mins)}
+                        → {formatPlannedEnd(newPlannedEnd)}
                       </span>
                       <span className={`block text-[10px] font-bold mt-1 ${blocked ? "text-[#9b8fa8]" : "text-[#1c1b1b]"}`}>
-                        {fee.toLocaleString("vi-VN")} đ
+                        {blockedReason ?? `${fee.toLocaleString("vi-VN")} đ`}
                       </span>
                     </button>
                   ))}
@@ -520,80 +602,14 @@ export default function StaffSessionDetailPage() {
               )}
 
               <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
-                {directExtensionMode
-                  ? "Chế độ trực tiếp: nhân viên xác nhận thay khách khi đã hỏi tại chỗ."
-                  : "Chế độ đề xuất: hệ thống gửi thông báo và chờ khách phản hồi qua app."}
+                {isWalkInBooking
+                  ? "Đơn walk-in: nhân viên xác nhận trực tiếp tại quầy."
+                  : "Đơn đặt trước: hệ thống gửi thông báo và chờ khách phản hồi qua app."}
               </p>
             </StaffCard>
 
-            {/* Active Vehicles & Swap Button */}
+            {/* Module 2: Menu F&B Console */}
             <StaffCard className="space-y-4">
-              {(() => {
-                // For BYOC: pad vehicle list to match participant count if DB had old data (1 vehicle only)
-                const participantNames = booking.participantDetails?.map((p) => p.name)
-                  ?? booking.plannedParticipants
-                const isByocMode = booking.playMode === "BYOC"
-                const displayVehicles = isByocMode && session.vehicles.length < participantNames.length
-                  ? [
-                      ...session.vehicles,
-                      ...participantNames.slice(session.vehicles.length).map((name, i) => ({
-                        vehicleId: `byoc-placeholder-${i}`,
-                        name: `Xe của ${name} (BYOC)`,
-                        type: "BYOC" as const,
-                        imageUrl: undefined,
-                      })),
-                    ]
-                  : session.vehicles
-
-                return (
-                  <>
-                    <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-                      <Car className="size-4.5 text-[#ea580c]" />
-                      Xe đang chạy trên làn đua ({displayVehicles.length})
-                    </h4>
-
-                    <div className="space-y-2">
-                      {displayVehicles.map((v) => (
-                  <div
-                    key={v.vehicleId}
-                    className="flex items-center justify-between rounded-lg bg-[#fcf8f8] p-3 border border-[#e5e2e1]"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-lg bg-white border border-[#e5e2e1]">
-                        <Car className="size-4.5 text-[#6b7280]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-[#1c1b1b]">{v.name}</p>
-                        <p className="text-[10px] text-[#6b7280] font-semibold">Mã ID: {v.vehicleId}</p>
-                      </div>
-                    </div>
-
-                    {/* Swap Trigger */}
-                    {v.type === "RENT" && (
-                      <StaffButton
-                        onClick={() => {
-                          setSwappingVehicleId(v.vehicleId)
-                          setSwapModalOpen(true)
-                        }}
-                        variant="secondary"
-                        size="sm"
-                        className="py-1 px-2.5 text-[10px] font-bold rounded-lg"
-                      >
-                        <ArrowLeftRight className="size-3" />
-                        Đổi Xe Khác
-                      </StaffButton>
-                    )}
-                      </div>
-                    ))}
-                  </div>
-                  </>
-                )
-              })()}
-            </StaffCard>
-          </div>
-
-          {/* Module 2: Menu F&B Console */}
-          <StaffCard className="space-y-4">
             <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
               <Coffee className="size-4.5 text-[#ea580c]" />
               Gọi dịch vụ ăn uống (F&B)
@@ -645,7 +661,8 @@ export default function StaffSessionDetailPage() {
               </form>
             )}
           </StaffCard>
-        </div>
+          </div>
+        </>
       )}
 
       {/* 4. RENDER INSPECTION BANNER */}
@@ -745,7 +762,7 @@ export default function StaffSessionDetailPage() {
           </h4>
 
           <div className="space-y-1.5">
-            {(session.fnbOrders || []).map((order) => (
+            {onsiteFnbOrders.map((order) => (
               <div
                 key={order.orderId}
                 className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start font-semibold"
@@ -761,7 +778,7 @@ export default function StaffSessionDetailPage() {
               </div>
             ))}
 
-            {(session.fnbOrders || []).length === 0 && (
+            {onsiteFnbOrders.length === 0 && (
               <p className="text-xs text-[#6b7280] italic py-4 text-center">Chưa gọi món.</p>
             )}
           </div>
@@ -842,15 +859,24 @@ export default function StaffSessionDetailPage() {
                   <span className="text-[#1c1b1b] font-bold">+{fnbTotal.toLocaleString("vi-VN")} đ</span>
                 </div>
               )}
-              {approvedExtensionFee > 0 && (
+              {approvedExtensions.length > 0 ? (
+                approvedExtensions.map((extension, index) => (
+                  <div key={extension.proposalId} className="flex justify-between text-[#4c4a49]">
+                    <span>
+                      Gia hạn lần {index + 1} · +{extension.extraMinutes < 60 ? `${extension.extraMinutes} phút` : `${extension.extraMinutes / 60} giờ`}
+                    </span>
+                    <span className="text-[#1c1b1b] font-bold">+{Number(extension.additionalFee).toLocaleString("vi-VN")} đ</span>
+                  </div>
+                ))
+              ) : approvedExtensionFee > 0 ? (
                 <div className="flex justify-between text-[#4c4a49]">
                   <span>Phụ thu gia hạn thêm giờ</span>
                   <span className="text-[#1c1b1b] font-bold">+{approvedExtensionFee.toLocaleString("vi-VN")} đ</span>
                 </div>
-              )}
+              ) : null}
               {damageExceedingDeposit > 0 && (
                 <div className="flex justify-between text-rose-700 bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                  <span>Đền bù hư hỏng vượt cọc</span>
+                  <span>{depositAmount > 0 ? "Đền bù hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
                   <span className="font-extrabold">+{damageExceedingDeposit.toLocaleString("vi-VN")} đ</span>
                 </div>
               )}
@@ -1005,7 +1031,7 @@ export default function StaffSessionDetailPage() {
                 </label>
                 <select
                   value={oldVehicleNewStatus}
-                  onChange={(e) => setOldVehicleNewStatus(e.target.value as any)}
+                  onChange={(e) => setOldVehicleNewStatus(e.target.value as "AVAILABLE" | "MAINTENANCE")}
                   className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                 >
                   <option value="MAINTENANCE">Xe bị hỏng hóc (Chuyển vào bảo trì)</option>

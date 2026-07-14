@@ -122,6 +122,7 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null)
   const [form, setForm] = useState<PromotionFormState>(defaultForm)
   const [saving, setSaving] = useState(false)
+  const [now] = useState(() => Date.now())
 
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
   const copySourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
@@ -129,7 +130,6 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
   const allPromotionsSelected = promotions.length > 0 && selectedPromotionIds.length === promotions.length
 
   const stats = useMemo(() => {
-    const now = Date.now()
     const active = promotions.filter((promotion) => isPromotionLive(promotion, now)).length
     const expiringSoon = promotions.filter((promotion) => {
       if (!promotion.expiresAt || !promotion.isActive) return false
@@ -139,7 +139,7 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
     const uses = promotions.reduce((total, promotion) => total + promotion.usesCount, 0)
 
     return { active, expiringSoon, uses }
-  }, [promotions])
+  }, [now, promotions])
 
   useEffect(() => {
     let mounted = true
@@ -171,7 +171,7 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setPromotions([])
+      queueMicrotask(() => setPromotions([]))
       return
     }
 
@@ -196,13 +196,15 @@ export function ProviderPromotionsPage({ cafeId: propCafeId }: { cafeId?: string
   }, [selectedCafeId])
 
   useEffect(() => {
-    setSelectedPromotionIds([])
-    setDeleteTarget(null)
-    setDeleteMode(null)
+    queueMicrotask(() => {
+      setSelectedPromotionIds([])
+      setDeleteTarget(null)
+      setDeleteMode(null)
+    })
     if (selectedCafeId && !propCafeId) {
       setSearchParams(selectedCafeId ? { cafeId: selectedCafeId } : {})
     }
-  }, [selectedCafeId, propCafeId])
+  }, [selectedCafeId, propCafeId, setSearchParams])
 
   const startCreate = () => {
     setEditMode("create")
@@ -730,7 +732,7 @@ export function ProviderPromotionEditPage() {
 
   useEffect(() => {
     if (!selectedCafeId || !promotionId) {
-      setEditing(null)
+      queueMicrotask(() => setEditing(null))
       return
     }
 
@@ -881,7 +883,7 @@ export function ProviderPromotionCopyPage() {
 
   useEffect(() => {
     if (!targetCafeId) {
-      setTargetPromotions([])
+      queueMicrotask(() => setTargetPromotions([]))
       return
     }
 
@@ -904,8 +906,10 @@ export function ProviderPromotionCopyPage() {
 
   useEffect(() => {
     if (!sourceCafeId) {
-      setSourcePromotions([])
-      setSelectedPromotionId("")
+      queueMicrotask(() => {
+        setSourcePromotions([])
+        setSelectedPromotionId("")
+      })
       return
     }
 

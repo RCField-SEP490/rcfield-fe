@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { env } from "@/shared/lib/env"
 import {
   AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, Clock3, Gamepad2,
   ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
@@ -88,7 +89,7 @@ function CancelDialog({
             <span className="font-mono font-semibold">{formatCurrency(refund.slotFee)}</span>
           </div>
           <div className="flex justify-between text-slate-600">
-            <span>Hoàn phí khác (thuê xe, cọc, F&B)</span>
+            <span>Hoàn phí khác (thuê xe, F&B)</span>
             <span className="font-mono font-semibold">{formatCurrency(refund.rest)}</span>
           </div>
           <div className="border-t border-dashed border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
@@ -186,11 +187,15 @@ export function BookingDetailPage() {
       const plannedTime = new Date(sessionDetail.plannedEnd).getTime()
       const actualStart = sessionDetail.actualStart ? new Date(sessionDetail.actualStart).getTime() : Date.now()
       const now = Date.now()
-      setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
-      setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
+      queueMicrotask(() => {
+        setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
+        setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
+      })
     } else {
-      setSecondsLeft(0)
-      setTotalDuration(1)
+      queueMicrotask(() => {
+        setSecondsLeft(0)
+        setTotalDuration(1)
+      })
     }
   }, [sessionDetail])
 
@@ -235,18 +240,12 @@ export function BookingDetailPage() {
     snapshot?.rental_fee ??
     0
   )
-  const snapshotDeposit = Number(
-    (snapshot?.vehicles as Array<Record<string, unknown>> | undefined)?.reduce((sum: number, v: Record<string, unknown>) => sum + Number(v.security_deposit ?? 0), 0) ??
-    snapshot?.deposit_amount ??
-    0
-  )
   const snapshotFnbPreorder = Number(snapshot?.fnb_total ?? snapshot?.fnb_preorder_fee ?? 0)
 
   const slotFee = Number(booking?.payment_components?.find((c) => c.type === "SLOT_FEE")?.amount ?? snapshotSlotFee)
   const rentalFee = Number(booking?.payment_components?.find((c) => c.type === "RENTAL_FEE")?.amount ?? snapshotRentalFee)
   const discountAmount = Number(booking?.discountAmount ?? 0)
-  const depositComponent = booking?.payment_components?.find((c) => c.type === "SECURITY_DEPOSIT")
-  const depositAmount = Number(depositComponent?.amount ?? snapshotDeposit)
+  const depositAmount = 0
   const fnbPreorderFee = Number(
     booking?.payment_components?.find(
       (c) =>
@@ -820,17 +819,28 @@ export function BookingDetailPage() {
           </main>
 
           <aside className="space-y-4">
-            {booking.checkInCode && (
+            {booking.status === "CONFIRMED" && new Date() < new Date(booking.slotEnd) && (
               <Card className="rounded-xl text-center shadow-sm">
                 <CardHeader>
-                  <CardTitle>Mã Check-in</CardTitle>
+                  <CardTitle className="flex items-center justify-center gap-2">
+                    <QrCode className="h-4 w-4 text-orange-500" />
+                    Mã Check-in
+                  </CardTitle>
                   <p className="text-sm text-muted-foreground">Quét mã này tại quầy để nhận xe</p>
                 </CardHeader>
-                <CardContent>
-                  <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-xl border bg-muted">
-                    <QrCode className="h-28 w-28 text-foreground" />
+                <CardContent className="flex flex-col items-center gap-3">
+                  <div className="p-3 bg-white border rounded-xl shadow-sm">
+                    <img
+                      src={`${env.apiUrl}/v1/bookings/${bookingId}/qr`}
+                      width={180}
+                      height={180}
+                      alt="QR Check-in"
+                      className="rounded"
+                    />
                   </div>
-                  <Badge variant="secondary" className="mt-3">{booking.checkInCode}</Badge>
+                  <Badge variant="secondary" className="font-mono tracking-widest">
+                    #{booking.id.substring(0, 8).toUpperCase()}
+                  </Badge>
                 </CardContent>
               </Card>
             )}
@@ -932,7 +942,7 @@ export function BookingDetailPage() {
                         )}
                         {damageExceedingDeposit > 0 && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Hư hỏng vượt cọc</span>
+                            <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
                             <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
                           </div>
                         )}

@@ -68,7 +68,7 @@ export default function StaffDashboardPage() {
           toast.error("Không thể tải thông tin chi nhánh chi tiết.")
         })
     } else {
-      setActiveCafe(null)
+      queueMicrotask(() => setActiveCafe(null))
     }
   }, [assignedCafeId])
 

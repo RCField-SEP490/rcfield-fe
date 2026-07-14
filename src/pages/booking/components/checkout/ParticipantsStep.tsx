@@ -7,6 +7,7 @@ import { Input } from "@/shared/ui/input"
 import { Badge } from "@/shared/ui/badge"
 import { cn } from "@/shared/lib/utils"
 import { formatCurrency } from "@/shared/lib/format"
+import type { TrackConfig } from "@/features/cafes/types"
 
 export type Companion = { name: string; phone: string }
 
@@ -32,12 +33,12 @@ type ParticipantsStepProps = {
   selectedVehicleIds: string[]
   onVehicleSelect: (ids: string[]) => void
   byocRemaining?: number
+  selectedTrackConfig?: TrackConfig | null
 }
 
 export function ParticipantsStep({
   cafe,
   playMode,
-  onPlayModeChange: _onPlayModeChange,
   participants,
   onParticipantsChange,
   companions,
@@ -45,6 +46,7 @@ export function ParticipantsStep({
   selectedVehicleIds,
   onVehicleSelect,
   byocRemaining,
+  selectedTrackConfig,
 }: ParticipantsStepProps) {
   const isByocFull = playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0
   // BYOC: 1 người = 1 xe = 1 slot → hard cap theo byocRemaining
@@ -223,7 +225,16 @@ export function ParticipantsStep({
               <div className="grid gap-3 md:grid-cols-3">
                 {cafe.availableVehicles.map((vehicle) => {
                   const isSelected = selectedVehicleIds.includes(vehicle.id)
-                  const isDisabled = vehicle.status !== "available"
+                  const isCompatible =
+                    !selectedTrackConfig ||
+                    !vehicle.compatibleTrackTypes ||
+                    vehicle.compatibleTrackTypes.length === 0 ||
+                    vehicle.compatibleTrackTypes.some(
+                      (t) =>
+                        t.id === selectedTrackConfig.track_type_id ||
+                        t.code === selectedTrackConfig.track_type?.code
+                    )
+                  const isDisabled = vehicle.status !== "available" || !isCompatible
                   return (
                     <button
                       key={vehicle.id}
@@ -238,12 +249,19 @@ export function ParticipantsStep({
                       className={cn(
                         "overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary/40",
                         isSelected && "border-primary ring-2 ring-primary/10",
-                        isDisabled && "cursor-not-allowed opacity-50",
+                        isDisabled && "cursor-not-allowed opacity-50 bg-slate-50/50",
                       )}
                     >
                       <img src={vehicle.image} alt={vehicle.name} className="h-28 w-full object-cover" />
                       <div className="space-y-1 p-3">
-                        <p className="line-clamp-1 text-sm font-semibold">{vehicle.name}</p>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <p className="line-clamp-1 text-sm font-semibold">{vehicle.name}</p>
+                          {!isCompatible && (
+                            <Badge className="shrink-0 text-[9px] px-1 py-0 h-4 bg-amber-500 text-white border-none hover:bg-amber-500">
+                              K.Tương thích
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">{vehicle.type} · {vehicle.scale}</p>
                         <p className="text-sm font-semibold">{formatCurrency(vehicle.pricePerHour)}/giờ</p>
                       </div>

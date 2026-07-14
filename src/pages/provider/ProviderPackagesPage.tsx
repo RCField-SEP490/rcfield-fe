@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { z } from "zod"
 import type { ReactNode } from "react"
 import {
   ArrowLeft,
@@ -85,6 +86,7 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const selectedCafe = cafes.find((cafe) => cafe.id === selectedCafeId)
   const sourceCafes = cafes.filter((cafe) => cafe.id !== selectedCafeId)
@@ -131,7 +133,7 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setPackages([])
+      queueMicrotask(() => setPackages([]))
       return
     }
 
@@ -156,11 +158,13 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
   }, [selectedCafeId])
 
   useEffect(() => {
-    setSelectedPackageIds([])
-    setDeleteMode(null)
-    setDeleteTarget(null)
+    queueMicrotask(() => {
+      setSelectedPackageIds([])
+      setDeleteMode(null)
+      setDeleteTarget(null)
+    })
     if (selectedCafeId && !propCafeId) setSearchParams({ cafeId: selectedCafeId }, { replace: true })
-  }, [selectedCafeId, propCafeId])
+  }, [selectedCafeId, propCafeId, setSearchParams])
 
   const startCreate = () => {
     navigate(`${routePaths.providerPackageCreate}?cafeId=${selectedCafeId}`)
@@ -176,11 +180,13 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
 
   const savePackage = async () => {
     if (!selectedCafeId) return
-    const error = getPackageFormError(form, packages, editingPackage?.id)
-    if (error) {
-      toast.error(error)
+    const { isValid, errors: validationErrors } = validatePackageForm(form, packages, editingPackage?.id)
+    if (!isValid) {
+      setErrors(validationErrors)
+      toast.error("Vui lòng kiểm tra lại các thông tin nhập liệu")
       return
     }
+    setErrors({})
 
     try {
       setSaving(true)
@@ -303,11 +309,20 @@ export function ProviderPackagesPage({ cafeId: propCafeId }: { cafeId?: string }
         <div ref={formPanelRef}>
           <PackageFormPanel
             form={form}
+            errors={errors}
             editing={!!editingPackage}
             saving={saving}
-            onCancel={() => setMode("list")}
+            onCancel={() => {
+              setMode("list")
+              setErrors({})
+            }}
             onSave={savePackage}
-            onFieldChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
+            onFieldChange={(field, value) => {
+              setForm((current) => ({ ...current, [field]: value }))
+              if (errors[field]) {
+                setErrors((current) => ({ ...current, [field]: "" }))
+              }
+            }}
           />
         </div>
       ) : null}
@@ -478,6 +493,7 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const isEdit = mode === "edit"
 
   useEffect(() => {
@@ -487,9 +503,9 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
       try {
         const data = await packageApi.listProviderCafes()
         if (!mounted) return
-        const cafeId = selectedCafeId || data[0]?.id || ""
+        const cafeId = data[0]?.id || ""
         setCafes(data)
-        setSelectedCafeId(cafeId)
+        setSelectedCafeId((current) => current || cafeId)
       } catch {
         toast.error("Không tải được danh sách chi nhánh")
       }
@@ -508,8 +524,10 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setPackages([])
-      setLoading(false)
+      queueMicrotask(() => {
+        setPackages([])
+        setLoading(false)
+      })
       return
     }
 
@@ -552,11 +570,13 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
 
   const savePackage = async () => {
     if (!selectedCafeId) return
-    const error = getPackageFormError(form, packages, editingPackage?.id)
-    if (error) {
-      toast.error(error)
+    const { isValid, errors: validationErrors } = validatePackageForm(form, packages, editingPackage?.id)
+    if (!isValid) {
+      setErrors(validationErrors)
+      toast.error("Vui lòng kiểm tra lại các thông tin nhập liệu")
       return
     }
+    setErrors({})
 
     try {
       setSaving(true)
@@ -613,11 +633,17 @@ function ProviderPackageFormPage({ mode }: { mode: "create" | "edit" }) {
 
         <PackageFormPanel
           form={form}
+          errors={errors}
           editing={isEdit}
           saving={saving || loading}
           onCancel={goBack}
           onSave={savePackage}
-          onFieldChange={(field, value) => setForm((current) => ({ ...current, [field]: value }))}
+          onFieldChange={(field, value) => {
+            setForm((current) => ({ ...current, [field]: value }))
+            if (errors[field]) {
+              setErrors((current) => ({ ...current, [field]: "" }))
+            }
+          }}
         />
       </section>
     </ProviderShell>
@@ -665,17 +691,19 @@ export function ProviderPackageCopyPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [selectedCafeId])
 
   useEffect(() => {
     if (!selectedCafeId) return
     setSearchParams({ cafeId: selectedCafeId }, { replace: true })
-    setSourceCafeId((current) => (current && current !== selectedCafeId ? current : cafes.find((cafe) => cafe.id !== selectedCafeId)?.id ?? ""))
+    queueMicrotask(() => {
+      setSourceCafeId((current) => (current && current !== selectedCafeId ? current : cafes.find((cafe) => cafe.id !== selectedCafeId)?.id ?? ""))
+    })
   }, [cafes, selectedCafeId, setSearchParams])
 
   useEffect(() => {
     if (!selectedCafeId) {
-      setTargetPackages([])
+      queueMicrotask(() => setTargetPackages([]))
       return
     }
 
@@ -694,8 +722,10 @@ export function ProviderPackageCopyPage() {
 
   useEffect(() => {
     if (!sourceCafeId) {
-      setSourcePackages([])
-      setSelectedSourcePackageId("")
+      queueMicrotask(() => {
+        setSourcePackages([])
+        setSelectedSourcePackageId("")
+      })
       return
     }
 
@@ -788,6 +818,7 @@ export function ProviderPackageCopyPage() {
 
 function PackageFormPanel({
   form,
+  errors = {},
   editing,
   saving,
   onFieldChange,
@@ -795,6 +826,7 @@ function PackageFormPanel({
   onSave,
 }: {
   form: PackageFormState
+  errors?: Record<string, string>
   editing: boolean
   saving: boolean
   onFieldChange: <K extends keyof PackageFormState>(field: K, value: PackageFormState[K]) => void
@@ -813,14 +845,30 @@ function PackageFormPanel({
         }
       />
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Mã gói">
-          <Input value={form.code} onChange={(event) => onFieldChange("code", event.target.value.toUpperCase())} placeholder="PKG-M12" className="h-11 rounded-lg bg-white font-mono font-bold placeholder:text-[#b7bbbd]" />
+        <Field label="Mã gói" error={errors.code}>
+          <Input
+            value={form.code}
+            onChange={(event) => onFieldChange("code", event.target.value.toUpperCase())}
+            placeholder="PKG-M12"
+            className={cn("h-11 rounded-lg bg-white font-mono font-bold placeholder:text-[#b7bbbd]", errors.code && "border-red-500 focus-visible:ring-red-500")}
+          />
         </Field>
-        <Field label="Tên gói">
-          <Input value={form.name} onChange={(event) => onFieldChange("name", event.target.value)} placeholder="Gói Tháng Pro" className="h-11 rounded-lg bg-white" />
+        <Field label="Tên gói" error={errors.name}>
+          <Input
+            value={form.name}
+            onChange={(event) => onFieldChange("name", event.target.value)}
+            placeholder="Gói Tháng Pro"
+            className={cn("h-11 rounded-lg bg-white", errors.name && "border-red-500 focus-visible:ring-red-500")}
+          />
         </Field>
-        <Field label="Số lượng slot">
-          <Input type="number" min="1" value={form.slotCount} onChange={(event) => onFieldChange("slotCount", event.target.value)} className="h-11 rounded-lg bg-white" />
+        <Field label="Số lượng slot" error={errors.slotCount}>
+          <Input
+            type="number"
+            min="1"
+            value={form.slotCount}
+            onChange={(event) => onFieldChange("slotCount", event.target.value)}
+            className={cn("h-11 rounded-lg bg-white", errors.slotCount && "border-red-500 focus-visible:ring-red-500")}
+          />
         </Field>
         <Field label="Chu kỳ">
           <select value={form.billingPeriod} onChange={(event) => onFieldChange("billingPeriod", event.target.value as PackageBillingPeriod)} className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold">
@@ -828,13 +876,13 @@ function PackageFormPanel({
             <option value="MONTH">Theo tháng</option>
           </select>
         </Field>
-        <Field label="Giá bán">
+        <Field label="Giá bán" error={errors.price}>
           <Input
             inputMode="numeric"
             value={form.price}
             onChange={(event) => onFieldChange("price", formatMoneyInput(event.target.value))}
             placeholder="1.380.000"
-            className="h-11 rounded-lg bg-white font-bold placeholder:text-[#b7bbbd]"
+            className={cn("h-11 rounded-lg bg-white font-bold placeholder:text-[#b7bbbd]", errors.price && "border-red-500 focus-visible:ring-red-500")}
           />
         </Field>
         <Field label="Áp dụng cho">
@@ -1062,11 +1110,12 @@ function PackageRow({
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   return (
     <div className="space-y-2">
       <Label className="text-[11px] font-bold uppercase tracking-wider text-[#5d5f5f]">{label}</Label>
       {children}
+      {error && <p className="text-xs font-semibold text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
@@ -1120,17 +1169,52 @@ function packageToForm(item: RecurringPackage): PackageFormState {
   }
 }
 
-function getPackageFormError(form: PackageFormState, packages: RecurringPackage[], editingId?: string) {
-  if (!form.code.trim()) return "Vui lòng nhập mã gói"
-  if (!/^[A-Z0-9-]+$/.test(form.code.trim().toUpperCase())) return "Mã gói chỉ gồm chữ in hoa, số và dấu gạch ngang"
-  if (packages.some((item) => item.id !== editingId && item.code.toUpperCase() === form.code.trim().toUpperCase())) {
-    return "Mã gói đã tồn tại ở chi nhánh này"
+const createPackageFormSchema = (packages: RecurringPackage[], editingId?: string) =>
+  z.object({
+    code: z
+      .string()
+      .trim()
+      .min(1, "Vui lòng nhập mã gói")
+      .regex(/^[A-Z0-9-]+$/i, "Mã gói chỉ gồm chữ, số và dấu gạch ngang")
+      .refine(
+        (code) =>
+          !packages.some(
+            (item) => item.id !== editingId && item.code.toUpperCase() === code.trim().toUpperCase()
+          ),
+        "Mã gói đã tồn tại ở chi nhánh này"
+      ),
+    name: z.string().trim().min(1, "Vui lòng nhập tên gói"),
+    slotCount: z
+      .string()
+      .trim()
+      .min(1, "Vui lòng nhập số lượng slot")
+      .refine((val) => {
+        const num = Number(val)
+        return !isNaN(num) && Number.isInteger(num) && num > 0
+      }, "Số lượng slot phải là số nguyên lớn hơn 0"),
+    price: z
+      .string()
+      .trim()
+      .min(1, "Vui lòng nhập giá bán")
+      .refine((val) => {
+        const price = parseMoneyInput(val)
+        return !isNaN(price) && price > 0
+      }, "Giá bán phải lớn hơn 0"),
+  })
+
+function validatePackageForm(form: PackageFormState, packages: RecurringPackage[], editingId?: string) {
+  const schema = createPackageFormSchema(packages, editingId)
+  const result = schema.safeParse(form)
+  if (result.success) {
+    return { isValid: true, errors: {} as Record<string, string> }
   }
-  if (!form.name.trim()) return "Vui lòng nhập tên gói"
-  if (!form.slotCount.trim() || Number(form.slotCount) <= 0) return "Số lượng slot phải lớn hơn 0"
-  if (!Number.isInteger(Number(form.slotCount))) return "Số lượng slot phải là số nguyên"
-  if (!form.price.trim() || parseMoneyInput(form.price) <= 0) return "Giá bán phải lớn hơn 0"
-  return null
+  const errors: Record<string, string> = {}
+  result.error.issues.forEach((err) => {
+    if (err.path[0]) {
+      errors[err.path[0].toString()] = err.message
+    }
+  })
+  return { isValid: false, errors }
 }
 
 function packageToDeleteItem(item: RecurringPackage) {

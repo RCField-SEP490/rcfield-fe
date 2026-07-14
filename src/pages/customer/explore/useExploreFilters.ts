@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
-import type { CafeSearchParams } from "@/shared/data/explore-data"
+import type { CafeSearchParams, SortOption } from "@/shared/data/explore-data"
 import type { CafeViewMode, SearchTarget } from "./explore-utils"
 import { getActiveFilterCount, normalizeFilterValue } from "./explore-utils"
+import { PRICE_SLIDER_MAX, PRICE_SLIDER_MIN } from "./constants"
 
 export function useExploreFilters() {
   const [searchParams] = useSearchParams()
@@ -16,6 +17,10 @@ export function useExploreFilters() {
   const [feature, setFeature] = useState(normalizeFilterValue(searchParams.get("feature")))
   const [vehicleType, setVehicleType] = useState(normalizeFilterValue(searchParams.get("vehicleType")))
   const [date, setDate] = useState(searchParams.get("date") ?? "")
+  const [sortBy, setSortBy] = useState<SortOption>("popularity")
+  const [priceMin, setPriceMin] = useState(PRICE_SLIDER_MIN)
+  const [priceMax, setPriceMax] = useState(PRICE_SLIDER_MAX)
+  const [popularFilters, setPopularFilters] = useState<string[]>([])
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300)
@@ -23,8 +28,20 @@ export function useExploreFilters() {
   }, [query])
 
   const params: CafeSearchParams = useMemo(
-    () => ({ query: debouncedQuery, city, trackType, priceRange, feature, vehicleType, date }),
-    [debouncedQuery, city, trackType, priceRange, feature, vehicleType, date],
+    () => ({
+      query: debouncedQuery,
+      city,
+      trackType,
+      priceRange,
+      feature,
+      vehicleType,
+      date,
+      sortBy,
+      priceMin,
+      priceMax,
+      popularFilters,
+    }),
+    [debouncedQuery, city, trackType, priceRange, feature, vehicleType, date, sortBy, priceMin, priceMax, popularFilters],
   )
 
   const activeFilterCount = useMemo(() => getActiveFilterCount(params), [params])
@@ -38,6 +55,21 @@ export function useExploreFilters() {
     setFeature("all")
     setVehicleType("all")
     setDate("")
+    setSortBy("popularity")
+    setPriceMin(PRICE_SLIDER_MIN)
+    setPriceMax(PRICE_SLIDER_MAX)
+    setPopularFilters([])
+  }
+
+  const resetPriceSlider = () => {
+    setPriceMin(PRICE_SLIDER_MIN)
+    setPriceMax(PRICE_SLIDER_MAX)
+  }
+
+  const togglePopularFilter = (filter: string) => {
+    setPopularFilters((prev) =>
+      prev.includes(filter) ? prev.filter((f) => f !== filter) : [...prev, filter],
+    )
   }
 
   return {
@@ -62,5 +94,15 @@ export function useExploreFilters() {
     setVehicleType,
     date,
     setDate,
+    sortBy,
+    setSortBy,
+    priceMin,
+    setPriceMin,
+    priceMax,
+    setPriceMax,
+    popularFilters,
+    setPopularFilters,
+    togglePopularFilter,
+    resetPriceSlider,
   }
 }

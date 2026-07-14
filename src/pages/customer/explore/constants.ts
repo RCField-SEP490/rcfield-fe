@@ -1,3 +1,5 @@
+import type { SortOption } from "@/shared/data/explore-data"
+
 export interface FilterOption {
   value: string
   label: string
@@ -9,15 +11,6 @@ export const CITY_OPTIONS: FilterOption[] = [
   { value: "Hà Nội", label: "Hà Nội" },
   { value: "Đà Nẵng", label: "Đà Nẵng" },
   { value: "Hải Phòng", label: "Hải Phòng" },
-]
-
-export const TRACK_TYPE_OPTIONS: FilterOption[] = [
-  { value: "all", label: "Tất cả thể loại" },
-  { value: "Drift", label: "Đua Drift Chuyên nghiệp" },
-  { value: "Offroad", label: "Địa hình Offroad Arena" },
-  { value: "Touring", label: "Đường phẳng Touring" },
-  { value: "Mini-Z", label: "Vòng đua Mini-Z thảm nỉ" },
-  { value: "Drag", label: "Đường Drag bê tông" },
 ]
 
 export const PRICE_RANGE_OPTIONS: FilterOption[] = [
@@ -35,3 +28,14 @@ export const FEATURE_OPTIONS: FilterOption[] = [
   { value: "Pit Lane chuyên nghiệp", label: "Khu kỹ thuật Pit Stop" },
   { value: "Mát lạnh Điều hòa", label: "Mát lạnh Điều hòa trong nhà" },
 ]
+
+export const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "popularity", label: "Độ phổ biến" },
+  { value: "price_asc", label: "Giá thấp → cao" },
+  { value: "price_desc", label: "Giá cao → thấp" },
+  { value: "rating", label: "Đánh giá cao nhất" },
+]
+
+export const PRICE_SLIDER_MIN = 0
+export const PRICE_SLIDER_MAX = 24_000_000
+export const PRICE_SLIDER_STEP = 100_000

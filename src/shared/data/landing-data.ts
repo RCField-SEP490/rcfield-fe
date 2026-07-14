@@ -78,8 +78,8 @@ export const playerFeatures: Feature[] = [
   },
   {
     id: "booking-pay",
-    title: "Đặt lịch & Thanh toán cọc",
-    description: "Chọn khung giờ, đặt xe thuê (RENTAL) hoặc đăng ký mang xe cá nhân (BYOC) — thậm chí kết hợp cả hai trong một booking. Thanh toán cọc trực tuyến, lịch giữ ngay lập tức.",
+    title: "Đặt lịch & Thanh toán",
+    description: "Chọn khung giờ, đặt xe thuê (RENTAL) hoặc đăng ký mang xe cá nhân (BYOC) — thậm chí kết hợp cả hai trong một booking. Thanh toán trực tuyến nhanh chóng, giữ lịch ngay lập tức.",
     icon: "CalendarCheck"
   },
   {
@@ -97,7 +97,7 @@ export const playerFeatures: Feature[] = [
   {
     id: "checkout-rate",
     title: "Check-out nhanh chóng",
-    description: "Bàn giao xe, nghiệm thu tình trạng, tự động đối soát tiền cọc, thanh toán hóa đơn cuối cùng và đánh giá dịch vụ.",
+    description: "Bàn giao xe, nghiệm thu tình trạng, đối soát hóa đơn, hoàn tất thanh toán cuối cùng và đánh giá dịch vụ.",
     icon: "Receipt"
   }
 ]
@@ -118,7 +118,7 @@ export const providerFeatures: Feature[] = [
   {
     id: "booking-manage",
     title: "Quản lý Booking thông minh",
-    description: "Xem trực quan sơ đồ đặt lịch, tự động kiểm soát chồng chéo khung giờ, duyệt cọc tự động qua hệ thống Ledger.",
+    description: "Xem trực quan sơ đồ đặt lịch, tự động kiểm soát chồng chéo khung giờ, duyệt thanh toán qua hệ thống Ledger.",
     icon: "Calendar"
   },
   {
@@ -177,12 +177,12 @@ export const pricingPlans: PricingPlan[] = [
 
 export const faqsData: FAQItem[] = [
   {
-    question: "Hệ thống thanh toán cọc hoạt động như thế nào?",
-    answer: "Khi booking được xác nhận, toàn bộ phí slot, phí thuê xe và tiền cọc bảo đảm được ghi vào Ledger dưới dạng các component độc lập. Sau khi session hoàn tất, doanh thu được giải ngân về Provider sau khi trừ phí nền tảng 15% (chỉ tính trên booking xe, không tính F&B). Tiền cọc hoàn trả 100% cho khách nếu xe không có hư hỏng mới."
+    question: "Quy trình đặt lịch và thanh toán hoạt động như thế nào?",
+    answer: "Khi booking được xác nhận, toàn bộ phí slot, phí thuê xe và F&B đặt trước được ghi nhận chi tiết dưới dạng các component độc lập trên Ledger. Sau khi phiên chơi hoàn tất, doanh thu được đối soát và giải ngân về Provider sau khi khấu trừ phí nền tảng theo chính sách."
   },
   {
     question: "Ai chịu trách nhiệm khi xe thuê bị hỏng hóc trong phiên chơi?",
-    answer: "Nhờ vào quy trình 'Serious Inspection' bắt buộc chụp ảnh 4 góc trước và sau mỗi phiên thuê xe, hệ thống sẽ lưu trữ bằng chứng rõ ràng. Nếu xảy ra hư hỏng, nhân viên sẽ ghi nhận chi tiết, hệ thống tự động tính toán chi phí sửa chữa dựa trên bảng giá linh kiện đã cấu hình để khấu trừ từ tiền cọc. Tranh chấp (nếu có) sẽ được gửi lên ban quản trị Admin xử lý."
+    answer: "Nhờ vào quy trình 'Serious Inspection' bắt buộc chụp ảnh 4 góc trước và sau mỗi phiên thuê xe, hệ thống sẽ lưu trữ bằng chứng rõ ràng. Nếu xảy ra hư hỏng, nhân viên sẽ ghi nhận chi tiết, hệ thống tự động tính toán chi phí sửa chữa dựa trên bảng giá linh kiện đã cấu hình. Khách hàng sẽ thanh toán khoản bồi thường này tại quầy khi check-out. Tranh chấp (nếu có) sẽ được gửi lên ban quản trị Admin xử lý."
   },
   {
     question: "Quán của tôi đang sử dụng phần mềm POS cafe khác, có thể tích hợp không?",
@@ -190,7 +190,7 @@ export const faqsData: FAQItem[] = [
   },
   {
     question: "Nếu khách hàng đến trễ so với khung giờ đã đặt trước thì sao?",
-    answer: "Khung giờ đặt lịch được giữ nguyên. Nếu khách đến trễ, phiên chơi thực tế (Session) sẽ bắt đầu muộn hơn nhưng thời lượng được tính từ lúc thực tế check-in. Nếu không check-in trong khoảng thời gian quy định, booking sẽ chuyển trạng thái NO_SHOW và tiền cọc được xử lý theo chính sách của từng chi nhánh."
+    answer: "Khung giờ đặt lịch được giữ nguyên. Nếu khách đến trễ, phiên chơi thực tế (Session) sẽ bắt đầu muộn hơn nhưng thời lượng được tính từ lúc thực tế check-in. Nếu không check-in trong khoảng thời gian quy định, booking sẽ chuyển trạng thái NO_SHOW và được xử lý theo chính sách hủy lịch."
   }
 ]
 export type LandingStat = {

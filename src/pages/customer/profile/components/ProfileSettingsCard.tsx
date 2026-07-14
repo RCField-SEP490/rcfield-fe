@@ -47,12 +47,14 @@ export function ProfileSettingsCard() {
   }, [setUser])
 
   useEffect(() => {
-    setForm({
-      firstName,
-      lastName,
-      email,
-      phone: user?.phone ?? "",
-      avatarUrl: user?.avatarUrl ?? "",
+    queueMicrotask(() => {
+      setForm({
+        firstName,
+        lastName,
+        email,
+        phone: user?.phone ?? "",
+        avatarUrl: user?.avatarUrl ?? "",
+      })
     })
   }, [email, firstName, lastName, user?.avatarUrl, user?.phone])
 

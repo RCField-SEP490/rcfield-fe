@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { api } from "@/shared/lib/axios"
 
 export interface StaffListItem {
@@ -11,6 +12,7 @@ export interface StaffListItem {
   createdAt: string
   activatedAt: string | null
   inviteExpiresAt: string | null
+  lastActiveAt: string | null
 }
 
 export interface InviteStaffBody {
@@ -29,21 +31,71 @@ export interface StaffImpersonateResponse {
   staff: { id: string; email: string; fullName: string; cafeName: string; cafeId: string }
 }
 
-export interface TodayBookingItem {
-  id: string
-  shortCode?: string
-  customerName: string
-  customerPhone: string | null
-  startTime: string
-  endTime: string
-  createdAt: string
+export interface CreateWalkInBookingInput {
+  play_mode: "RENTAL" | "BYOC"
+  track_type_id: string
+  slot_start: string
+  slot_end: string
+  payment_method: "CASH" | "BANK_TRANSFER"
+  vehicle_ids: string[]
+  participants: {
+    guest_name: string
+    guest_phone: string
+    participant_type: string
+  }[]
+}
+
+export interface CreateWalkInBookingResponse {
+  bookingId: string
+  bookingCode: string
   status: string
-  mode: string
-  vehicleName: string | null
-  trackTypeName: string | null
-  participantCount: number
-  vehicleCount: number
-  fnbPreorderAmount: number
+  source: string
+  paymentStatus: string
+  totalAmount: number
+}
+
+export interface TodayBookingItem {
+  bookingId: string
+  shortCode: string
+  cafeId: string
+  cafeName: string
+  cafeAddress: string
+  cafePhone: string
+  trackName: string
+  trackType: string
+  bookingMode: "SINGLE" | "PACKAGE" | "SUBSCRIPTION"
+  playMode: "RENTAL" | "BYOC" | "MIXED"
+  source: "APP" | "STAFF_MANUAL"
+  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "AWAITING_PAYMENT" | "COMPLETED"
+  slotStart: string
+  slotEnd: string
+  slotCount: number
+  depositAmount: number
+  slotFee: number
+  rentalFee: number
+  fnbPreorderFee: number
+  fnbOnsiteFee: number
+  discountAmount: number
+  totalAmount: number
+  paymentStatus: "UNPAID" | "PAID" | "REFUNDED"
+  payment_components?: any[]
+  plannedParticipants: string[]
+  participantDetails?: { name: string; phone?: string; isBooker: boolean }[]
+  plannedVehicles: string[]
+  sessions: any[]
+
+  // Legacy aliases used by older UI widgets/mocks while the staff API was stabilizing.
+  id?: string
+  customerName?: string
+  customerPhone?: string | null
+  startTime?: string
+  endTime?: string
+  createdAt?: string
+  mode?: string
+  vehicleName?: string | null
+  trackTypeName?: string | null
+  participantCount?: number
+  vehicleCount?: number
 }
 
 export interface FnbOrderItemDetail {
@@ -65,11 +117,52 @@ export interface TodayFnbOrderItem {
   items: FnbOrderItemDetail[]
 }
 
+export interface StaffDetailProfile {
+  id: string
+  fullName: string
+  email: string
+  phone: string | null
+  cafeName: string
+  cafeId: string
+  status: "PENDING" | "ACTIVE" | "DISABLED"
+  createdAt: string
+  activatedAt: string | null
+  lastActiveAt: string | null
+}
+
+export interface StaffKpiSummary {
+  staffId: string
+  period: "7d" | "30d" | "90d"
+  totalCheckIns: number
+  totalFnbOrdersHandled: number
+  totalExtensionsApproved: number
+  onTimeCheckInRate: number | null
+  activeDaysCount: number
+}
+
+export interface StaffActivityEvent {
+  id: string
+  type: "CHECK_IN" | "CHECK_OUT" | "FNB_ORDER" | "EXTENSION_APPROVED"
+  eventTime: string
+  label: string
+  bookingId: string
+  bookingSource: "APP" | "STAFF_MANUAL"
+}
+
+export interface StaffActivityPage {
+  events: StaffActivityEvent[]
+  total: number
+  hasMore: boolean
+}
+
 export const staffQueryKeys = {
   all: ["staff"] as const,
   list: (cafeId?: string) => [...staffQueryKeys.all, "list", cafeId ?? "all"] as const,
   todayBookings: () => [...staffQueryKeys.all, "today-bookings"] as const,
   fnbOrders: () => [...staffQueryKeys.all, "fnb-orders"] as const,
+  staffDetail: (staffId: string) => [...staffQueryKeys.all, "detail", staffId] as const,
+  staffKpi: (staffId: string, period: string) => [...staffQueryKeys.all, "kpi", staffId, period] as const,
+  staffActivity: (staffId: string) => [...staffQueryKeys.all, "activity", staffId] as const,
 }
 
 export const staffApi = {
@@ -109,8 +202,8 @@ export const staffApi = {
     return res.data.data
   },
 
-  getTodayBookings: async (): Promise<any[]> => {
-    const res = await api.get<{ success: boolean; data: any[] }>("/v1/staff/today-bookings")
+  getTodayBookings: async (): Promise<TodayBookingItem[]> => {
+    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/today-bookings")
     return res.data.data
   },
 
@@ -139,6 +232,21 @@ export const staffApi = {
     return res.data.data
   },
 
+  getStaffDetail: async (staffId: string): Promise<StaffDetailProfile> => {
+    const res = await api.get<{ success: boolean; data: StaffDetailProfile }>(`/v1/provider/staff/${staffId}`)
+    return res.data.data
+  },
+
+  getStaffKpi: async (staffId: string, period: "7d" | "30d" | "90d"): Promise<StaffKpiSummary> => {
+    const res = await api.get<{ success: boolean; data: StaffKpiSummary }>(`/v1/provider/staff/${staffId}/kpi`, { params: { period } })
+    return res.data.data
+  },
+
+  getStaffActivity: async (staffId: string, limit = 20, offset = 0): Promise<StaffActivityPage> => {
+    const res = await api.get<{ success: boolean; data: StaffActivityPage }>(`/v1/provider/staff/${staffId}/activity`, { params: { limit, offset } })
+    return res.data.data
+  },
+
   checkIn: async (bookingId: string): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/check-in`)
     return res.data.data
@@ -154,7 +262,7 @@ export const staffApi = {
     return res.data.data
   },
 
-  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee: number; direct?: boolean }): Promise<any> => {
+  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee?: number; direct?: boolean }): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/extensions`, data)
     return res.data.data
   },
@@ -194,6 +302,11 @@ export const staffApi = {
 
   confirmRefund: async (bookingId: string): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/confirm-refund`)
+    return res.data.data
+  },
+
+  createWalkInBooking: async (body: CreateWalkInBookingInput): Promise<CreateWalkInBookingResponse> => {
+    const res = await api.post<{ success: boolean; data: CreateWalkInBookingResponse }>("/v1/staff/bookings", body)
     return res.data.data
   },
 }

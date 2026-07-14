@@ -1,22 +1,98 @@
-import { Search, X } from "lucide-react"
+import { CalendarDays, MapPin, Search } from "lucide-react"
+import { motion } from "framer-motion"
 import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
+import { CITY_OPTIONS } from "../constants"
 
-export function ExploreSearchBar({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+interface ExploreSearchBarProps {
+  city: string
+  onCityChange: (value: string) => void
+  date: string
+  onDateChange: (value: string) => void
+  query: string
+  onQueryChange: (value: string) => void
+}
+
+export function ExploreSearchBar({
+  city,
+  onCityChange,
+  date,
+  onDateChange,
+  query,
+  onQueryChange,
+}: ExploreSearchBarProps) {
   return (
-    <div className="relative flex-1">
-      <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-      <Input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Tìm theo tên cơ sở, quận, thành phố hoặc loại xe..."
-        className="h-12 rounded-xl border-slate-200 bg-white pl-11 pr-11 text-sm font-semibold shadow-sm"
-      />
-      {value && (
-        <Button type="button" size="icon-sm" variant="ghost" onClick={() => onChange("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg" aria-label="Xóa tìm kiếm">
-          <X className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
+    <motion.section
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="relative z-30 shrink-0 border-b border-slate-200/60 bg-white/80 shadow-sm backdrop-blur-xl"
+    >
+      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:px-6">
+        {/* Location */}
+        <motion.div
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1, duration: 0.35 }}
+          className="relative flex flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 transition-all duration-200 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 focus-within:shadow-sm"
+        >
+          <MapPin className="h-4 w-4 shrink-0 text-orange-600" />
+          <select
+            value={city}
+            onChange={(e) => onCityChange(e.target.value)}
+            className="w-full cursor-pointer appearance-none bg-transparent text-sm font-semibold text-slate-700 outline-none"
+          >
+            {CITY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </motion.div>
+
+        {/* Date */}
+        <motion.div
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.15, duration: 0.35 }}
+          className="relative flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 transition-all duration-200 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 focus-within:shadow-sm md:w-[200px]"
+        >
+          <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => onDateChange(e.target.value)}
+            placeholder="Chọn ngày"
+            className="w-full cursor-pointer bg-transparent text-sm font-semibold text-slate-700 outline-none"
+          />
+        </motion.div>
+
+        {/* Search text (mobile only) */}
+        <motion.div
+          initial={{ opacity: 0, x: -12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.35 }}
+          className="relative flex flex-1 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2.5 transition-all duration-200 focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100 focus-within:shadow-sm md:hidden"
+        >
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder="Tìm tên cơ sở, quận, thành phố..."
+            className="w-full bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+          />
+        </motion.div>
+
+        {/* Search CTA */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.25, duration: 0.3 }}
+        >
+          <Button className="h-11 gap-2 rounded-xl bg-orange-600 px-6 text-sm font-bold text-white shadow-md shadow-orange-600/20 transition-all duration-200 hover:bg-orange-700 hover:shadow-lg hover:shadow-orange-600/30 hover:-translate-y-0.5 active:scale-[0.98]">
+            Tìm RC Cafe
+            <Search className="h-4 w-4" />
+          </Button>
+        </motion.div>
+      </div>
+    </motion.section>
   )
 }

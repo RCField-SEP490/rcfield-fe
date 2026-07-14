@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react"
-import { useForm, type Resolver } from "react-hook-form"
+import { useForm, useWatch, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -53,9 +53,9 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess, selectedPlanI
   const {
     register,
     handleSubmit,
+    control,
     reset,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
@@ -65,8 +65,8 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess, selectedPlanI
     },
   })
 
-  const watchedPlanId = watch("plan_id")
-  const watchedTransferAmount = watch("transfer_amount")
+  const watchedPlanId = useWatch({ control, name: "plan_id" })
+  const watchedTransferAmount = useWatch({ control, name: "transfer_amount" })
   const activePlanId = selectedPlanId || watchedPlanId
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === activePlanId),

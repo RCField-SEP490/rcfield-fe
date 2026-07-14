@@ -234,16 +234,16 @@ export interface ListMyBookingsParams {
 
 export interface CafeBookingListItem {
   id: string
-  customerId: string
-  cafeId: string
-  playMode: BookingPlayMode
   status: BookingStatus
+  playMode: BookingPlayMode
   slotStart: string
   slotEnd: string
-  paymentExpiresAt: string | null
   createdAt: string
+  paymentExpiresAt: string | null
   cancelledBy: string | null
   cancellationReason: string | null
+  customerName: string
+  customerPhone: string | null
 }
 
 export interface CafeBookingListResponse {

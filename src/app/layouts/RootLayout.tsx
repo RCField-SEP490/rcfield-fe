@@ -115,7 +115,7 @@ export function RootLayout() {
     <>
       <AuthInitializer />
       <Outlet />
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" closeButton />
     </>
   )
 }

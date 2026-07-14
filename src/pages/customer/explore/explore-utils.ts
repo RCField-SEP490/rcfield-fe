@@ -1,7 +1,8 @@
 import type { Cafe, CafeSearchParams, Vehicle } from "@/shared/data/explore-data"
+import { PRICE_SLIDER_MAX, PRICE_SLIDER_MIN } from "./constants"
 
 export type CafeViewMode = "grid" | "list"
-export type SearchTarget = "cafes" | "vehicles"
+export type SearchTarget = "cafes" | "contests"
 export type VehicleWithCafe = Vehicle & { cafe: Cafe }
 export type UserLocation = { lat: number; lng: number }
 export type MapBounds = { north: number; south: number; east: number; west: number }
@@ -53,44 +54,66 @@ export function filterCafes(cafes: Cafe[], params: CafeSearchParams): Cafe[] {
       cafe.availableVehicles.some((vehicle) => vehicle.type.toLowerCase().includes(vehicleType.toLowerCase()) || vehicle.scale.includes(vehicleType))
     const matchesPrice = priceRange === DEFAULT_VALUE || cafe.availableVehicles.some((vehicle) => isVehicleInPriceRange(vehicle.pricePerHour, priceRange))
 
-    return matchesQuery && matchesCity && matchesTrack && matchesFeature && matchesVehicleType && matchesPrice
+    // Price slider filter — uses slotFeeRate
+    const matchesPriceSlider = matchesPriceSliderRange(cafe, params.priceMin, params.priceMax)
+
+    // Popular filters — match track types or features
+    const matchesPopular = matchesPopularFilters(cafe, params.popularFilters)
+
+    return matchesQuery && matchesCity && matchesTrack && matchesFeature && matchesVehicleType && matchesPrice && matchesPriceSlider && matchesPopular
   })
 }
 
-export function filterVehicles(vehicles: VehicleWithCafe[], params: CafeSearchParams): VehicleWithCafe[] {
-  return vehicles.filter((vehicle) => {
-    const query = params.query?.trim().toLowerCase() ?? ""
-    const city = normalizeFilterValue(params.city)
-    const trackType = normalizeFilterValue(params.trackType)
-    const priceRange = normalizeFilterValue(params.priceRange)
-    const feature = normalizeFilterValue(params.feature)
-    const vehicleType = normalizeFilterValue(params.vehicleType)
+function matchesPriceSliderRange(cafe: Cafe, priceMin?: number, priceMax?: number): boolean {
+  if (priceMin === undefined && priceMax === undefined) return true
+  if (priceMin === PRICE_SLIDER_MIN && priceMax === PRICE_SLIDER_MAX) return true
 
-    const matchesQuery =
-      query === "" ||
-      vehicle.name.toLowerCase().includes(query) ||
-      vehicle.type.toLowerCase().includes(query) ||
-      vehicle.specs.brand.toLowerCase().includes(query) ||
-      vehicle.cafe.name.toLowerCase().includes(query)
+  const cafePrice = cafe.slotFeeRate ?? 0
+  if (cafePrice === 0) return true
 
-    const matchesCity = city === DEFAULT_VALUE || vehicle.cafe.city === city
-    const matchesTrack =
-      trackType === DEFAULT_VALUE ||
-      vehicle.type.toLowerCase().includes(trackType.toLowerCase()) ||
-      vehicle.scale.includes(trackType) ||
-      vehicle.cafe.trackTypeIds?.includes(trackType)
-    const matchesFeature = feature === DEFAULT_VALUE || vehicle.cafe.features.includes(feature)
-    const matchesVehicleType = vehicleType === DEFAULT_VALUE || vehicle.type.toLowerCase().includes(vehicleType.toLowerCase()) || vehicle.scale.includes(vehicleType)
-    const matchesPrice = priceRange === DEFAULT_VALUE || isVehicleInPriceRange(vehicle.pricePerHour, priceRange)
+  const min = priceMin ?? PRICE_SLIDER_MIN
+  const max = priceMax ?? PRICE_SLIDER_MAX
+  return cafePrice >= min && cafePrice <= max
+}
 
-    return matchesQuery && matchesCity && matchesTrack && matchesFeature && matchesVehicleType && matchesPrice
+function matchesPopularFilters(cafe: Cafe, popularFilters?: string[]): boolean {
+  if (!popularFilters || popularFilters.length === 0) return true
+
+  return popularFilters.every((filter) => {
+    const matchesTrack = cafe.trackTypes.some((t) => t.toLowerCase().includes(filter.toLowerCase()))
+    const matchesFeature = cafe.features.some((f) => f.toLowerCase().includes(filter.toLowerCase()))
+    const matchesTrackId = cafe.trackTypeIds?.includes(filter)
+    return matchesTrack || matchesFeature || matchesTrackId
+  })
+}
+
+export function sortCafes(cafes: Cafe[], sortBy: CafeSearchParams["sortBy"]): Cafe[] {
+  if (!sortBy || sortBy === "popularity") return cafes
+
+  return [...cafes].sort((a, b) => {
+    switch (sortBy) {
+      case "price_asc":
+        return (a.slotFeeRate ?? 0) - (b.slotFeeRate ?? 0)
+      case "price_desc":
+        return (b.slotFeeRate ?? 0) - (a.slotFeeRate ?? 0)
+      case "rating":
+        return b.rating - a.rating
+      default:
+        return 0
+    }
   })
 }
 
 export function getActiveFilterCount(params: CafeSearchParams) {
-  return [params.city, params.trackType, params.priceRange, params.feature, params.vehicleType, params.date].filter(
+  let count = [params.city, params.trackType, params.priceRange, params.feature, params.vehicleType, params.date].filter(
     (value) => value !== undefined && value !== "" && value !== DEFAULT_VALUE,
   ).length
+
+  if (params.priceMin !== undefined && params.priceMin > PRICE_SLIDER_MIN) count++
+  if (params.priceMax !== undefined && params.priceMax < PRICE_SLIDER_MAX) count++
+  if (params.popularFilters && params.popularFilters.length > 0) count += params.popularFilters.length
+
+  return count
 }
 
 export function buildBookingUrl(cafeId: string, vehicleId?: string) {

@@ -255,7 +255,7 @@ export const initialMockBookings: CustomerBookingDetail[] = [
     slotStart: new Date(Date.now() - 1800000).toISOString(), // started 30 mins ago
     slotEnd: new Date(Date.now() + 3600000).toISOString(),   // ends in 60 mins
     slotCount: 3,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 120000,
     rentalFee: 200000,
     fnbPreorderFee: 0,
@@ -359,7 +359,7 @@ export const initialMockBookings: CustomerBookingDetail[] = [
     slotStart: new Date(Date.now() - 3600000).toISOString(),
     slotEnd: new Date(Date.now()).toISOString(),
     slotCount: 2,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 85000,
     rentalFee: 150000,
     fnbPreorderFee: 0,
@@ -427,7 +427,7 @@ export const initialMockBookings: CustomerBookingDetail[] = [
     slotStart: new Date(Date.now() - 7200000).toISOString(),
     slotEnd: new Date(Date.now() - 3600000).toISOString(),
     slotCount: 2,
-    depositAmount: 150000,
+    depositAmount: 0,
     slotFee: 80000,
     rentalFee: 150000,
     fnbPreorderFee: 0,

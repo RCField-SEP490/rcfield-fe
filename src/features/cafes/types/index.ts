@@ -1,3 +1,5 @@
+import type { ActivePromotion } from "@/features/promotions/api/promotion.api"
+
 export type CafeStatus = "PENDING" | "ACTIVE" | "SUSPENDED"
 
 export type TrackType = {
@@ -46,9 +48,13 @@ export type BackendCafe = {
   maxConcurrentBookings: number
   minBookingNoticeMinutes: number
   byocCapacity: number
+  rating?: number
+  reviewsCount?: number
+  minPrice?: number
   amenityIds: string[]
   rules: string[]
   amenities?: AmenityCatalogItem[]
+  activePromotions?: ActivePromotion[]
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -66,10 +72,17 @@ export type CafeListParams = {
   page?: number
   limit?: number
   scope?: "managed"
+  query?: string
   slug?: string
   district?: string
   city?: string
   track_type?: string
+  price_min?: number
+  price_max?: number
+  amenities?: string[]
+  vehicle_type?: string
+  sort_by?: "popularity" | "price_asc" | "price_desc" | "rating"
+  popular_filters?: string[]
   status?: CafeStatus
 }
 

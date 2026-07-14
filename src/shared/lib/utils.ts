@@ -68,7 +68,33 @@ export function sanitizeImageUrl(url: string | null | undefined): string | null 
   return urlStr
 }
 
-export function getCatalogImageUrl(catalog: any): string | null {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+export function getApiErrorInfo(error: unknown): { code?: string; message?: string; status?: number } {
+  if (!isRecord(error)) return {}
+  const response = isRecord(error.response) ? error.response : undefined
+  const data = response && isRecord(response.data) ? response.data : undefined
+  const code = typeof data?.code === "string" ? data.code : undefined
+  const message = typeof data?.message === "string" ? data.message : undefined
+  const status = typeof response?.status === "number" ? response.status : undefined
+  return { code, message, status }
+}
+
+type CatalogImageCandidate = string | {
+  url?: string | null
+  cover_image_url?: string | null
+  coverImageUrl?: string | null
+}
+
+type CatalogImageSource = {
+  coverImageUrl?: string | null
+  cover_image_url?: string | null
+  images?: CatalogImageCandidate[]
+}
+
+export function getCatalogImageUrl(catalog: CatalogImageSource | null | undefined): string | null {
   if (!catalog) return null
   let rawUrl: string | null = null
   if (catalog.coverImageUrl) {
@@ -80,9 +106,8 @@ export function getCatalogImageUrl(catalog: any): string | null {
     if (typeof firstImg === "string") {
       rawUrl = firstImg
     } else if (typeof firstImg === "object" && firstImg !== null) {
-      rawUrl = firstImg.url || firstImg.cover_image_url || firstImg.coverImageUrl
+      rawUrl = firstImg.url || firstImg.cover_image_url || firstImg.coverImageUrl || null
     }
   }
   return sanitizeImageUrl(rawUrl)
 }
-

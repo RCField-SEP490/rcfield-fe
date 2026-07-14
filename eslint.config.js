@@ -20,6 +20,12 @@ export default defineConfig([
     },
     rules: {
       "react-refresh/only-export-components": "off",
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/refs": "error",
+      "react-hooks/purity": "error",
+      "react-hooks/immutability": "error",
+      "react-hooks/incompatible-library": "error",
+      "@typescript-eslint/no-explicit-any": "error",
     },
   },
 ])

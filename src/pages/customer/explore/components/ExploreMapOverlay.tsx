@@ -182,7 +182,7 @@ export function ExploreMapOverlay({
 
       markersRef.current.set(cafe.id, marker)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [cafes])
 
   // Update active marker icon + clear route when selection changes
@@ -196,8 +196,10 @@ export function ExploreMapOverlay({
     // Clear previous route
     routeLayerRef.current?.remove()
     routeLayerRef.current = null
-    setRouteInfo(null)
-    setRouteLoading(false)
+    queueMicrotask(() => {
+      setRouteInfo(null)
+      setRouteLoading(false)
+    })
   }, [activeCafeId])
 
   // Update user marker
@@ -320,9 +322,9 @@ export function ExploreMapOverlay({
             <button
               type="button"
               onClick={() => onUserLocation(null)}
-              className="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-100"
+              className="flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700 shadow-sm hover:bg-orange-100"
             >
-              <Navigation className="h-3 w-3 fill-blue-600" />
+              <Navigation className="h-3 w-3 fill-orange-600" />
               Vị trí của bạn
               <X className="h-3 w-3" />
             </button>
@@ -402,15 +404,15 @@ export function ExploreMapOverlay({
                   <div className="space-y-2 px-3 pb-3">
                     {/* Route info bar */}
                     {routeInfo && (
-                      <div className="flex items-center gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
-                        <RouteIcon className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                        <span className="flex-1 text-xs font-medium text-blue-700">
+                      <div className="flex items-center gap-2 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2">
+                        <RouteIcon className="h-3.5 w-3.5 shrink-0 text-orange-600" />
+                        <span className="flex-1 text-xs font-medium text-orange-700">
                           {formatDuration(routeInfo.durationSec)} · {formatRouteDistance(routeInfo.distanceM)} đường bộ
                         </span>
                         <button
                           type="button"
                           onClick={handleClearRoute}
-                          className="shrink-0 text-blue-400 hover:text-blue-600"
+                          className="shrink-0 text-orange-400 hover:text-orange-600"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -426,7 +428,7 @@ export function ExploreMapOverlay({
                           size="sm"
                           disabled={routeLoading}
                           onClick={() => handleFetchRoute(cafe)}
-                          className="gap-1 border-blue-200 text-xs text-blue-600 hover:bg-blue-50"
+                          className="gap-1 border-orange-200 text-xs text-orange-600 hover:bg-orange-50"
                         >
                           {routeLoading ? (
                             <Loader2 className="h-3 w-3 animate-spin" />

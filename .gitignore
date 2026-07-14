@@ -24,6 +24,6 @@ dist-ssr
 *.sw?
 
 # Antigravity / Agent Directory
-.agent
-.agent/
+.agents
+.agents/
 .env

@@ -11,6 +11,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
     tsconfigPaths: true,
+    dedupe: ["react", "react-dom", "react-router"],
   },
   test: {
     environment: "jsdom",

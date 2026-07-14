@@ -1,3 +1,6 @@
+import type { ActivePromotion } from "@/features/promotions/api/promotion.api"
+import type { AmenityCatalogItem } from "@/features/cafes/types"
+
 export type VehicleStatus = "available" | "rented" | "maintenance"
 
 export interface Vehicle {
@@ -14,6 +17,7 @@ export interface Vehicle {
     motor: string
     brand: string
   }
+  compatibleTrackTypes?: { id: string; code: string; name: string }[]
 }
 
 export type CafeOperatingHour = {
@@ -45,13 +49,17 @@ export interface Cafe {
   trackTypes: string[]
   trackTypeIds?: string[]
   features: string[]
+  amenities?: AmenityCatalogItem[]
   description: string
   coordinates: { x: number; y: number }
   latitude?: number | null
   longitude?: number | null
   availableVehicles: Vehicle[]
   operatingHours?: Record<string, CafeOperatingHour> | string
+  promotions?: ActivePromotion[]
 }
+
+export type SortOption = "popularity" | "price_asc" | "price_desc" | "rating"
 
 export type CafeSearchParams = {
   query?: string
@@ -61,10 +69,15 @@ export type CafeSearchParams = {
   feature?: string
   date?: string
   vehicleType?: string
+  sortBy?: SortOption
+  priceMin?: number
+  priceMax?: number
+  popularFilters?: string[]
+  page?: number
+  limit?: number
 }
 
 export type ExploreCafe = Cafe
 export type ExploreVehicle = Vehicle
 
-// Re-export mock data from separate file
 export { mockCafes } from "./mock-cafes"

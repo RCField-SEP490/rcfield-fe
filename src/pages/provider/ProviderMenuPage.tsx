@@ -38,8 +38,8 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
   const PAGE_SIZE = 10
 
   const cafesQuery = useQuery({
-    queryKey: cafeQueryKeys.list({ page: 1, limit: 100 }),
-    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100 }),
+    queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
+    queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
   })
 
   const cafes = (cafesQuery.data?.data ?? []).filter((cafe) => !providerId || cafe.providerId === providerId)
@@ -47,14 +47,14 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
 
   useEffect(() => {
     if (propCafeId) {
-      setSelectedCafeId(propCafeId)
+      queueMicrotask(() => setSelectedCafeId(propCafeId))
     } else if (!selectedCafeId && cafes.length > 0) {
-      setSelectedCafeId(cafes[0].id)
+      queueMicrotask(() => setSelectedCafeId(cafes[0].id))
     }
   }, [cafes, selectedCafeId, propCafeId])
 
   useEffect(() => {
-    setCurrentPage(1)
+    queueMicrotask(() => setCurrentPage(1))
   }, [selectedCafeId, selectedCategory, selectedAvailability])
 
   const menuParams: MenuListParams = useMemo(

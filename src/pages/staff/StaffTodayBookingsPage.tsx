@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react"
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
+import React, { useState, useEffect, useMemo } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
+import { z } from "zod"
 import {
   Search as SearchIcon,
   Car,
@@ -15,13 +17,17 @@ import {
   Users,
   MapPin,
   UtensilsCrossed,
+  QrCode,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from "lucide-react"
 import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
-import { cafeApi } from "@/features/cafes/api/cafe.api"
-import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
+import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
-import type { BackendCafe } from "@/features/cafes/types"
+import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
@@ -31,7 +37,12 @@ import {
   StaffBadge,
   StaffButton,
 } from "./components/StaffUI"
+import { QrCheckinUploader } from "@/features/staff/components/QrCheckinUploader"
 import type { CustomerBookingDetail } from "@/shared/data/customer-operational-mock-data"
+import { useDailyAvailability } from "@/features/booking/hooks/use-booking"
+import { useTrackConfigs } from "@/features/cafes/hooks/useTrackConfigs"
+import { buildDailySlots, DailySlotGrid, type DailySlot, type DailySlotStatus } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
+import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
 
 type TabType = "LIST" | "WALKIN"
 
@@ -88,13 +99,18 @@ function getVehicleCount(booking: any): number {
 }
 
 function getFnbAmount(booking: any): number {
-  return Number(booking.fnbPreorderAmount ?? booking.fnbPreorderFee ?? 0)
+  return Number(booking.fnbPreorderFee ?? 0)
+}
+
+function getFnbOnsiteAmount(booking: any): number {
+  return Number(booking.fnbOnsiteFee ?? 0)
 }
 
 export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { assignedCafeId, createWalkInBooking, startCheckIn, fleetStates } = useStaffOperations()
+  const [nowTime] = useState(() => Date.now())
 
   const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),
@@ -105,24 +121,75 @@ export default function StaffTodayBookingsPage() {
 
   // Primary navigation tab
   const [activeTab, setActiveTab] = useState<TabType>("LIST")
-  
+
+  // QR check-in panel state
+  const [showQrPanel, setShowQrPanel] = useState(false)
+  const [qrBookingId, setQrBookingId] = useState("")
+  const [qrInputValue, setQrInputValue] = useState("")
+
+  const {
+    data: qrBookingData,
+    isLoading: qrBookingLoading,
+    isError: qrBookingError,
+  } = useQuery({
+    queryKey: bookingQueryKeys.detail(qrBookingId),
+    queryFn: () => bookingApi.getBooking(qrBookingId),
+    enabled: !!qrBookingId,
+    retry: false,
+  })
+
   // List states
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
 
+  const getTodayString = () => {
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const date = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${date}`
+  }
+
+
+
   // Walk-in form states
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
-  const [playMode, setPlayMode] = useState<"RENTAL" | "BYOC" | "MIXED">("RENTAL")
+  const [fieldErrors, setFieldErrors] = useState<{ customerName?: string; customerPhone?: string }>({})
+
+  const walkInSchema = z.object({
+    customerName: z.string().min(1, "Vui lòng nhập tên khách hàng"),
+    customerPhone: z
+      .string()
+      .min(1, "Vui lòng nhập số điện thoại")
+      .regex(/^[0-9]{10}$/, "Số điện thoại phải gồm đúng 10 chữ số"),
+  })
+  const [playMode, setPlayMode] = useState<"RENTAL" | "BYOC">("RENTAL")
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER">("CASH")
   const [selectedTrackCode, setSelectedTrackCode] = useState("")
   const [selectedTrackName, setSelectedTrackName] = useState("")
-  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [selectedSlot, setSelectedSlot] = useState("")
+  const [selectedSlotEnd, setSelectedSlotEnd] = useState<string | null>(null)
   const [selectedVehicles, setSelectedVehicles] = useState<VehicleUnit[]>([])
+  const bookingDate = getTodayString()
 
-  // Branch data
-  const [cafeDetails, setCafeDetails] = useState<BackendCafe | null>(null)
-  const [availableVehicles, setAvailableVehicles] = useState<VehicleUnit[]>([])
-  const [loadingVehicles, setLoadingVehicles] = useState(false)
+
+  // Cafe details — dùng useQuery thay vì useEffect+setState
+  const { data: cafeDetails, isLoading: isLoadingCafe } = useQuery({
+    queryKey: cafeQueryKeys.detail(assignedCafeId ?? ""),
+    queryFn: () => cafeApi.getCafe(assignedCafeId!),
+    enabled: !!assignedCafeId,
+    staleTime: 5 * 60 * 1000, // 5 phút
+  })
+
+  // Available vehicles — dùng useQuery thay vì useEffect+setState
+  const { data: availableVehicles = [], isLoading: loadingVehicles } = useVehicleUnits(
+    assignedCafeId ?? "",
+    { exclude_retired: true },
+  )
+
+  // Track configs (must be before useEffects that reference it)
+  const { data: trackConfigs = [] } = useTrackConfigs(assignedCafeId ?? "")
 
   // Sync tab with URL query parameter
   useEffect(() => {
@@ -136,58 +203,89 @@ export default function StaffTodayBookingsPage() {
 
   // Get URL pre-selection data for track from dashboard
   useEffect(() => {
-    if (activeTab === "WALKIN" && cafeDetails) {
+    if (activeTab === "WALKIN") {
       const trackNameUrl = searchParams.get("track")
       const trackTypeUrl = searchParams.get("type")
       if (trackNameUrl && trackTypeUrl) {
         setSelectedTrackName(trackNameUrl)
         setSelectedTrackCode(trackTypeUrl)
-      } else if (cafeDetails.trackTypes && cafeDetails.trackTypes.length > 0) {
-        setSelectedTrackName(cafeDetails.trackTypes[0].name)
-        setSelectedTrackCode(cafeDetails.trackTypes[0].code)
+      } else {
+        const activeConfigs = trackConfigs.filter((c) => c.is_active)
+        if (activeConfigs.length > 0 && !selectedTrackCode) {
+          setSelectedTrackName(activeConfigs[0].track_type?.name ?? "")
+          setSelectedTrackCode(activeConfigs[0].track_type?.code ?? "")
+        }
       }
     }
-  }, [activeTab, cafeDetails, searchParams])
+  }, [activeTab, selectedTrackCode, trackConfigs, searchParams])
 
-  // Fetch Cafe Details & available Vehicles
-  useEffect(() => {
-    if (assignedCafeId) {
-      cafeApi
-        .getCafe(assignedCafeId)
-        .then((data) => setCafeDetails(data))
-        .catch((err) => console.error("Error loading cafe details:", err))
 
-      setLoadingVehicles(true)
-      vehicleApi
-        .listUnits(assignedCafeId)
-        .then((units) => {
-          setAvailableVehicles(units)
-        })
-        .catch((err) => console.error("Error loading fleet units:", err))
-        .finally(() => setLoadingVehicles(false))
-    }
-  }, [assignedCafeId])
 
   // Reset Walk-in form
   const resetWalkinForm = () => {
     setCustomerName("")
     setCustomerPhone("")
+    setFieldErrors({})
     setPlayMode("RENTAL")
+    setPaymentMethod("CASH")
     setSelectedVehicles([])
-    setDurationMinutes(60)
+    setSelectedSlot("")
+    setSelectedSlotEnd(null)
     setSearchParams({})
   }
 
+  const selectedTrackConfig = useMemo(() => {
+    return trackConfigs.find((c) => c.track_type?.code === selectedTrackCode) || null
+  }, [trackConfigs, selectedTrackCode])
+
+  const { openHour, closeHour, isClosedToday } = useMemo(() => {
+    const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
+    const dayKey = DAY_KEYS[new Date().getDay()]
+    const hours = (cafeDetails?.operatingHours as Record<string, { open?: string; close?: string; is_closed?: boolean }> | undefined)?.[dayKey]
+    const parseHour = (t?: string) => (t ? parseInt(t.split(":")[0], 10) : undefined)
+    return {
+      openHour: parseHour(hours?.open) ?? 8,
+      closeHour: parseHour(hours?.close) ?? 22,
+      isClosedToday: !!hours?.is_closed,
+    }
+  }, [cafeDetails])
+
+  const { data: dailyAvailability, isLoading: isLoadingAvailability } = useDailyAvailability(
+    assignedCafeId ?? "",
+    bookingDate,
+    openHour,
+    closeHour,
+    selectedTrackConfig?.id || undefined,
+  )
+
+  const slots = useMemo<DailySlot[]>(() => {
+    if (!dailyAvailability) return buildDailySlots(openHour, closeHour)
+    return buildSlotsFromAvailability(dailyAvailability, playMode)
+  }, [dailyAvailability, openHour, closeHour, playMode])
+
+  const calculateDurationFromSlots = (start: string, end: string | null): number => {
+    if (!start) return 0
+    const [startH, startM] = start.split(":").map(Number)
+    const slotDuration = cafeDetails?.slotDurationMinutes || 60
+    if (!end) return slotDuration
+    const [endH, endM] = end.split(":").map(Number)
+    const startTotal = startH * 60 + startM
+    const endTotal = endH * 60 + endM
+    return Math.max(slotDuration, endTotal - startTotal)
+  }
+
   // Calculate pricing values
-  const slotFeeRate = cafeDetails ? Number(cafeDetails.slotFeeRate) || 80000 : 80000
-  const slotDuration = cafeDetails?.slotDurationMinutes || 30
-  const slotCount = Math.ceil(durationMinutes / slotDuration)
+  // Không dùng fallback giá giả — nếu chưa load cafe thì hiện 0
+  const slotFeeRate = cafeDetails ? Number(cafeDetails.slotFeeRate) || 0 : 0
+  const slotDuration = cafeDetails?.slotDurationMinutes || 60
+  const computedDuration = calculateDurationFromSlots(selectedSlot, selectedSlotEnd)
+  const slotCount = Math.ceil(computedDuration / slotDuration)
   const slotFeeTotal = slotCount * slotFeeRate
 
-  // Calculate rental fees
+  // Không dùng fallback giá giả — nếu catalog chưa có hourlyRate thì tính 0
   const rentalFeeTotal = selectedVehicles.reduce((total, unit) => {
-    const hourly = unit.catalog?.hourlyRate || 75000
-    return total + hourly * (durationMinutes / 60)
+    const hourly = unit.catalog?.hourlyRate ?? 0
+    return total + hourly * (computedDuration / 60)
   }, 0)
 
   const totalAmount = slotFeeTotal + rentalFeeTotal
@@ -196,8 +294,24 @@ export default function StaffTodayBookingsPage() {
   const handleWalkinSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!customerName.trim()) {
-      toast.error("Vui lòng nhập tên khách hàng!")
+    const parsed = walkInSchema.safeParse({
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+    })
+
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors
+      setFieldErrors({
+        customerName: errors.customerName?.[0],
+        customerPhone: errors.customerPhone?.[0],
+      })
+      return
+    }
+
+    setFieldErrors({})
+
+    if (!selectedSlot) {
+      toast.error("Vui lòng chọn slot giờ chơi trên lịch!")
       return
     }
 
@@ -206,33 +320,40 @@ export default function StaffTodayBookingsPage() {
       return
     }
 
-    const slotStart = new Date().toISOString()
-    const slotEnd = new Date(Date.now() + durationMinutes * 60000).toISOString()
+    const startDateTime = new Date(`${bookingDate}T${selectedSlot}:00`)
+    if (isNaN(startDateTime.getTime())) {
+      toast.error("Thời gian bắt đầu không hợp lệ!")
+      return
+    }
+    const slotStart = startDateTime.toISOString()
+    const slotEnd = new Date(startDateTime.getTime() + computedDuration * 60000).toISOString()
 
-    const success = createWalkInBooking({
+    if (!selectedTrackConfig) {
+      toast.error("Không tìm thấy thông tin cấu hình đường đua!")
+      return
+    }
+
+    createWalkInBooking({
       playMode,
-      trackName: selectedTrackName,
-      trackType: selectedTrackCode,
+      trackTypeId: selectedTrackConfig.track_type_id,
       slotStart,
       slotEnd,
-      slotCount,
-      slotFee: slotFeeTotal,
-      rentalFee: rentalFeeTotal,
-      totalAmount,
-      plannedParticipants: [customerName.trim()],
-      plannedVehicles: selectedVehicles.map((v) => v.identifier),
-      selectedVehicles: selectedVehicles.map((v) => ({
-        vehicleId: v.id,
-        name: v.catalog?.name || v.identifier,
-        imageUrl: v.distinctive_image_url || undefined,
-      })),
+      paymentMethod,
+      vehicleIds: selectedVehicles.map((v) => v.id),
+      participants: [
+        {
+          guest_name: customerName.trim(),
+          guest_phone: customerPhone.trim(),
+          participant_type: "WALK_IN_GUEST",
+        },
+      ],
+    }).then((success) => {
+      if (success) {
+        resetWalkinForm()
+        setActiveTab("LIST")
+        setSearchParams({})
+      }
     })
-
-    if (success) {
-      resetWalkinForm()
-      setActiveTab("LIST")
-      setSearchParams({})
-    }
   }
 
   // Toggle vehicle selection for Walk-in
@@ -362,6 +483,131 @@ export default function StaffTodayBookingsPage() {
             </div>
           </div>
 
+          {/* QR CHECK-IN PANEL */}
+          <StaffCard className="overflow-hidden">
+            <button
+              onClick={() => {
+                setShowQrPanel((v) => !v)
+                if (showQrPanel) {
+                  setQrBookingId("")
+                  setQrInputValue("")
+                }
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-[#1c1b1b] hover:bg-[#fcf8f8] transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <QrCode className="size-4 text-[#ea580c]" />
+                Quét mã QR check-in
+              </span>
+              {showQrPanel ? <ChevronUp className="size-4 text-[#a09e9d]" /> : <ChevronDown className="size-4 text-[#a09e9d]" />}
+            </button>
+
+            {showQrPanel && (
+              <div className="px-4 pb-4 space-y-4 border-t border-[#f0eeee] pt-4">
+                <QrCheckinUploader onDecoded={(id) => { setQrBookingId(id); setQrInputValue(id) }} />
+
+                <div className="relative flex items-center">
+                  <div className="flex-grow border-t border-[#e5e2e1]" />
+                  <span className="mx-3 text-xs font-bold text-[#a09e9d] bg-white px-1">hoặc</span>
+                  <div className="flex-grow border-t border-[#e5e2e1]" />
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Nhập booking ID thủ công..."
+                    value={qrInputValue}
+                    onChange={(e) => setQrInputValue(e.target.value)}
+                    className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                  />
+                  <button
+                    onClick={() => setQrBookingId(qrInputValue.trim())}
+                    disabled={!qrInputValue.trim()}
+                    className="rounded-lg bg-[#ea580c] text-white text-sm font-bold px-4 py-2 hover:bg-[#c2410c] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Tìm
+                  </button>
+                  {qrBookingId && (
+                    <button
+                      onClick={() => { setQrBookingId(""); setQrInputValue("") }}
+                      className="rounded-lg border border-[#e5e2e1] text-[#6b7280] px-3 py-2 hover:bg-[#fcf8f8] transition-colors"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+
+                {qrBookingId && (
+                  <div className="rounded-xl border border-[#e5e2e1] overflow-hidden">
+                    {qrBookingLoading && (
+                      <div className="flex items-center justify-center py-6 gap-2 text-sm text-[#6b7280]">
+                        <Loader2 className="size-4 animate-spin" />
+                        Đang tải thông tin booking...
+                      </div>
+                    )}
+                    {qrBookingError && (
+                      <div className="py-4 px-4 text-sm text-red-600 font-semibold">
+                        Không tìm thấy booking. Kiểm tra lại mã QR hoặc ID.
+                      </div>
+                    )}
+                    {qrBookingData && (
+                      <div className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono font-bold text-[#a09e9d]">
+                            #{qrBookingData.id.slice(0, 8).toUpperCase()}
+                          </span>
+                          <StaffBadge variant={
+                            qrBookingData.status === "CONFIRMED" ? "info"
+                            : qrBookingData.status === "COMPLETED" ? "success"
+                            : "neutral"
+                          }>
+                            {qrBookingData.status}
+                          </StaffBadge>
+                        </div>
+                        <div className="text-xs space-y-1 text-[#4c4a49] font-semibold">
+                          <p><span className="text-[#a09e9d]">Khách:</span> {qrBookingData.participants?.[0]?.resolvedName ?? "—"}</p>
+                          <p>
+                            <span className="text-[#a09e9d]">Giờ:</span>{" "}
+                            {new Date(qrBookingData.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                            {" – "}
+                            {new Date(qrBookingData.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                          <p><span className="text-[#a09e9d]">Chế độ:</span> {qrBookingData.playMode === "RENTAL" ? "Thuê xe" : "BYOC"}</p>
+                        </div>
+                        {qrBookingData.status !== "CONFIRMED" && (
+                          <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                            {qrBookingData.status === "COMPLETED" ? "Booking này đã hoàn thành." :
+                             qrBookingData.status === "CANCELLED" ? "Booking này đã bị hủy." :
+                             qrBookingData.status === "NO_SHOW" ? "Booking này đã quá hạn (No Show)." :
+                             qrBookingData.status === "PENDING" ? "Booking chưa thanh toán, không thể check-in." :
+                             "Không thể check-in với trạng thái hiện tại."}
+                          </div>
+                        )}
+                        {qrBookingData.status === "CONFIRMED" && qrBookingData.session && (
+                          <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
+                            Đã check-in lúc {qrBookingData.session.actualStartAt
+                              ? new Date(qrBookingData.session.actualStartAt).toLocaleTimeString("vi-VN")
+                              : "—"}.
+                          </div>
+                        )}
+                        {qrBookingData.status === "CONFIRMED" && !qrBookingData.session && (
+                          <StaffButton
+                            onClick={() => handleStartCheckIn(qrBookingData)}
+                            variant="primary"
+                            className="w-full"
+                          >
+                            Xác nhận check-in
+                            <ArrowRight className="size-3.5" />
+                          </StaffButton>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </StaffCard>
+
           {/* BOOKINGS CARDS GRID */}
           {loadingBookings ? (
             <div className="flex items-center justify-center py-12">
@@ -381,6 +627,7 @@ export default function StaffTodayBookingsPage() {
                   const participantCount = getParticipantCount(b)
                   const vehicleCount = getVehicleCount(b)
                   const fnbAmount = getFnbAmount(b)
+                  const fnbOnsiteAmount = getFnbOnsiteAmount(b)
                   const activeSession = !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(b.status)
                     ? b.sessions?.find((session: any) => ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(session.status))
                     : undefined
@@ -414,8 +661,9 @@ export default function StaffTodayBookingsPage() {
                     : "warning"
 
                   const hasFnb = fnbAmount > 0
+                  const hasOnsiteFnb = fnbOnsiteAmount > 0
                   const countdown = activeSession ? null : getSlotCountdown(slotStart)
-                  const remainingMs = activeSession ? new Date(slotEnd).getTime() - Date.now() : null
+                  const remainingMs = activeSession ? new Date(slotEnd).getTime() - nowTime : null
                   const remainingMinutes = remainingMs !== null ? Math.ceil(remainingMs / 60000) : null
 
                   return (
@@ -517,6 +765,12 @@ export default function StaffTodayBookingsPage() {
                             F&B đặt trước · {formatCurrency(fnbAmount)}
                           </span>
                         )}
+                        {hasOnsiteFnb && (
+                          <span className="flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-bold text-amber-700">
+                            <UtensilsCrossed className="size-3" />
+                            F&B gọi tại ca · {formatCurrency(fnbOnsiteAmount)}
+                          </span>
+                        )}
                         <div className="ml-auto">
                           {activeSession ? (
                             <StaffButton onClick={() => navigate(`/staff/sessions/${activeSession.sessionId}`)} variant="outline" size="sm">
@@ -576,30 +830,45 @@ export default function StaffTodayBookingsPage() {
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="Nhập tên khách hàng"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                    onChange={(e) => { setCustomerName(e.target.value); setFieldErrors((p) => ({ ...p, customerName: undefined })) }}
+                    className={cn(
+                      "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                      fieldErrors.customerName
+                        ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                        : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]"
+                    )}
                   />
+                  {fieldErrors.customerName && (
+                    <p className="mt-1 text-xs text-rose-500">{fieldErrors.customerName}</p>
+                  )}
                 </div>
 
                 {/* Customer Phone */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Số điện thoại
+                    Số điện thoại <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="tel"
                     placeholder="Nhập số điện thoại khách hàng"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                    onChange={(e) => { setCustomerPhone(e.target.value); setFieldErrors((p) => ({ ...p, customerPhone: undefined })) }}
+                    className={cn(
+                      "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                      fieldErrors.customerPhone
+                        ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                        : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]"
+                    )}
                   />
+                  {fieldErrors.customerPhone && (
+                    <p className="mt-1 text-xs text-rose-500">{fieldErrors.customerPhone}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Play Mode */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
@@ -608,14 +877,15 @@ export default function StaffTodayBookingsPage() {
                   <select
                     value={playMode}
                     onChange={(e) => {
-                      setPlayMode(e.target.value as any)
+                      setPlayMode(e.target.value as "RENTAL" | "BYOC")
                       setSelectedVehicles([])
+                      setSelectedSlot("")
+                      setSelectedSlotEnd(null)
                     }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
                     <option value="RENTAL">Thuê xe của hàng</option>
                     <option value="BYOC">Tự mang xe (BYOC)</option>
-                    <option value="MIXED">Hỗn hợp (Thuê + BYOC)</option>
                   </select>
                 </div>
 
@@ -627,37 +897,104 @@ export default function StaffTodayBookingsPage() {
                   <select
                     value={selectedTrackCode}
                     onChange={(e) => {
-                      const match = cafeDetails?.trackTypes.find((t) => t.code === e.target.value)
+                      const match = trackConfigs.find((c) => c.track_type?.code === e.target.value)
                       if (match) {
-                        setSelectedTrackCode(match.code)
-                        setSelectedTrackName(match.name)
+                        const targetTrackCode = match.track_type?.code ?? ""
+                        setSelectedTrackCode(targetTrackCode)
+                        setSelectedTrackName(match.track_type?.name ?? "")
+                        setSelectedSlot("")
+                        setSelectedSlotEnd(null)
+                        // Filter out incompatible vehicles
+                        setSelectedVehicles((prev) =>
+                          prev.filter((v) => {
+                            const compat = v.catalog?.compatibleTrackTypes
+                            return (
+                              !compat ||
+                              compat.length === 0 ||
+                              compat.some((t) => typeof t === "string" ? t === targetTrackCode : t.code === targetTrackCode || t.id === targetTrackCode)
+                            )
+                          })
+                        )
                       }
                     }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
-                    {cafeDetails?.trackTypes.map((t) => (
-                      <option key={t.id} value={t.code}>
-                        {t.name}
+                    {trackConfigs.filter((c) => c.is_active).map((c) => (
+                      <option key={c.id} value={c.track_type?.code ?? ""}>
+                        {c.track_type?.name ?? c.id}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Duration selector */}
+                {/* Payment Method */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Thời lượng ca chơi
+                    Thanh toán tại quầy
                   </label>
                   <select
-                    value={durationMinutes}
-                    onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as "CASH" | "BANK_TRANSFER") }
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
-                    <option value={30}>30 phút ({slotDuration} phút/lượt)</option>
-                    <option value={60}>60 phút (1 giờ)</option>
-                    <option value={90}>90 phút (1.5 giờ)</option>
-                    <option value={120}>120 phút (2 giờ)</option>
+                    <option value="CASH">Tiền mặt (Cash)</option>
+                    <option value="BANK_TRANSFER">Chuyển khoản (Bank Transfer)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* DATE & DYNAMIC SLOT GRID */}
+              <div className="rounded-xl border border-orange-100 bg-orange-50/20 p-4 md:p-6 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#ea580c]" />
+                    <span className="text-sm font-bold text-[#1c1b1b]">
+                      Ngày chơi: Hôm nay (
+                      {new Date().toLocaleDateString("vi-VN", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                      )
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-[#fff3eb] border border-[#ffdbca] px-2.5 py-0.5 text-[10px] font-bold text-[#ea580c]">
+                    Walk-in trong ngày
+                  </span>
+                </div>
+
+                {isClosedToday && (
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-700">
+                    Cửa hàng hôm nay đóng cửa (Theo lịch hoạt động). Không thể khởi tạo ca chơi trực tiếp.
+                  </div>
+                )}
+
+                <div className={cn(
+                  "transition-opacity",
+                  (isLoadingAvailability || isClosedToday) && "pointer-events-none opacity-40"
+                )}>
+                  {isLoadingAvailability && (
+                    <div className="flex items-center gap-2 text-xs text-[#6b7280] mb-2 animate-pulse font-semibold">
+                      <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
+                      Đang cập nhật danh sách slot trống...
+                    </div>
+                  )}
+
+                  <DailySlotGrid
+                    slots={slots}
+                    selectedSlotId={selectedSlot}
+                    selectedSlotEndId={selectedSlotEnd ?? undefined}
+                    onSelectSlot={setSelectedSlot}
+                    slotDurationMinutes={slotDuration}
+                    minBookingNoticeMinutes={0}
+                    openHour={openHour}
+                    closeHour={closeHour}
+                    date={bookingDate}
+                    onSelectRange={(start, end) => {
+                      setSelectedSlot(start)
+                      setSelectedSlotEnd(end || null)
+                    }}
+                  />
                 </div>
               </div>
 
@@ -676,19 +1013,28 @@ export default function StaffTodayBookingsPage() {
                         const currentStatus = fleetStates[unit.id] || unit.status
                         const isSelected = selectedVehicles.some((v) => v.id === unit.id)
                         const isBusy = currentStatus === "IN_USE" || currentStatus === "MAINTENANCE"
+                        const isRetired = currentStatus === "RETIRED"
+                        const isCompatible =
+                          !selectedTrackCode ||
+                          !unit.catalog?.compatibleTrackTypes ||
+                          unit.catalog.compatibleTrackTypes.length === 0 ||
+                          unit.catalog.compatibleTrackTypes.some(
+                            (t) => typeof t === "string" ? t === selectedTrackCode : t.code === selectedTrackCode || t.id === selectedTrackCode
+                          )
+                        const isDisabled = isBusy || isRetired || !isCompatible
 
                         return (
                           <div
                             key={unit.id}
                             onClick={() => {
-                              if (!isBusy) toggleVehicle(unit)
+                              if (!isDisabled) toggleVehicle(unit)
                             }}
                             className={cn(
                               "flex items-center gap-3 rounded-lg border p-3 transition-all select-none cursor-pointer",
                               isSelected
                                 ? "border-[#ea580c] bg-[#fff3eb]/30 text-[#ea580c]"
                                 : "border-[#e5e2e1] bg-white hover:border-[#a09e9d]",
-                              isBusy && "opacity-40 cursor-not-allowed pointer-events-none"
+                              isDisabled && "opacity-40 cursor-not-allowed pointer-events-none"
                             )}
                           >
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#f5f3f2] border border-[#e5e2e1]">
@@ -702,11 +1048,17 @@ export default function StaffTodayBookingsPage() {
                                 ID: {unit.identifier} | {unit.color}
                               </p>
                               <p className="text-[10px] font-bold text-[#ea580c] mt-0.5">
-                                {unit.catalog?.hourlyRate?.toLocaleString("vi-VN") || "75.000"} đ/h
+                                {unit.catalog?.hourlyRate != null
+                                  ? unit.catalog.hourlyRate.toLocaleString("vi-VN") + " đ/h"
+                                  : "— đ/h"}
                               </p>
                             </div>
                             <div className="text-right font-mono text-[9px] font-bold">
-                              {isBusy ? (
+                              {isRetired ? (
+                                <span className="text-gray-400">NGỪNG HĐ</span>
+                              ) : !isCompatible ? (
+                                <span className="text-amber-600">K.TƯƠNG THÍCH</span>
+                              ) : isBusy ? (
                                 <span className="text-rose-600">ĐANG BẬN</span>
                               ) : (
                                 <span className="text-emerald-600">SẴN SÀNG</span>
@@ -740,27 +1092,34 @@ export default function StaffTodayBookingsPage() {
               {/* BILLING BREAKDOWN PREVIEW */}
               <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 space-y-2">
                 <h5 className="text-xs font-extrabold uppercase tracking-wider text-[#6b7280]">Chi tiết hóa đơn dự kiến</h5>
-                
-                <div className="space-y-1.5 text-xs font-bold">
-                  <div className="flex justify-between text-[#4c4a49]">
-                    <span>
-                      Phí giờ chơi ({slotCount} slots x {slotFeeRate.toLocaleString("vi-VN")} đ)
-                    </span>
-                    <span>{slotFeeTotal.toLocaleString("vi-VN")} đ</span>
+
+                {isLoadingCafe ? (
+                  <div className="flex items-center gap-2 text-xs text-[#6b7280] py-2 animate-pulse font-semibold">
+                    <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
+                    Đang tải thông tin giá...
                   </div>
-                  {playMode !== "BYOC" && (
+                ) : (
+                  <div className="space-y-1.5 text-xs font-bold">
                     <div className="flex justify-between text-[#4c4a49]">
-                      <span>Phí thuê xe ({selectedVehicles.length} xe)</span>
-                      <span>{rentalFeeTotal.toLocaleString("vi-VN")} đ</span>
+                      <span>
+                        Phí giờ chơi ({slotCount} slots x {slotFeeRate.toLocaleString("vi-VN")} đ)
+                      </span>
+                      <span>{slotFeeTotal.toLocaleString("vi-VN")} đ</span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-[#1c1b1b] border-t border-[#e5e2e1] pt-2">
-                    <span>Tổng thanh toán tại quầy:</span>
-                    <span className="text-[#ea580c] text-sm font-black">
-                      {totalAmount.toLocaleString("vi-VN")} đ
-                    </span>
+                    {playMode !== "BYOC" && (
+                      <div className="flex justify-between text-[#4c4a49]">
+                        <span>Phí thuê xe ({selectedVehicles.length} xe)</span>
+                        <span>{rentalFeeTotal.toLocaleString("vi-VN")} đ</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-[#1c1b1b] border-t border-[#e5e2e1] pt-2">
+                      <span>Tổng thanh toán tại quầy:</span>
+                      <span className="text-[#ea580c] text-sm font-black">
+                        {totalAmount.toLocaleString("vi-VN")} đ
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Form Actions */}
@@ -776,8 +1135,18 @@ export default function StaffTodayBookingsPage() {
                 >
                   Hủy bỏ
                 </StaffButton>
-                <StaffButton type="submit" variant="primary" className="flex-1 uppercase tracking-wider">
-                  Khởi tạo & Nhận ca chạy
+                <StaffButton
+                  type="submit"
+                  variant="primary"
+                  className="flex-1 uppercase tracking-wider"
+                  disabled={isLoadingCafe || !cafeDetails || isClosedToday}
+                >
+                  {isLoadingCafe ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Đang tải...
+                    </>
+                  ) : "Khởi tạo & Nhận ca chạy"}
                 </StaffButton>
               </div>
             </form>
@@ -786,4 +1155,40 @@ export default function StaffTodayBookingsPage() {
       )}
     </div>
   )
+}
+
+function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[], playMode: "RENTAL" | "BYOC"): DailySlot[] {
+  return hourlyData.map(({ hour, data }) => {
+    const startTime = `${String(hour).padStart(2, "0")}:00`
+    const endTime = `${String(hour + 1).padStart(2, "0")}:00`
+    if (!data) return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0, rentalCount: 0, byocRemaining: 0 }
+
+    const rentalCount = data.vehicles?.length ?? 0
+    const byocRemaining = data.byoc_remaining ?? 0
+
+    let remaining: number
+    let available: boolean
+    if (playMode === "RENTAL") {
+      remaining = rentalCount
+      available = rentalCount > 0
+    } else {
+      remaining = byocRemaining
+      available = byocRemaining > 0
+    }
+
+    let status: DailySlotStatus
+    if (!available) status = "booked"
+    else if (remaining <= 2) status = "limited"
+    else status = "available"
+
+    return {
+      id: startTime,
+      startTime,
+      endTime,
+      status,
+      remaining,
+      rentalCount: playMode === "BYOC" ? 0 : rentalCount,
+      byocRemaining: playMode === "RENTAL" ? 0 : byocRemaining,
+    }
+  })
 }

@@ -233,14 +233,14 @@ export default function StaffByocPage() {
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-sm">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
           <Filter className="size-4 text-[#6b7280] shrink-0" />
-          {[
+          {([
             { code: "ALL", label: "Tất cả" },
             { code: "PASSED", label: "Đã kiểm duyệt (Đạt)" },
             { code: "FAILED", label: "Chờ / Cần sửa lỗi" },
-          ].map((item) => (
+          ] as const).map((item) => (
             <button
               key={item.code}
-              onClick={() => setSafetyFilter(item.code as any)}
+              onClick={() => setSafetyFilter(item.code)}
               className={cn(
                 "rounded-full px-3 py-1 text-xs font-bold transition-all border shrink-0",
                 safetyFilter === item.code

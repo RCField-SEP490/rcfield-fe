@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Pencil, Infinity, PackageCheck } from "lucide-react"
+import { Pencil, Infinity as InfinityIcon, PackageCheck } from "lucide-react"
 import { toast } from "sonner"
 
 import { AdminShell } from "./components/AdminShell"
@@ -230,7 +230,7 @@ function LimitRow({ label, value }: { label: string; value: number }) {
     <li className="flex items-center justify-between">
       <span>{label}</span>
       <span className="flex items-center gap-1 font-semibold">
-        {value === -1 ? <Infinity className="size-4" /> : null}
+        {value === -1 ? <InfinityIcon className="size-4" /> : null}
         {formatLimit(value)}
       </span>
     </li>
@@ -273,7 +273,7 @@ function LimitField({
             onChange={(e) => onToggleUnlimited(e.target.checked)}
             className="size-4 accent-orange-600"
           />
-          <Infinity className="size-3.5" />
+          <InfinityIcon className="size-3.5" />
         </label>
       </div>
     </div>

@@ -44,12 +44,13 @@ export function CustomerDamageReviewPage() {
     }
 
     if (foundSession && foundSession.damageClaim) {
-      setSession(foundSession)
-      setClaim(foundSession.damageClaim)
-      
       const expiry = new Date(foundSession.damageClaim.expiresAt).getTime()
       const remaining = Math.max(0, Math.floor((expiry - Date.now()) / (1000 * 60 * 60)))
-      setHoursLeft(remaining)
+      queueMicrotask(() => {
+        setSession(foundSession)
+        setClaim(foundSession.damageClaim ?? null)
+        setHoursLeft(remaining)
+      })
     }
   }, [sessionId])
 
@@ -78,7 +79,7 @@ export function CustomerDamageReviewPage() {
     setTimeout(() => {
       setIsSubmitting(false)
       toast.success("Đã đồng ý bồi thường thiệt hại!", {
-        description: "Hệ thống Ledger đã ghi nhận. Số tiền bồi thường sẽ được cấn trừ vào quỹ cọc của bạn."
+        description: "Hệ thống Ledger đã ghi nhận. Khoản bồi thường sẽ được thanh toán trực tiếp tại quầy check-out."
       })
       navigate("/customer/bookings")
     }, 1200)
@@ -260,7 +261,7 @@ export function CustomerDamageReviewPage() {
                 </div>
 
                 <div className="p-3 bg-rose-50/30 rounded-xl border border-rose-100 space-y-1 text-[9px] text-rose-800 leading-normal font-bold">
-                  * Số tiền bồi thường phạt sẽ được cấn trừ trực tiếp vào khoản cọc {formatCurrency(session.inspections.length > 0 ? 150000 : 0)} bạn đã thanh toán. Số tiền còn dư sẽ hoàn trả Ledger tự động.
+                  * Số tiền bồi thường phạt này sẽ được ghi nhận vào hóa đơn dịch vụ và thanh toán trực tiếp tại quầy check-out.
                 </div>
 
               </CardContent>
@@ -275,7 +276,7 @@ export function CustomerDamageReviewPage() {
                   className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs h-12 rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <Check className="h-4.5 w-4.5 text-orange-400 stroke-[3]" />
-                  Tôi đồng ý cấn trừ cọc bồi thường
+                  Tôi đồng ý thanh toán bồi thường
                 </Button>
 
                 <Button

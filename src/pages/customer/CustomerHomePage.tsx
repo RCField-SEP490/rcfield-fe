@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router"
 import { Link } from "react-router"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowRight,
@@ -139,9 +140,10 @@ function UpcomingBookingCard({ booking }: { booking: BookingListItem }) {
 }
 
 function ActivePackageCard({ pkg }: { pkg: MyPackageItem }) {
+  const [now] = useState(() => Date.now())
   const pct = Math.round((pkg.slots_remaining / pkg.slots_total) * 100)
   const expiresAt = new Date(pkg.expires_at)
-  const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  const daysLeft = Math.ceil((expiresAt.getTime() - now) / (1000 * 60 * 60 * 24))
   const isExpiringSoon = daysLeft <= 7
 
   return (
