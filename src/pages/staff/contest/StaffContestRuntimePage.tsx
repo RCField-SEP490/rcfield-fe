@@ -2,7 +2,10 @@ import { useMemo, useState } from "react"
 import { useParams, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
-import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import {
+  contestApi,
+  contestQueryKeys,
+} from "@/features/contests/api/contest.api"
 import { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
 import type { ContestMatchStatus } from "@/features/contests/types"
 import { ContestMatchBoard } from "@/pages/provider/contest-runtime/components/ContestMatchBoard"
@@ -29,16 +32,25 @@ export default function StaffContestRuntimePage() {
   })
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
   const contest = contestQuery.data
-  const matches = runtime.matchesQuery.data ?? []
+  const matches = useMemo(
+    () => runtime.matchesQuery.data ?? [],
+    [runtime.matchesQuery.data],
+  )
   const selectedMatch = useMemo(
-    () => matches.find((match) => match.id === selectedMatchId) ?? matches[0] ?? null,
+    () =>
+      matches.find((match) => match.id === selectedMatchId) ??
+      matches[0] ??
+      null,
     [matches, selectedMatchId],
   )
 
   if (!contest) {
     return (
       <div className="space-y-6">
-        <StaffHeader title="Match runtime" subtitle="Không tìm thấy contest để vận hành match." />
+        <StaffHeader
+          title="Match runtime"
+          subtitle="Không tìm thấy contest để vận hành match."
+        />
       </div>
     )
   }
@@ -53,13 +65,21 @@ export default function StaffContestRuntimePage() {
       <StaffCard className="grid gap-3 lg:grid-cols-3">
         <input
           value={participantQuery}
-          onChange={(event) => updateRuntimeParams(searchParams, setSearchParams, { participantQuery: event.target.value })}
+          onChange={(event) =>
+            updateRuntimeParams(searchParams, setSearchParams, {
+              participantQuery: event.target.value,
+            })
+          }
           placeholder="Tìm participant theo tên"
           className="h-10 rounded-lg border border-[#d9d5d4] px-3 text-sm"
         />
         <select
           value={matchStatus}
-          onChange={(event) => updateRuntimeParams(searchParams, setSearchParams, { matchStatus: event.target.value })}
+          onChange={(event) =>
+            updateRuntimeParams(searchParams, setSearchParams, {
+              matchStatus: event.target.value,
+            })
+          }
           className="h-10 rounded-lg border border-[#d9d5d4] px-3 text-sm"
         >
           <option value="">Tất cả match status</option>
@@ -71,7 +91,11 @@ export default function StaffContestRuntimePage() {
         </select>
         <input
           value={roundNo}
-          onChange={(event) => updateRuntimeParams(searchParams, setSearchParams, { roundNo: event.target.value.replace(/[^\d]/g, "") })}
+          onChange={(event) =>
+            updateRuntimeParams(searchParams, setSearchParams, {
+              roundNo: event.target.value.replace(/[^\d]/g, ""),
+            })
+          }
           placeholder="Lọc theo round"
           className="h-10 rounded-lg border border-[#d9d5d4] px-3 text-sm"
         />

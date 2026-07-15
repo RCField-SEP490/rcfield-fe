@@ -34,6 +34,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts"
+import type { LegendPayload, TooltipValueType } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 
 import { routePaths } from "@/app/router/route-paths"
@@ -49,6 +50,11 @@ import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import type { RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
 import { AiInsightsPanel } from "@/features/dashboard/components/AiInsightsPanel"
 
+function formatTooltipCurrency(value: TooltipValueType | undefined): string {
+  const numericValue = Array.isArray(value) ? value[0] : value
+  return formatCurrency(Number(numericValue ?? 0))
+}
+
 export function ProviderDashboardPage() {
   const [onboardingCompleted, setOnboardingCompleted] = useState(() => {
     return localStorage.getItem("onboarding_completed") === "true"
@@ -61,7 +67,7 @@ export function ProviderDashboardPage() {
   // Lấy dữ liệu danh sách chi nhánh của Provider để check onboarding thật
   const { data: cafesData, isLoading: isLoadingCafes } = useQuery({
     queryKey: ["provider-cafes-list-onboarding"],
-    queryFn: () => cafeApi.listCafes({ scope: "managed", limit: 100 } as any),
+    queryFn: () => cafeApi.listCafes({ scope: "managed", limit: 100 }),
     staleTime: 30000,
   })
   const cafes = cafesData?.data ?? []
@@ -69,13 +75,14 @@ export function ProviderDashboardPage() {
   // Check các bước onboarding dựa trên dữ liệu thật
   const branchesCreated = cafes.length > 0
   const operationalHoursSet = cafes.some(
-    (c) => c.operatingHours && Object.keys(c.operatingHours).length > 0
+    (c) => c.operatingHours && Object.keys(c.operatingHours).length > 0,
   )
 
   const firstCafeId = cafes[0]?.id
   const { data: vehiclesData, isLoading: isLoadingVehicles } = useQuery({
     queryKey: ["provider-vehicles-list-onboarding", firstCafeId],
-    queryFn: () => (firstCafeId ? vehicleApi.listUnits(firstCafeId) : Promise.resolve([])),
+    queryFn: () =>
+      firstCafeId ? vehicleApi.listUnits(firstCafeId) : Promise.resolve([]),
     enabled: !!firstCafeId,
     staleTime: 30000,
   })
@@ -94,9 +101,13 @@ export function ProviderDashboardPage() {
   // nhưng chỉ tự động khi họ không ở chế độ chủ động xem lại setup
   useEffect(() => {
     if (allStepsCompleted && !onboardingCompleted && !viewSetup) {
-      localStorage.setItem("onboarding_completed", "true")
-      setOnboardingCompleted(true)
-      toast.success("Chúc mừng! Bạn đã hoàn thành tất cả các bước thiết lập cơ bản. Kích hoạt Dashboard thành công!")
+      queueMicrotask(() => {
+        localStorage.setItem("onboarding_completed", "true")
+        setOnboardingCompleted(true)
+        toast.success(
+          "Chúc mừng! Bạn đã hoàn thành tất cả các bước thiết lập cơ bản. Kích hoạt Dashboard thành công!",
+        )
+      })
     }
   }, [allStepsCompleted, onboardingCompleted, viewSetup])
 
@@ -108,7 +119,9 @@ export function ProviderDashboardPage() {
       setViewSetup(false)
       toast.success("Chào mừng bạn đến với Dashboard quản trị!")
     } else {
-      toast.error("Bạn cần hoàn thành cả 3 bước thiết lập cơ bản (Tạo chi nhánh, đăng ký xe và giờ hoạt động) để vào Dashboard.")
+      toast.error(
+        "Bạn cần hoàn thành cả 3 bước thiết lập cơ bản (Tạo chi nhánh, đăng ký xe và giờ hoạt động) để vào Dashboard.",
+      )
     }
   }
 
@@ -120,7 +133,8 @@ export function ProviderDashboardPage() {
     toast.info("Đang hiển thị lại hướng dẫn thiết lập cơ bản.")
   }
 
-  const isLoadingOnboarding = isLoadingCafes || (branchesCreated && isLoadingVehicles)
+  const isLoadingOnboarding =
+    isLoadingCafes || (branchesCreated && isLoadingVehicles)
 
   if (isLoadingOnboarding) {
     return (
@@ -128,7 +142,9 @@ export function ProviderDashboardPage() {
         <div className="flex h-[60vh] items-center justify-center">
           <div className="text-center space-y-3">
             <div className="size-8 rounded-full border-4 border-orange-500 border-t-transparent animate-spin mx-auto" />
-            <p className="text-sm font-bold text-slate-500">Đang kiểm tra trạng thái thiết lập...</p>
+            <p className="text-sm font-bold text-slate-500">
+              Đang kiểm tra trạng thái thiết lập...
+            </p>
           </div>
         </div>
       </ProviderShell>
@@ -145,35 +161,34 @@ export function ProviderDashboardPage() {
           description="Hoàn thành các bước hướng dẫn dưới đây để kích hoạt đầy đủ tính năng"
         />
 
-        <OnboardingChecklist
-          steps={steps}
-          onCompleteAll={handleCompleteAll}
-        />
+        <OnboardingChecklist steps={steps} onCompleteAll={handleCompleteAll} />
       </ProviderShell>
     )
   }
 
-  return (
-    <RealDashboard onResetOnboarding={handleResetOnboarding} />
-  )
+  return <RealDashboard onResetOnboarding={handleResetOnboarding} />
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number): string {
-  if (amount >= 1_000_000_000) return `${(amount / 1_000_000_000).toFixed(1)}T ₫`
+  if (amount >= 1_000_000_000)
+    return `${(amount / 1_000_000_000).toFixed(1)}T ₫`
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M ₫`
   if (amount >= 1_000) return `${(amount / 1_000).toFixed(0)}K ₫`
   return `${amount.toLocaleString("vi-VN")} ₫`
 }
 
-function getDefaultDateRange(period: RevenuePeriod): { from: string; to: string } {
+function getDefaultDateRange(period: RevenuePeriod): {
+  from: string
+  to: string
+} {
   const to = new Date()
   const from = new Date()
-  
+
   // Thiết lập thời gian cố định trong ngày để tránh thay đổi mili giây kích hoạt API liên tục
   to.setHours(23, 59, 59, 999)
-  
+
   if (period === "daily") {
     from.setDate(from.getDate() - 14)
   } else if (period === "weekly") {
@@ -182,7 +197,7 @@ function getDefaultDateRange(period: RevenuePeriod): { from: string; to: string 
     from.setMonth(from.getMonth() - 12)
   }
   from.setHours(0, 0, 0, 0)
-  
+
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
@@ -221,16 +236,30 @@ function KpiCard({
     ) : trend === "down" ? (
       <TrendingDown className="size-3.5 text-red-500" />
     ) : null
-  const trendColor = trend === "up" ? "text-emerald-600" : trend === "down" ? "text-red-500" : "text-slate-500"
+  const trendColor =
+    trend === "up"
+      ? "text-emerald-600"
+      : trend === "down"
+        ? "text-red-500"
+        : "text-slate-500"
 
   return (
     <div className="group relative overflow-hidden rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
       <div
         className="absolute top-0 right-0 size-24 rounded-full opacity-5 blur-2xl"
-        style={{ background: accentColor === "orange" ? "#ea580c" : accentColor === "blue" ? "#3b82f6" : "#8b5cf6" }}
+        style={{
+          background:
+            accentColor === "orange"
+              ? "#ea580c"
+              : accentColor === "blue"
+                ? "#3b82f6"
+                : "#8b5cf6",
+        }}
       />
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">
+          {label}
+        </span>
         <div
           className={cn(
             "flex size-8 items-center justify-center rounded-lg [&_svg]:size-4",
@@ -240,18 +269,24 @@ function KpiCard({
                 ? "bg-blue-50 text-blue-600"
                 : accentColor === "purple"
                   ? "bg-purple-50 text-purple-600"
-                  : "bg-emerald-50 text-emerald-600"
+                  : "bg-emerald-50 text-emerald-600",
           )}
         >
           {icon}
         </div>
       </div>
-      <div className="text-2xl font-extrabold tracking-tight text-[#1c1b1b]">{value}</div>
-      {sub && <p className="mt-0.5 text-xs text-[#747878] font-medium">{sub}</p>}
+      <div className="text-2xl font-extrabold tracking-tight text-[#1c1b1b]">
+        {value}
+      </div>
+      {sub && (
+        <p className="mt-0.5 text-xs text-[#747878] font-medium">{sub}</p>
+      )}
       {trendText && (
         <div className="mt-2 flex items-center gap-1">
           {trendIcon}
-          <span className={cn("text-xs font-semibold", trendColor)}>{trendText}</span>
+          <span className={cn("text-xs font-semibold", trendColor)}>
+            {trendText}
+          </span>
         </div>
       )}
     </div>
@@ -270,14 +305,41 @@ function SkeletonCard() {
 
 function BookingStatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    CONFIRMED: { label: "Đã xác nhận", cls: "bg-blue-50 text-blue-700 border-blue-200" },
-    COMPLETED: { label: "Hoàn thành", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    CANCELLED: { label: "Đã hủy", cls: "bg-red-50 text-red-700 border-red-200" },
-    PENDING: { label: "Chờ TT", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    NO_SHOW: { label: "Vắng mặt", cls: "bg-slate-50 text-slate-600 border-slate-200" },
+    CONFIRMED: {
+      label: "Đã xác nhận",
+      cls: "bg-blue-50 text-blue-700 border-blue-200",
+    },
+    COMPLETED: {
+      label: "Hoàn thành",
+      cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    },
+    CANCELLED: {
+      label: "Đã hủy",
+      cls: "bg-red-50 text-red-700 border-red-200",
+    },
+    PENDING: {
+      label: "Chờ TT",
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+    },
+    NO_SHOW: {
+      label: "Vắng mặt",
+      cls: "bg-slate-50 text-slate-600 border-slate-200",
+    },
   }
-  const { label, cls } = map[status] ?? { label: status, cls: "bg-slate-50 text-slate-500 border-slate-200" }
-  return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold", cls)}>{label}</span>
+  const { label, cls } = map[status] ?? {
+    label: status,
+    cls: "bg-slate-50 text-slate-500 border-slate-200",
+  }
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold",
+        cls,
+      )}
+    >
+      {label}
+    </span>
+  )
 }
 
 function FleetStatusItem({
@@ -297,7 +359,12 @@ function FleetStatusItem({
     red: "bg-red-50 text-red-700 border-red-100",
   }
   return (
-    <div className={cn("flex items-center justify-between rounded-lg border p-3", colorMap[color])}>
+    <div
+      className={cn(
+        "flex items-center justify-between rounded-lg border p-3",
+        colorMap[color],
+      )}
+    >
       <div className="flex items-center gap-2.5">
         {icon}
         <span className="text-xs font-bold">{label}</span>
@@ -309,7 +376,11 @@ function FleetStatusItem({
 
 // ── Real Dashboard (hiển thị sau onboarding) ─────────────────────────────────
 
-function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void }) {
+function RealDashboard({
+  onResetOnboarding,
+}: {
+  onResetOnboarding: () => void
+}) {
   const [period, setPeriod] = useState<RevenuePeriod>("daily")
   const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null)
   const [customFrom, setCustomFrom] = useState("")
@@ -324,7 +395,7 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
 
   const { data: cafesData } = useQuery({
     queryKey: ["provider-cafes-list"],
-    queryFn: () => cafeApi.listCafes({ scope: "managed", limit: 100 } as any),
+    queryFn: () => cafeApi.listCafes({ scope: "managed", limit: 100 }),
     staleTime: 300_000,
   })
   const cafes = cafesData?.data ?? []
@@ -336,46 +407,53 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
   })
   const isAiAnalyticsEnabled = featureFlags?.AI_REVENUE_ANALYTICS ?? false
 
-  const { kpi, trend, breakdown, branches, recent, topStats, isLoading } = useProviderDashboard({
-    cafeId: selectedCafeId,
-    period,
-    from,
-    to,
-  })
+  const { kpi, trend, breakdown, branches, recent, topStats, isLoading } =
+    useProviderDashboard({
+      cafeId: selectedCafeId,
+      period,
+      from,
+      to,
+    })
 
-  const handleFromChange = useCallback((val: string) => {
-    if (!val) {
-      setCustomFrom("")
-      return
-    }
-    const fromIso = new Date(val).toISOString()
-    setCustomFrom(fromIso)
-    
-    if (customTo) {
-      const currentToDate = new Date(customTo)
-      const newFromDate = new Date(val)
-      if (currentToDate < newFromDate) {
-        setCustomTo(new Date(val + "T23:59:59").toISOString())
+  const handleFromChange = useCallback(
+    (val: string) => {
+      if (!val) {
+        setCustomFrom("")
+        return
       }
-    }
-  }, [customTo])
+      const fromIso = new Date(val).toISOString()
+      setCustomFrom(fromIso)
 
-  const handleToChange = useCallback((val: string) => {
-    if (!val) {
-      setCustomTo("")
-      return
-    }
-    const toIso = new Date(val + "T23:59:59").toISOString()
-    setCustomTo(toIso)
-    
-    if (customFrom) {
-      const currentFromDate = new Date(customFrom)
-      const newToDate = new Date(val)
-      if (currentFromDate > newToDate) {
-        setCustomFrom(new Date(val).toISOString())
+      if (customTo) {
+        const currentToDate = new Date(customTo)
+        const newFromDate = new Date(val)
+        if (currentToDate < newFromDate) {
+          setCustomTo(new Date(val + "T23:59:59").toISOString())
+        }
       }
-    }
-  }, [customFrom])
+    },
+    [customTo],
+  )
+
+  const handleToChange = useCallback(
+    (val: string) => {
+      if (!val) {
+        setCustomTo("")
+        return
+      }
+      const toIso = new Date(val + "T23:59:59").toISOString()
+      setCustomTo(toIso)
+
+      if (customFrom) {
+        const currentFromDate = new Date(customFrom)
+        const newToDate = new Date(val)
+        if (currentFromDate > newToDate) {
+          setCustomFrom(new Date(val).toISOString())
+        }
+      }
+    },
+    [customFrom],
+  )
 
   const handleClearDateRange = useCallback(() => {
     setCustomFrom("")
@@ -421,10 +499,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                 onClick={() => handlePeriodChange(p)}
                 className={cn(
                   "flex-1 sm:flex-none text-center rounded-md px-3 py-1.5 text-xs font-bold transition-all",
-                  period === p && !customFrom ? "bg-white text-[#1c1b1b] shadow-sm" : "text-[#5d5f5f] hover:text-[#1c1b1b]"
+                  period === p && !customFrom
+                    ? "bg-white text-[#1c1b1b] shadow-sm"
+                    : "text-[#5d5f5f] hover:text-[#1c1b1b]",
                 )}
               >
-                {p === "daily" ? "14 ngày" : p === "weekly" ? "12 tuần" : "12 tháng"}
+                {p === "daily"
+                  ? "14 ngày"
+                  : p === "weekly"
+                    ? "12 tuần"
+                    : "12 tháng"}
               </button>
             ))}
           </div>
@@ -467,7 +551,10 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
           >
             Xem Setup
           </Button>
-          <Button variant="outline" className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold flex-1 sm:flex-none justify-center">
+          <Button
+            variant="outline"
+            className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold flex-1 sm:flex-none justify-center"
+          >
             <Download className="size-3.5" />
             Xuất báo cáo
           </Button>
@@ -487,7 +574,9 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
               icon={<BarChart3 />}
               accentColor="orange"
               trend={kpi && kpi.totalRevenue > 0 ? "up" : "neutral"}
-              trendText={kpi ? `${kpi.completedBookings} booking hoàn thành` : ""}
+              trendText={
+                kpi ? `${kpi.completedBookings} booking hoàn thành` : ""
+              }
             />
             <KpiCard
               label="Tổng lượt đặt"
@@ -496,11 +585,17 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
               icon={<ClipboardList />}
               accentColor="blue"
               trend={kpi && kpi.cancellationRate < 0.1 ? "up" : "down"}
-              trendText={kpi ? `${(kpi.cancellationRate * 100).toFixed(1)}% tỷ lệ hủy` : ""}
+              trendText={
+                kpi
+                  ? `${(kpi.cancellationRate * 100).toFixed(1)}% tỷ lệ hủy`
+                  : ""
+              }
             />
             <KpiCard
               label="Tỷ lệ xe hoạt động"
-              value={kpi ? `${(kpi.vehicleUtilizationRate * 100).toFixed(0)}%` : "—"}
+              value={
+                kpi ? `${(kpi.vehicleUtilizationRate * 100).toFixed(0)}%` : "—"
+              }
               sub={kpi ? `${kpi.inUseVehicles}/${kpi.totalVehicles} xe` : ""}
               icon={<Car />}
               accentColor="purple"
@@ -524,25 +619,55 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
       <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-12">
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm xl:col-span-8">
           <div className="mb-4">
-            <h3 className="text-sm font-extrabold text-[#1c1b1b]">Xu hướng doanh thu</h3>
-            <p className="text-xs text-[#747878] mt-0.5">Phân tích theo loại — phí sân, thuê xe, F&B</p>
+            <h3 className="text-sm font-extrabold text-[#1c1b1b]">
+              Xu hướng doanh thu
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Phân tích theo loại — phí sân, thuê xe, F&B
+            </p>
           </div>
           {trend.length === 0 && !isLoading ? (
-            <div className="flex h-56 items-center justify-center text-sm text-[#747878]">Chưa có dữ liệu trong kỳ này</div>
+            <div className="flex h-56 items-center justify-center text-sm text-[#747878]">
+              Chưa có dữ liệu trong kỳ này
+            </div>
           ) : (
             <div className="h-56 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trend} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                <AreaChart
+                  data={trend}
+                  margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+                >
                   <defs>
                     {Object.entries(CHART_COLORS).map(([key, color]) => (
-                      <linearGradient key={key} id={`db-grad-${key}`} x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient
+                        key={key}
+                        id={`db-grad-${key}`}
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
                         <stop offset="5%" stopColor={color} stopOpacity={0.2} />
-                        <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                        <stop
+                          offset="95%"
+                          stopColor={color}
+                          stopOpacity={0.02}
+                        />
                       </linearGradient>
                     ))}
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ede9" vertical={false} />
-                  <XAxis dataKey="label" stroke="#b0b4b4" tickLine={false} axisLine={false} tick={{ fontSize: 10 }} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#f0ede9"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="label"
+                    stroke="#b0b4b4"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10 }}
+                  />
                   <YAxis
                     stroke="#b0b4b4"
                     tickLine={false}
@@ -551,13 +676,25 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     tick={{ fontSize: 10 }}
                   />
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(v: any, n: any) => [formatCurrency(Number(v || 0)), String(n || "")]}
-                    contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
+                    formatter={(
+                      value: TooltipValueType | undefined,
+                      name: number | string | undefined,
+                    ) => [formatTooltipCurrency(value), String(name || "")]}
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "1px solid #e5e2e1",
+                      fontSize: 12,
+                    }}
                   />
                   <Legend
                     wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                    onMouseEnter={(o: any) => setHoveredSeries(o.dataKey)}
+                    onMouseEnter={(entry: LegendPayload) =>
+                      setHoveredSeries(
+                        typeof entry.dataKey === "string"
+                          ? entry.dataKey
+                          : null,
+                      )
+                    }
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
                   <Area
@@ -567,8 +704,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     stroke={CHART_COLORS.slotFee}
                     fill="url(#db-grad-slotFee)"
                     strokeWidth={hoveredSeries === "slotFee" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "slotFee" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "slotFee" ? 1 : 0.15}
+                    strokeOpacity={
+                      hoveredSeries === null || hoveredSeries === "slotFee"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredSeries === null || hoveredSeries === "slotFee"
+                        ? 1
+                        : 0.15
+                    }
                     onMouseEnter={() => setHoveredSeries("slotFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
@@ -579,8 +724,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     stroke={CHART_COLORS.rentalFee}
                     fill="url(#db-grad-rentalFee)"
                     strokeWidth={hoveredSeries === "rentalFee" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "rentalFee" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "rentalFee" ? 1 : 0.15}
+                    strokeOpacity={
+                      hoveredSeries === null || hoveredSeries === "rentalFee"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredSeries === null || hoveredSeries === "rentalFee"
+                        ? 1
+                        : 0.15
+                    }
                     onMouseEnter={() => setHoveredSeries("rentalFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
@@ -591,8 +744,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     stroke={CHART_COLORS.fnbPreorder}
                     fill="url(#db-grad-fnbPreorder)"
                     strokeWidth={hoveredSeries === "fnbPreorder" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "fnbPreorder" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "fnbPreorder" ? 1 : 0.15}
+                    strokeOpacity={
+                      hoveredSeries === null || hoveredSeries === "fnbPreorder"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredSeries === null || hoveredSeries === "fnbPreorder"
+                        ? 1
+                        : 0.15
+                    }
                     onMouseEnter={() => setHoveredSeries("fnbPreorder")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
@@ -604,8 +765,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     stroke={CHART_COLORS.extensionFee}
                     fill="url(#db-grad-extensionFee)"
                     strokeWidth={hoveredSeries === "extensionFee" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "extensionFee" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "extensionFee" ? 1 : 0.15}
+                    strokeOpacity={
+                      hoveredSeries === null || hoveredSeries === "extensionFee"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredSeries === null || hoveredSeries === "extensionFee"
+                        ? 1
+                        : 0.15
+                    }
                     onMouseEnter={() => setHoveredSeries("extensionFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
@@ -616,8 +785,16 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                     stroke={CHART_COLORS.damageCharge}
                     fill="url(#db-grad-damageCharge)"
                     strokeWidth={hoveredSeries === "damageCharge" ? 3.5 : 2}
-                    strokeOpacity={hoveredSeries === null || hoveredSeries === "damageCharge" ? 1 : 0.15}
-                    fillOpacity={hoveredSeries === null || hoveredSeries === "damageCharge" ? 1 : 0.15}
+                    strokeOpacity={
+                      hoveredSeries === null || hoveredSeries === "damageCharge"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredSeries === null || hoveredSeries === "damageCharge"
+                        ? 1
+                        : 0.15
+                    }
                     onMouseEnter={() => setHoveredSeries("damageCharge")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
@@ -629,11 +806,17 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
 
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm xl:col-span-4">
           <div className="mb-4">
-            <h3 className="text-sm font-extrabold text-[#1c1b1b]">Phân bổ doanh thu</h3>
-            <p className="text-xs text-[#747878] mt-0.5">Tỷ trọng từng nguồn thu</p>
+            <h3 className="text-sm font-extrabold text-[#1c1b1b]">
+              Phân bổ doanh thu
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Tỷ trọng từng nguồn thu
+            </p>
           </div>
           {breakdown.length === 0 && !isLoading ? (
-            <div className="flex h-40 items-center justify-center text-sm text-[#747878]">Chưa có dữ liệu</div>
+            <div className="flex h-40 items-center justify-center text-sm text-[#747878]">
+              Chưa có dữ liệu
+            </div>
           ) : (
             <div className="h-40 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
@@ -656,20 +839,35 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                       <Cell
                         key={i}
                         fill={PIE_COLORS[i % PIE_COLORS.length]}
-                        opacity={hoveredPieType === null || hoveredPieType === item.type ? 1 : 0.15}
-                        style={{ cursor: "pointer", transition: "opacity 0.2s ease" }}
+                        opacity={
+                          hoveredPieType === null ||
+                          hoveredPieType === item.type
+                            ? 1
+                            : 0.15
+                        }
+                        style={{
+                          cursor: "pointer",
+                          transition: "opacity 0.2s ease",
+                        }}
                       />
                     ))}
                   </Pie>
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(v: any) => formatCurrency(Number(v || 0))}
-                    contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
+                    formatter={(value: TooltipValueType | undefined) =>
+                      formatTooltipCurrency(value)
+                    }
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "1px solid #e5e2e1",
+                      fontSize: 12,
+                    }}
                   />
                   <Legend
                     wrapperStyle={{ fontSize: 10 }}
-                    onMouseEnter={(o: any) => {
-                      const match = breakdown.find((item) => item.label === o.value)
+                    onMouseEnter={(entry: { value?: string | number }) => {
+                      const match = breakdown.find(
+                        (item) => item.label === entry.value,
+                      )
                       if (match) setHoveredPieType(match.type)
                     }}
                     onMouseLeave={() => setHoveredPieType(null)}
@@ -684,18 +882,30 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                 key={item.type}
                 className={cn(
                   "flex items-center justify-between text-xs p-1 rounded transition-colors cursor-pointer",
-                  hoveredPieType === item.type ? "bg-slate-50 font-extrabold" : ""
+                  hoveredPieType === item.type
+                    ? "bg-slate-50 font-extrabold"
+                    : "",
                 )}
                 onMouseEnter={() => setHoveredPieType(item.type)}
                 onMouseLeave={() => setHoveredPieType(null)}
               >
                 <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  <span className={cn("font-semibold text-[#5d5f5f]", hoveredPieType === item.type && "text-[#1c1b1b]")}>
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                  />
+                  <span
+                    className={cn(
+                      "font-semibold text-[#5d5f5f]",
+                      hoveredPieType === item.type && "text-[#1c1b1b]",
+                    )}
+                  >
                     {item.label}
                   </span>
                 </div>
-                <span className="font-bold text-[#1c1b1b]">{formatCurrency(item.amount)}</span>
+                <span className="font-bold text-[#1c1b1b]">
+                  {formatCurrency(item.amount)}
+                </span>
               </div>
             ))}
           </div>
@@ -706,16 +916,30 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
       <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-12">
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm xl:col-span-7">
           <div className="mb-4">
-            <h3 className="text-sm font-extrabold text-[#1c1b1b]">Hiệu suất chi nhánh</h3>
-            <p className="text-xs text-[#747878] mt-0.5">So sánh doanh thu theo cơ sở</p>
+            <h3 className="text-sm font-extrabold text-[#1c1b1b]">
+              Hiệu suất chi nhánh
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">
+              So sánh doanh thu theo cơ sở
+            </p>
           </div>
           {branches.length === 0 && !isLoading ? (
-            <div className="flex h-40 items-center justify-center text-sm text-[#747878]">Chưa có cơ sở nào</div>
+            <div className="flex h-40 items-center justify-center text-sm text-[#747878]">
+              Chưa có cơ sở nào
+            </div>
           ) : (
             <div className="h-40 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={branches} layout="vertical" margin={{ top: 0, right: 40, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0ede9" horizontal={false} />
+                <BarChart
+                  data={branches}
+                  layout="vertical"
+                  margin={{ top: 0, right: 40, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#f0ede9"
+                    horizontal={false}
+                  />
                   <XAxis
                     type="number"
                     stroke="#b0b4b4"
@@ -736,9 +960,19 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                   <Tooltip
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     formatter={(v: any) => formatCurrency(Number(v || 0))}
-                    contentStyle={{ borderRadius: "10px", border: "1px solid #e5e2e1", fontSize: 12 }}
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "1px solid #e5e2e1",
+                      fontSize: 12,
+                    }}
                   />
-                  <Bar dataKey="totalRevenue" name="Doanh thu" fill="#ea580c" radius={[0, 4, 4, 0]} maxBarSize={22} />
+                  <Bar
+                    dataKey="totalRevenue"
+                    name="Doanh thu"
+                    fill="#ea580c"
+                    radius={[0, 4, 4, 0]}
+                    maxBarSize={22}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -748,10 +982,18 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm xl:col-span-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-extrabold text-[#1c1b1b]">Tình trạng đội xe</h3>
-              <p className="text-xs text-[#747878] mt-0.5">{kpi ? `Tổng ${kpi.totalVehicles} xe` : "Đang tải..."}</p>
+              <h3 className="text-sm font-extrabold text-[#1c1b1b]">
+                Tình trạng đội xe
+              </h3>
+              <p className="text-xs text-[#747878] mt-0.5">
+                {kpi ? `Tổng ${kpi.totalVehicles} xe` : "Đang tải..."}
+              </p>
             </div>
-            <Button asChild variant="outline" className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold">
+            <Button
+              asChild
+              variant="outline"
+              className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold"
+            >
               <Link to={routePaths.providerVehicles}>
                 Quản lý <ArrowRight className="size-3" />
               </Link>
@@ -788,37 +1030,59 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
               <span>🍔 Món ăn được mua nhiều</span>
             </h3>
-            <p className="text-xs text-[#747878] mt-0.5">Top 5 món F&B bán chạy nhất trong kỳ</p>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Top 5 món F&B bán chạy nhất trong kỳ
+            </p>
           </div>
           {isLoading ? (
             <div className="space-y-2 py-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+                <div
+                  key={i}
+                  className="h-10 w-full animate-pulse bg-slate-100 rounded-lg"
+                />
               ))}
             </div>
           ) : !topStats?.topFnb || topStats.topFnb.length === 0 ? (
-            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu F&B</div>
+            <div className="py-10 text-center text-xs text-[#747878]">
+              Chưa có dữ liệu F&B
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
                     <th className="pt-3.5 pb-2 leading-relaxed">TÊN MÓN</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">SỐ LƯỢNG</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">DOANH THU</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      SỐ LƯỢNG
+                    </th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      DOANH THU
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {topStats.topFnb.map((item, idx) => (
-                    <tr key={item.menuItemId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                    <tr
+                      key={item.menuItemId || idx}
+                      className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors"
+                    >
                       <td className="py-2.5">
-                        <div className="font-semibold text-[#1c1b1b]">{item.itemName}</div>
+                        <div className="font-semibold text-[#1c1b1b]">
+                          {item.itemName}
+                        </div>
                         {!selectedCafeId && (
-                          <div className="text-[10px] text-slate-400 font-semibold">{item.cafeName}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">
+                            {item.cafeName}
+                          </div>
                         )}
                       </td>
-                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">{item.totalQuantity}</td>
-                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{formatCurrency(item.totalRevenue)}</td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">
+                        {item.totalQuantity}
+                      </td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">
+                        {formatCurrency(item.totalRevenue)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -833,16 +1097,23 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
               <span>🏁 Sân được book nhiều</span>
             </h3>
-            <p className="text-xs text-[#747878] mt-0.5">Top 5 loại đường đua được yêu thích nhất</p>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Top 5 loại đường đua được yêu thích nhất
+            </p>
           </div>
           {isLoading ? (
             <div className="space-y-2 py-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+                <div
+                  key={i}
+                  className="h-10 w-full animate-pulse bg-slate-100 rounded-lg"
+                />
               ))}
             </div>
           ) : !topStats?.topTracks || topStats.topTracks.length === 0 ? (
-            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu đặt sân</div>
+            <div className="py-10 text-center text-xs text-[#747878]">
+              Chưa có dữ liệu đặt sân
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -850,16 +1121,25 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                   <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
                     <th className="pt-3.5 pb-2 leading-relaxed">TÊN SÂN</th>
                     <th className="pt-3.5 pb-2 leading-relaxed">MÃ CODE</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">LƯỢT ĐẶT</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      LƯỢT ĐẶT
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {topStats.topTracks.map((item, idx) => (
-                    <tr key={item.trackTypeId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                    <tr
+                      key={item.trackTypeId || idx}
+                      className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors"
+                    >
                       <td className="py-2.5">
-                        <div className="font-semibold text-[#1c1b1b]">{item.trackTypeName}</div>
+                        <div className="font-semibold text-[#1c1b1b]">
+                          {item.trackTypeName}
+                        </div>
                         {!selectedCafeId && (
-                          <div className="text-[10px] text-slate-400 font-semibold">{item.cafeName}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">
+                            {item.cafeName}
+                          </div>
                         )}
                       </td>
                       <td className="py-2.5">
@@ -867,7 +1147,9 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                           {item.trackTypeCode}
                         </span>
                       </td>
-                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{item.bookingCount}</td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">
+                        {item.bookingCount}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -882,35 +1164,57 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
               <span>👤 Khách hàng thường xuyên nhất</span>
             </h3>
-            <p className="text-xs text-[#747878] mt-0.5">Top 5 khách hàng đặt sân tích cực nhất</p>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Top 5 khách hàng đặt sân tích cực nhất
+            </p>
           </div>
           {isLoading ? (
             <div className="space-y-2 py-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+                <div
+                  key={i}
+                  className="h-10 w-full animate-pulse bg-slate-100 rounded-lg"
+                />
               ))}
             </div>
           ) : !topStats?.topCustomers || topStats.topCustomers.length === 0 ? (
-            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu khách hàng</div>
+            <div className="py-10 text-center text-xs text-[#747878]">
+              Chưa có dữ liệu khách hàng
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
                     <th className="pt-3.5 pb-2 leading-relaxed">KHÁCH HÀNG</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">LƯỢT BOOK</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">CHI TIÊU</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      LƯỢT BOOK
+                    </th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      CHI TIÊU
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {topStats.topCustomers.map((item, idx) => (
-                    <tr key={item.customerId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                    <tr
+                      key={item.customerId || idx}
+                      className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors"
+                    >
                       <td className="py-2.5">
-                        <div className="font-semibold text-[#1c1b1b]">{item.customerName}</div>
-                        <div className="text-[10px] text-[#747878]">{item.customerEmail}</div>
+                        <div className="font-semibold text-[#1c1b1b]">
+                          {item.customerName}
+                        </div>
+                        <div className="text-[10px] text-[#747878]">
+                          {item.customerEmail}
+                        </div>
                       </td>
-                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">{item.bookingCount}</td>
-                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{formatCurrency(item.totalSpent)}</td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">
+                        {item.bookingCount}
+                      </td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">
+                        {formatCurrency(item.totalSpent)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -925,16 +1229,23 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
               <span>🏎️ Loại xe được book nhiều</span>
             </h3>
-            <p className="text-xs text-[#747878] mt-0.5">Top 5 dòng xe mẫu được thuê nhiều nhất</p>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Top 5 dòng xe mẫu được thuê nhiều nhất
+            </p>
           </div>
           {isLoading ? (
             <div className="space-y-2 py-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-10 w-full animate-pulse bg-slate-100 rounded-lg" />
+                <div
+                  key={i}
+                  className="h-10 w-full animate-pulse bg-slate-100 rounded-lg"
+                />
               ))}
             </div>
           ) : !topStats?.topVehicles || topStats.topVehicles.length === 0 ? (
-            <div className="py-10 text-center text-xs text-[#747878]">Chưa có dữ liệu thuê xe</div>
+            <div className="py-10 text-center text-xs text-[#747878]">
+              Chưa có dữ liệu thuê xe
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -942,32 +1253,49 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                   <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
                     <th className="pt-3.5 pb-2 leading-relaxed">MẪU XE</th>
                     <th className="pt-3.5 pb-2 leading-relaxed">PHÂN HẠNG</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">LƯỢT THUÊ</th>
-                    <th className="pt-3.5 pb-2 text-right leading-relaxed">DOANH THU</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      LƯỢT THUÊ
+                    </th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      DOANH THU
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {topStats.topVehicles.map((item, idx) => (
-                    <tr key={item.catalogId || idx} className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors">
+                    <tr
+                      key={item.catalogId || idx}
+                      className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors"
+                    >
                       <td className="py-2.5">
-                        <div className="font-semibold text-[#1c1b1b]">{item.catalogName}</div>
+                        <div className="font-semibold text-[#1c1b1b]">
+                          {item.catalogName}
+                        </div>
                         {!selectedCafeId && (
-                          <div className="text-[10px] text-slate-400 font-semibold">{item.cafeName}</div>
+                          <div className="text-[10px] text-slate-400 font-semibold">
+                            {item.cafeName}
+                          </div>
                         )}
                       </td>
                       <td className="py-2.5">
-                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${
-                          item.catalogTier === "RESTRICTED"
-                            ? "bg-red-50 text-red-700 border-red-200"
-                            : item.catalogTier === "PREMIUM"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-slate-100 text-slate-700 border-slate-200"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${
+                            item.catalogTier === "RESTRICTED"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : item.catalogTier === "PREMIUM"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-slate-100 text-slate-700 border-slate-200"
+                          }`}
+                        >
                           {item.catalogTier}
                         </span>
                       </td>
-                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">{item.bookingCount}</td>
-                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">{formatCurrency(item.rentalRevenue)}</td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">
+                        {item.bookingCount}
+                      </td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">
+                        {formatCurrency(item.rentalRevenue)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -982,10 +1310,18 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
         <div className="rounded-xl border border-[#e5e2e1] bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-[#f0ede9] px-5 py-4">
             <div>
-              <h3 className="text-sm font-extrabold text-[#1c1b1b]">Booking gần đây</h3>
-              <p className="text-xs text-[#747878] mt-0.5">8 booking mới nhất</p>
+              <h3 className="text-sm font-extrabold text-[#1c1b1b]">
+                Booking gần đây
+              </h3>
+              <p className="text-xs text-[#747878] mt-0.5">
+                8 booking mới nhất
+              </p>
             </div>
-            <Button asChild variant="outline" className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold">
+            <Button
+              asChild
+              variant="outline"
+              className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold"
+            >
               <Link to={routePaths.providerBookings}>
                 Xem tất cả <ArrowRight className="size-3" />
               </Link>
@@ -993,7 +1329,9 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
           </div>
           <div className="overflow-x-auto">
             {recent.length === 0 && !isLoading ? (
-              <div className="py-10 text-center text-sm text-[#747878]">Chưa có booking nào</div>
+              <div className="py-10 text-center text-sm text-[#747878]">
+                Chưa có booking nào
+              </div>
             ) : (
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
@@ -1008,21 +1346,33 @@ function RealDashboard({ onResetOnboarding }: { onResetOnboarding: () => void })
                 </thead>
                 <tbody>
                   {recent.map((b) => (
-                    <tr key={b.bookingId} className="border-t border-[#f0ede9] transition-colors hover:bg-[#fcf8f8]">
-                      <td className="px-5 py-3 font-semibold text-[#1c1b1b]">{b.cafeName}</td>
-                      <td className="px-5 py-3 text-[#5d5f5f]">{b.customerName}</td>
+                    <tr
+                      key={b.bookingId}
+                      className="border-t border-[#f0ede9] transition-colors hover:bg-[#fcf8f8]"
+                    >
+                      <td className="px-5 py-3 font-semibold text-[#1c1b1b]">
+                        {b.cafeName}
+                      </td>
+                      <td className="px-5 py-3 text-[#5d5f5f]">
+                        {b.customerName}
+                      </td>
                       <td className="px-5 py-3">
                         <span
                           className={cn(
                             "rounded-full px-2 py-0.5 text-xs font-bold",
-                            b.playMode === "RENTAL" ? "bg-orange-50 text-orange-700" : "bg-blue-50 text-blue-700"
+                            b.playMode === "RENTAL"
+                              ? "bg-orange-50 text-orange-700"
+                              : "bg-blue-50 text-blue-700",
                           )}
                         >
-                          {b.playMode === "RENTAL" ? "Thuê xe" : "BYOC"}
+                          {b.playMode === "RENTAL" ? "Thuê xe" : "Xe tự mang"}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-xs text-[#747878]">
-                        {new Date(b.slotStart).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })}
+                        {new Date(b.slotStart).toLocaleString("vi-VN", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
                       </td>
                       <td className="px-5 py-3">
                         <BookingStatusBadge status={b.status} />
@@ -1056,7 +1406,11 @@ function OnboardingChecklist({
   steps,
   onCompleteAll,
 }: {
-  steps: { branchesCreated: boolean; vehiclesAdded: boolean; operationalHoursSet: boolean }
+  steps: {
+    branchesCreated: boolean
+    vehiclesAdded: boolean
+    operationalHoursSet: boolean
+  }
   onCompleteAll: () => void
 }) {
   const completedCount = Object.values(steps).filter(Boolean).length
@@ -1074,16 +1428,26 @@ function OnboardingChecklist({
               <PartyPopper className="size-4 text-orange-600 animate-bounce" />
               🎉 Tài khoản đã được duyệt!
             </div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Chào mừng đối tác RCField</h1>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Chào mừng đối tác RCField
+            </h1>
             <p className="text-slate-600 max-w-xl text-sm leading-relaxed">
-              Gói dùng thử <strong className="text-orange-700 font-extrabold">30 ngày</strong> đang chạy. Hãy hoàn thành các
-              bước hướng dẫn thiết lập bên dưới để bắt đầu quản lý.
+              Gói dùng thử{" "}
+              <strong className="text-orange-700 font-extrabold">
+                30 ngày
+              </strong>{" "}
+              đang chạy. Hãy hoàn thành các bước hướng dẫn thiết lập bên dưới để
+              bắt đầu quản lý.
             </p>
           </div>
 
           <div className="flex flex-col items-center justify-center bg-white border border-slate-200/80 rounded-xl p-5 shadow-sm min-w-[160px] self-start md:self-center">
-            <span className="text-3xl font-black text-slate-900">{progressPercent}%</span>
-            <span className="text-xs font-bold text-slate-500 mt-1">TIẾN TRÌNH THIẾT LẬP</span>
+            <span className="text-3xl font-black text-slate-900">
+              {progressPercent}%
+            </span>
+            <span className="text-xs font-bold text-slate-500 mt-1">
+              TIẾN TRÌNH THIẾT LẬP
+            </span>
             <div className="w-28 h-2 bg-slate-100 rounded-full mt-3 overflow-hidden">
               <div
                 className="h-full bg-orange-500 transition-all duration-500 rounded-full animate-pulse"
@@ -1095,7 +1459,9 @@ function OnboardingChecklist({
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-base font-bold text-slate-800 px-1">Việc cần làm ngay:</h3>
+        <h3 className="text-base font-bold text-slate-800 px-1">
+          Việc cần làm ngay:
+        </h3>
       </div>
 
       {/* Steps List */}
@@ -1104,7 +1470,9 @@ function OnboardingChecklist({
         <div
           className={cn(
             "group relative flex items-start gap-5 p-6 rounded-xl border transition-all bg-white",
-            steps.branchesCreated ? "border-emerald-100 bg-emerald-50/10" : "border-slate-200 hover:border-orange-200"
+            steps.branchesCreated
+              ? "border-emerald-100 bg-emerald-50/10"
+              : "border-slate-200 hover:border-orange-200",
           )}
         >
           <div className="mt-1 flex items-center justify-center text-slate-300">
@@ -1118,13 +1486,19 @@ function OnboardingChecklist({
           <div className="flex-1 space-y-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={cn("text-base font-extrabold text-[#1c1b1b]", steps.branchesCreated && "line-through text-slate-500/60")}>
+                <h3
+                  className={cn(
+                    "text-base font-extrabold text-[#1c1b1b]",
+                    steps.branchesCreated && "line-through text-slate-500/60",
+                  )}
+                >
                   Tạo chi nhánh đầu tiên
                 </h3>
                 <Building2 className="size-4.5 text-slate-400" />
               </div>
               <p className="text-[#444748] text-xs font-semibold mt-1 max-w-2xl">
-                Cấu hình thông tin cơ sở RC Cafe của bạn để khách hàng có thể đặt lịch chơi và thuê xe.
+                Cấu hình thông tin cơ sở RC Cafe của bạn để khách hàng có thể
+                đặt lịch chơi và thuê xe.
               </p>
             </div>
 
@@ -1135,11 +1509,13 @@ function OnboardingChecklist({
                   "h-9 rounded-lg px-4 text-xs font-bold transition-all",
                   steps.branchesCreated
                     ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    : "bg-slate-950 text-white hover:bg-slate-900 shadow-sm"
+                    : "bg-slate-950 text-white hover:bg-slate-900 shadow-sm",
                 )}
               >
                 <Link to={routePaths.providerCafes}>
-                  {steps.branchesCreated ? "Quản lý cơ sở" : "Thiết lập cơ sở ngay"}
+                  {steps.branchesCreated
+                    ? "Quản lý cơ sở"
+                    : "Thiết lập cơ sở ngay"}
                   <ArrowRight className="size-3.5 ml-1.5" />
                 </Link>
               </Button>
@@ -1151,7 +1527,9 @@ function OnboardingChecklist({
         <div
           className={cn(
             "group relative flex items-start gap-5 p-6 rounded-xl border transition-all bg-white",
-            steps.vehiclesAdded ? "border-emerald-100 bg-emerald-50/10" : "border-slate-200 hover:border-orange-200"
+            steps.vehiclesAdded
+              ? "border-emerald-100 bg-emerald-50/10"
+              : "border-slate-200 hover:border-orange-200",
           )}
         >
           <div className="mt-1 flex items-center justify-center text-slate-300">
@@ -1165,13 +1543,19 @@ function OnboardingChecklist({
           <div className="flex-1 space-y-3">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={cn("text-base font-extrabold text-[#1c1b1b]", steps.vehiclesAdded && "line-through text-slate-500/60")}>
+                <h3
+                  className={cn(
+                    "text-base font-extrabold text-[#1c1b1b]",
+                    steps.vehiclesAdded && "line-through text-slate-500/60",
+                  )}
+                >
                   Thêm xe vào fleet (đội xe)
                 </h3>
                 <Car className="size-4.5 text-slate-400" />
               </div>
               <p className="text-[#444748] text-xs font-semibold mt-1 max-w-2xl">
-                Khai báo danh mục xe RC cho thuê có sẵn tại cơ sở để khách hàng chọn khi làm booking.
+                Khai báo danh mục xe RC cho thuê có sẵn tại cơ sở để khách hàng
+                chọn khi làm booking.
               </p>
             </div>
 
@@ -1183,7 +1567,7 @@ function OnboardingChecklist({
                   "h-9 rounded-lg px-4 text-xs font-bold transition-all",
                   steps.vehiclesAdded
                     ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    : "bg-slate-950 text-white hover:bg-slate-900 shadow-sm"
+                    : "bg-slate-950 text-white hover:bg-slate-900 shadow-sm",
                 )}
               >
                 {steps.branchesCreated ? (
@@ -1203,7 +1587,9 @@ function OnboardingChecklist({
         <div
           className={cn(
             "group relative flex items-start gap-5 p-6 rounded-xl border transition-all bg-white",
-            steps.operationalHoursSet ? "border-emerald-100 bg-emerald-50/10" : "border-slate-200 hover:border-orange-200"
+            steps.operationalHoursSet
+              ? "border-emerald-100 bg-emerald-50/10"
+              : "border-slate-200 hover:border-orange-200",
           )}
         >
           <div className="mt-1 flex items-center justify-center text-slate-300">
@@ -1220,7 +1606,8 @@ function OnboardingChecklist({
                 <h3
                   className={cn(
                     "text-base font-extrabold text-[#1c1b1b]",
-                    steps.operationalHoursSet && "line-through text-slate-500/60"
+                    steps.operationalHoursSet &&
+                      "line-through text-slate-500/60",
                   )}
                 >
                   Cài đặt giờ hoạt động
@@ -1228,7 +1615,8 @@ function OnboardingChecklist({
                 <Clock className="size-4.5 text-slate-400" />
               </div>
               <p className="text-[#444748] text-xs font-semibold mt-1 max-w-2xl">
-                Cài đặt khung giờ làm việc mở cửa và đóng cửa hàng ngày tại cơ sở của bạn.
+                Cài đặt khung giờ làm việc mở cửa và đóng cửa hàng ngày tại cơ
+                sở của bạn.
               </p>
             </div>
 
@@ -1240,12 +1628,14 @@ function OnboardingChecklist({
                   "h-9 rounded-lg px-4 text-xs font-bold transition-all",
                   steps.operationalHoursSet
                     ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    : "bg-slate-950 text-white hover:bg-slate-900 shadow-sm"
+                    : "bg-slate-950 text-white hover:bg-slate-900 shadow-sm",
                 )}
               >
                 {steps.branchesCreated ? (
                   <Link to={routePaths.providerCafes}>
-                    {steps.operationalHoursSet ? "Quản lý khung giờ" : "Thiết lập giờ mở cửa"}
+                    {steps.operationalHoursSet
+                      ? "Quản lý khung giờ"
+                      : "Thiết lập giờ mở cửa"}
                     <ArrowRight className="size-3.5 ml-1.5" />
                   </Link>
                 ) : (
@@ -1260,7 +1650,9 @@ function OnboardingChecklist({
       {/* Bypass Footer */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-5 rounded-xl border border-slate-200/80 bg-slate-50/50">
         <span className="text-xs text-slate-500 font-medium max-w-md">
-          <strong>Mẹo:</strong> Sau khi cấu hình xong cả 3 bước thiết lập thực tế trên hệ thống, nút kích hoạt bên dưới sẽ sẵn sàng để bạn truy cập Dashboard.
+          <strong>Mẹo:</strong> Sau khi cấu hình xong cả 3 bước thiết lập thực
+          tế trên hệ thống, nút kích hoạt bên dưới sẽ sẵn sàng để bạn truy cập
+          Dashboard.
         </span>
         <div className="flex gap-3">
           <Button
@@ -1270,7 +1662,7 @@ function OnboardingChecklist({
               "h-10 px-5 text-xs font-bold gap-2 shadow-md rounded-lg transition-all",
               allStepsCompleted
                 ? "bg-orange-600 text-white hover:bg-orange-700 cursor-pointer"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed",
             )}
           >
             Kích Hoạt Dashboard
