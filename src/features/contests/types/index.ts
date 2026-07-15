@@ -83,6 +83,35 @@ export type ContestBranch = {
   } | null
 }
 
+export type ContestResourceLock = {
+  cafe_id: string
+  scope: "FULL_BRANCH" | "SELECTED_TRACKS"
+  track_config_ids: string[]
+  starts_at?: string | null
+  ends_at?: string | null
+}
+
+export type ContestStaffAssignment = {
+  id: string
+  contest_id: string
+  staff_id: string
+  assigned_at: string | null
+  assigned_by: string | null
+  staff: {
+    id: string
+    full_name: string | null
+    email: string | null
+    avatar_url: string | null
+  } | null
+}
+
+export type ContestPublicStats = {
+  registration_count: number
+  confirmed_count: number
+  checked_in_count: number
+  capacity_remaining: number | null
+}
+
 export type ContestItem = {
   id: string
   provider_id: string | null
@@ -133,6 +162,11 @@ export type ContestItem = {
     vehicle_policy_options: string[]
     feature_flags: Record<string, unknown>
   } | null
+  resource_locks?: ContestResourceLock[]
+  prize_structure?: Record<string, unknown> | null
+  public_stats?: ContestPublicStats | null
+  staff_assignments?: ContestStaffAssignment[]
+  operator_access?: boolean
   my_registration?: ContestRegistration | null
 }
 
@@ -220,6 +254,38 @@ export type ContestRegistration = {
   customerJourneyStatus: CustomerJourneyStatus | null
 }
 
+export type ContestEntryPaymentResponse = {
+  transaction_id: string
+  txn_ref: string
+  amount: number
+  payment_url: string
+  mock_confirmation?: {
+    payment_url: string
+    mock_result: string
+  } | null
+}
+
+export type ContestBanItem = {
+  id: string
+  user_id: string
+  provider_id: string
+  contest_id: string | null
+  scope_type: "CONTEST" | "PROVIDER"
+  reason: string
+  evidence_url: string | null
+  notes: string | null
+  expires_at: string | null
+  lifted_at: string | null
+  created_at: string
+  updated_at: string
+  user?: {
+    id: string
+    full_name: string | null
+    email: string | null
+    avatar_url: string | null
+  } | null
+}
+
 export type ContestMatchParticipantRegistrationSnapshot = {
   id: string
   user_id: string
@@ -244,8 +310,8 @@ export type ContestMatchParticipant = {
   status: ContestParticipantStatus
   score: number | null
   finish_position: number | null
-  best_lap_ms: number | null
-  total_time_ms: number | null
+  best_lap_seconds: number | null
+  total_time_seconds: number | null
   is_winner: boolean
   result_note: string | null
   metadata: Record<string, unknown>
@@ -276,6 +342,8 @@ export type ContestMatch = {
 
 export type ContestMetrics = {
   contest_id: string
+  capacity?: number | null
+  entry_fee_amount?: number
   registration_counts: {
     total: number
     pending: number
@@ -303,6 +371,13 @@ export type ContestMetrics = {
     synced_count: number
     superseded_count: number
   }
+  revenue?: {
+    expected_revenue: number
+    paid_revenue: number
+    waived_revenue: number
+    pending_revenue: number
+    payment_conversion_rate: number
+  }
 }
 
 export type ContestLeaderboardEntry = {
@@ -313,8 +388,8 @@ export type ContestLeaderboardEntry = {
   driver_handle: string | null
   driver_title_label: string | null
   wins: number
-  best_lap_ms: number | null
-  total_time_ms: number | null
+  best_lap_seconds: number | null
+  total_time_seconds: number | null
   latest_finish_position: number | null
   matches_completed: number
   progressed_round: number
@@ -395,8 +470,8 @@ export type ContestMatchResultInput = {
   registration_id: string
   finish_position?: number | null
   score?: number | null
-  best_lap_ms?: number | null
-  total_time_ms?: number | null
+  best_lap_seconds?: number | null
+  total_time_seconds?: number | null
   is_winner?: boolean
   result_note?: string | null
   status?: ContestParticipantStatus
@@ -424,4 +499,14 @@ export type ContestRaceRecordSyncResult = {
       unlocked_achievement_count: number
     }>
   }
+}
+
+export type ContestRegistrationCreateBody = {
+  booking_id?: string
+  vehicle_id?: string
+  vehicle_source?: "RENTAL" | "BYOC"
+  byoc_vehicle_name?: string
+  byoc_vehicle_brand?: string
+  byoc_vehicle_class?: string
+  byoc_vehicle_notes?: string
 }

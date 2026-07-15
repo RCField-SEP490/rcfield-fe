@@ -34,9 +34,9 @@ export function formatContestDateTime(value?: string | null) {
   })
 }
 
-export function formatDurationMs(value?: number | null) {
+export function formatDurationSeconds(value?: number | null) {
   if (value === null || value === undefined) return "--"
-  return `${(value / 1000).toFixed(3)}s`
+  return `${value.toFixed(3)}s`
 }
 
 export function formatMatchLabel(match: ContestMatch) {

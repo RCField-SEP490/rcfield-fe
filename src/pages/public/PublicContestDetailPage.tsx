@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
+import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CalendarClock, CreditCard, Info as InfoIcon, ShieldCheck, Swords, Trophy } from "lucide-react"
+import { ArrowLeft, CalendarClock, CreditCard, Info as InfoIcon, ShieldCheck, Swords, Trophy, Timer, Users, MapPinned } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { toast } from "sonner"
 
@@ -31,8 +32,14 @@ export function PublicContestDetailPage() {
   const { contestId } = useParams()
   const queryClient = useQueryClient()
   const role = useAuthStore((state) => state.role)
+  const profile = useAuthStore((state) => state.user)
   const [selectedBookingId, setSelectedBookingId] = useState("")
   const [selectedVehicleId, setSelectedVehicleId] = useState("")
+  const [registrationMode, setRegistrationMode] = useState<"RENTAL" | "BYOC">("RENTAL")
+  const [byocVehicleName, setByocVehicleName] = useState("")
+  const [byocVehicleBrand, setByocVehicleBrand] = useState("")
+  const [byocVehicleClass, setByocVehicleClass] = useState("")
+  const [byocVehicleNotes, setByocVehicleNotes] = useState("")
 
   const contestQuery = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
@@ -63,6 +70,15 @@ export function PublicContestDetailPage() {
   const registerMutation = useMutation({
     mutationFn: async () => {
       if (!contestId) throw new Error("Missing contestId")
+      if (registrationMode === "BYOC") {
+        return contestApi.registerContest(contestId, {
+          vehicle_source: "BYOC",
+          byoc_vehicle_name: byocVehicleName,
+          byoc_vehicle_brand: byocVehicleBrand || undefined,
+          byoc_vehicle_class: byocVehicleClass || undefined,
+          byoc_vehicle_notes: byocVehicleNotes || undefined,
+        })
+      }
       return contestApi.registerContest(contestId, {
         booking_id: selectedBookingId,
         vehicle_id: selectedVehicleId,
@@ -74,6 +90,9 @@ export function PublicContestDetailPage() {
       void queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) })
       void queryClient.invalidateQueries({ queryKey: contestQueryKeys.matches(contestId) })
     },
+  })
+  const entryFeePaymentMutation = useMutation({
+    mutationFn: async (registrationId: string) => contestApi.createEntryFeePayment(registrationId),
   })
 
   const contest = contestQuery.data
@@ -89,6 +108,15 @@ export function PublicContestDetailPage() {
     [matches],
   )
   const selectedVehicle = selectedBooking?.vehicles.find((vehicle) => vehicle.vehicleId === selectedVehicleId) ?? null
+  const publicStats = contest?.public_stats
+  const allowsByoc = contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY" || contest?.vehicle_rule?.vehicle_policy === "MIXED"
+  const rentalOnly = contest?.vehicle_rule?.vehicle_policy === "RENTAL_ONLY"
+  const prizeStructure = contest?.prize_structure
+  const prizeItems = Array.isArray(prizeStructure?.items)
+    ? (prizeStructure.items as Array<Record<string, unknown>>)
+    : Array.isArray(prizeStructure?.tiers)
+      ? (prizeStructure.tiers as Array<Record<string, unknown>>)
+      : []
   const bookingHelperMessage = useMemo(() => {
     if (!contest) return null
     if (myBookingsQuery.isLoading) return "Đang tải danh sách booking phù hợp..."
@@ -101,10 +129,26 @@ export function PublicContestDetailPage() {
 
   const handleRegister = async () => {
     try {
-      await registerMutation.mutateAsync()
+      const registration = await registerMutation.mutateAsync()
       toast.success("Đăng ký tham gia giải đấu thành công!")
+      if ((registration.entryFeeAmount ?? 0) > 0 && registration.paymentStatus === "PENDING_PAYMENT") {
+        const payment = await entryFeePaymentMutation.mutateAsync(registration.id)
+        window.location.assign(payment.payment_url)
+      }
     } catch (error) {
       toast.error("Không thể đăng ký giải đấu", {
+        description: getErrorMessage(error),
+      })
+    }
+  }
+
+  const handleContinuePayment = async () => {
+    if (!existingRegistration) return
+    try {
+      const payment = await entryFeePaymentMutation.mutateAsync(existingRegistration.id)
+      window.location.assign(payment.payment_url)
+    } catch (error) {
+      toast.error("Không thể tạo thanh toán lệ phí", {
         description: getErrorMessage(error),
       })
     }
@@ -158,6 +202,61 @@ export function PublicContestDetailPage() {
                     <Info label="Luật sử dụng xe" value={getVehiclePolicyLabel(contest.vehicle_rule?.vehicle_policy as string)} />
                     <Info label="Hạn chót đăng ký" value={formatContestDateTime(contest.registration_closes_at)} />
                     <Info label="Thời gian bắt đầu" value={formatContestDateTime(contest.starts_at)} />
+                  </div>
+                </Card>
+
+                <Card className="rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Tổng quan tham gia</h3>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <Info label="Đã đăng ký" value={String(publicStats?.registration_count ?? 0)} />
+                    <Info label="Đã xác nhận" value={String(publicStats?.confirmed_count ?? 0)} />
+                    <Info
+                      label="Còn chỗ"
+                      value={publicStats?.capacity_remaining === null || publicStats?.capacity_remaining === undefined ? "--" : String(publicStats.capacity_remaining)}
+                    />
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                    <FactStrip icon={<Users className="size-4" />} label="Hình thức" value={contest.contest_format?.name ?? "--"} />
+                    <FactStrip icon={<Timer className="size-4" />} label="Track type" value={contest.track_type?.name ?? "--"} />
+                    <FactStrip icon={<MapPinned className="size-4" />} label="Chi nhánh" value={String(contest.participating_branches.length)} />
+                  </div>
+                </Card>
+
+                <Card className="rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">Giải thưởng & địa điểm thi đấu</h3>
+                  <div className="mt-4 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+                    <div className="space-y-3">
+                      {prizeItems.length > 0 ? (
+                        prizeItems.map((item, index) => (
+                          <div key={`${index}-${String(item.position ?? item.rank ?? "prize")}`} className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
+                            <p className="text-xs font-bold uppercase tracking-wide text-orange-700">
+                              {String(item.position ?? item.rank ?? `Top ${index + 1}`)}
+                            </p>
+                            <p className="mt-1 text-sm font-extrabold text-slate-900">
+                              {String(item.label ?? item.reward ?? item.prize ?? "Giải thưởng công bố trong điều lệ")}
+                            </p>
+                            {item.note ? <p className="mt-1 text-xs text-slate-500">{String(item.note)}</p> : null}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                          Giải thưởng chưa được cấu hình chi tiết trên contest này.
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      {contest.participating_branches.map((branch) => (
+                        <div key={branch.id} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+                          <p className="font-bold text-slate-900">{branch.cafe?.name ?? branch.cafe_id}</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            {branch.cafe?.district}, {branch.cafe?.city}
+                          </p>
+                          <p className="mt-2 text-xs font-semibold text-slate-500">
+                            Vai trò: {branch.role} · Check-in {branch.check_in_enabled ? "bật" : "tắt"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </Card>
 
@@ -258,6 +357,16 @@ export function PublicContestDetailPage() {
                           <p className="mt-1 text-lg font-black tracking-widest text-slate-900">{existingRegistration.checkInCode}</p>
                         </div>
                       ) : null}
+                      {existingRegistration.paymentStatus === "PENDING_PAYMENT" ? (
+                        <Button
+                          type="button"
+                          className="w-full rounded-xl bg-orange-600 py-5 text-sm font-bold text-white hover:bg-orange-700"
+                          disabled={entryFeePaymentMutation.isPending}
+                          onClick={() => void handleContinuePayment()}
+                        >
+                          {entryFeePaymentMutation.isPending ? "Đang chuyển sang thanh toán..." : "Thanh toán lệ phí qua VNPay"}
+                        </Button>
+                      ) : null}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -276,72 +385,127 @@ export function PublicContestDetailPage() {
                         </div>
                       </div>
 
-                      <div>
-                        <Label className="mb-2 block text-xs font-bold text-slate-700">Lịch đặt đã xác nhận</Label>
-                        <select
-                          className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                          value={selectedBookingId}
-                          onChange={(e) => {
-                            setSelectedBookingId(e.target.value)
-                            setSelectedVehicleId("")
-                          }}
-                        >
-                          <option value="">-- Chọn lịch đặt sân phù hợp --</option>
-                          {bookingOptions.map((booking) => (
-                            <option key={booking.id} value={booking.id}>
-                              {new Date(booking.slotStart).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })} · Mã: {booking.id.slice(0, 8)}
-                            </option>
-                          ))}
-                        </select>
-                        {bookingHelperMessage ? (
-                          <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                            <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
-                            <span>{bookingHelperMessage}</span>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block text-xs font-bold text-slate-700">Xe thuê từ lịch đặt</Label>
-                        <select
-                          className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-slate-50 disabled:text-slate-400"
-                          value={selectedVehicleId}
-                          onChange={(e) => setSelectedVehicleId(e.target.value)}
-                          disabled={!selectedBooking}
-                        >
-                          <option value="">-- Chọn xe thi đấu --</option>
-                          {selectedBooking?.vehicles.map((vehicle) => (
-                            <option key={vehicle.vehicleId} value={vehicle.vehicleId}>
-                              {vehicle.catalogName ?? vehicle.identifier ?? `Xe #${vehicle.vehicleId.slice(0, 8)}`}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {selectedBooking ? (
-                        <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm sm:grid-cols-2">
-                          <MiniInfo
-                            label="Booking đã chọn"
-                            value={new Date(selectedBooking.slotStart).toLocaleString("vi-VN", {
-                              dateStyle: "short",
-                              timeStyle: "short",
-                            })}
-                          />
-                          <MiniInfo
-                            label="Chi nhánh"
-                            value={selectedBooking.cafe?.name ?? contest.host_branch?.cafe?.name ?? "--"}
-                          />
-                          <MiniInfo label="Track" value={selectedBooking.track_type_name ?? contest.track_type?.name ?? "--"} />
-                          <MiniInfo
-                            label="Xe thi đấu"
-                            value={
-                              selectedVehicle?.catalogName ??
-                              selectedVehicle?.identifier ??
-                              (selectedVehicle ? `Xe #${selectedVehicle.vehicleId.slice(0, 8)}` : "--")
-                            }
-                          />
+                      {allowsByoc ? (
+                        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-2">
+                          <button
+                            type="button"
+                            className={`rounded-xl px-4 py-3 text-sm font-bold transition ${registrationMode === "RENTAL" ? "bg-slate-900 text-white" : "bg-white text-slate-600"}`}
+                            disabled={contest.vehicle_rule?.vehicle_policy === "BYOC_ONLY"}
+                            onClick={() => setRegistrationMode("RENTAL")}
+                          >
+                            Đi bằng xe thuê
+                          </button>
+                          <button
+                            type="button"
+                            className={`rounded-xl px-4 py-3 text-sm font-bold transition ${registrationMode === "BYOC" ? "bg-orange-600 text-white" : "bg-white text-slate-600"}`}
+                            disabled={rentalOnly}
+                            onClick={() => setRegistrationMode("BYOC")}
+                          >
+                            Đi bằng xe cá nhân
+                          </button>
                         </div>
                       ) : null}
+
+                      {registrationMode === "BYOC" ? (
+                        <div className="space-y-3">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <Label className="mb-2 block text-xs font-bold text-slate-700">Tên xe cá nhân</Label>
+                              <Input value={byocVehicleName} onChange={(event) => setByocVehicleName(event.target.value)} placeholder="Ví dụ: MST RMX 2.5" />
+                            </div>
+                            <div>
+                              <Label className="mb-2 block text-xs font-bold text-slate-700">Hãng xe</Label>
+                              <Input value={byocVehicleBrand} onChange={(event) => setByocVehicleBrand(event.target.value)} placeholder="Ví dụ: MST" />
+                            </div>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <Label className="mb-2 block text-xs font-bold text-slate-700">Class</Label>
+                              <Input value={byocVehicleClass} onChange={(event) => setByocVehicleClass(event.target.value)} placeholder="Ví dụ: Drift / Touring" />
+                            </div>
+                            <div>
+                              <Label className="mb-2 block text-xs font-bold text-slate-700">Người đăng ký</Label>
+                              <Input value={profile?.email ?? profile?.fullName ?? "--"} readOnly />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="mb-2 block text-xs font-bold text-slate-700">Ghi chú BYOC</Label>
+                            <Input value={byocVehicleNotes} onChange={(event) => setByocVehicleNotes(event.target.value)} placeholder="Phụ kiện, setup, lưu ý kỹ thuật..." />
+                          </div>
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                            Xe cá nhân sẽ đi theo luồng khai báo thủ công và chờ provider/staff duyệt trước khi được xếp thi đấu.
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <Label className="mb-2 block text-xs font-bold text-slate-700">Lịch đặt đã xác nhận</Label>
+                            <select
+                              className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                              value={selectedBookingId}
+                              onChange={(e) => {
+                                setSelectedBookingId(e.target.value)
+                                setSelectedVehicleId("")
+                              }}
+                            >
+                              <option value="">-- Chọn lịch đặt sân phù hợp --</option>
+                              {bookingOptions.map((booking) => (
+                                <option key={booking.id} value={booking.id}>
+                                  {new Date(booking.slotStart).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })} · Mã: {booking.id.slice(0, 8)}
+                                </option>
+                              ))}
+                            </select>
+                            {bookingHelperMessage ? (
+                              <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+                                <span>{bookingHelperMessage}</span>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div>
+                            <Label className="mb-2 block text-xs font-bold text-slate-700">Xe thuê từ lịch đặt</Label>
+                            <select
+                              className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-slate-50 disabled:text-slate-400"
+                              value={selectedVehicleId}
+                              onChange={(e) => setSelectedVehicleId(e.target.value)}
+                              disabled={!selectedBooking}
+                            >
+                              <option value="">-- Chọn xe thi đấu --</option>
+                              {selectedBooking?.vehicles.map((vehicle) => (
+                                <option key={vehicle.vehicleId} value={vehicle.vehicleId}>
+                                  {vehicle.catalogName ?? vehicle.identifier ?? `Xe #${vehicle.vehicleId.slice(0, 8)}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {selectedBooking ? (
+                            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm sm:grid-cols-2">
+                              <MiniInfo
+                                label="Booking đã chọn"
+                                value={new Date(selectedBooking.slotStart).toLocaleString("vi-VN", {
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                })}
+                              />
+                              <MiniInfo
+                                label="Chi nhánh"
+                                value={selectedBooking.cafe?.name ?? contest.host_branch?.cafe?.name ?? "--"}
+                              />
+                              <MiniInfo label="Track" value={selectedBooking.track_type_name ?? contest.track_type?.name ?? "--"} />
+                              <MiniInfo
+                                label="Xe thi đấu"
+                                value={
+                                  selectedVehicle?.catalogName ??
+                                  selectedVehicle?.identifier ??
+                                  (selectedVehicle ? `Xe #${selectedVehicle.vehicleId.slice(0, 8)}` : "--")
+                                }
+                              />
+                            </div>
+                          ) : null}
+                        </>
+                      )}
 
                       <div>
                         <Label className="mb-2 block text-xs font-bold text-slate-700">Lệ phí giải đấu</Label>
@@ -354,7 +518,12 @@ export function PublicContestDetailPage() {
                       <Button
                         type="button"
                         className="mt-6 w-full rounded-xl bg-orange-600 py-6 text-sm font-bold text-white shadow-md shadow-orange-600/10 transition hover:bg-orange-700"
-                        disabled={!selectedBookingId || !selectedVehicleId || registerMutation.isPending}
+                        disabled={
+                          registerMutation.isPending ||
+                          (registrationMode === "BYOC"
+                            ? byocVehicleName.trim().length === 0
+                            : !selectedBookingId || !selectedVehicleId)
+                        }
                         onClick={() => void handleRegister()}
                       >
                         {registerMutation.isPending ? "Đang gửi đăng ký..." : "Gửi đăng ký tham gia"}
@@ -418,6 +587,28 @@ function MiniInfo({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
       <p className="mt-1 font-semibold text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+function FactStrip({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+      <div className="flex size-9 items-center justify-center rounded-xl bg-white text-orange-600">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
+        <p className="text-sm font-extrabold text-slate-900">{value}</p>
+      </div>
     </div>
   )
 }

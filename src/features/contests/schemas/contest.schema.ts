@@ -92,15 +92,13 @@ export const contestMatchResultInputSchema = z.object({
     .nullable()
     .optional(),
   score: z.number().nullable().optional(),
-  best_lap_ms: z
+  best_lap_seconds: z
     .number()
-    .int()
     .min(0, "Thời gian best lap không được nhỏ hơn 0")
     .nullable()
     .optional(),
-  total_time_ms: z
+  total_time_seconds: z
     .number()
-    .int()
     .min(0, "Tổng thời gian đua không được nhỏ hơn 0")
     .nullable()
     .optional(),

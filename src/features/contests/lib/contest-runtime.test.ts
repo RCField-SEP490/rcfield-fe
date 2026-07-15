@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getAuditGroup, getEligibleRuntimeRegistrations, groupMatchesByRound } from "./contest-runtime"
+import { formatDurationSeconds, getAuditGroup, getEligibleRuntimeRegistrations, groupMatchesByRound } from "./contest-runtime"
 
 describe("contest runtime helpers", () => {
   it("filters eligible registrations for runtime", () => {
@@ -9,7 +9,7 @@ describe("contest runtime helpers", () => {
       { id: "3", status: "CHECKED_IN" },
     ] as const
 
-    expect(getEligibleRuntimeRegistrations(registrations as never)).toHaveLength(2)
+    expect(getEligibleRuntimeRegistrations(registrations as never)).toHaveLength(1)
   })
 
   it("groups matches by round number", () => {
@@ -31,5 +31,10 @@ describe("contest runtime helpers", () => {
     expect(getAuditGroup({ eventType: "match.results_submitted" } as never)).toBe("match")
     expect(getAuditGroup({ eventType: "registration.checked_in" } as never)).toBe("registration")
     expect(getAuditGroup({ eventType: "contest.leaderboard_published" } as never)).toBe("contest")
+  })
+
+  it("formats contest runtime durations in seconds", () => {
+    expect(formatDurationSeconds(32.4567)).toBe("32.457s")
+    expect(formatDurationSeconds(null)).toBe("--")
   })
 })

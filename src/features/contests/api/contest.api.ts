@@ -1,7 +1,9 @@
 import { api } from "@/shared/lib/axios"
 import type {
   ContestAuditLogItem,
+  ContestBanItem,
   ContestCorrectResultsBody,
+  ContestEntryPaymentResponse,
   ContestCatalogFormat,
   ContestCatalogType,
   ContestItem,
@@ -14,7 +16,9 @@ import type {
   ContestRegistration,
   ContestRegistrationsQuery,
   ContestRaceRecordSyncResult,
+  ContestRegistrationCreateBody,
   ContestSubmitResultsBody,
+  ContestStaffAssignment,
   ContestTemplate,
   ContestGenerateMatchesBody,
   MyContestRegistrationsQuery,
@@ -55,6 +59,11 @@ export const contestQueryKeys = {
 function mapContestItem(raw: any): ContestItem {
   return {
     ...raw,
+    resource_locks: Array.isArray(raw.resource_locks) ? raw.resource_locks : [],
+    prize_structure: raw.prize_structure ?? null,
+    public_stats: raw.public_stats ?? null,
+    staff_assignments: Array.isArray(raw.staff_assignments) ? raw.staff_assignments : [],
+    operator_access: Boolean(raw.operator_access),
     my_registration: raw.my_registration ? mapContestRegistration(raw.my_registration) : null,
   }
 }
@@ -117,6 +126,8 @@ function mapContestMatch(raw: any): ContestMatch {
     ...raw,
     participants: (raw.participants ?? []).map((participant: any) => ({
       ...participant,
+      best_lap_seconds: participant.best_lap_seconds ?? null,
+      total_time_seconds: participant.total_time_seconds ?? null,
       registration: participant.registration
         ? {
             id: participant.registration.id,
@@ -197,7 +208,7 @@ export const contestApi = {
 
   registerContest: async (
     contestId: string,
-    body: { booking_id: string; vehicle_id: string; vehicle_source?: "RENTAL" | "BYOC" },
+    body: ContestRegistrationCreateBody,
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(`/v1/contests/${contestId}/register`, body)
     return mapContestRegistration(res.data.data)
@@ -296,6 +307,17 @@ export const contestApi = {
     return mapContestRegistration(res.data.data)
   },
 
+  createEntryFeePayment: async (
+    registrationId: string,
+    body?: { return_url?: string },
+  ): Promise<ContestEntryPaymentResponse> => {
+    const res = await api.post<ApiEnvelope<ContestEntryPaymentResponse>>(
+      `/v1/contest-registrations/${registrationId}/create-entry-fee-payment`,
+      body ?? {},
+    )
+    return res.data.data
+  },
+
   approveRegistration: async (registrationId: string, reason?: string): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/approve`,
@@ -326,6 +348,62 @@ export const contestApi = {
   cancelRegistration: async (registrationId: string): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/cancel`
+    )
+    return mapContestRegistration(res.data.data)
+  },
+
+  listStaffAssignments: async (contestId: string): Promise<ContestStaffAssignment[]> => {
+    const res = await api.get<ApiEnvelope<ContestStaffAssignment[]>>(`/v1/contests/${contestId}/staff-assignments`)
+    return res.data.data ?? []
+  },
+
+  assignStaff: async (contestId: string, staffId: string): Promise<ContestStaffAssignment[]> => {
+    const res = await api.post<ApiEnvelope<ContestStaffAssignment[]>>(`/v1/contests/${contestId}/staff-assignments`, {
+      staff_id: staffId,
+    })
+    return res.data.data ?? []
+  },
+
+  unassignStaff: async (contestId: string, staffId: string): Promise<ContestStaffAssignment[]> => {
+    const res = await api.delete<ApiEnvelope<ContestStaffAssignment[]>>(
+      `/v1/contests/${contestId}/staff-assignments/${staffId}`,
+    )
+    return res.data.data ?? []
+  },
+
+  listBans: async (contestId: string): Promise<ContestBanItem[]> => {
+    const res = await api.get<ApiEnvelope<ContestBanItem[]>>(`/v1/contests/${contestId}/bans`)
+    return res.data.data ?? []
+  },
+
+  createBan: async (
+    contestId: string,
+    body: {
+      user_id: string
+      scope_type: "CONTEST" | "PROVIDER"
+      reason: string
+      evidence_url?: string | null
+      notes?: string | null
+      expires_at?: string | null
+    },
+  ): Promise<ContestBanItem> => {
+    const res = await api.post<ApiEnvelope<ContestBanItem>>(`/v1/contests/${contestId}/bans`, body)
+    return res.data.data
+  },
+
+  liftBan: async (
+    contestId: string,
+    banId: string,
+    body?: { reason?: string },
+  ): Promise<ContestBanItem> => {
+    const res = await api.post<ApiEnvelope<ContestBanItem>>(`/v1/contests/${contestId}/bans/${banId}/lift`, body ?? {})
+    return res.data.data
+  },
+
+  disqualifyRegistration: async (registrationId: string, reason: string): Promise<ContestRegistration> => {
+    const res = await api.post<ApiEnvelope<ContestRegistration>>(
+      `/v1/contest-registrations/${registrationId}/disqualify`,
+      { reason },
     )
     return mapContestRegistration(res.data.data)
   },

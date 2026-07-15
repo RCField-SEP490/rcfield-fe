@@ -2,7 +2,7 @@ import type { ContestItem, ContestLeaderboardPayload, ContestMetrics } from "@/f
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Button } from "@/shared/ui/button"
 import { toast } from "sonner"
-import { getErrorMessage } from "@/features/contests/lib/contest-runtime"
+import { formatDurationSeconds, getErrorMessage } from "@/features/contests/lib/contest-runtime"
 import type { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
 
 type RuntimeHook = ReturnType<typeof useContestRuntime>
@@ -47,6 +47,8 @@ export function ContestLeaderboardPanel({
           <StatusRow label="Cách xếp hạng" value={leaderboard?.mode ?? metrics?.leaderboard.mode ?? "--"} />
           <StatusRow label="Đã công bố" value={leaderboard ? "Rồi" : "Chưa"} />
           <StatusRow label="Thời điểm công bố" value={leaderboard?.published_at ?? "--"} />
+          <StatusRow label="Dự kiến doanh thu" value={formatCurrency(metrics?.revenue?.expected_revenue ?? 0)} />
+          <StatusRow label="Đã thu" value={formatCurrency(metrics?.revenue?.paid_revenue ?? 0)} />
           <StatusRow label="Đồng bộ toàn hệ thống" value={metrics?.global_sync.synced ? "Đã đồng bộ" : "Chưa đồng bộ"} />
           <StatusRow label="Lần đồng bộ gần nhất" value={metrics?.global_sync.synced_at ?? "--"} />
         </div>
@@ -90,8 +92,8 @@ export function ContestLeaderboardPanel({
                       </div>
                     </td>
                     <td className="py-3 text-[#5d5f5f]">{entry.wins}</td>
-                    <td className="py-3 text-[#5d5f5f]">{entry.best_lap_ms ?? "--"}</td>
-                    <td className="py-3 text-[#5d5f5f]">{entry.total_time_ms ?? "--"}</td>
+                    <td className="py-3 text-[#5d5f5f]">{formatDurationSeconds(entry.best_lap_seconds)}</td>
+                    <td className="py-3 text-[#5d5f5f]">{formatDurationSeconds(entry.total_time_seconds)}</td>
                     <td className="py-3 text-[#5d5f5f]">{entry.matches_completed}</td>
                     <td className="py-3 text-[#5d5f5f]">{entry.progressed_round}</td>
                   </tr>
@@ -114,4 +116,12 @@ function StatusRow({ label, value }: { label: string; value: string }) {
       <span className="text-[#1c1b1b]">{value}</span>
     </div>
   )
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value)
 }

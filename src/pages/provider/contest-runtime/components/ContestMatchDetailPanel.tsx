@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { contestCorrectResultsSchema, contestSubmitResultsSchema } from "@/features/contests/schemas/contest.schema"
 import type { ContestMatch, ContestMatchParticipant, ContestSubmitResultsBody } from "@/features/contests/types"
-import { formatDurationMs, getErrorMessage, getMatchParticipantName, getMatchParticipantSubtitle } from "@/features/contests/lib/contest-runtime"
+import { formatDurationSeconds, getErrorMessage, getMatchParticipantName, getMatchParticipantSubtitle } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
@@ -33,8 +33,8 @@ export function ContestMatchDetailPanel({
     registration_id: string
     finish_position: number | null
     score: number | null
-    best_lap_ms: number | null
-    total_time_ms: number | null
+    best_lap_seconds: number | null
+    total_time_seconds: number | null
     is_winner: boolean
     result_note: string | null
     status: ContestMatchParticipant["status"]
@@ -58,8 +58,8 @@ export function ContestMatchDetailPanel({
         registration_id: participant.registration_id,
         finish_position: participant.finish_position,
         score: participant.score,
-        best_lap_ms: participant.best_lap_ms,
-        total_time_ms: participant.total_time_ms,
+        best_lap_seconds: participant.best_lap_seconds,
+        total_time_seconds: participant.total_time_seconds,
         is_winner: participant.is_winner,
         result_note: participant.result_note,
         status: participant.status,
@@ -103,8 +103,8 @@ export function ContestMatchDetailPanel({
     field:
       | "finish_position"
       | "score"
-      | "best_lap_ms"
-      | "total_time_ms"
+      | "best_lap_seconds"
+      | "total_time_seconds"
       | "is_winner"
       | "result_note"
       | "status",
@@ -141,8 +141,8 @@ export function ContestMatchDetailPanel({
       registration_id: result.registration_id,
       finish_position: result.finish_position,
       score: result.score,
-      best_lap_ms: result.best_lap_ms,
-      total_time_ms: result.total_time_ms,
+      best_lap_seconds: result.best_lap_seconds,
+      total_time_seconds: result.total_time_seconds,
       is_winner: result.is_winner,
       result_note: result.result_note,
       status: result.status,
@@ -316,18 +316,20 @@ export function ContestMatchDetailPanel({
                       onChange={(event) => updateResultValue(result.registration_id, "score", event.target.value ? Number(event.target.value) : null)}
                     />
                   </Field>
-                  <Field label="Lap tốt nhất (ms)">
+                  <Field label="Lap tốt nhất (giây)">
                     <Input
                       type="number"
-                      value={result.best_lap_ms ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "best_lap_ms", event.target.value ? Number(event.target.value) : null)}
+                      step="0.001"
+                      value={result.best_lap_seconds ?? ""}
+                      onChange={(event) => updateResultValue(result.registration_id, "best_lap_seconds", event.target.value ? Number(event.target.value) : null)}
                     />
                   </Field>
-                  <Field label="Tổng thời gian (ms)">
+                  <Field label="Tổng thời gian (giây)">
                     <Input
                       type="number"
-                      value={result.total_time_ms ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "total_time_ms", event.target.value ? Number(event.target.value) : null)}
+                      step="0.001"
+                      value={result.total_time_seconds ?? ""}
+                      onChange={(event) => updateResultValue(result.registration_id, "total_time_seconds", event.target.value ? Number(event.target.value) : null)}
                     />
                   </Field>
                 </div>
@@ -362,7 +364,7 @@ export function ContestMatchDetailPanel({
                   Đánh dấu người thắng
                 </label>
                 <div className="mt-2 text-xs font-semibold text-[#747878]">
-                  Lap tốt nhất: {formatDurationMs(result.best_lap_ms)} · Tổng thời gian: {formatDurationMs(result.total_time_ms)}
+                  Lap tốt nhất: {formatDurationSeconds(result.best_lap_seconds)} · Tổng thời gian: {formatDurationSeconds(result.total_time_seconds)}
                 </div>
               </div>
             ))}
