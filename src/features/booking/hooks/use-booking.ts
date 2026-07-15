@@ -1,6 +1,52 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { bookingApi, bookingQueryKeys } from '../api/booking.api'
-import type { AvailabilityResponse, CheckAvailabilityParams, CreateBookingBody, CreateBookingResult, ListCafeBookingsParams, ListMyBookingsParams } from '../types/booking.types'
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { bookingApi, bookingQueryKeys } from "../api/booking.api"
+import type {
+  AvailabilityResponse,
+  CheckAvailabilityParams,
+  CreateBookingBody,
+  CreateBookingResult,
+  ListCafeBookingsParams,
+  ListMyBookingsParams,
+} from "../types/booking.types"
+
+/**
+ * Converts a cafe-local slot (Vietnam, UTC+07:00) to a valid ISO datetime.
+ * `24:00` is represented as 00:00 on the following day, since the API's ISO
+ * validator correctly rejects 24 as an hour value.
+ */
+export function toVietnamSlotISOString(date: string, time: string): string {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  const timeMatch = /^(\d{1,2}):(\d{2})$/.exec(time)
+  if (!dateMatch || !timeMatch) return ""
+
+  const [, yearText, monthText, dayText] = dateMatch
+  const [, hourText, minuteText] = timeMatch
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const hour = Number(hourText)
+  const minute = Number(minuteText)
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour < 0 ||
+    hour > 47 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return ""
+  }
+
+  const timestamp = Date.UTC(year, month - 1, day, hour - 7, minute, 0)
+  return Number.isNaN(timestamp) ? "" : new Date(timestamp).toISOString()
+}
 
 export function useAvailability(
   cafeId: string,
@@ -28,38 +74,54 @@ export type HourlySlotAvailability = {
 export function useDailyAvailability(
   cafeId: string,
   date: string,
-  openHour = 8,
-  closeHour = 22,
+  openHour: number,
+  closeHour: number,
   trackConfigId?: string,
 ) {
-  const isMock = cafeId.startsWith('cafe-')
+  const isMock = cafeId.startsWith("cafe-")
   return useQuery({
-    queryKey: ['daily-availability', cafeId, date, openHour, closeHour, trackConfigId ?? null],
+    queryKey: [
+      "daily-availability",
+      cafeId,
+      date,
+      openHour,
+      closeHour,
+      trackConfigId ?? null,
+    ],
     queryFn: async (): Promise<HourlySlotAvailability[]> => {
-      const hours = Array.from({ length: closeHour - openHour }, (_, i) => i + openHour)
+      const hours = Array.from(
+        { length: closeHour - openHour },
+        (_, i) => i + openHour,
+      )
       const results = await Promise.all(
         hours.map(async (h) => {
-          const hh = String(h).padStart(2, '0')
-          const slotStart = `${date}T${hh}:00:00+07:00`
-          const slotEnd =
-            h + 1 === 24
-              ? (() => {
-                  const nextDate = new Date(`${date}T00:00:00Z`)
-                  nextDate.setUTCDate(nextDate.getUTCDate() + 1)
-                  return `${nextDate.toISOString().slice(0, 10)}T00:00:00+07:00`
-                })()
-              : `${date}T${String(h + 1).padStart(2, '0')}:00:00+07:00`
+          const hh = String(h).padStart(2, "0")
+          const slotStart = toVietnamSlotISOString(date, `${hh}:00`)
+          const slotEnd = toVietnamSlotISOString(
+            date,
+            `${String(h + 1).padStart(2, "0")}:00`,
+          )
           try {
             const [rental, byoc] = await Promise.all([
-              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'RENTAL', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
-              bookingApi.checkAvailability(cafeId, { slot_start: slotStart, slot_end: slotEnd, play_mode: 'BYOC', ...(trackConfigId ? { track_config_id: trackConfigId } : {}) }),
+              bookingApi.checkAvailability(cafeId, {
+                slot_start: slotStart,
+                slot_end: slotEnd,
+                play_mode: "RENTAL",
+                ...(trackConfigId ? { track_config_id: trackConfigId } : {}),
+              }),
+              bookingApi.checkAvailability(cafeId, {
+                slot_start: slotStart,
+                slot_end: slotEnd,
+                play_mode: "BYOC",
+                ...(trackConfigId ? { track_config_id: trackConfigId } : {}),
+              }),
             ])
             const rentalCount = rental.vehicles?.length ?? 0
             const byocRemaining = byoc.byoc_remaining ?? 0
             return {
               hour: h,
               data: {
-                play_mode: rentalCount > 0 ? 'RENTAL' : 'BYOC',
+                play_mode: rentalCount > 0 ? "RENTAL" : "BYOC",
                 available: rentalCount > 0 || byocRemaining > 0,
                 byoc_remaining: byocRemaining,
                 vehicles: rental.vehicles ?? [],
@@ -73,7 +135,15 @@ export function useDailyAvailability(
       )
       return results
     },
-    enabled: !!cafeId && !!date && !isMock,
+    enabled:
+      !!cafeId &&
+      !!date &&
+      !isMock &&
+      Number.isInteger(openHour) &&
+      Number.isInteger(closeHour) &&
+      openHour >= 0 &&
+      closeHour > openHour &&
+      closeHour <= 24,
     staleTime: 60_000,
   })
 }
@@ -93,9 +163,12 @@ export function useMyBookings(params: ListMyBookingsParams = {}) {
   })
 }
 
-export function useCafeBookings(cafeId: string | undefined, params: ListCafeBookingsParams) {
+export function useCafeBookings(
+  cafeId: string | undefined,
+  params: ListCafeBookingsParams,
+) {
   return useQuery({
-    queryKey: bookingQueryKeys.cafe(cafeId ?? '', params),
+    queryKey: bookingQueryKeys.cafe(cafeId ?? "", params),
     queryFn: () => bookingApi.listCafeBookings(cafeId!, params),
     enabled: !!cafeId && !!params.date,
     staleTime: 0,
@@ -108,7 +181,7 @@ export function useCreateBooking() {
     mutationFn: (body: CreateBookingBody) => bookingApi.createBooking(body),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.all })
-      void queryClient.invalidateQueries({ queryKey: ['daily-availability'] })
+      void queryClient.invalidateQueries({ queryKey: ["daily-availability"] })
     },
   })
 }
@@ -122,8 +195,13 @@ export function useCreateCheckout() {
 export function useCancelBooking() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ bookingId, reason }: { bookingId: string; reason?: string }) =>
-      bookingApi.cancelBooking(bookingId, reason),
+    mutationFn: ({
+      bookingId,
+      reason,
+    }: {
+      bookingId: string
+      reason?: string
+    }) => bookingApi.cancelBooking(bookingId, reason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.all })
     },

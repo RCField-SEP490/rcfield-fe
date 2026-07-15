@@ -5,7 +5,11 @@ import type { TrackConfig } from "@/features/cafes/types"
 import { useDailyAvailability } from "@/features/booking/hooks/use-booking"
 import { cn } from "@/shared/lib/utils"
 import { Input } from "@/shared/ui/input"
-import { buildDailySlots, DailySlotGrid, type DailySlot, type DailySlotStatus } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
+import {
+  DailySlotGrid,
+  type DailySlot,
+  type DailySlotStatus,
+} from "@/pages/customer/cafe-detail/components/DailySlotGrid"
 import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
 import { SlotPriceLabel } from "@/shared/components/SlotPriceLabel"
 
@@ -23,8 +27,9 @@ interface TrackSelectionStepProps {
   onSelectTrack: (config: TrackConfig) => void
   slotDurationMinutes: number
   minBookingNoticeMinutes?: number
-  openHour?: number
-  closeHour?: number
+  openHour: number
+  closeHour: number
+  isScheduleConfigured: boolean
   playMode: PlayMode
   onPlayModeChange: (mode: PlayMode) => void
   /** Effective price per hour from the pricing preview API (optional) */
@@ -45,8 +50,9 @@ export function TrackSelectionStep({
   onSelectTrack,
   slotDurationMinutes,
   minBookingNoticeMinutes = 0,
-  openHour = 8,
-  closeHour = 22,
+  openHour,
+  closeHour,
+  isScheduleConfigured,
   playMode,
   onPlayModeChange,
   effectivePricePerHour,
@@ -68,8 +74,12 @@ export function TrackSelectionStep({
     return (
       <div className="rounded-xl border border-dashed p-8 text-center">
         <ImageOff className="mx-auto mb-2 size-8 text-muted-foreground" />
-        <p className="text-sm font-medium text-muted-foreground">Cơ sở chưa cấu hình loại sân</p>
-        <p className="mt-1 text-xs text-muted-foreground">Vui lòng liên hệ cơ sở để biết thêm thông tin.</p>
+        <p className="text-sm font-medium text-muted-foreground">
+          Cơ sở chưa cấu hình loại sân
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Vui lòng liên hệ cơ sở để biết thêm thông tin.
+        </p>
       </div>
     )
   }
@@ -79,7 +89,9 @@ export function TrackSelectionStep({
       {/* Track grid */}
       <div>
         <h2 className="mb-1 text-lg font-bold tracking-tight">Chọn loại sân</h2>
-        <p className="mb-4 text-sm text-muted-foreground">Bấm vào sân bạn muốn chơi</p>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Bấm vào sân bạn muốn chơi
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {configs.map((config) => (
             <TrackCard
@@ -103,7 +115,14 @@ export function TrackSelectionStep({
       </div>
 
       {/* Slot picker — shown after track is selected */}
-      {selectedTrackConfig && (
+      {selectedTrackConfig && !isScheduleConfigured && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ cho ngày
+          này. Vui lòng chọn ngày khác hoặc liên hệ cơ sở.
+        </div>
+      )}
+
+      {selectedTrackConfig && isScheduleConfigured && (
         <SlotPicker
           cafeId={cafeId}
           trackConfig={selectedTrackConfig}
@@ -176,9 +195,9 @@ function SlotPicker({
   )
 
   const slots = useMemo<DailySlot[]>(() => {
-    if (!dailyAvailability) return buildDailySlots(openHour, closeHour)
+    if (!dailyAvailability) return []
     return buildSlotsFromAvailability(dailyAvailability, playMode)
-  }, [dailyAvailability, openHour, closeHour, playMode])
+  }, [dailyAvailability, playMode])
 
   const hasRental = trackConfig.max_concurrent > 0
   const hasByoc = trackConfig.byoc_capacity > 0
@@ -203,12 +222,14 @@ function SlotPicker({
             hasRental && playMode === "RENTAL"
               ? "bg-orange-500 text-white border-orange-500"
               : hasRental
-              ? "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600"
-              : "bg-white text-[#747878] border-[#e5e2e1]",
+                ? "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600"
+                : "bg-white text-[#747878] border-[#e5e2e1]",
           )}
         >
           Thuê xe
-          {!hasRental && <span className="ml-1 text-[10px] font-normal">Không hỗ trợ</span>}
+          {!hasRental && (
+            <span className="ml-1 text-[10px] font-normal">Không hỗ trợ</span>
+          )}
         </button>
         <button
           type="button"
@@ -224,12 +245,14 @@ function SlotPicker({
             hasByoc && playMode === "BYOC"
               ? "bg-orange-500 text-white border-orange-500"
               : hasByoc
-              ? "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600"
-              : "bg-white text-[#747878] border-[#e5e2e1]",
+                ? "bg-white text-[#747878] border-[#e5e2e1] hover:border-orange-300 hover:text-orange-600"
+                : "bg-white text-[#747878] border-[#e5e2e1]",
           )}
         >
           Sử dụng xe cá nhân
-          {!hasByoc && <span className="ml-1 text-[10px] font-normal">Không hỗ trợ</span>}
+          {!hasByoc && (
+            <span className="ml-1 text-[10px] font-normal">Không hỗ trợ</span>
+          )}
         </button>
       </div>
 
@@ -249,8 +272,17 @@ function SlotPicker({
         />
       </label>
 
-      <div className={cn("transition-opacity", isLoading && "pointer-events-none opacity-40")}>
-        {isLoading && <p className="mb-2 text-[10px] text-muted-foreground animate-pulse">Đang kiểm tra slot...</p>}
+      <div
+        className={cn(
+          "transition-opacity",
+          isLoading && "pointer-events-none opacity-40",
+        )}
+      >
+        {isLoading && (
+          <p className="mb-2 text-[10px] text-muted-foreground animate-pulse">
+            Đang kiểm tra slot...
+          </p>
+        )}
         <DailySlotGrid
           slots={slots}
           selectedSlotId={selectedSlot}
@@ -294,9 +326,16 @@ function TrackCard({
       )}
     >
       {/* Cover image fixed 16:9 */}
-      <div className="relative w-full overflow-hidden bg-muted" style={{ aspectRatio: "16/9" }}>
+      <div
+        className="relative w-full overflow-hidden bg-muted"
+        style={{ aspectRatio: "16/9" }}
+      >
         {coverImage ? (
-          <img src={coverImage} alt={config.track_type?.name} className="h-full w-full object-cover" />
+          <img
+            src={coverImage}
+            alt={config.track_type?.name}
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <ImageOff className="size-8 text-muted-foreground/40" />
@@ -310,28 +349,50 @@ function TrackCard({
       </div>
 
       <div className="p-3">
-        <p className="font-bold text-[#1c1b1b]">{config.track_type?.name ?? "Loại sân"}</p>
+        <p className="font-bold text-[#1c1b1b]">
+          {config.track_type?.name ?? "Loại sân"}
+        </p>
         <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-          {config.max_concurrent > 0
-            ? <span>{config.max_concurrent} chỗ thuê xe</span>
-            : <span className="text-[#c4c7c8]">Không có xe thuê</span>}
-          {config.byoc_capacity > 0
-            ? <span>{config.byoc_capacity} mang xe riêng</span>
-            : <span className="text-[#c4c7c8]">Không nhận xe riêng</span>}
+          {config.max_concurrent > 0 ? (
+            <span>{config.max_concurrent} chỗ thuê xe</span>
+          ) : (
+            <span className="text-[#c4c7c8]">Không có xe thuê</span>
+          )}
+          {config.byoc_capacity > 0 ? (
+            <span>{config.byoc_capacity} chỗ xe tự mang</span>
+          ) : (
+            <span className="text-[#c4c7c8]">Không nhận xe riêng</span>
+          )}
         </div>
         {config.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{config.description}</p>
+          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            {config.description}
+          </p>
         )}
       </div>
     </button>
   )
 }
 
-function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[], playMode: PlayMode): DailySlot[] {
+function buildSlotsFromAvailability(
+  hourlyData: HourlySlotAvailability[],
+  playMode: PlayMode,
+): DailySlot[] {
   return hourlyData.map(({ hour, data }) => {
     const startTime = `${String(hour).padStart(2, "0")}:00`
     const endTime = `${String(hour + 1).padStart(2, "0")}:00`
-    if (!data) return { id: startTime, startTime, endTime, status: "booked" as DailySlotStatus, remaining: 0, rentalCount: 0, byocRemaining: 0 }
+    if (!data) {
+      return {
+        id: startTime,
+        startTime,
+        endTime,
+        status: "booked" as DailySlotStatus,
+        remaining: 0,
+        rentalCount: 0,
+        byocRemaining: 0,
+        capacityKind: playMode === "RENTAL" ? "rental_vehicle" : "byoc_spot",
+      }
+    }
 
     const rentalCount = data.vehicles?.length ?? 0
     const byocRemaining = data.byoc_remaining ?? 0
@@ -359,6 +420,7 @@ function buildSlotsFromAvailability(hourlyData: HourlySlotAvailability[], playMo
       remaining,
       rentalCount: playMode === "BYOC" ? 0 : rentalCount,
       byocRemaining: playMode === "RENTAL" ? 0 : byocRemaining,
+      capacityKind: playMode === "RENTAL" ? "rental_vehicle" : "byoc_spot",
     }
   })
 }

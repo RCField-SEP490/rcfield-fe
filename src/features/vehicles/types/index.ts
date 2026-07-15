@@ -3,7 +3,7 @@ export const VehicleTier = {
   PREMIUM: "PREMIUM",
   RESTRICTED: "RESTRICTED",
 } as const
-export type VehicleTier = typeof VehicleTier[keyof typeof VehicleTier]
+export type VehicleTier = (typeof VehicleTier)[keyof typeof VehicleTier]
 
 export const VehicleStatus = {
   AVAILABLE: "AVAILABLE",
@@ -11,7 +11,7 @@ export const VehicleStatus = {
   MAINTENANCE: "MAINTENANCE",
   RETIRED: "RETIRED",
 } as const
-export type VehicleStatus = typeof VehicleStatus[keyof typeof VehicleStatus]
+export type VehicleStatus = (typeof VehicleStatus)[keyof typeof VehicleStatus]
 
 import type { TrackType } from "@/features/cafes/types"
 
@@ -31,10 +31,13 @@ export interface VehicleCatalog {
   tier: VehicleTier
   compatibleTrackTypes: Array<TrackType | string>
   coverImageUrl?: string | null
+  cover_image_url?: string | null
   images: CatalogImage[]
   createdAt: string
   updatedAt: string
   total_units?: number
+  available_units?: number
+  maintenance_units?: number
   _count?: {
     units: number
   }
