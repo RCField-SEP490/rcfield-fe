@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router"
 import {
   ChevronLeft,
@@ -10,7 +10,10 @@ import {
   FileCheck,
   ShieldAlert,
 } from "lucide-react"
-import { staffApi, type DamageLineItemInput } from "@/features/staff/api/staff.api"
+import {
+  staffApi,
+  type DamageLineItemInput,
+} from "@/features/staff/api/staff.api"
 import { toast } from "sonner"
 import { StaffCard, StaffButton } from "./components/StaffUI"
 
@@ -50,7 +53,8 @@ export default function StaffCheckoutSummaryPage() {
   const navigate = useNavigate()
 
   const [loading, setLoading] = useState(true)
-  const [checkoutInspection, setCheckoutInspection] = useState<CheckoutInspection | null>(null)
+  const [checkoutInspection, setCheckoutInspection] =
+    useState<CheckoutInspection | null>(null)
   const [sessionStatus, setSessionStatus] = useState<string>("")
 
   // Editable damage items state
@@ -66,12 +70,7 @@ export default function StaffCheckoutSummaryPage() {
   const [disputeNote, setDisputeNote] = useState("")
   const [escalating, setEscalating] = useState(false)
 
-  useEffect(() => {
-    if (!sessionId) return
-    void loadSession()
-  }, [sessionId])
-
-  const loadSession = async () => {
+  const loadSession = useCallback(async () => {
     try {
       setLoading(true)
       const data = await staffApi.getSessionDetail(sessionId!)
@@ -82,7 +81,14 @@ export default function StaffCheckoutSummaryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sessionId])
+
+  useEffect(() => {
+    if (!sessionId) return
+    queueMicrotask(() => {
+      void loadSession()
+    })
+  }, [sessionId, loadSession])
 
   const enterEditMode = () => {
     if (!checkoutInspection) return
@@ -98,19 +104,30 @@ export default function StaffCheckoutSummaryPage() {
   }
 
   const addEditItem = () =>
-    setEditItems((prev) => [...prev, { partType: "TIRE_WHEEL", partsPrice: 0, laborPrice: 0 }])
+    setEditItems((prev) => [
+      ...prev,
+      { partType: "TIRE_WHEEL", partsPrice: 0, laborPrice: 0 },
+    ])
 
   const removeEditItem = (index: number) =>
     setEditItems((prev) => prev.filter((_, i) => i !== index))
 
-  const updateEditItem = (index: number, field: keyof DamageLineItemInput, value: string | number) =>
+  const updateEditItem = (
+    index: number,
+    field: keyof DamageLineItemInput,
+    value: string | number,
+  ) =>
     setEditItems((prev) =>
       prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
     )
 
   const saveEditItems = async () => {
     if (!checkoutInspection) return
-    if (editItems.some((item) => item.partType === "OTHER" && !item.customPartName?.trim())) {
+    if (
+      editItems.some(
+        (item) => item.partType === "OTHER" && !item.customPartName?.trim(),
+      )
+    ) {
       toast.error('Vui lòng nhập tên hư hỏng cho mục "Khác".')
       return
     }
@@ -134,7 +151,8 @@ export default function StaffCheckoutSummaryPage() {
       setEditMode(false)
       toast.success("Đã cập nhật danh sách hư hỏng.")
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
       toast.error(msg ?? "Không thể cập nhật hư hỏng.")
     } finally {
       setSavingItems(false)
@@ -145,11 +163,15 @@ export default function StaffCheckoutSummaryPage() {
     if (!checkoutInspection) return
     setConfirming(true)
     try {
-      await staffApi.confirmCheckout(sessionId!, checkoutInspection.inspectionId)
+      await staffApi.confirmCheckout(
+        sessionId!,
+        checkoutInspection.inspectionId,
+      )
       toast.success("Đã xác nhận trả xe thành công. Phiên chơi đã hoàn tất!")
       void loadSession()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
       toast.error(msg ?? "Không thể xác nhận checkout.")
     } finally {
       setConfirming(false)
@@ -163,12 +185,19 @@ export default function StaffCheckoutSummaryPage() {
     }
     setEscalating(true)
     try {
-      await staffApi.escalateDispute(sessionId!, checkoutInspection.inspectionId, disputeNote)
-      toast.success("Đã leo thang tranh chấp lên Provider. Vui lòng chờ phán quyết.")
+      await staffApi.escalateDispute(
+        sessionId!,
+        checkoutInspection.inspectionId,
+        disputeNote,
+      )
+      toast.success(
+        "Đã leo thang tranh chấp lên Provider. Vui lòng chờ phán quyết.",
+      )
       setDisputeOpen(false)
       navigate("/staff/today-bookings")
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
       toast.error(msg ?? "Không thể gửi tranh chấp.")
     } finally {
       setEscalating(false)
@@ -178,7 +207,9 @@ export default function StaffCheckoutSummaryPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-[#6b7280] font-semibold animate-pulse">Đang tải biên bản...</p>
+        <p className="text-sm text-[#6b7280] font-semibold animate-pulse">
+          Đang tải biên bản...
+        </p>
       </div>
     )
   }
@@ -187,11 +218,16 @@ export default function StaffCheckoutSummaryPage() {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 p-4">
         <AlertTriangle className="size-12 text-[#6b7280]" />
-        <h3 className="text-lg font-bold text-[#1c1b1b]">Chưa có biên bản Check-Out</h3>
+        <h3 className="text-lg font-bold text-[#1c1b1b]">
+          Chưa có biên bản Check-Out
+        </h3>
         <p className="text-xs text-[#6b7280] font-semibold text-center max-w-xs">
           Cần hoàn tất kiểm tra xe trước khi xem biên bản này.
         </p>
-        <StaffButton variant="outline" onClick={() => navigate(`/staff/sessions/${sessionId}`)}>
+        <StaffButton
+          variant="outline"
+          onClick={() => navigate(`/staff/sessions/${sessionId}`)}
+        >
           <ChevronLeft className="size-4" />
           Quay lại phiên chạy
         </StaffButton>
@@ -199,7 +235,10 @@ export default function StaffCheckoutSummaryPage() {
     )
   }
 
-  const editTotal = editItems.reduce((sum, item) => sum + (item.partsPrice || 0) + (item.laborPrice || 0), 0)
+  const editTotal = editItems.reduce(
+    (sum, item) => sum + (item.partsPrice || 0) + (item.laborPrice || 0),
+    0,
+  )
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -215,7 +254,9 @@ export default function StaffCheckoutSummaryPage() {
           <ChevronLeft className="size-5 text-[#6b7280]" />
         </StaffButton>
         <div>
-          <span className="text-xs text-[#6b7280] font-bold font-mono">Phiên: {sessionId}</span>
+          <span className="text-xs text-[#6b7280] font-bold font-mono">
+            Phiên: {sessionId}
+          </span>
           <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">
             Biên Bản Trả Xe — Xác Nhận Checkout
           </h2>
@@ -226,27 +267,42 @@ export default function StaffCheckoutSummaryPage() {
       {sessionStatus === "CHECKING_OUT" && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-2.5 text-sm font-semibold text-amber-800">
           <Info className="size-5 shrink-0 text-amber-600" />
-          Đang chờ xác nhận — Trình bày biên bản cho khách xem, sau đó nhấn "Xác nhận Checkout".
+          Đang chờ xác nhận — Trình bày biên bản cho khách xem, sau đó nhấn "Xác
+          nhận Checkout".
         </div>
       )}
 
       {/* Checklist summary */}
       <StaffCard className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-[#4c4a49]">Kết quả kiểm tra</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-[#4c4a49]">
+          Kết quả kiểm tra
+        </h3>
         <div className="space-y-1.5">
           {checkoutInspection.checklist.map((item, i) => (
-            <div key={i} className="flex items-start gap-2 text-xs font-semibold text-[#1c1b1b]">
-              <span className={`mt-0.5 ${item.checked ? "text-emerald-500" : "text-rose-500"}`}>
+            <div
+              key={i}
+              className="flex items-start gap-2 text-xs font-semibold text-[#1c1b1b]"
+            >
+              <span
+                className={`mt-0.5 ${item.checked ? "text-emerald-500" : "text-rose-500"}`}
+              >
                 {item.checked ? "✓" : "✗"}
               </span>
               <span className={item.checked ? "" : "text-rose-700"}>
                 {item.itemLabel}
-                {item.notes && <span className="text-[#6b7280] font-normal"> — {item.notes}</span>}
+                {item.notes && (
+                  <span className="text-[#6b7280] font-normal">
+                    {" "}
+                    — {item.notes}
+                  </span>
+                )}
               </span>
             </div>
           ))}
           {checkoutInspection.checklist.length === 0 && (
-            <p className="text-xs text-[#6b7280] font-semibold">Không có mục kiểm tra.</p>
+            <p className="text-xs text-[#6b7280] font-semibold">
+              Không có mục kiểm tra.
+            </p>
           )}
         </div>
         {checkoutInspection.staffNotes && (
@@ -263,7 +319,12 @@ export default function StaffCheckoutSummaryPage() {
             Bảng kê hư hỏng & bồi thường
           </h3>
           {!editMode && sessionStatus === "CHECKING_OUT" && (
-            <StaffButton type="button" size="sm" variant="outline" onClick={enterEditMode}>
+            <StaffButton
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={enterEditMode}
+            >
               Sửa danh sách
             </StaffButton>
           )}
@@ -273,8 +334,12 @@ export default function StaffCheckoutSummaryPage() {
           <div className="flex items-center gap-2.5 rounded-xl bg-emerald-50 border border-emerald-200 p-4">
             <CheckCircle2 className="size-6 text-emerald-500 shrink-0" />
             <div>
-              <p className="text-sm font-bold text-emerald-800">Xe trả lại nguyên vẹn</p>
-              <p className="text-xs text-emerald-700 font-semibold mt-0.5">Không ghi nhận hư hỏng mới. Hoàn toàn ký quỹ.</p>
+              <p className="text-sm font-bold text-emerald-800">
+                Xe trả lại nguyên vẹn
+              </p>
+              <p className="text-xs text-emerald-700 font-semibold mt-0.5">
+                Không ghi nhận hư hỏng mới. Hoàn toàn ký quỹ.
+              </p>
             </div>
           </div>
         )}
@@ -282,19 +347,29 @@ export default function StaffCheckoutSummaryPage() {
         {checkoutInspection.damageFlagged && !editMode && (
           <div className="space-y-2">
             {checkoutInspection.damageLineItems.map((item, i) => (
-              <div key={item.id ?? i} className="rounded-lg border border-[#e5e2e1] bg-[#fafaf9] p-3">
+              <div
+                key={item.id ?? i}
+                className="rounded-lg border border-[#e5e2e1] bg-[#fafaf9] p-3"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-xs font-bold text-[#1c1b1b]">
                       {PART_TYPE_LABELS[item.partType] ?? item.partType}
                       {item.customPartName && (
-                        <span className="text-[#4c4a49] font-semibold"> — {item.customPartName}</span>
+                        <span className="text-[#4c4a49] font-semibold">
+                          {" "}
+                          — {item.customPartName}
+                        </span>
                       )}
                     </p>
                     <div className="flex gap-4 mt-1 text-[10px] font-semibold text-[#6b7280]">
-                      <span>Linh kiện: {item.partsPrice.toLocaleString("vi-VN")} đ</span>
+                      <span>
+                        Linh kiện: {item.partsPrice.toLocaleString("vi-VN")} đ
+                      </span>
                       {item.laborPrice > 0 && (
-                        <span>Công sửa: {item.laborPrice.toLocaleString("vi-VN")} đ</span>
+                        <span>
+                          Công sửa: {item.laborPrice.toLocaleString("vi-VN")} đ
+                        </span>
                       )}
                     </div>
                   </div>
@@ -306,7 +381,9 @@ export default function StaffCheckoutSummaryPage() {
             ))}
 
             <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 flex items-center justify-between">
-              <span className="text-sm font-bold text-rose-900">Tổng phí bồi thường:</span>
+              <span className="text-sm font-bold text-rose-900">
+                Tổng phí bồi thường:
+              </span>
               <span className="text-xl font-extrabold text-rose-700">
                 {checkoutInspection.totalDamageCharge.toLocaleString("vi-VN")} đ
               </span>
@@ -318,8 +395,15 @@ export default function StaffCheckoutSummaryPage() {
         {editMode && (
           <div className="space-y-3 border-t border-[#e5e2e1] pt-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#4c4a49]">Chỉnh sửa hư hỏng</span>
-              <StaffButton type="button" size="sm" variant="outline" onClick={addEditItem}>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#4c4a49]">
+                Chỉnh sửa hư hỏng
+              </span>
+              <StaffButton
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={addEditItem}
+              >
                 <Plus className="size-3.5" />
                 Thêm hạng mục
               </StaffButton>
@@ -327,20 +411,29 @@ export default function StaffCheckoutSummaryPage() {
 
             {editItems.length === 0 && (
               <div className="rounded-lg border border-dashed border-[#e5e2e1] p-4 text-center">
-                <p className="text-xs text-[#6b7280] font-semibold">Không có hư hỏng — nhấn "Thêm hạng mục" để ghi nhận.</p>
+                <p className="text-xs text-[#6b7280] font-semibold">
+                  Không có hư hỏng — nhấn "Thêm hạng mục" để ghi nhận.
+                </p>
               </div>
             )}
 
             {editItems.map((item, index) => (
-              <div key={index} className="rounded-lg border border-[#e5e2e1] bg-[#fafaf9] p-3 space-y-2.5">
+              <div
+                key={index}
+                className="rounded-lg border border-[#e5e2e1] bg-[#fafaf9] p-3 space-y-2.5"
+              >
                 <div className="flex items-center gap-2">
                   <select
                     value={item.partType}
-                    onChange={(e) => updateEditItem(index, "partType", e.target.value)}
+                    onChange={(e) =>
+                      updateEditItem(index, "partType", e.target.value)
+                    }
                     className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
                     {Object.entries(PART_TYPE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
                     ))}
                   </select>
                   <button
@@ -357,33 +450,61 @@ export default function StaffCheckoutSummaryPage() {
                     type="text"
                     placeholder="Nhập tên hư hỏng cụ thể..."
                     value={item.customPartName ?? ""}
-                    onChange={(e) => updateEditItem(index, "customPartName", e.target.value)}
+                    onChange={(e) =>
+                      updateEditItem(index, "customPartName", e.target.value)
+                    }
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   />
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b7280] mb-1">Giá linh kiện (đ)</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b7280] mb-1">
+                      Giá linh kiện (đ)
+                    </label>
                     <input
-                      type="number" min={0} step={1000} placeholder="0"
+                      type="number"
+                      min={0}
+                      step={1000}
+                      placeholder="0"
                       value={item.partsPrice || ""}
-                      onChange={(e) => updateEditItem(index, "partsPrice", Number(e.target.value))}
+                      onChange={(e) =>
+                        updateEditItem(
+                          index,
+                          "partsPrice",
+                          Number(e.target.value),
+                        )
+                      }
                       className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b7280] mb-1">Phí công sửa (đ)</label>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b7280] mb-1">
+                      Phí công sửa (đ)
+                    </label>
                     <input
-                      type="number" min={0} step={1000} placeholder="0"
+                      type="number"
+                      min={0}
+                      step={1000}
+                      placeholder="0"
                       value={item.laborPrice || ""}
-                      onChange={(e) => updateEditItem(index, "laborPrice", Number(e.target.value))}
+                      onChange={(e) =>
+                        updateEditItem(
+                          index,
+                          "laborPrice",
+                          Number(e.target.value),
+                        )
+                      }
                       className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                     />
                   </div>
                 </div>
                 <div className="flex justify-end text-xs font-bold text-[#4c4a49]">
-                  Dòng này: {((item.partsPrice || 0) + (item.laborPrice || 0)).toLocaleString("vi-VN")} đ
+                  Dòng này:{" "}
+                  {(
+                    (item.partsPrice || 0) + (item.laborPrice || 0)
+                  ).toLocaleString("vi-VN")}{" "}
+                  đ
                 </div>
               </div>
             ))}
@@ -391,12 +512,19 @@ export default function StaffCheckoutSummaryPage() {
             {editItems.length > 0 && (
               <div className="flex justify-between items-center text-sm font-extrabold text-[#1c1b1b] pt-1">
                 <span>Tổng mới:</span>
-                <span className="text-rose-600">{editTotal.toLocaleString("vi-VN")} đ</span>
+                <span className="text-rose-600">
+                  {editTotal.toLocaleString("vi-VN")} đ
+                </span>
               </div>
             )}
 
             <div className="flex gap-2 pt-1">
-              <StaffButton type="button" variant="outline" className="flex-1" onClick={() => setEditMode(false)}>
+              <StaffButton
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setEditMode(false)}
+              >
                 Hủy
               </StaffButton>
               <StaffButton
@@ -418,10 +546,13 @@ export default function StaffCheckoutSummaryPage() {
         <StaffCard className="space-y-3 border-2 border-amber-300">
           <div className="flex items-center gap-2">
             <ShieldAlert className="size-5 text-amber-600" />
-            <h3 className="text-sm font-bold text-amber-900">Leo thang tranh chấp lên Provider</h3>
+            <h3 className="text-sm font-bold text-amber-900">
+              Leo thang tranh chấp lên Provider
+            </h3>
           </div>
           <p className="text-xs text-[#6b7280] font-semibold">
-            Provider sẽ được thông báo và có toàn quyền phán quyết về mức bồi thường.
+            Provider sẽ được thông báo và có toàn quyền phán quyết về mức bồi
+            thường.
           </p>
           <textarea
             rows={3}
@@ -431,7 +562,12 @@ export default function StaffCheckoutSummaryPage() {
             className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
           />
           <div className="flex gap-2">
-            <StaffButton type="button" variant="outline" className="flex-1" onClick={() => setDisputeOpen(false)}>
+            <StaffButton
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => setDisputeOpen(false)}
+            >
               Hủy
             </StaffButton>
             <StaffButton
@@ -457,7 +593,9 @@ export default function StaffCheckoutSummaryPage() {
             disabled={confirming}
           >
             <FileCheck className="size-5" />
-            {confirming ? "Đang xác nhận..." : "Xác nhận Checkout — Hoàn tất phiên chơi"}
+            {confirming
+              ? "Đang xác nhận..."
+              : "Xác nhận Checkout — Hoàn tất phiên chơi"}
           </StaffButton>
 
           {!disputeOpen && (
@@ -478,8 +616,12 @@ export default function StaffCheckoutSummaryPage() {
         <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-center gap-3">
           <CheckCircle2 className="size-6 text-emerald-500 shrink-0" />
           <div>
-            <p className="text-sm font-bold text-emerald-800">Phiên chơi đã hoàn tất</p>
-            <p className="text-xs text-emerald-700 font-semibold mt-0.5">Biên bản đã được xác nhận và quyết toán.</p>
+            <p className="text-sm font-bold text-emerald-800">
+              Phiên chơi đã hoàn tất
+            </p>
+            <p className="text-xs text-emerald-700 font-semibold mt-0.5">
+              Biên bản đã được xác nhận và quyết toán.
+            </p>
           </div>
         </div>
       )}

@@ -69,7 +69,8 @@ export const initialMockIncidents: StaffIncident[] = [
     customerPhone: "0908123456",
     type: "CRASH",
     severity: "MEDIUM",
-    description: "Va chạm mạnh vào rào chắn cua số 4 gây nứt nhẹ cản trước xe Mazda RX-7.",
+    description:
+      "Va chạm mạnh vào rào chắn cua số 4 gây nứt nhẹ cản trước xe Mazda RX-7.",
     fineAmount: 150000,
     status: "RESOLVED",
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
@@ -80,7 +81,8 @@ export const initialMockIncidents: StaffIncident[] = [
     customerPhone: "0912345678",
     type: "TRACK_VIOLATION",
     severity: "LOW",
-    description: "Cố ý chạy ngược chiều đường đua Asphalt gây cản trở và nguy hiểm cho các xe khác. Đã nhắc nhở lần 1.",
+    description:
+      "Cố ý chạy ngược chiều đường đua Asphalt gây cản trở và nguy hiểm cho các xe khác. Đã nhắc nhở lần 1.",
     fineAmount: 0,
     status: "RESOLVED",
     createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
@@ -93,11 +95,12 @@ export const initialMockIncidents: StaffIncident[] = [
     customerPhone: "0987654321",
     type: "EQUIPMENT_DAMAGE",
     severity: "HIGH",
-    description: "Làm rơi bộ điều khiển RC từ bục ngắm cảnh xuống đường đua gây vỡ vỏ tay cầm điều khiển.",
+    description:
+      "Làm rơi bộ điều khiển RC từ bục ngắm cảnh xuống đường đua gây vỡ vỏ tay cầm điều khiển.",
     fineAmount: 350000,
     status: "UNRESOLVED",
     createdAt: new Date(Date.now() - 3600000 * 1).toISOString(),
-  }
+  },
 ]
 
 // ----------------------------------------------------
@@ -108,8 +111,10 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     logId: "MNT-8812",
     vehicleId: "V-MAZDA-RX7",
     vehicleName: "Mazda RX-7 FD3S Drift Special",
-    issueDescription: "Thay vỏ bánh xe nhựa cứng drift bị mòn vẹt sau 40 ca chạy.",
-    staffNotes: "Đã thay vỏ nhựa ABS mới loại Drift Tech, căn chỉnh lại vis sai.",
+    issueDescription:
+      "Thay vỏ bánh xe nhựa cứng drift bị mòn vẹt sau 40 ca chạy.",
+    staffNotes:
+      "Đã thay vỏ nhựa ABS mới loại Drift Tech, căn chỉnh lại vis sai.",
     cost: 80000,
     performedBy: "Lê Văn Tùng (Staff)",
     status: "COMPLETED",
@@ -121,7 +126,8 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     vehicleId: "V-NISSAN-GTR",
     vehicleName: "Nissan GT-R R35 Drift Spec",
     issueDescription: "Kiểm tra Servo bẻ lái phản hồi chậm, lệch góc lái 5 độ.",
-    staffNotes: "Đã bôi trơn lại khớp nhông lái, điều chỉnh trimmer trên mạch thu sóng.",
+    staffNotes:
+      "Đã bôi trơn lại khớp nhông lái, điều chỉnh trimmer trên mạch thu sóng.",
     cost: 30000,
     performedBy: "Trần Minh Quốc (Staff)",
     status: "COMPLETED",
@@ -132,13 +138,15 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     logId: "MNT-8814",
     vehicleId: "V-SUBARU-BRZ",
     vehicleName: "Subaru BRZ Custom Drift",
-    issueDescription: "Động cơ chổi than Brushless quá nhiệt đột ngột, pin hao nhanh bất thường.",
-    staffNotes: "Đang tháo máy đo cuộn cảm và kiểm tra xem có kẹt bánh răng truyền động chính hay không.",
+    issueDescription:
+      "Động cơ chổi than Brushless quá nhiệt đột ngột, pin hao nhanh bất thường.",
+    staffNotes:
+      "Đang tháo máy đo cuộn cảm và kiểm tra xem có kẹt bánh răng truyền động chính hay không.",
     cost: 250000,
     performedBy: "Lê Văn Tùng (Staff)",
     status: "IN_PROGRESS",
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-  }
+  },
 ]
 
 // ----------------------------------------------------
@@ -174,7 +182,7 @@ export const initialMockByocRegistry: StaffByocVehicle[] = [
     frequencyGhz: "2.4 GHz",
     safetyChecked: false,
     lastCheckedAt: new Date(Date.now() - 7200000).toISOString(),
-  }
+  },
 ]
 
 // ----------------------------------------------------
@@ -192,7 +200,7 @@ export const initialMockPackages: StaffCustomerPackage[] = [
         expiresAt: "2026-12-31T23:59:59Z",
         remainingSessions: 18,
         totalSessions: 30,
-      }
+      },
     ],
     purchasedPackages: [
       {
@@ -200,8 +208,8 @@ export const initialMockPackages: StaffCustomerPackage[] = [
         purchasedAt: "2026-05-10T09:00:00Z",
         remainingSlots: 4,
         totalSlots: 10,
-      }
-    ]
+      },
+    ],
   },
   {
     phone: "0912345678",
@@ -215,8 +223,8 @@ export const initialMockPackages: StaffCustomerPackage[] = [
         purchasedAt: "2026-05-20T15:30:00Z",
         remainingSlots: 2,
         totalSlots: 5,
-      }
-    ]
+      },
+    ],
   },
   {
     phone: "0987654321",
@@ -229,10 +237,10 @@ export const initialMockPackages: StaffCustomerPackage[] = [
         expiresAt: "2026-08-15T23:59:59Z",
         remainingSessions: 45,
         totalSessions: 50,
-      }
+      },
     ],
-    purchasedPackages: []
-  }
+    purchasedPackages: [],
+  },
 ]
 
 // ----------------------------------------------------
@@ -253,7 +261,7 @@ export const initialMockBookings: CustomerBookingDetail[] = [
     playMode: "RENTAL",
     status: "CONFIRMED",
     slotStart: new Date(Date.now() - 1800000).toISOString(), // started 30 mins ago
-    slotEnd: new Date(Date.now() + 3600000).toISOString(),   // ends in 60 mins
+    slotEnd: new Date(Date.now() + 3600000).toISOString(), // ends in 60 mins
     slotCount: 3,
     depositAmount: 0,
     slotFee: 120000,
@@ -278,8 +286,9 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             vehicleId: "V-MAZDA-RX7",
             name: "Mazda RX-7 FD3S Drift Special",
             type: "RENT",
-            imageUrl: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400"
-          }
+            imageUrl:
+              "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400",
+          },
         ],
         inspections: [
           {
@@ -289,32 +298,60 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             customerConfirmedAt: new Date(Date.now() - 1900000).toISOString(),
             damageFlagged: false,
             photos: [
-              { direction: "FRONT", url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400", notes: "Kính trước sạch bóng, không nứt" },
-              { direction: "BACK", url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=400", notes: "Cản sau nguyên vẹn, đèn led sáng" },
-              { direction: "LEFT", url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=400", notes: "Sườn xe trái nguyên mẫu" },
-              { direction: "RIGHT", url: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400", notes: "Sườn xe phải không xước" }
+              {
+                direction: "FRONT",
+                url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
+                notes: "Kính trước sạch bóng, không nứt",
+              },
+              {
+                direction: "BACK",
+                url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=400",
+                notes: "Cản sau nguyên vẹn, đèn led sáng",
+              },
+              {
+                direction: "LEFT",
+                url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=400",
+                notes: "Sườn xe trái nguyên mẫu",
+              },
+              {
+                direction: "RIGHT",
+                url: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400",
+                notes: "Sườn xe phải không xước",
+              },
             ],
             checklist: [
               { id: "ck-1", label: "Pin được sạc đầy 100%", checked: true },
-              { id: "ck-2", label: "Hệ thống lái Servo hoạt động nhạy", checked: true },
-              { id: "ck-3", label: "Vỏ drift nhựa cứng bám đường tốt", checked: true },
-              { id: "ck-4", label: "Điều khiển từ xa kết nối ổn định", checked: true }
+              {
+                id: "ck-2",
+                label: "Hệ thống lái Servo hoạt động nhạy",
+                checked: true,
+              },
+              {
+                id: "ck-3",
+                label: "Vỏ drift nhựa cứng bám đường tốt",
+                checked: true,
+              },
+              {
+                id: "ck-4",
+                label: "Điều khiển từ xa kết nối ổn định",
+                checked: true,
+              },
             ],
-            staffNotes: "Xe hoạt động hoàn hảo trước khi giao cho khách."
-          }
+            staffNotes: "Xe hoạt động hoàn hảo trước khi giao cho khách.",
+          },
         ],
         fnbOrders: [
           {
             orderId: "FNB-0082",
             items: [
               { name: "Cà phê sữa đá pha máy", qty: 1, price: 35000 },
-              { name: "Bánh bông lan trứng muối", qty: 1, price: 45000 }
+              { name: "Bánh bông lan trứng muối", qty: 1, price: 45000 },
             ],
-            total: 80000
-          }
-        ]
-      }
-    ]
+            total: 80000,
+          },
+        ],
+      },
+    ],
   },
   // 2. Walk-in BYOC slot waiting to Check-in
   {
@@ -341,7 +378,7 @@ export const initialMockBookings: CustomerBookingDetail[] = [
     paymentStatus: "PAID",
     plannedParticipants: ["Phan Anh Vũ"],
     plannedVehicles: ["MST RMX 2.5 (Sở hữu riêng)"],
-    sessions: []
+    sessions: [],
   },
   // 3. Extending Session with active proposal
   {
@@ -382,8 +419,9 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             vehicleId: "V-SUBARU-BRZ",
             name: "Subaru BRZ Custom Drift",
             type: "RENT",
-            imageUrl: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400"
-          }
+            imageUrl:
+              "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400",
+          },
         ],
         inspections: [
           {
@@ -393,12 +431,13 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             customerConfirmedAt: new Date(Date.now() - 3550000).toISOString(),
             damageFlagged: false,
             photos: [
-              { direction: "FRONT", url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400" }
+              {
+                direction: "FRONT",
+                url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
+              },
             ],
-            checklist: [
-              { id: "ck-s1", label: "Pin đầy", checked: true }
-            ]
-          }
+            checklist: [{ id: "ck-s1", label: "Pin đầy", checked: true }],
+          },
         ],
         extensionProposal: {
           proposalId: "PRP-9921",
@@ -406,10 +445,10 @@ export const initialMockBookings: CustomerBookingDetail[] = [
           additionalFee: 75000,
           newPlannedEnd: new Date(Date.now() + 1800000).toISOString(),
           expiresAt: new Date(Date.now() + 500000).toISOString(),
-          status: "PENDING"
-        }
-      }
-    ]
+          status: "PENDING",
+        },
+      },
+    ],
   },
   // 4. Session waiting for Check-out verification (Damage flagged)
   {
@@ -451,8 +490,9 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             vehicleId: "V-NISSAN-GTR",
             name: "Nissan GT-R R35 Drift Spec",
             type: "RENT",
-            imageUrl: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400"
-          }
+            imageUrl:
+              "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400",
+          },
         ],
         inspections: [
           {
@@ -461,9 +501,12 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             customerConfirmed: true,
             damageFlagged: false,
             photos: [
-              { direction: "FRONT", url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400" }
+              {
+                direction: "FRONT",
+                url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
+              },
             ],
-            checklist: [{ id: "ck-c1", label: "Thân vỏ sạch", checked: true }]
+            checklist: [{ id: "ck-c1", label: "Thân vỏ sạch", checked: true }],
           },
           {
             inspectionId: "INS-CO-2291",
@@ -471,24 +514,48 @@ export const initialMockBookings: CustomerBookingDetail[] = [
             customerConfirmed: false,
             damageFlagged: true,
             photos: [
-              { direction: "FRONT", url: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400", notes: "Lốp rách nhẹ" }
+              {
+                direction: "FRONT",
+                url: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400",
+                notes: "Lốp rách nhẹ",
+              },
             ],
-            checklist: [{ id: "ck-c1", label: "Thân vỏ sạch", checked: false, notes: "Nứt xước nhẹ vè trước" }],
-            staffNotes: "Phát hiện vết nứt ở vè chắn bùn trước bên phải."
-          }
+            checklist: [
+              {
+                id: "ck-c1",
+                label: "Thân vỏ sạch",
+                checked: false,
+                notes: "Nứt xước nhẹ vè trước",
+              },
+            ],
+            staffNotes: "Phát hiện vết nứt ở vè chắn bùn trước bên phải.",
+          },
         ],
         damageClaim: {
           claimId: "CLM-2291",
           description: "Nứt vè chắn bùn trước xe Nissan GT-R",
+          damageLineItems: [
+            {
+              id: "DAMAGE-LINE-2291",
+              partType: "FENDER",
+              customPartName: "Vè chắn bùn trước",
+              partsPrice: 150000,
+              laborPrice: 0,
+              lineTotal: 150000,
+            },
+          ],
+          totalDamageCharge: 180000,
           estimatedCost: 150000,
           damageMultiplier: 1.2,
           finalCharge: 180000,
-          checkInPhoto: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
-          checkOutPhoto: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400",
+          checkInPhoto:
+            "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
+          checkOutPhoto:
+            "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400",
           status: "PENDING",
-          expiresAt: new Date(Date.now() + 24 * 3600000).toISOString()
-        }
-      }
-    ]
-  }
+          expiresAt: new Date(Date.now() + 24 * 3600000).toISOString(),
+        },
+      },
+    ],
+  },
 ]
