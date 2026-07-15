@@ -1,6 +1,15 @@
 import { useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { BookOpen, CheckCircle2, Clock, Download, FileText, Trash2, Upload, XCircle } from "lucide-react"
+import {
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Download,
+  FileText,
+  Trash2,
+  Upload,
+  XCircle,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
@@ -16,97 +25,20 @@ const CONTENT_TYPE_OPTIONS: { value: KbContentType; label: string }[] = [
 ]
 
 const STATUS_CONFIG = {
-  PENDING:  { label: "Đang xử lý", icon: Clock,        className: "text-amber-600 bg-amber-50" },
-  INDEXED:  { label: "Sẵn sàng",   icon: CheckCircle2, className: "text-emerald-600 bg-emerald-50" },
-  FAILED:   { label: "Lỗi",        icon: XCircle,      className: "text-red-600 bg-red-50" },
+  PENDING: {
+    label: "Đang xử lý",
+    icon: Clock,
+    className: "text-amber-600 bg-amber-50",
+  },
+  INDEXED: {
+    label: "Sẵn sàng",
+    icon: CheckCircle2,
+    className: "text-emerald-600 bg-emerald-50",
+  },
+  FAILED: { label: "Lỗi", icon: XCircle, className: "text-red-600 bg-red-50" },
 }
 
 const ACCEPTED = ".pdf,.docx,.txt,.md"
-
-const KB_TEMPLATE = `# [TÊN CƠ SỞ] — Tài liệu kiến thức cho AI trợ lý
-
-## Thông tin cơ sở
-- Tên: [VD: RC Tân Bình]
-- Địa chỉ: [VD: 123 Đường ABC, Phường XYZ, Quận Tân Bình, TP.HCM]
-- Số điện thoại: [VD: 0901 234 567]
-- Email: [VD: rcfield@gmail.com]
-- Website / Fanpage: [VD: facebook.com/rcfield.tanbinh]
-
-## Giờ hoạt động
-- Thứ Hai: Đóng cửa
-- Thứ Ba – Thứ Sáu: 14:00 – 22:00
-- Thứ Bảy – Chủ Nhật: 10:00 – 22:00
-- Ngày lễ: Mở bình thường (hoặc ghi rõ ngoại lệ nếu có)
-
-## Loại sân & Cấu hình
-- Sân Asphalt (Đường nhựa): [VD: 2 sân, tối đa 4 xe/sân]
-- Sân Carpet (Thảm): [VD: 1 sân, tối đa 3 xe/sân]
-- Sân Dirt (Đất): [không có / có — ghi rõ]
-
-## Bảng giá thuê slot
-- 1 slot = [VD: 30 phút]
-- Giá slot thường (T2–T6): [VD: 50.000đ/slot/xe]
-- Giá slot cuối tuần & lễ: [VD: 70.000đ/slot/xe]
-- Đặt cọc xe thuê: [VD: 200.000đ/xe, hoàn lại sau buổi chơi]
-
-## Đội xe cho thuê (RENTAL)
-[Liệt kê các loại xe có thể thuê]
-- Xe Drift 1/10 (Tier STANDARD): [VD: 30.000đ/giờ, cọc 150.000đ]
-- Xe Địa hình 1/10 (Tier PREMIUM): [VD: 50.000đ/giờ, cọc 300.000đ]
-- Số lượng xe có sẵn: [VD: 5 xe drift, 3 xe địa hình]
-
-## Chính sách BYOC (mang xe cá nhân)
-- Được phép mang xe cá nhân vào chơi: Có / Không
-- Phí BYOC: [VD: 30.000đ/slot nếu không thuê xe của quán]
-- Xe cá nhân cần đáp ứng: [VD: công suất tối đa 3S, không dùng xe xăng]
-
-## Menu F&B
-[Liệt kê các món đồ uống / thức ăn nhẹ phục vụ tại chỗ]
-- Cà phê sữa đá: [VD: 35.000đ]
-- Trà sữa: [VD: 45.000đ]
-- Nước ngọt đóng chai: [VD: 20.000đ]
-- Snack / bánh: [VD: 15.000–30.000đ]
-Ghi chú: Khách có thể pre-order khi đặt lịch hoặc gọi thêm tại quán.
-
-## Quy định tại cơ sở
-- Đến muộn quá [VD: 15 phút] mà không báo trước, slot có thể bị hủy.
-- Không được dùng xe pin LiPo trên [VD: 4S] trong sân nhỏ.
-- Trường hợp xe bị hư hỏng trong buổi chơi: [VD: staff kiểm tra và lập biên bản, khách chịu chi phí sửa chữa linh kiện thực tế].
-- Không hút thuốc trong khu vực sân.
-- Trẻ em dưới 12 tuổi cần có người lớn đi kèm.
-
-## Chính sách hủy lịch & hoàn tiền
-- Hủy trước [VD: 24 giờ]: hoàn 100% tiền cọc.
-- Hủy trong vòng [VD: 2–24 giờ]: hoàn [VD: 50%].
-- Hủy dưới [VD: 2 giờ] hoặc không đến: không hoàn tiền.
-- Liên hệ hủy qua: [VD: SĐT / Fanpage / app RCField]
-
-## Câu hỏi thường gặp (FAQ)
-
-Q: Tôi có cần biết chạy xe RC trước không?
-A: Không cần. Staff sẽ hướng dẫn cơ bản trước khi chơi.
-
-Q: Tôi có thể mang xe của mình vào không?
-A: [Có / Không — và điều kiện cụ thể nếu có]
-
-Q: Đặt lịch như thế nào?
-A: Đặt qua app RCField, chọn cơ sở → chọn sân → chọn giờ → thanh toán online.
-
-Q: Có thể đặt lịch cho nhóm không?
-A: Được. Chọn số người chơi khi đặt, mỗi người sẽ được phân 1 xe.
-
-Q: Thanh toán bằng gì?
-A: Qua app: VNPay, MoMo, thẻ ngân hàng. Tại quán: tiền mặt hoặc chuyển khoản.
-
-Q: Wifi có không?
-A: [Có — mật khẩu cung cấp tại quán / Không]
-
-Q: Có chỗ đậu xe không?
-A: [Mô tả chỗ đậu xe: đường trước cơ sở / bãi giữ xe gần đó / không có]
-
-## Thông tin thêm
-[Ghi thêm bất kỳ thông tin đặc biệt nào về cơ sở: sự kiện thường xuyên, giải đấu, câu lạc bộ thành viên, v.v.]
-`
 
 const KB_TEMPLATES: Record<string, { filename: string; content: string }> = {
   FAQ: {
@@ -127,7 +59,7 @@ Q: Có thể đặt lịch cho nhóm không?
 A: Được. Chọn số người chơi khi đặt, mỗi người sẽ được phân 1 xe thuê.
 
 Q: Tôi có thể mang xe cá nhân vào không?
-A: [Có — phí BYOC là X.000đ/slot. Xe cần đáp ứng: pin tối đa 3S, không dùng xe xăng. / Không hỗ trợ BYOC.]
+A: [Có — phí mang xe cá nhân là X.000đ/slot. Xe cần đáp ứng: pin tối đa 3S, không dùng xe xăng. / Không hỗ trợ mang xe cá nhân.]
 
 Q: Thanh toán bằng gì?
 A: Qua app: VNPay, MoMo, thẻ ngân hàng. Tại quán: tiền mặt hoặc chuyển khoản.
@@ -180,8 +112,8 @@ A: [Có — cơ sở phục vụ cà phê, trà, nước ngọt và snack nhẹ.
 - Gia hạn tối đa [VD: 2 slot/lần] nếu sân còn trống.
 - Yêu cầu báo staff trước khi slot hiện tại kết thúc.
 
-## Chính sách BYOC
-- Phí BYOC: [VD: 30.000đ/slot].
+## Chính sách mang xe cá nhân
+- Phí mang xe cá nhân: [VD: 30.000đ/slot].
 - Xe cần đáp ứng: [VD: pin tối đa 3S, không xe xăng].
 - Staff có quyền từ chối xe không đạt tiêu chuẩn.
 
@@ -268,10 +200,20 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
   })
 
   const uploadMutation = useMutation({
-    mutationFn: () => cafeApi.uploadKbDocument(cafeId, selectedFile!, title.trim(), contentType),
+    mutationFn: () =>
+      cafeApi.uploadKbDocument(
+        cafeId,
+        selectedFile!,
+        title.trim(),
+        contentType,
+      ),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: cafeQueryKeys.kbDocuments(cafeId) })
-      toast.success("Đã tải lên tài liệu", { description: "Đang lập chỉ mục trong nền..." })
+      await queryClient.invalidateQueries({
+        queryKey: cafeQueryKeys.kbDocuments(cafeId),
+      })
+      toast.success("Đã tải lên tài liệu", {
+        description: "Đang lập chỉ mục trong nền...",
+      })
       setTitle("")
       setSelectedFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ""
@@ -282,13 +224,16 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
   const deleteMutation = useMutation({
     mutationFn: (doc: KbDocument) => cafeApi.deleteKbDocument(cafeId, doc.id),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: cafeQueryKeys.kbDocuments(cafeId) })
+      await queryClient.invalidateQueries({
+        queryKey: cafeQueryKeys.kbDocuments(cafeId),
+      })
       toast.success("Đã xóa tài liệu")
     },
     onError: () => toast.error("Không thể xóa tài liệu"),
   })
 
-  const canUpload = !!selectedFile && title.trim().length > 0 && !uploadMutation.isPending
+  const canUpload =
+    !!selectedFile && title.trim().length > 0 && !uploadMutation.isPending
 
   return (
     <div className="space-y-5 rounded-xl border border-[#c4c7c8] bg-white p-5">
@@ -301,7 +246,8 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
       <div className="rounded-xl border border-[#e5e2e1] bg-[#faf9f8] p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <p className="text-xs font-semibold text-[#444748]">
-            Tải lên tài liệu để AI học về cơ sở của bạn (PDF, DOCX, TXT, MD — tối đa 10MB)
+            Tải lên tài liệu để AI học về cơ sở của bạn (PDF, DOCX, TXT, MD —
+            tối đa 10MB)
           </p>
           <button
             type="button"
@@ -315,7 +261,9 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-1.5">
-            <span className="text-xs font-bold text-[#1c1b1b]">Tiêu đề tài liệu</span>
+            <span className="text-xs font-bold text-[#1c1b1b]">
+              Tiêu đề tài liệu
+            </span>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -326,14 +274,18 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
           </label>
 
           <label className="block space-y-1.5">
-            <span className="text-xs font-bold text-[#1c1b1b]">Loại tài liệu</span>
+            <span className="text-xs font-bold text-[#1c1b1b]">
+              Loại tài liệu
+            </span>
             <select
               value={contentType}
               onChange={(e) => setContentType(e.target.value as KbContentType)}
               className="w-full rounded-lg border border-[#c4c7c8] bg-white px-3 py-2 text-sm font-medium text-[#1c1b1b] outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200"
             >
               {CONTENT_TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </label>
@@ -371,10 +323,17 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
       {/* Document list */}
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-[#f6f3f2]" />)}
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-14 animate-pulse rounded-lg bg-[#f6f3f2]"
+            />
+          ))}
         </div>
       ) : docs.length === 0 ? (
-        <p className="text-center text-sm text-[#747878] py-6">Chưa có tài liệu nào. Tải lên để AI có thể trả lời chính xác hơn.</p>
+        <p className="text-center text-sm text-[#747878] py-6">
+          Chưa có tài liệu nào. Tải lên để AI có thể trả lời chính xác hơn.
+        </p>
       ) : (
         <div className="divide-y divide-[#f0edec] rounded-xl border border-[#e5e2e1] bg-white overflow-hidden">
           {docs.map((doc) => {
@@ -384,15 +343,21 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
               <div key={doc.id} className="flex items-center gap-3 px-4 py-3">
                 <FileText className="size-4 shrink-0 text-[#747878]" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#1c1b1b]">{doc.title}</p>
+                  <p className="truncate text-sm font-semibold text-[#1c1b1b]">
+                    {doc.title}
+                  </p>
                   <p className="truncate text-xs text-[#747878]">
                     {doc.original_filename}
                     {doc.chunk_count > 0 && ` · ${doc.chunk_count} đoạn`}
                     {" · "}
-                    {CONTENT_TYPE_OPTIONS.find((o) => o.value === doc.content_type)?.label ?? doc.content_type}
+                    {CONTENT_TYPE_OPTIONS.find(
+                      (o) => o.value === doc.content_type,
+                    )?.label ?? doc.content_type}
                   </p>
                 </div>
-                <span className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${s.className}`}>
+                <span
+                  className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${s.className}`}
+                >
                   <StatusIcon className="size-3" />
                   {s.label}
                 </span>
