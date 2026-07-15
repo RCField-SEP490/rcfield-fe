@@ -23,6 +23,7 @@ import StaffPackagesPage from "@/pages/staff/StaffPackagesPage"
 import StaffContestsPage from "@/pages/staff/contest/StaffContestsPage"
 import StaffContestCheckInPage from "@/pages/staff/contest/StaffContestCheckInPage"
 import StaffContestRuntimePage from "@/pages/staff/contest/StaffContestRuntimePage"
+import StaffCheckoutSummaryPage from "@/pages/staff/StaffCheckoutSummaryPage"
 
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { RoleGuard } from "@/shared/components/RoleGuard"
@@ -215,6 +216,7 @@ export const router = createBrowserRouter([
           { path: routePaths.staffTodayBookings, element: <StaffTodayBookingsPage /> },
           { path: routePaths.staffSessionDetail, element: <StaffSessionDetailPage /> },
           { path: routePaths.staffInspection, element: <StaffInspectionPage /> },
+          { path: routePaths.staffCheckoutSummary, element: <StaffCheckoutSummaryPage /> },
           { path: routePaths.staffFnbOrders, element: <StaffFnbOrdersPage /> },
           { path: routePaths.staffIncidents, element: <StaffIncidentsPage /> },
           { path: routePaths.staffMaintenance, element: <StaffMaintenancePage /> },

@@ -47,6 +47,7 @@ export default function StaffSessionDetailPage() {
   const session = sessions.find((s) => s.sessionId === sessionId)
   const booking = session ? bookings.find((b) => b.bookingId === session.bookingId) : null
   const isWalkInBooking = booking?.source === "STAFF_MANUAL"
+  const canDirectExtend = isWalkInBooking
 
   // Local state controls
   const [timeLeft, setTimeLeft] = useState("")
@@ -63,6 +64,7 @@ export default function StaffSessionDetailPage() {
   // Extension mode: false = propose to customer, true = direct (staff confirms in-person)
   const [directExtensionMode, setDirectExtensionMode] = useState(false)
   const [pendingDirectExtension, setPendingDirectExtension] = useState<{ mins: number; fee: number; newPlannedEnd: string } | null>(null)
+  const effectiveDirectExtensionMode = canDirectExtend && directExtensionMode
 
   // Swap Vehicle local modal state
   const [swapModalOpen, setSwapModalOpen] = useState(false)
@@ -250,7 +252,7 @@ export default function StaffSessionDetailPage() {
     return { mins, fee, newPlannedEnd, blockedReason, blocked: Boolean(blockedReason) || fee > remainingCap }
   })
   const handleExtension = (mins: number, fee: number, newPlannedEnd: string) => {
-    if (directExtensionMode) {
+    if (effectiveDirectExtensionMode) {
       setPendingDirectExtension({ mins, fee, newPlannedEnd })
     } else {
       proposeExtension(session.sessionId, mins, fee)
@@ -539,7 +541,7 @@ export default function StaffSessionDetailPage() {
                   <Clock className="size-3.5 shrink-0" />
                   Đang chờ khách phản hồi đề xuất gia hạn {session.extensionProposal?.extraMinutes} phút…
                 </div>
-              ) : pendingDirectExtension ? (
+              ) : canDirectExtend && pendingDirectExtension ? (
                 <div className="rounded-xl border border-[#ea580c] bg-[#fff3eb] p-3 space-y-2.5">
                   <p className="text-xs font-bold text-[#1c1b1b]">
                     Xác nhận gia hạn trực tiếp: <span className="text-[#ea580c]">+{pendingDirectExtension.mins < 60 ? `${pendingDirectExtension.mins} phút` : "1 giờ"}</span>
@@ -552,7 +554,7 @@ export default function StaffSessionDetailPage() {
                       size="sm"
                       className="flex-1 text-xs"
                       onClick={() => {
-                        proposeExtension(session.sessionId, pendingDirectExtension.mins, pendingDirectExtension.fee, true)
+                        proposeExtension(session.sessionId, pendingDirectExtension.mins, pendingDirectExtension.fee, canDirectExtend)
                         setPendingDirectExtension(null)
                       }}
                     >

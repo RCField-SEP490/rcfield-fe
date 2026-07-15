@@ -1,6 +1,6 @@
 import { useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { BookOpen, CheckCircle2, Clock, FileText, Trash2, Upload, XCircle } from "lucide-react"
+import { BookOpen, CheckCircle2, Clock, Download, FileText, Trash2, Upload, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
@@ -22,6 +22,237 @@ const STATUS_CONFIG = {
 }
 
 const ACCEPTED = ".pdf,.docx,.txt,.md"
+
+const KB_TEMPLATE = `# [TÊN CƠ SỞ] — Tài liệu kiến thức cho AI trợ lý
+
+## Thông tin cơ sở
+- Tên: [VD: RC Tân Bình]
+- Địa chỉ: [VD: 123 Đường ABC, Phường XYZ, Quận Tân Bình, TP.HCM]
+- Số điện thoại: [VD: 0901 234 567]
+- Email: [VD: rcfield@gmail.com]
+- Website / Fanpage: [VD: facebook.com/rcfield.tanbinh]
+
+## Giờ hoạt động
+- Thứ Hai: Đóng cửa
+- Thứ Ba – Thứ Sáu: 14:00 – 22:00
+- Thứ Bảy – Chủ Nhật: 10:00 – 22:00
+- Ngày lễ: Mở bình thường (hoặc ghi rõ ngoại lệ nếu có)
+
+## Loại sân & Cấu hình
+- Sân Asphalt (Đường nhựa): [VD: 2 sân, tối đa 4 xe/sân]
+- Sân Carpet (Thảm): [VD: 1 sân, tối đa 3 xe/sân]
+- Sân Dirt (Đất): [không có / có — ghi rõ]
+
+## Bảng giá thuê slot
+- 1 slot = [VD: 30 phút]
+- Giá slot thường (T2–T6): [VD: 50.000đ/slot/xe]
+- Giá slot cuối tuần & lễ: [VD: 70.000đ/slot/xe]
+- Đặt cọc xe thuê: [VD: 200.000đ/xe, hoàn lại sau buổi chơi]
+
+## Đội xe cho thuê (RENTAL)
+[Liệt kê các loại xe có thể thuê]
+- Xe Drift 1/10 (Tier STANDARD): [VD: 30.000đ/giờ, cọc 150.000đ]
+- Xe Địa hình 1/10 (Tier PREMIUM): [VD: 50.000đ/giờ, cọc 300.000đ]
+- Số lượng xe có sẵn: [VD: 5 xe drift, 3 xe địa hình]
+
+## Chính sách BYOC (mang xe cá nhân)
+- Được phép mang xe cá nhân vào chơi: Có / Không
+- Phí BYOC: [VD: 30.000đ/slot nếu không thuê xe của quán]
+- Xe cá nhân cần đáp ứng: [VD: công suất tối đa 3S, không dùng xe xăng]
+
+## Menu F&B
+[Liệt kê các món đồ uống / thức ăn nhẹ phục vụ tại chỗ]
+- Cà phê sữa đá: [VD: 35.000đ]
+- Trà sữa: [VD: 45.000đ]
+- Nước ngọt đóng chai: [VD: 20.000đ]
+- Snack / bánh: [VD: 15.000–30.000đ]
+Ghi chú: Khách có thể pre-order khi đặt lịch hoặc gọi thêm tại quán.
+
+## Quy định tại cơ sở
+- Đến muộn quá [VD: 15 phút] mà không báo trước, slot có thể bị hủy.
+- Không được dùng xe pin LiPo trên [VD: 4S] trong sân nhỏ.
+- Trường hợp xe bị hư hỏng trong buổi chơi: [VD: staff kiểm tra và lập biên bản, khách chịu chi phí sửa chữa linh kiện thực tế].
+- Không hút thuốc trong khu vực sân.
+- Trẻ em dưới 12 tuổi cần có người lớn đi kèm.
+
+## Chính sách hủy lịch & hoàn tiền
+- Hủy trước [VD: 24 giờ]: hoàn 100% tiền cọc.
+- Hủy trong vòng [VD: 2–24 giờ]: hoàn [VD: 50%].
+- Hủy dưới [VD: 2 giờ] hoặc không đến: không hoàn tiền.
+- Liên hệ hủy qua: [VD: SĐT / Fanpage / app RCField]
+
+## Câu hỏi thường gặp (FAQ)
+
+Q: Tôi có cần biết chạy xe RC trước không?
+A: Không cần. Staff sẽ hướng dẫn cơ bản trước khi chơi.
+
+Q: Tôi có thể mang xe của mình vào không?
+A: [Có / Không — và điều kiện cụ thể nếu có]
+
+Q: Đặt lịch như thế nào?
+A: Đặt qua app RCField, chọn cơ sở → chọn sân → chọn giờ → thanh toán online.
+
+Q: Có thể đặt lịch cho nhóm không?
+A: Được. Chọn số người chơi khi đặt, mỗi người sẽ được phân 1 xe.
+
+Q: Thanh toán bằng gì?
+A: Qua app: VNPay, MoMo, thẻ ngân hàng. Tại quán: tiền mặt hoặc chuyển khoản.
+
+Q: Wifi có không?
+A: [Có — mật khẩu cung cấp tại quán / Không]
+
+Q: Có chỗ đậu xe không?
+A: [Mô tả chỗ đậu xe: đường trước cơ sở / bãi giữ xe gần đó / không có]
+
+## Thông tin thêm
+[Ghi thêm bất kỳ thông tin đặc biệt nào về cơ sở: sự kiện thường xuyên, giải đấu, câu lạc bộ thành viên, v.v.]
+`
+
+const KB_TEMPLATES: Record<string, { filename: string; content: string }> = {
+  FAQ: {
+    filename: "rcfield-faq-template.txt",
+    content: `# [TÊN CƠ SỞ] — Câu hỏi thường gặp (FAQ)
+# Hướng dẫn: Thay thế nội dung trong [dấu ngoặc vuông] bằng thông tin thực tế của cơ sở bạn.
+
+Q: Tôi có cần biết chạy xe RC trước không?
+A: Không cần. Staff sẽ hướng dẫn cơ bản trước khi chơi.
+
+Q: Cơ sở cho thuê loại xe RC nào?
+A: [VD: Xe drift 1/10, xe địa hình 1/10 — đầy đủ phụ kiện và pin sạc sẵn.]
+
+Q: Đặt lịch như thế nào?
+A: Đặt qua app RCField: chọn cơ sở → chọn sân → chọn giờ → thanh toán online. Cũng có thể liên hệ trực tiếp qua [SĐT / Fanpage].
+
+Q: Có thể đặt lịch cho nhóm không?
+A: Được. Chọn số người chơi khi đặt, mỗi người sẽ được phân 1 xe thuê.
+
+Q: Tôi có thể mang xe cá nhân vào không?
+A: [Có — phí BYOC là X.000đ/slot. Xe cần đáp ứng: pin tối đa 3S, không dùng xe xăng. / Không hỗ trợ BYOC.]
+
+Q: Thanh toán bằng gì?
+A: Qua app: VNPay, MoMo, thẻ ngân hàng. Tại quán: tiền mặt hoặc chuyển khoản.
+
+Q: Slot kéo dài bao lâu?
+A: [VD: 1 slot = 30 phút. Có thể gia hạn thêm nếu sân còn trống.]
+
+Q: Giờ mở cửa?
+A: [VD: Thứ Ba – Thứ Sáu: 14:00–22:00. Thứ Bảy – Chủ Nhật: 10:00–22:00. Thứ Hai nghỉ.]
+
+Q: Wifi có không?
+A: [Có — mật khẩu nhân viên cung cấp tại quán. / Không có Wifi công cộng.]
+
+Q: Có chỗ đậu xe không?
+A: [VD: Đậu xe trước cơ sở hoặc bãi giữ xe gần đó tại địa chỉ X.]
+
+Q: Trẻ em có chơi được không?
+A: [VD: Trẻ từ 8 tuổi trở lên có thể chơi khi có người lớn đi kèm.]
+
+Q: Có thể mua đồ ăn uống tại cơ sở không?
+A: [Có — cơ sở phục vụ cà phê, trà, nước ngọt và snack nhẹ. / Không có F&B tại chỗ.]
+`,
+  },
+  POLICY: {
+    filename: "rcfield-policy-template.txt",
+    content: `# [TÊN CƠ SỞ] — Chính sách & Quy định
+# Hướng dẫn: Thay thế nội dung trong [dấu ngoặc vuông] bằng thông tin thực tế của cơ sở bạn.
+
+## Quy định sử dụng sân
+- Đến muộn quá [VD: 15 phút] mà không báo trước, slot có thể bị hủy và không hoàn tiền.
+- Không tháo lắp xe trong khu vực đường đua. Khu pit dành riêng cho việc này.
+- Không sử dụng pin LiPo vượt quá [VD: 4S] trong sân.
+- Không dùng xe xăng (nitro) trong cơ sở.
+- Không hút thuốc trong khu vực sân và khu pit.
+- Trẻ em dưới [VD: 12 tuổi] cần có người lớn đi kèm.
+
+## Chính sách đặt cọc xe thuê
+- Khi thuê xe của cơ sở, khách đặt cọc [VD: 200.000đ/xe].
+- Tiền cọc hoàn lại toàn bộ sau khi trả xe nguyên vẹn.
+- Nếu xe bị hư hỏng: staff lập biên bản ghi nhận linh kiện hỏng và mức đền bù. Khách xác nhận trước khi rời đi.
+
+## Chính sách hủy lịch & hoàn tiền
+- Hủy trước [VD: 24 giờ]: hoàn 100%.
+- Hủy trong vòng [VD: 2–24 giờ]: hoàn [VD: 50%].
+- Hủy dưới [VD: 2 giờ] hoặc không đến: không hoàn tiền.
+- Yêu cầu hủy qua: [SĐT / Fanpage / app RCField].
+- Cơ sở chủ động hủy (sự cố kỹ thuật...): hoàn 100% và ưu tiên đặt lại.
+
+## Chính sách gia hạn slot
+- Gia hạn tối đa [VD: 2 slot/lần] nếu sân còn trống.
+- Yêu cầu báo staff trước khi slot hiện tại kết thúc.
+
+## Chính sách BYOC
+- Phí BYOC: [VD: 30.000đ/slot].
+- Xe cần đáp ứng: [VD: pin tối đa 3S, không xe xăng].
+- Staff có quyền từ chối xe không đạt tiêu chuẩn.
+
+## Liên hệ & khiếu nại
+- SĐT: [VD: 0901 234 567]
+- Fanpage: [VD: facebook.com/rcfield.xxx]
+`,
+  },
+  ANNOUNCEMENT: {
+    filename: "rcfield-announcement-template.txt",
+    content: `# [TÊN CƠ SỞ] — Thông báo
+# Hướng dẫn: Thay thế nội dung trong [dấu ngoặc vuông]. Xóa các mục không áp dụng.
+
+## Tiêu đề thông báo
+[VD: Lịch nghỉ Tết Nguyên Đán 2026 / Khai trương sân mới / Cập nhật bảng giá tháng 8]
+
+## Nội dung
+[Viết nội dung thông báo rõ ràng. AI sẽ dùng thông tin này để trả lời khách hỏi về sự thay đổi.]
+
+VD — Lịch nghỉ lễ:
+Cơ sở tạm nghỉ từ ngày [X/X] đến hết ngày [X/X] nhân dịp [lý do].
+Mở cửa trở lại từ ngày [X/X], giờ hoạt động bình thường.
+
+VD — Cập nhật giá:
+Kể từ ngày [X/X/XXXX], bảng giá slot được cập nhật:
+- Slot thường (T2–T6): [giá mới]đ (trước: [giá cũ]đ)
+- Slot cuối tuần: [giá mới]đ (trước: [giá cũ]đ)
+Lý do: [VD: chi phí vận hành tăng].
+
+## Thời gian áp dụng
+Từ ngày: [DD/MM/YYYY]
+Đến ngày: [DD/MM/YYYY hoặc "cho đến thông báo tiếp theo"]
+
+## Liên hệ nếu có thắc mắc
+[VD: Nhắn tin Fanpage hoặc gọi 0901 234 567 trong giờ hoạt động.]
+`,
+  },
+  CUSTOM: {
+    filename: "rcfield-custom-template.txt",
+    content: `# [TÊN CƠ SỞ] — [Tên tài liệu]
+# Hướng dẫn: File này dành cho nội dung tùy chỉnh. Viết rõ ràng để AI hiểu được.
+# Gợi ý: dùng ## cho tiêu đề section, gạch đầu dòng (-) cho danh sách, Q:/A: cho hỏi đáp.
+
+## [Section 1: Tên chủ đề]
+[Nội dung...]
+
+## [Section 2: Tên chủ đề]
+[Nội dung...]
+
+## Gợi ý các chủ đề có thể bổ sung
+- Giới thiệu cơ sở và đội ngũ
+- Lịch sử và thành tích giải đấu
+- Hướng dẫn kỹ thuật cho người mới
+- Danh sách phụ kiện bán tại quán
+- Chương trình thành viên / tích điểm
+- Bảng giá combo (VD: 3 slot + 1 ly cà phê)
+- Thông tin giải đấu định kỳ
+`,
+  },
+}
+
+function downloadTemplate(contentType: string) {
+  const tpl = KB_TEMPLATES[contentType] ?? KB_TEMPLATES.CUSTOM
+  const blob = new Blob([tpl.content], { type: "text/plain;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = tpl.filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
   const queryClient = useQueryClient()
@@ -60,7 +291,7 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
   const canUpload = !!selectedFile && title.trim().length > 0 && !uploadMutation.isPending
 
   return (
-    <div className="space-y-5 p-5">
+    <div className="space-y-5 rounded-xl border border-[#c4c7c8] bg-white p-5">
       <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-[#747878]">
         <BookOpen className="size-3.5" />
         Knowledge Base
@@ -68,9 +299,19 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
 
       {/* Upload form */}
       <div className="rounded-xl border border-[#e5e2e1] bg-[#faf9f8] p-4 space-y-3">
-        <p className="text-xs font-semibold text-[#444748]">
-          Tải lên tài liệu để AI học về cơ sở của bạn (PDF, DOCX, TXT, MD — tối đa 10MB)
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-semibold text-[#444748]">
+            Tải lên tài liệu để AI học về cơ sở của bạn (PDF, DOCX, TXT, MD — tối đa 10MB)
+          </p>
+          <button
+            type="button"
+            onClick={() => downloadTemplate(contentType)}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-[#c4c7c8] bg-white px-3 py-1.5 text-xs font-bold text-[#444748] transition hover:border-orange-400 hover:text-orange-600"
+          >
+            <Download className="size-3.5" />
+            Tải file mẫu
+          </button>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block space-y-1.5">

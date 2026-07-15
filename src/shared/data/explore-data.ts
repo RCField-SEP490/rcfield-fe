@@ -12,6 +12,7 @@ export interface Vehicle {
   pricePerHour: number
   securityDeposit?: number
   status: VehicleStatus
+  availableCount?: number
   specs: {
     battery: string
     motor: string

@@ -38,14 +38,20 @@ export interface MockExtensionProposal {
 export interface MockDamageClaim {
   claimId: string;
   description: string;
-  estimatedCost: number;
-  damageMultiplier: number;
-  finalCharge: number;
+  damageLineItems: {
+    id: string;
+    partType: string;
+    customPartName: string | null;
+    partsPrice: number;
+    laborPrice: number;
+    lineTotal: number;
+  }[];
+  totalDamageCharge: number;
   checkInPhoto: string;
   checkOutPhoto: string;
   status: "PENDING" | "CONFIRMED" | "DISPUTED";
   customerNotes?: string;
-  expiresAt: string; // 24h countdown
+  expiresAt: string;
 }
 
 export interface MockSessionDetail {
@@ -436,13 +442,15 @@ export const mockCustomerBookingDetails: CustomerBookingDetail[] = [
         damageClaim: {
           claimId: "CLM-3199",
           description: "Vỡ vành bánh xe trước bên trái & trầy xước nặng cản trước do va đập tốc độ cao.",
-          estimatedCost: 100000,
-          damageMultiplier: 1.5, // 1.5x multiplier for high tier model
-          finalCharge: 150000,
+          damageLineItems: [
+            { id: "li-1", partType: "TIRE_WHEEL", customPartName: null, partsPrice: 80000, laborPrice: 20000, lineTotal: 100000 },
+            { id: "li-2", partType: "SHELL", customPartName: null, partsPrice: 40000, laborPrice: 10000, lineTotal: 50000 },
+          ],
+          totalDamageCharge: 150000,
           checkInPhoto: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
           checkOutPhoto: "https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&q=80&w=400",
           status: "PENDING",
-          expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString() // 23 hours left
+          expiresAt: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString()
         }
       }
     ]

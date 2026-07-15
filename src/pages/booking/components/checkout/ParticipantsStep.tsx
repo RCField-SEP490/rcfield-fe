@@ -1,11 +1,12 @@
-import { AlertCircle, Car, UserRound, Users, X } from "lucide-react"
+import { AlertCircle, Car, Check, UserRound, Users, X } from "lucide-react"
 import type { CustomerPlayMode } from "@/features/customer-booking/data/customer-booking-demo"
 import type { Cafe } from "@/shared/data/explore-data"
+import type { VehicleUnit } from "@/features/vehicles/types"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { Badge } from "@/shared/ui/badge"
-import { cn } from "@/shared/lib/utils"
+import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { formatCurrency } from "@/shared/lib/format"
 import type { TrackConfig } from "@/features/cafes/types"
 
@@ -34,6 +35,7 @@ type ParticipantsStepProps = {
   onVehicleSelect: (ids: string[]) => void
   byocRemaining?: number
   selectedTrackConfig?: TrackConfig | null
+  catalogUnits?: VehicleUnit[]
 }
 
 export function ParticipantsStep({
@@ -47,6 +49,7 @@ export function ParticipantsStep({
   onVehicleSelect,
   byocRemaining,
   selectedTrackConfig,
+  catalogUnits,
 }: ParticipantsStepProps) {
   const isByocFull = playMode === "BYOC" && byocRemaining !== undefined && byocRemaining === 0
   // BYOC: 1 người = 1 xe = 1 slot → hard cap theo byocRemaining
@@ -79,9 +82,9 @@ export function ParticipantsStep({
   return (
     <Card className="rounded-xl shadow-sm">
       <CardHeader>
-        <CardTitle>Người chơi & phương tiện</CardTitle>
+        <CardTitle>Ai đến chơi cùng bạn?</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Người đặt lịch là người chơi chính. Thêm người đi kèm nếu có — họ tên là bắt buộc để tiếp tục. Staff có thể bổ sung khi check-in.
+          Bạn là người chơi chính. Có bạn bè đi cùng? Thêm tên họ vào đây — nhân viên sẽ hỗ trợ bổ sung thông tin còn thiếu lúc check-in.
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -99,8 +102,8 @@ export function ParticipantsStep({
           <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
             <div>
-              <p className="text-sm font-semibold text-red-800">Slot này đã hết chỗ mang xe riêng</p>
-              <p className="mt-0.5 text-xs text-red-600">Quay lại bước 1 và chọn "Thuê xe" hoặc đổi khung giờ khác.</p>
+              <p className="text-sm font-semibold text-red-800">Khung giờ này đã hết chỗ BYOC rồi</p>
+              <p className="mt-0.5 text-xs text-red-600">Bạn có thể chuyển sang thuê xe của quán, hoặc chọn khung giờ khác.</p>
             </div>
           </div>
         )}
@@ -108,7 +111,7 @@ export function ParticipantsStep({
         {/* Participant count */}
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium">
-            <Users className="h-4 w-4 text-muted-foreground" /> Số người tham gia
+            <Users className="h-4 w-4 text-muted-foreground" /> Bao nhiêu người sẽ chơi?
           </label>
           <div className="flex items-center gap-3">
             <Button
@@ -134,12 +137,12 @@ export function ParticipantsStep({
             </Button>
             <span className="text-xs text-muted-foreground">
               {playMode === "BYOC"
-                ? `/ ${maxParticipants} chỗ còn lại · mỗi người 1 xe`
-                : "người · 1 booking = 1 xe thuê"}
+                ? `/ còn ${maxParticipants} chỗ · mỗi người 1 xe`
+                : "người chơi · mỗi người thuê 1 xe"}
             </span>
           </div>
           {playMode === "BYOC" && participants >= maxParticipants && !isByocFull && (
-            <p className="text-xs text-amber-600">Đã đạt giới hạn chỗ BYOC còn trống cho slot này.</p>
+            <p className="text-xs text-amber-600">Bạn đã chọn hết số chỗ BYOC còn trống trong khung giờ này.</p>
           )}
         </div>
 
@@ -147,8 +150,8 @@ export function ParticipantsStep({
         {participants > 1 && (
           <div className="space-y-3">
             <p className="text-sm font-medium text-slate-700">
-              Thông tin người đi kèm
-              <span className="ml-1.5 text-xs font-normal text-rose-500">(bắt buộc điền họ tên)</span>
+              Ai đi cùng bạn?
+              <span className="ml-1.5 text-xs font-normal text-rose-500">(cần điền tên để đặt lịch)</span>
             </p>
             {companions.map((companion, i) => {
                 const phoneError = getPhoneError(companion.phone)
@@ -159,7 +162,7 @@ export function ParticipantsStep({
                         {i + 2}
                       </div>
                       <Input
-                        placeholder="Họ tên"
+                        placeholder="Tên người chơi"
                         value={companion.name}
                         onChange={(e) => updateCompanion(i, "name", e.target.value)}
                         className="h-9 text-sm"
@@ -191,7 +194,7 @@ export function ParticipantsStep({
                 )
               })}
             <p className="text-[11px] text-muted-foreground">
-              Staff sẽ cập nhật thông tin còn thiếu khi check-in.
+              Chưa có SĐT cũng không sao — nhân viên sẽ hỏi thêm lúc check-in.
             </p>
           </div>
         )}
@@ -201,8 +204,8 @@ export function ParticipantsStep({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 text-sm font-medium">
-                <Car className="h-4 w-4 text-muted-foreground" /> Xe thuê dự kiến
-                <span className="text-xs font-normal text-rose-500">(chọn đủ {participants} xe)</span>
+                <Car className="h-4 w-4 text-muted-foreground" /> Chọn xe bạn muốn lái
+                <span className="text-xs font-normal text-rose-500">(cần chọn {participants} xe)</span>
               </p>
               <div className="flex items-center gap-2">
                 {selectedVehicleIds.length > 0 && (
@@ -210,21 +213,20 @@ export function ParticipantsStep({
                     {selectedVehicleIds.length}/{participants} xe
                   </Badge>
                 )}
-                <Badge variant="secondary">{cafe.availableVehicles.length} xe có sẵn</Badge>
+                <Badge variant="secondary">{cafe.availableVehicles.length} mẫu xe</Badge>
               </div>
             </div>
             {selectedVehicleIds.length < participants && selectedVehicleIds.length > 0 && (
-              <p className="text-xs text-rose-500">Cần chọn thêm {participants - selectedVehicleIds.length} xe nữa.</p>
+              <p className="text-xs text-rose-500">Còn thiếu {participants - selectedVehicleIds.length} xe nữa là đủ.</p>
             )}
             {selectedVehicleIds.length === 0 && (
-              <p className="text-xs text-rose-500">Vui lòng chọn xe để tiếp tục.</p>
+              <p className="text-xs text-rose-500">Nhấn vào chiếc xe bạn muốn lái để tiếp tục.</p>
             )}
             {cafe.availableVehicles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Cơ sở chưa cập nhật danh sách xe.</p>
+              <p className="text-sm text-muted-foreground">Cơ sở chưa có xe nào để thuê — bạn có thể liên hệ trực tiếp để hỏi thêm.</p>
             ) : (
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {cafe.availableVehicles.map((vehicle) => {
-                  const isSelected = selectedVehicleIds.includes(vehicle.id)
                   const isCompatible =
                     !selectedTrackConfig ||
                     !vehicle.compatibleTrackTypes ||
@@ -234,38 +236,162 @@ export function ParticipantsStep({
                         t.id === selectedTrackConfig.track_type_id ||
                         t.code === selectedTrackConfig.track_type?.code
                     )
-                  const isDisabled = vehicle.status !== "available" || !isCompatible
+                  const isCatalogDisabled = vehicle.status !== "available" || !isCompatible
+
+                  // Units belonging to this catalog
+                  const unitList = catalogUnits?.filter((u) => u.catalogId === vehicle.id) ?? []
+                  const hasUnits = unitList.length > 0
+                  const availableUnits = unitList.filter((u) => u.status === "AVAILABLE")
+
+                  // Unit-level selection: collect unit IDs from this catalog in selectedVehicleIds
+                  const selectedUnitIds = unitList.map((u) => u.id).filter((id) => selectedVehicleIds.includes(id))
+                  // Catalog-level (legacy stepper) selection count
+                  const catalogQty = selectedVehicleIds.filter((id) => id === vehicle.id).length
+                  const totalQty = selectedUnitIds.length + catalogQty
+
+                  function toggleUnit(unitId: string) {
+                    if (selectedVehicleIds.includes(unitId)) {
+                      onVehicleSelect(selectedVehicleIds.filter((id) => id !== unitId))
+                    } else if (selectedVehicleIds.length < participants) {
+                      onVehicleSelect([...selectedVehicleIds, unitId])
+                    }
+                  }
+
+                  function decrement() {
+                    const idx = selectedVehicleIds.lastIndexOf(vehicle.id)
+                    if (idx === -1) return
+                    const next = [...selectedVehicleIds]
+                    next.splice(idx, 1)
+                    onVehicleSelect(next)
+                  }
+
+                  function increment() {
+                    onVehicleSelect([...selectedVehicleIds, vehicle.id])
+                  }
+
+                  const maxQty = Math.min(vehicle.availableCount ?? participants, participants)
+                  const canAdd = !isCatalogDisabled && catalogQty < maxQty && selectedVehicleIds.length < participants
+
                   return (
-                    <button
+                    <div
                       key={vehicle.id}
-                      type="button"
-                      disabled={isDisabled}
-                      onClick={() => {
-                        const next = isSelected
-                          ? selectedVehicleIds.filter((id) => id !== vehicle.id)
-                          : [...selectedVehicleIds, vehicle.id]
-                        onVehicleSelect(next)
-                      }}
                       className={cn(
-                        "overflow-hidden rounded-xl border bg-background text-left transition hover:border-primary/40",
-                        isSelected && "border-primary ring-2 ring-primary/10",
-                        isDisabled && "cursor-not-allowed opacity-50 bg-slate-50/50",
+                        "overflow-hidden rounded-xl border bg-background transition",
+                        totalQty > 0 && "border-primary ring-2 ring-primary/10",
+                        isCatalogDisabled && !hasUnits && "opacity-50 bg-slate-50/50",
                       )}
                     >
-                      <img src={vehicle.image} alt={vehicle.name} className="h-28 w-full object-cover" />
-                      <div className="space-y-1 p-3">
-                        <div className="flex items-center justify-between gap-1.5">
-                          <p className="line-clamp-1 text-sm font-semibold">{vehicle.name}</p>
-                          {!isCompatible && (
-                            <Badge className="shrink-0 text-[9px] px-1 py-0 h-4 bg-amber-500 text-white border-none hover:bg-amber-500">
+                      {/* Catalog image */}
+                      <div className="relative">
+                        <img src={vehicle.image} alt={vehicle.name} className="h-40 w-full object-cover object-center" />
+                        {!isCompatible && (
+                          <div className="absolute left-2 top-2">
+                            <Badge className="text-[9px] px-1.5 py-0.5 bg-amber-500 text-white border-none">
                               K.Tương thích
                             </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{vehicle.type} · {vehicle.scale}</p>
-                        <p className="text-sm font-semibold">{formatCurrency(vehicle.pricePerHour)}/giờ</p>
+                          </div>
+                        )}
                       </div>
-                    </button>
+
+                      <div className="space-y-2.5 p-3">
+                        {/* Name + price */}
+                        <div>
+                          <p className="line-clamp-1 text-sm font-semibold">{vehicle.name}</p>
+                          <p className="text-xs text-muted-foreground">{vehicle.type}</p>
+                          <p className="text-sm font-semibold mt-0.5">{formatCurrency(vehicle.pricePerHour)}/giờ</p>
+                        </div>
+
+                        {/* Unit grid (click to select) OR catalog stepper */}
+                        {hasUnits ? (
+                          <div className="space-y-1.5">
+                            <p className="text-[11px] font-medium text-muted-foreground">
+                              Chọn chiếc bạn thích —{" "}
+                              <span className={cn(selectedUnitIds.length > 0 ? "text-primary font-bold" : "")}>
+                                {availableUnits.length} xe đang rảnh
+                              </span>
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {unitList.map((unit) => {
+                                const imgSrc = sanitizeImageUrl(unit.distinctive_image_url) || vehicle.image
+                                const isSelected = selectedVehicleIds.includes(unit.id)
+                                const isAvailable = unit.status === "AVAILABLE"
+                                const canPick = isAvailable && (isSelected || selectedVehicleIds.length < participants)
+                                return (
+                                  <button
+                                    key={unit.id}
+                                    type="button"
+                                    disabled={!canPick}
+                                    onClick={() => toggleUnit(unit.id)}
+                                    className={cn(
+                                      "flex flex-col items-center gap-0.5 rounded-lg border-2 p-1 transition",
+                                      isSelected
+                                        ? "border-primary bg-primary/5"
+                                        : "border-zinc-200 hover:border-zinc-400",
+                                      !isAvailable && "cursor-not-allowed opacity-40",
+                                      !canPick && isAvailable && "cursor-not-allowed opacity-50",
+                                    )}
+                                  >
+                                    <div className="relative size-10 overflow-hidden rounded-md bg-zinc-100">
+                                      <img
+                                        src={imgSrc}
+                                        alt={unit.identifier}
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => { (e.target as HTMLImageElement).src = vehicle.image }}
+                                      />
+                                      {isSelected && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-primary/25">
+                                          <Check className="size-4 text-primary drop-shadow" />
+                                        </div>
+                                      )}
+                                      {!isAvailable && (
+                                        <div className="absolute inset-0 flex items-end justify-center bg-black/30 pb-0.5">
+                                          <span className="text-[8px] font-bold text-white leading-none">Bận</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="max-w-[42px] truncate text-[10px] font-bold leading-none text-zinc-800">
+                                      {unit.identifier}
+                                    </span>
+                                    {unit.color && (
+                                      <span className="max-w-[42px] truncate text-[9px] leading-none text-muted-foreground">
+                                        {unit.color}
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 rounded-md p-0 text-base"
+                              disabled={catalogQty === 0}
+                              onClick={decrement}
+                            >
+                              −
+                            </Button>
+                            <span className="w-5 text-center text-sm font-semibold tabular-nums">{catalogQty}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 rounded-md p-0 text-base"
+                              disabled={!canAdd}
+                              onClick={increment}
+                            >
+                              +
+                            </Button>
+                            {vehicle.availableCount !== undefined && vehicle.availableCount > 0 && (
+                              <span className="text-[11px] text-muted-foreground">/ {vehicle.availableCount} xe</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )
                 })}
               </div>
@@ -280,7 +406,7 @@ export function ParticipantsStep({
               <UserRound className={cn("mt-0.5 h-5 w-5 shrink-0", isByocFull ? "text-red-400" : "text-muted-foreground")} />
               <div className="flex-1">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium text-sm">BYOC sẽ được kiểm tra tại quầy</p>
+                  <p className="font-medium text-sm">Mang xe của bạn đến — nhân viên kiểm tra tại quầy</p>
                   {byocRemaining !== undefined && (
                     <Badge
                       variant={byocRemaining > 0 ? "secondary" : "destructive"}
@@ -291,7 +417,7 @@ export function ParticipantsStep({
                   )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Mỗi booking chiếm 1 slot BYOC (không phân biệt số người). Staff xác nhận xe tại check-in.
+                  Mỗi lần đặt chỉ tính 1 slot BYOC, dù bạn đến bao nhiêu người. Nhân viên sẽ xác nhận xe của bạn ngay khi đến.
                 </p>
               </div>
             </div>

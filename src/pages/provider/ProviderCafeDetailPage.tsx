@@ -44,6 +44,19 @@ import {
 } from "@/shared/ui/alert-dialog"
 import { Button } from "@/shared/ui/button"
 
+const TAB_META: Record<string, { label: string; description: string }> = {
+  info: { label: "Thông tin cơ sở", description: "Chỉnh sửa thông tin và trạng thái vận hành" },
+  tracks: { label: "Loại sân (Track)", description: "Quản lý các loại sân chạy" },
+  pricing: { label: "Cấu hình giá", description: "Thiết lập giá thuê sân" },
+  catalogs: { label: "Đội xe", description: "Quản lý danh mục xe" },
+  widget: { label: "Widget Chat & Tài liệu", description: "Cấu hình widget và tài liệu hỗ trợ" },
+  menu: { label: "Menu F&B", description: "Quản lý thực đơn" },
+  packages: { label: "Gói & Giá", description: "Gói dịch vụ và ưu đãi" },
+  promotions: { label: "Ưu đãi", description: "Chương trình khuyến mãi" },
+  channel: { label: "Kênh Messenger", description: "Kết nối kênh nhắn tin" },
+  reviews: { label: "Đánh giá", description: "Phản hồi từ khách hàng" },
+}
+
 export function ProviderCafeDetailPage() {
   const { cafeId } = useParams()
   const navigate = useNavigate()
@@ -169,25 +182,35 @@ export function ProviderCafeDetailPage() {
         description={`${cafe.district}, ${cafe.city}`}
       />
 
-      <div className="space-y-4 p-4 md:p-6">
-        <div className="flex justify-start gap-2">
-          <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
-            <ArrowLeft className="size-5" />
-            Danh sách
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(routePaths.providerCafePreview.replace(":cafeId", cafe.id))}
-            className="h-10 gap-2 rounded-lg border-[#c4c7c8] font-bold text-[#1c1b1b] hover:bg-[#f6f3f2]"
-          >
-            <ExternalLink className="size-4" />
-            Xem trước
-          </Button>
+      <div className="space-y-5 p-4 md:p-6">
+        <div className="flex items-center justify-between gap-2 border-b border-[#e5e2e1] pb-4">
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => navigate(routePaths.providerCafes)} className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f1edec] text-[#1c1b1b] hover:bg-[#e5e2e1] font-bold">
+              <ArrowLeft className="size-5" />
+              Danh sách
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate(routePaths.providerCafePreview.replace(":cafeId", cafe.id))}
+              className="h-10 gap-2 rounded-lg border-[#c4c7c8] font-bold text-[#1c1b1b] hover:bg-[#f6f3f2]"
+            >
+              <ExternalLink className="size-4" />
+              Xem trước
+            </Button>
+          </div>
+          {TAB_META[tab] && (
+            <div className="hidden flex-col items-end sm:flex">
+              <span className="text-sm font-bold text-[#1c1b1b]">{TAB_META[tab].label}</span>
+              <span className="text-xs text-[#747878]">{TAB_META[tab].description}</span>
+            </div>
+          )}
         </div>
         {tab === "info" && (
           <>
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <section>
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#747878]">Tổng quan tháng này</p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
               <MetricCard
                 label="Doanh thu tháng"
                 value={kpi ? formatCurrency(kpi.totalRevenue) : "--"}
@@ -216,6 +239,7 @@ export function ProviderCafeDetailPage() {
                 icon={<CheckCircle2 />}
                 tone={cafe.status === "SUSPENDED" || cafe.status === "PENDING" ? "warning" : "success"}
               />
+              </div>
             </section>
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4">
@@ -237,7 +261,7 @@ export function ProviderCafeDetailPage() {
           </>
         )}
 
-        <div className="space-y-6">
+        <div>
           {tab === "info" && (
             <ProviderCafeForm
               cafe={cafe}
@@ -251,23 +275,15 @@ export function ProviderCafeDetailPage() {
               }}
             />
           )}
-          {tab === "tracks" && (
-            <section className="rounded-xl border border-[#c4c7c8] bg-white p-5">
-              <TrackConfigManager cafeId={cafe.id} />
-            </section>
-          )}
+          {tab === "tracks" && <TrackConfigManager cafeId={cafe.id} />}
           {tab === "pricing" && <CafePricingTab cafeId={cafe.id} cafe={cafe} />}
           {tab === "catalogs" && (
             <ProviderCafeVehiclesSection cafeId={cafe.id} />
           )}
           {tab === "widget" && (
             <div className="space-y-4">
-              <section className="rounded-xl border border-[#c4c7c8] bg-white">
-                <WidgetConfigForm cafeId={cafe.id} />
-              </section>
-              <section className="rounded-xl border border-[#c4c7c8] bg-white">
-                <KbDocumentsSection cafeId={cafe.id} />
-              </section>
+              <WidgetConfigForm cafeId={cafe.id} />
+              <KbDocumentsSection cafeId={cafe.id} />
             </div>
           )}
           {tab === "menu" && (

@@ -8,9 +8,11 @@ import {
   Info,
   FileCheck,
   CheckCircle2,
+  Plus,
+  Trash2,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
-import { staffApi } from "@/features/staff/api/staff.api"
+import { staffApi, type DamageLineItemInput } from "@/features/staff/api/staff.api"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
 import {
@@ -63,9 +65,7 @@ export default function StaffInspectionPage() {
 
   // RENTAL check-out only
   const [damageFlagged, setDamageFlagged] = useState(false)
-  const [damageDescription, setDamageDescription] = useState("")
-  const [estimatedCost, setEstimatedCost] = useState(50000)
-  const [damageMultiplier, setDamageMultiplier] = useState(1.0)
+  const [damageLineItems, setDamageLineItems] = useState<DamageLineItemInput[]>([])
   const [showCheckInBaselines, setShowCheckInBaselines] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
 
@@ -102,14 +102,6 @@ export default function StaffInspectionPage() {
     }
   }, [type, isByoc])
 
-  useEffect(() => {
-    if (type === "CHECK_OUT" && session && !isByoc) {
-      const hasPremium = session.vehicles.some(
-        (v) => v.name.toLowerCase().includes("premium") || v.name.toLowerCase().includes("gtr")
-      )
-      queueMicrotask(() => setDamageMultiplier(hasPremium ? 1.5 : 1.0))
-    }
-  }, [type, session, isByoc])
 
   if (!sessionId || !type || !session || !booking) {
     return (
@@ -214,7 +206,29 @@ export default function StaffInspectionPage() {
     setChecklist(checklist.map((item) => (item.id === id ? { ...item, notes } : item)))
   }
 
-  const finalCharge = estimatedCost * damageMultiplier
+  const PART_TYPE_LABELS: Record<string, string> = {
+    TIRE_WHEEL: "Bánh xe / Lốp",
+    SPOILER: "Cánh gió",
+    CHASSIS: "Khung gầm",
+    MOTOR: "Motor / Động cơ",
+    SHELL: "Vỏ nhựa (Shell)",
+    SERVO: "Servo / Tay lái",
+    REMOTE: "Remote / Điều khiển",
+    OTHER: "Khác",
+  }
+
+  const totalDamageCharge = damageLineItems.reduce(
+    (sum, item) => sum + (item.partsPrice || 0) + (item.laborPrice || 0), 0
+  )
+
+  const addDamageItem = () =>
+    setDamageLineItems((prev) => [...prev, { partType: "TIRE_WHEEL", partsPrice: 0, laborPrice: 0 }])
+
+  const removeDamageItem = (index: number) =>
+    setDamageLineItems((prev) => prev.filter((_, i) => i !== index))
+
+  const updateDamageItem = (index: number, field: keyof DamageLineItemInput, value: string | number) =>
+    setDamageLineItems((prev) => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -245,6 +259,14 @@ export default function StaffInspectionPage() {
         toast.error("Vui lòng chụp đủ 4 góc FRONT, BACK, LEFT, RIGHT để lập biên bản!")
         return
       }
+      if (damageFlagged && damageLineItems.length === 0) {
+        toast.error("Vui lòng thêm ít nhất một hạng mục hư hỏng.")
+        return
+      }
+      if (damageFlagged && damageLineItems.some((item) => item.partType === "OTHER" && !item.customPartName?.trim())) {
+        toast.error('Vui lòng nhập tên hư hỏng cho mục "Khác".')
+        return
+      }
 
       const photosArray = Object.entries(photoUrls).map(([direction, url]) => ({
         direction: direction as "FRONT" | "BACK" | "LEFT" | "RIGHT",
@@ -252,14 +274,22 @@ export default function StaffInspectionPage() {
         notes: photoNotes[direction],
       }))
 
-      const damageDetails = damageFlagged
-        ? { description: damageDescription || "Phát hiện vết nứt vỡ vỏ gầm mới.", estimatedCost, damageMultiplier, finalCharge }
-        : undefined
-
-      submitInspection(session.sessionId, type, photosArray, checklist, staffNotes, damageFlagged, damageDetails)
+      submitInspection(
+        session.sessionId,
+        type,
+        photosArray,
+        checklist,
+        staffNotes,
+        damageFlagged,
+        damageFlagged ? damageLineItems : undefined,
+      )
     }
 
-    navigate(`/staff/sessions/${session.sessionId}`)
+    if (type === "CHECK_OUT") {
+      navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
+    } else {
+      navigate(`/staff/sessions/${session.sessionId}`)
+    }
   }
 
   const checkInInspection = session.inspections.find((i) => i.type === "CHECK_IN")
@@ -504,7 +534,10 @@ export default function StaffInspectionPage() {
               <input
                 type="checkbox"
                 checked={damageFlagged}
-                onChange={(e) => setDamageFlagged(e.target.checked)}
+                onChange={(e) => {
+                  setDamageFlagged(e.target.checked)
+                  if (!e.target.checked) setDamageLineItems([])
+                }}
                 className="rounded border-[#e5e2e1] bg-white text-[#ea580c] focus:ring-[#ea580c]"
               />
               <span className="text-sm font-bold text-[#1c1b1b]">
@@ -513,61 +546,105 @@ export default function StaffInspectionPage() {
             </label>
 
             {damageFlagged && (
-              <div className="border-t border-[#e5e2e1] pt-4 grid md:grid-cols-2 gap-6 animate-fadeIn">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                      Chi tiết mô tả lỗi hư hỏng thực tế
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Mô tả lỗi (Ví dụ: vỡ cánh gió sau, cong trục lái...)"
-                      value={damageDescription}
-                      onChange={(e) => setDamageDescription(e.target.value)}
-                      className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-center text-xs font-bold text-[#4c4a49] mb-1.5">
-                      <span>Dự toán chi phí khắc phục</span>
-                      <span className="text-[#ea580c] font-black text-sm">{estimatedCost.toLocaleString("vi-VN")} đ</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={10000}
-                      max={500000}
-                      step={10000}
-                      value={estimatedCost}
-                      onChange={(e) => setEstimatedCost(Number(e.target.value))}
-                      className="w-full accent-[#ea580c] bg-gray-200 rounded-lg appearance-none h-1.5 cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[9px] text-[#6b7280] font-bold mt-1">
-                      <span>10k đ</span><span>250k đ</span><span>500k đ</span>
-                    </div>
-                  </div>
+              <div className="border-t border-[#e5e2e1] pt-4 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-[#4c4a49]">
+                    Danh sách hạng mục hư hỏng
+                  </h5>
+                  <StaffButton type="button" size="sm" variant="outline" onClick={addDamageItem}>
+                    <Plus className="size-3.5" />
+                    Thêm hạng mục
+                  </StaffButton>
                 </div>
 
-                <div className="bg-[#fcf8f8] rounded-xl border border-[#e5e2e1] p-4 flex flex-col justify-between">
-                  <div className="space-y-2 text-xs font-semibold">
-                    <h5 className="font-bold uppercase tracking-wider text-[#6b7280]">Chi phí bồi thường dự kiến</h5>
-                    <div className="flex justify-between text-[#4c4a49]">
-                      <span>Dự toán linh kiện & sửa chữa:</span>
-                      <span>{estimatedCost.toLocaleString("vi-VN")} đ</span>
+                {damageLineItems.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-[#e5e2e1] p-4 text-center">
+                    <p className="text-xs text-[#6b7280] font-semibold">
+                      Chưa có hạng mục nào. Nhấn "Thêm hạng mục" để bắt đầu ghi nhận hư hỏng.
+                    </p>
+                  </div>
+                )}
+
+                {damageLineItems.map((item, index) => (
+                  <div key={index} className="rounded-lg border border-[#e5e2e1] bg-[#fafaf9] p-3 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={item.partType}
+                        onChange={(e) => updateDamageItem(index, "partType", e.target.value)}
+                        className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                      >
+                        {Object.entries(PART_TYPE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeDamageItem(index)}
+                        className="p-1.5 rounded text-[#6b7280] hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
                     </div>
-                    <div className="flex justify-between text-[#4c4a49]">
-                      <span>Hệ số dòng xe (Premium Mult):</span>
-                      <span className="font-mono text-[#1c1b1b] font-extrabold">{damageMultiplier}x</span>
+
+                    {item.partType === "OTHER" && (
+                      <input
+                        type="text"
+                        placeholder="Nhập tên hư hỏng cụ thể..."
+                        value={item.customPartName ?? ""}
+                        onChange={(e) => updateDamageItem(index, "customPartName", e.target.value)}
+                        className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                      />
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b7280] mb-1">
+                          Giá linh kiện (đ)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1000}
+                          placeholder="0"
+                          value={item.partsPrice || ""}
+                          onChange={(e) => updateDamageItem(index, "partsPrice", Number(e.target.value))}
+                          className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6b7280] mb-1">
+                          Phí công sửa (đ)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1000}
+                          placeholder="0"
+                          value={item.laborPrice || ""}
+                          onChange={(e) => updateDamageItem(index, "laborPrice", Number(e.target.value))}
+                          className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                        />
+                      </div>
                     </div>
-                    <div className="flex justify-between text-[#1c1b1b] border-t border-[#e5e2e1] pt-2 font-bold">
-                      <span>Tổng phí bồi thường đề xuất:</span>
-                      <span className="text-rose-600 text-sm font-black">{finalCharge.toLocaleString("vi-VN")} đ</span>
+
+                    <div className="flex justify-end text-xs font-bold text-[#4c4a49]">
+                      Dòng này: {((item.partsPrice || 0) + (item.laborPrice || 0)).toLocaleString("vi-VN")} đ
                     </div>
                   </div>
-                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-[10px] text-amber-800 flex gap-1.5 mt-4 font-semibold">
-                    <Info className="size-4 shrink-0 text-amber-600" />
-                    Báo cáo hư hại này sẽ đính kèm vào biên bản Check-Out và khấu trừ từ khoản ký quỹ ban đầu.
+                ))}
+
+                {damageLineItems.length > 0 && (
+                  <div className="rounded-xl bg-[#fcf8f8] border border-[#e5e2e1] p-4 space-y-3">
+                    <div className="flex justify-between items-center text-sm font-extrabold text-[#1c1b1b]">
+                      <span>Tổng phí bồi thường:</span>
+                      <span className="text-rose-600 text-base">{totalDamageCharge.toLocaleString("vi-VN")} đ</span>
+                    </div>
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-[10px] text-amber-800 flex gap-1.5 font-semibold">
+                      <Info className="size-4 shrink-0 text-amber-600" />
+                      Khách hàng sẽ xem chi tiết breakdown và xác nhận trước khi thanh toán.
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </StaffCard>

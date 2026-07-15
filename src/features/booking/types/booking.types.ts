@@ -136,6 +136,18 @@ export interface BookingResponse {
     actualStartAt: string
     actualEndAt: string | null
   } | null
+  damage_breakdown: {
+    lineItems: {
+      id: string
+      partType: string
+      customPartName: string | null
+      partsPrice: number
+      laborPrice: number
+      subtotal: number
+    }[]
+    totalDamageCharge: number
+    status: "PENDING" | "SETTLED" | "AWAITING_PAYMENT"
+  } | null
 }
 
 export interface BookingListItem {

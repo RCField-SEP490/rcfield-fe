@@ -10,6 +10,7 @@ import { Button } from "@/shared/ui/button"
 import { useQuery } from "@tanstack/react-query"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
+import { vehicleKeys } from "@/features/vehicles/constants/queryKeys"
 import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { pricingApi, pricingQueryKeys } from "@/features/pricing/api/pricing.api"
@@ -71,6 +72,13 @@ export function CreateBookingPage() {
   const { data: catalogs = [] } = useQuery({
     queryKey: ["cafe-catalogs", isMockId ? undefined : cafeId],
     queryFn: () => vehicleApi.listCatalogs(cafeId),
+    enabled: !isMockId && !!cafeId,
+  })
+
+  // Fetch units for thumbnail strip in vehicle picker
+  const { data: pickerUnits = [] } = useQuery({
+    queryKey: vehicleKeys.units(cafeId, { exclude_retired: true }),
+    queryFn: () => vehicleApi.listUnits(cafeId, { exclude_retired: true }),
     enabled: !isMockId && !!cafeId,
   })
 
@@ -492,6 +500,7 @@ export function CreateBookingPage() {
               onVehicleSelect={setSelectedVehicleIds}
               byocRemaining={byocRemaining}
               selectedTrackConfig={selectedTrackConfig}
+              catalogUnits={isMockId ? undefined : pickerUnits}
             />
           )}
           {currentStep === "fnb" && (
