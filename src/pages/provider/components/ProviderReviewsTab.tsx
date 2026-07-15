@@ -34,10 +34,11 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
   const newBadge = (data?.newSince24h ?? 0) > 0
 
   return (
-    <div className="space-y-4">
+    <div className="rounded-xl border border-[#c4c7c8] bg-white p-5">
+      <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold text-slate-800">Đánh giá khách hàng</h3>
+          <h3 className="text-sm font-bold text-[#1c1b1b]">Đánh giá khách hàng</h3>
           {newBadge && (
             <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
               {data?.newSince24h} mới
@@ -45,7 +46,7 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
           )}
         </div>
         <select
-          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs"
+          className="h-9 rounded-lg border border-[#c4c7c8] bg-white px-3 py-1.5 text-xs font-semibold text-[#1c1b1b]"
           value={status}
           onChange={(e) => { setStatus(e.target.value as "" | "VISIBLE" | "HIDDEN"); setPage(1) }}
         >
@@ -56,28 +57,28 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-sm text-slate-400">Đang tải...</div>
+        <div className="py-10 text-center text-sm text-[#747878]">Đang tải...</div>
       ) : reviews.length === 0 ? (
-        <div className="py-8 text-center text-sm text-slate-400">Không có đánh giá nào</div>
+        <div className="py-10 text-center text-sm text-[#747878]">Chưa có đánh giá nào</div>
       ) : (
         <div className="space-y-3">
           {reviews.map((r) => (
             <div
               key={r.id}
               className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-4 ${
-                r.status === "HIDDEN" ? "border-slate-200 bg-slate-50 opacity-70" : "border-slate-100 bg-white"
+                r.status === "HIDDEN" ? "border-[#e5e2e1] bg-[#f6f3f2] opacity-70" : "border-[#e5e2e1] bg-[#fcf8f8]"
               }`}
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-800">{(r as Review & { customerName?: string }).customerName ?? "—"}</p>
+                  <p className="text-sm font-semibold text-[#1c1b1b]">{(r as Review & { customerName?: string }).customerName ?? "—"}</p>
                   <StarRating value={r.overallScore} readOnly size="sm" />
                   {r.status === "HIDDEN" && (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] text-slate-600">Đã ẩn</span>
+                    <span className="rounded-full bg-[#e5e2e1] px-2 py-0.5 text-[10px] text-[#5d5f5f]">Đã ẩn</span>
                   )}
                 </div>
-                {r.note && <p className="mt-1 text-sm text-slate-600">{r.note}</p>}
-                <p className="mt-1 text-xs text-slate-400">
+                {r.note && <p className="mt-1 text-sm text-[#5d5f5f]">{r.note}</p>}
+                <p className="mt-1 text-xs text-[#747878]">
                   {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                 </p>
               </div>
@@ -118,6 +119,7 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
           </Button>
         </div>
       )}
+    </div>
     </div>
   )
 }

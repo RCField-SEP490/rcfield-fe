@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
-import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
+import { staffApi, staffQueryKeys, type DamageLineItemInput } from "@/features/staff/api/staff.api"
 import {
   type CustomerBookingDetail,
   type MockSessionDetail,
@@ -64,8 +64,7 @@ export interface StaffOperationContextType {
     checklist: ChecklistItem[],
     staffNotes: string,
     damageFlagged: boolean,
-    damageDetails?: { description: string; estimatedCost: number; damageMultiplier: number; finalCharge: number },
-    swappedVehiclesState?: { vehicleId: string; status: keyof typeof VehicleStatus }[]
+    damageLineItems?: DamageLineItemInput[]
   ) => void
   proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => void
   addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => void
@@ -423,7 +422,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     checklist: ChecklistItem[],
     staffNotes: string,
     damageFlagged: boolean,
-    damageDetails?: { description: string; estimatedCost: number; damageMultiplier: number; finalCharge: number }
+    damageLineItems?: DamageLineItemInput[]
   ) => {
     try {
       const formattedChecklist = checklist.map(item => ({
@@ -443,16 +442,16 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         checklist: formattedChecklist,
         staffNotes,
         damageFlagged,
-        damageDetails
+        damageLineItems,
       })
 
       if (type === "CHECK_IN") {
         toast.success(`Gửi báo cáo Check-In kiểm xe thành công. Đang chờ khách hàng xác nhận.`)
       } else {
-        if (damageFlagged && damageDetails) {
-          toast.warning(`Đã phát hiện hư hại xe! Đã lập hóa đơn phạt đền bù và gửi xác nhận cho khách hàng.`)
+        if (damageFlagged) {
+          toast.warning(`Phát hiện hư hỏng xe! Vui lòng xem lại biên bản và xác nhận với khách.`)
         } else {
-          toast.success(`Hoàn tất kiểm xe Check-Out. Đang chờ khách xác nhận đóng phiên chạy.`)
+          toast.success(`Hoàn tất kiểm xe Check-Out. Vui lòng xem biên bản và xác nhận với khách.`)
         }
       }
       await fetchData()

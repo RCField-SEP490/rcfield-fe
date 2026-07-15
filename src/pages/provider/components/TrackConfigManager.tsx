@@ -107,7 +107,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3 rounded-xl border border-[#c4c7c8] bg-white p-5">
         {Array.from({ length: 2 }).map((_, i) => (
           <div key={i} className="h-28 animate-pulse rounded-xl bg-[#f6f3f2]" />
         ))}
@@ -119,7 +119,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const availableTrackTypes = trackTypes.filter((tt) => !usedTrackTypeIds.has(tt.id))
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 rounded-xl border border-[#c4c7c8] bg-white p-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

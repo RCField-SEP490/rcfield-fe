@@ -69,6 +69,17 @@ const DIRECTION_LABEL: Record<string, string> = {
   RIGHT: "Phải",
 }
 
+const PART_TYPE_LABELS: Record<string, string> = {
+  TIRE_WHEEL: "Bánh xe / Lốp",
+  SPOILER: "Cánh gió",
+  CHASSIS: "Khung gầm",
+  MOTOR: "Motor / Động cơ",
+  SHELL: "Vỏ nhựa (Shell)",
+  SERVO: "Servo / Tay lái",
+  REMOTE: "Remote / Điều khiển",
+  OTHER: "Khác",
+}
+
 // ── Inspection photos card ─────────────────────────────────────────────────────
 
 function InspectionPhotosCard({ inspection }: { inspection: MockInspection }) {
@@ -166,7 +177,9 @@ export function CustomerBookingDetailPage() {
   const rentalFee = sumComponents(booking.payment_components, "RENTAL_FEE")
   const depositAmount = 0
   const fnbPreorderFee = sumComponents(booking.payment_components, "FNB_PREORDER", "FB_PREORDER")
-  const totalAmount = slotFee + rentalFee + fnbPreorderFee
+  const damageBreakdown = booking.damage_breakdown
+  const damageCharge = damageBreakdown?.totalDamageCharge ?? 0
+  const totalAmount = slotFee + rentalFee + fnbPreorderFee + damageCharge
 
   const participantNames = booking.participants.map(
     (p) => p.resolvedName ?? p.guestName ?? "Khách vãng lai",
@@ -416,6 +429,55 @@ export function CustomerBookingDetailPage() {
               </Card>
             )}
 
+            {/* Damage breakdown */}
+            {damageBreakdown && damageBreakdown.lineItems.length > 0 && (
+              <Card className="border-rose-200/80 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="pb-3 border-b border-rose-100 bg-rose-50/50">
+                  <CardTitle className="text-sm font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-rose-500" />
+                    Đền Bù Hư Hỏng
+                  </CardTitle>
+                  <CardDescription className="text-xs">Chi tiết các hư hỏng ghi nhận khi trả xe.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-5 space-y-3">
+                  {damageBreakdown.lineItems.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
+                      <div className="space-y-0.5">
+                        <p className="font-extrabold text-slate-900">
+                          {PART_TYPE_LABELS[item.partType] ?? item.partType}
+                          {item.customPartName && (
+                            <span className="font-semibold text-slate-500"> — {item.customPartName}</span>
+                          )}
+                        </p>
+                        <div className="flex gap-4 text-[11px] text-slate-500 font-semibold">
+                          <span>Linh kiện: {fmt(item.partsPrice)}</span>
+                          {item.laborPrice > 0 && <span>Công sửa: {fmt(item.laborPrice)}</span>}
+                        </div>
+                      </div>
+                      <span className="font-extrabold text-rose-600 shrink-0 pl-3">{fmt(item.subtotal)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between rounded-xl bg-rose-50 border border-rose-200 p-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-rose-900">Tổng đền bù:</span>
+                      <Badge className={
+                        damageBreakdown.status === "SETTLED"
+                          ? "bg-emerald-100 text-emerald-800 border-none font-bold text-[10px]"
+                          : damageBreakdown.status === "AWAITING_PAYMENT"
+                            ? "bg-rose-100 text-rose-800 border-none font-bold text-[10px] animate-pulse"
+                            : "bg-amber-100 text-amber-800 border-none font-bold text-[10px]"
+                      }>
+                        {damageBreakdown.status === "SETTLED" ? "Đã thu"
+                          : damageBreakdown.status === "AWAITING_PAYMENT" ? "Thu thêm"
+                          : "Đang xử lý"}
+                      </Badge>
+                    </div>
+                    <span className="text-xl font-extrabold text-rose-700">{fmt(damageBreakdown.totalDamageCharge)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Inspection photos */}
             {checkInInspection && <InspectionPhotosCard inspection={checkInInspection} />}
             {checkOutInspection && <InspectionPhotosCard inspection={checkOutInspection} />}
@@ -481,6 +543,12 @@ export function CustomerBookingDetailPage() {
                     <div className="flex justify-between">
                       <span className="text-slate-400">F&B đặt trước</span>
                       <span className="text-slate-800">{fmt(fnbPreorderFee)}</span>
+                    </div>
+                  )}
+                  {damageCharge > 0 && (
+                    <div className="flex justify-between text-rose-700">
+                      <span className="font-extrabold">Đền bù hư hỏng</span>
+                      <span className="font-extrabold">{fmt(damageCharge)}</span>
                     </div>
                   )}
                 </div>

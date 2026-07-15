@@ -226,11 +226,11 @@ export function WidgetConfigForm({ cafeId }: { cafeId: string }) {
   }
 
   if (isLoading) {
-    return <div className="space-y-3 p-5">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-[#f6f3f2]" />)}</div>
+    return <div className="space-y-3 rounded-xl border border-[#c4c7c8] bg-white p-5">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-10 animate-pulse rounded-lg bg-[#f6f3f2]" />)}</div>
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 p-5">
+    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border border-[#c4c7c8] bg-white p-5">
 
       {/* Enable toggle */}
       <div className="flex items-center justify-between rounded-xl border border-[#e5e2e1] bg-[#faf9f8] px-4 py-3">

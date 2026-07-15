@@ -1,6 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { api } from "@/shared/lib/axios"
 
+export type DamagePartType =
+  | 'TIRE_WHEEL'
+  | 'SPOILER'
+  | 'CHASSIS'
+  | 'MOTOR'
+  | 'SHELL'
+  | 'SERVO'
+  | 'REMOTE'
+  | 'OTHER'
+
+export interface DamageLineItemInput {
+  partType: DamagePartType
+  customPartName?: string
+  partsPrice: number
+  laborPrice?: number
+}
+
+export interface DamageLineItemDetail {
+  id: string
+  partType: DamagePartType
+  customPartName: string | null
+  partsPrice: number
+  laborPrice: number
+  lineTotal: number
+}
+
 export interface StaffListItem {
   id: string
   email: string
@@ -257,8 +283,46 @@ export const staffApi = {
     return res.data.data
   },
 
-  submitInspection: async (sessionId: string, data: any): Promise<any> => {
+  submitInspection: async (
+    sessionId: string,
+    data: {
+      type: 'CHECK_IN' | 'CHECK_OUT'
+      photos?: { angle: string; url: string; notes?: string }[]
+      checklist?: { itemKey: string; itemLabel: string; status: string; note?: string }[]
+      staffNotes?: string
+      damageFlagged: boolean
+      damageLineItems?: DamageLineItemInput[]
+    },
+  ): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/inspections`, data)
+    return res.data.data
+  },
+
+  confirmCheckout: async (sessionId: string, inspectionId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/confirm-checkout`,
+      { inspectionId },
+    )
+    return res.data.data
+  },
+
+  updateDamageItems: async (
+    sessionId: string,
+    inspectionId: string,
+    damageLineItems: DamageLineItemInput[],
+  ): Promise<{ damageLineItems: DamageLineItemDetail[]; totalDamageCharge: number }> => {
+    const res = await api.put<{ success: boolean; data: { inspectionId: string; damageLineItems: DamageLineItemDetail[]; totalDamageCharge: number } }>(
+      `/v1/staff/sessions/${sessionId}/inspections/${inspectionId}/damage-items`,
+      { damageLineItems },
+    )
+    return res.data.data
+  },
+
+  escalateDispute: async (sessionId: string, inspectionId: string, note: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/escalate-dispute`,
+      { inspectionId, note },
+    )
     return res.data.data
   },
 

@@ -27,6 +27,17 @@ const DIRECTION_LABELS: Record<string, string> = {
   RIGHT: "Phải",
 }
 
+const PART_TYPE_LABELS: Record<string, string> = {
+  TIRE_WHEEL: "Bánh xe / Lốp",
+  SPOILER: "Cánh gió",
+  CHASSIS: "Khung gầm",
+  MOTOR: "Motor / Động cơ",
+  SHELL: "Vỏ nhựa (Shell)",
+  SERVO: "Servo / Tay lái",
+  REMOTE: "Remote / Điều khiển",
+  OTHER: "Khác",
+}
+
 const TIER_LABELS: Record<string, string> = {
   STANDARD: "Tiêu chuẩn",
   PREMIUM: "Cao cấp",
@@ -941,9 +952,30 @@ export function BookingDetailPage() {
                           </div>
                         )}
                         {damageExceedingDeposit > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
-                            <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
+                              <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
+                            </div>
+                            {(booking?.damage_breakdown?.lineItems?.length ?? 0) > 0 && (
+                              <div className="ml-2 space-y-1 rounded-lg bg-rose-50 border border-rose-100 p-2.5">
+                                {booking!.damage_breakdown!.lineItems.map((item) => (
+                                  <div key={item.id} className="flex items-start justify-between text-[11px]">
+                                    <div className="space-y-0.5">
+                                      <p className="font-bold text-rose-900">
+                                        {PART_TYPE_LABELS[item.partType] ?? item.partType}
+                                        {item.customPartName && <span className="font-normal text-rose-700"> — {item.customPartName}</span>}
+                                      </p>
+                                      <div className="flex gap-2 text-[10px] text-rose-600">
+                                        <span>Linh kiện: {formatCurrency(item.partsPrice)}</span>
+                                        {item.laborPrice > 0 && <span>Công: {formatCurrency(item.laborPrice)}</span>}
+                                      </div>
+                                    </div>
+                                    <span className="font-bold text-rose-700 tabular-nums shrink-0 pl-2">{formatCurrency(item.subtotal)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

@@ -35,6 +35,7 @@ export const routePaths = {
   staffTodayBookings: "/staff/today-bookings",
   staffSessionDetail: "/staff/sessions/:sessionId",
   staffInspection: "/staff/inspections/:sessionId",
+  staffCheckoutSummary: "/staff/sessions/:sessionId/checkout-summary",
   staffFnbOrders: "/staff/fnb-orders",
   staffIncidents: "/staff/incidents",
   staffMaintenance: "/staff/maintenance",

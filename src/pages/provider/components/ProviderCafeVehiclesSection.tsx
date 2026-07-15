@@ -11,6 +11,7 @@ import {
   Eye,
   MoreVertical,
   Plus,
+  ShieldCheck,
   Trash2,
   Wrench,
 } from "lucide-react"
@@ -19,6 +20,7 @@ import { routePaths } from "@/app/router/route-paths"
 import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { useVehicleCatalogs } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import { useDeleteVehicleCatalog } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
+import { useUpdateVehicleUnit } from "@/features/vehicles/hooks/useVehicleUnitMutations"
 import { VehicleStatus, VehicleTier } from "@/features/vehicles/types"
 import type { VehicleCatalog, VehicleUnit } from "@/features/vehicles/types"
 import { cn, sanitizeImageUrl, getCatalogImageUrl } from "@/shared/lib/utils"
@@ -36,6 +38,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 
@@ -92,55 +95,55 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
   const isLoading = isUnitsLoading || isCatalogsLoading
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#c4c7c8] bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-extrabold text-zinc-800">Quản lý Đội xe</h3>
-          <p className="text-xs text-zinc-500 font-semibold mt-0.5">
-            Danh mục mẫu xe và từng xe vật lý tại cơ sở này.
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Tạo <span className="text-zinc-500 font-medium">loại xe</span> → thêm <span className="text-zinc-500 font-medium">xe vật lý</span> vào từng loại
           </p>
         </div>
         <Button
           onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${cafeId}`)}
-          className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold shadow-sm"
+          className="h-9 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold shadow-sm text-sm"
         >
           <Plus className="size-4" />
-          Thêm danh mục
+          Thêm loại xe
         </Button>
       </div>
 
-      {/* KPI row */}
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <KpiCard
-          label="Tổng số xe"
-          value={totalCount.toString()}
-          icon={Car}
-          accentClass="text-indigo-600"
-          bgClass="bg-indigo-50"
-        />
-        <KpiCard
-          label="Sẵn sàng"
-          value={availableCount.toString()}
-          icon={Activity}
-          accentClass="text-emerald-600"
-          bgClass="bg-emerald-50"
-        />
-        <KpiCard
-          label="Bảo dưỡng"
-          value={maintenanceCount.toString()}
+      {/* Compact stat strip */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200/80 bg-white px-4 py-3 shadow-sm">
+        <StatPill icon={Car} label="Tổng" value={totalCount} colorClass="text-zinc-700" />
+        <div className="h-4 w-px bg-zinc-200 shrink-0" />
+        <StatPill icon={Activity} label="Sẵn sàng" value={availableCount} colorClass="text-emerald-600" />
+        <div className="h-4 w-px bg-zinc-200 shrink-0" />
+        <StatPill
           icon={Wrench}
-          accentClass="text-amber-600"
-          bgClass="bg-amber-50"
+          label="Bảo trì"
+          value={maintenanceCount}
+          colorClass={maintenanceCount > 0 ? "text-amber-600" : "text-zinc-400"}
+          highlight={maintenanceCount > 0}
         />
-        <KpiCard
-          label="Ngừng hoạt động"
-          value={retiredCount.toString()}
-          icon={AlertTriangle}
-          accentClass="text-rose-600"
-          bgClass="bg-rose-50"
-        />
-      </section>
+        <div className="h-4 w-px bg-zinc-200 shrink-0" />
+        <StatPill icon={AlertTriangle} label="Ngừng" value={retiredCount} colorClass={retiredCount > 0 ? "text-rose-600" : "text-zinc-400"} />
+      </div>
+
+      {/* Maintenance alert banner */}
+      {maintenanceCount > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <Wrench className="size-4 shrink-0 text-amber-600 mt-0.5" />
+          <div className="text-sm">
+            <span className="font-bold text-amber-800">
+              {maintenanceCount} xe đang bảo trì
+            </span>
+            <span className="text-amber-700">
+              {" "}— sau khi sửa xong, nhớ cập nhật trạng thái về <strong>Sẵn sàng</strong> để xe được đưa vào đặt lịch trở lại.
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Catalog accordion list */}
       {isLoading ? (
@@ -150,17 +153,20 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
           ))}
         </div>
       ) : catalogs.length === 0 ? (
-        <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-[#c4c7c8] bg-white p-8 text-center">
+        <div className="flex min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-[#c4c7c8] bg-white p-8 text-center">
           <Car className="size-10 text-zinc-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-zinc-800 mb-1">Chưa có danh mục xe nào</h3>
-          <p className="text-sm text-zinc-500 font-semibold max-w-sm mb-5">
-            Tạo danh mục mẫu xe đầu tiên để quản lý xe vật lý và giá thuê giờ.
+          <h3 className="text-base font-bold text-zinc-800 mb-1">Chưa có loại xe nào</h3>
+          <p className="text-sm text-zinc-500 font-semibold max-w-sm mb-1">
+            Tạo <strong className="text-zinc-700">loại xe</strong> đầu tiên (ví dụ: "Xe đua 1/10", "Xe địa hình") để định nghĩa giá thuê và phân hạng.
+          </p>
+          <p className="text-xs text-zinc-400 mb-5">
+            Sau đó bạn thêm từng xe vật lý (XE-01, XE-02…) vào loại xe đó.
           </p>
           <Button
             onClick={() => navigate(`${routePaths.providerVehicleCatalogCreate}?cafeId=${cafeId}`)}
             className="h-10 bg-[#1c1b1b] text-white rounded-lg hover:bg-[#313030] font-bold"
           >
-            Tạo danh mục đầu tiên
+            Tạo loại xe đầu tiên
           </Button>
         </div>
       ) : (
@@ -169,6 +175,9 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
             const catalogUnits = unitsForCatalog(catalog.id)
             const isExpanded = expandedIds.has(catalog.id)
             const catalogImageUrl = getCatalogImageUrl(catalog)
+            const catalogMaintenanceCount = catalogUnits.filter(
+              (u) => u.status === VehicleStatus.MAINTENANCE
+            ).length
 
             return (
               <div
@@ -197,7 +206,7 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-1">
                       <h4 className="text-sm font-extrabold text-zinc-900 truncate">{catalog.name}</h4>
                       <Badge
                         className={cn(
@@ -211,12 +220,26 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
                       >
                         {catalog.tier}
                       </Badge>
+                      {catalogMaintenanceCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 shrink-0">
+                          <Wrench className="size-2.5" />
+                          {catalogMaintenanceCount} bảo trì
+                        </span>
+                      )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 font-semibold">
-                      <span className="font-bold text-zinc-700">{formatVND(catalog.hourlyRate)}/giờ</span>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500 font-semibold">
+                      <span className="font-bold text-zinc-700">
+                        {formatVND(catalog.hourlyRate)}<span className="font-semibold text-zinc-400">/giờ</span>
+                      </span>
+                      {catalog.securityDeposit > 0 && (
+                        <span className="flex items-center gap-1 text-zinc-500">
+                          <ShieldCheck className="size-3 text-zinc-400" />
+                          Đặt cọc {formatVND(catalog.securityDeposit)}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Car className="size-3" />
-                        {catalogUnits.length} xe
+                        {catalogUnits.length} xe vật lý
                       </span>
                       {catalog.compatibleTrackTypes && catalog.compatibleTrackTypes.length > 0 && (
                         <span className="hidden sm:flex items-center gap-1 truncate">
@@ -253,7 +276,7 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
                           className="cursor-pointer gap-2 py-2"
                         >
                           <Edit2 className="size-4" />
-                          <span>Chỉnh sửa danh mục</span>
+                          <span>Chỉnh sửa loại xe</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => {
@@ -263,7 +286,7 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
                           className="cursor-pointer gap-2 py-2 text-red-600 focus:text-red-700 focus:bg-red-50"
                         >
                           <Trash2 className="size-4" />
-                          <span>Xóa danh mục</span>
+                          <span>Xóa loại xe</span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -287,7 +310,10 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
                     {catalogUnits.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
                         <Car className="size-8 text-zinc-300 mb-2" />
-                        <p className="text-sm font-bold text-zinc-600 mb-1">Chưa có xe nào trong danh mục này</p>
+                        <p className="text-sm font-bold text-zinc-600 mb-0.5">Chưa có xe vật lý nào</p>
+                        <p className="text-xs text-zinc-400 mb-4 max-w-xs">
+                          Thêm từng xe cụ thể (mã số, màu sắc) vào loại xe <strong className="text-zinc-600">{catalog.name}</strong>.
+                        </p>
                         <Button
                           size="sm"
                           onClick={() =>
@@ -295,10 +321,10 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
                               `${routePaths.providerVehicleUnitCreate.replace(":catalogId", catalog.id)}?cafeId=${cafeId}`
                             )
                           }
-                          className="h-8 mt-2 gap-1.5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold text-xs"
+                          className="h-8 gap-1.5 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold text-xs"
                         >
                           <Plus className="size-3.5" />
-                          Thêm xe đầu tiên
+                          Thêm xe vật lý đầu tiên
                         </Button>
                       </div>
                     ) : (
@@ -325,7 +351,7 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
                             className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] font-bold text-xs text-zinc-700 hover:bg-zinc-50"
                           >
                             <Plus className="size-3.5" />
-                            Thêm xe
+                            Thêm xe vật lý
                           </Button>
                         </div>
                       </div>
@@ -346,12 +372,12 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
               <AlertTriangle className="size-6" />
             </div>
             <DialogTitle className="text-lg font-bold text-[#1c1b1b]">
-              Xác nhận xóa danh mục?
+              Xác nhận xóa loại xe?
             </DialogTitle>
             <DialogDescription className="text-sm text-[#444748] pt-1">
-              Bạn có chắc chắn muốn xóa danh mục{" "}
+              Bạn có chắc chắn muốn xóa loại xe{" "}
               <strong>{catalogToDelete?.name}</strong>? Hành động này sẽ xóa toàn bộ cấu hình giá
-              của danh mục và không thể hoàn tác.
+              của loại xe và không thể hoàn tác.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6">
@@ -381,6 +407,30 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
   )
 }
 
+const STATUS_OPTIONS = [
+  {
+    value: VehicleStatus.AVAILABLE,
+    label: "Sẵn sàng",
+    dot: "bg-emerald-500",
+    badge: "text-emerald-700 bg-emerald-50 border-emerald-200",
+    description: "Cho phép đặt lịch",
+  },
+  {
+    value: VehicleStatus.MAINTENANCE,
+    label: "Bảo trì",
+    dot: "bg-amber-500",
+    badge: "text-amber-700 bg-amber-50 border-amber-200",
+    description: "Tạm ngưng đặt lịch",
+  },
+  {
+    value: VehicleStatus.RETIRED,
+    label: "Ngừng hoạt động",
+    dot: "bg-rose-500",
+    badge: "text-rose-700 bg-rose-50 border-rose-200",
+    description: "Loại khỏi đội xe",
+  },
+] as const
+
 function UnitRow({
   unit,
   catalog,
@@ -393,31 +443,18 @@ function UnitRow({
   const navigate = useNavigate()
   const catalogId = unit.catalogId || unit.catalog?.id || catalog.id
 
-  const statusConfig = {
-    AVAILABLE: {
-      label: "Sẵn sàng",
-      dot: "bg-emerald-500",
-      badge: "text-emerald-700 bg-emerald-50 border-emerald-200",
-    },
-    IN_USE: {
-      label: "Đang thuê",
-      dot: "bg-blue-500",
-      badge: "text-blue-700 bg-blue-50 border-blue-200",
-    },
-    MAINTENANCE: {
-      label: "Bảo trì",
-      dot: "bg-amber-500",
-      badge: "text-amber-700 bg-amber-50 border-amber-200",
-    },
-    RETIRED: {
-      label: "Hỏng",
-      dot: "bg-rose-500",
-      badge: "text-rose-700 bg-rose-50 border-rose-200",
-    },
-  }[unit.status] ?? {
-    label: "Không rõ",
-    dot: "bg-gray-400",
-    badge: "text-gray-700 bg-gray-50 border-gray-200",
+  const updateMutation = useUpdateVehicleUnit(cafeId, catalogId, unit.id)
+
+  const currentStatus = STATUS_OPTIONS.find((s) => s.value === unit.status)
+  const isInUse = unit.status === VehicleStatus.IN_USE
+  const isChanging = updateMutation.isPending
+
+  const statusDisplay = currentStatus ?? {
+    label: unit.status === VehicleStatus.IN_USE ? "Đang thuê" : "Không rõ",
+    dot: unit.status === VehicleStatus.IN_USE ? "bg-blue-500" : "bg-gray-400",
+    badge: unit.status === VehicleStatus.IN_USE
+      ? "text-blue-700 bg-blue-50 border-blue-200"
+      : "text-gray-700 bg-gray-50 border-gray-200",
   }
 
   const imageUrl =
@@ -442,19 +479,65 @@ function UnitRow({
       <div className="flex-1 min-w-0">
         <p className="text-sm font-extrabold text-zinc-900 truncate">{unit.identifier}</p>
         {unit.color && (
-          <p className="text-xs text-zinc-500 font-semibold truncate">{unit.color}</p>
+          <p className="text-xs text-zinc-500 font-semibold truncate">
+            <span className="text-zinc-400">Màu:</span> {unit.color}
+          </p>
         )}
       </div>
 
-      <span
-        className={cn(
-          "hidden sm:inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold shrink-0",
-          statusConfig.badge
-        )}
-      >
-        <span className={cn("size-1.5 rounded-full", statusConfig.dot)} />
-        {statusConfig.label}
-      </span>
+      {/* Status — clickable dropdown if not IN_USE */}
+      {isInUse ? (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold shrink-0",
+            statusDisplay.badge
+          )}
+        >
+          <span className={cn("size-1.5 rounded-full", statusDisplay.dot)} />
+          {statusDisplay.label}
+        </span>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              disabled={isChanging}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold shrink-0 transition-opacity hover:opacity-80",
+                statusDisplay.badge,
+                isChanging && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", statusDisplay.dot)} />
+              {isChanging ? "Đang lưu..." : statusDisplay.label}
+              <ChevronDown className="size-2.5 ml-0.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 rounded-lg bg-white border-[#c4c7c8]">
+            <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              Đổi trạng thái
+            </p>
+            <DropdownMenuSeparator />
+            {STATUS_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                disabled={opt.value === unit.status}
+                onClick={() => updateMutation.mutate({ status: opt.value })}
+                className={cn(
+                  "cursor-pointer gap-2 py-2",
+                  opt.value === unit.status && "opacity-50 cursor-default"
+                )}
+              >
+                <span className={cn("size-2 rounded-full shrink-0", opt.dot)} />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold">{opt.label}</span>
+                  <span className="text-[10px] text-zinc-400">{opt.description}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <Button
         variant="outline"
@@ -469,39 +552,30 @@ function UnitRow({
         className="h-7 rounded-lg text-xs font-bold gap-1 border-zinc-200 text-zinc-700 hover:bg-zinc-50 shrink-0"
       >
         <Eye className="size-3.5" />
-        <span className="hidden sm:inline">Xem chi tiết</span>
+        <span className="hidden sm:inline">Tình trạng</span>
       </Button>
     </div>
   )
 }
 
-function KpiCard({
+function StatPill({
+  icon: Icon,
   label,
   value,
-  icon: Icon,
-  accentClass,
-  bgClass,
+  colorClass,
+  highlight,
 }: {
-  label: string
-  value: string
   icon: React.ComponentType<{ className?: string }>
-  accentClass: string
-  bgClass: string
+  label: string
+  value: number
+  colorClass: string
+  highlight?: boolean
 }) {
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-zinc-200/60 bg-white p-5 shadow-sm">
-      <div
-        className={cn(
-          "absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-xl",
-          bgClass
-        )}
-      >
-        <Icon className={cn("size-5", accentClass)} />
-      </div>
-      <div className="space-y-1">
-        <p className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider">{label}</p>
-        <p className="text-3xl font-extrabold text-zinc-900 leading-tight">{value}</p>
-      </div>
-    </article>
+    <div className={cn("flex items-center gap-1.5", highlight && "rounded-lg bg-amber-50 px-2 py-0.5 -mx-1")}>
+      <Icon className={cn("size-3.5 shrink-0", colorClass)} />
+      <span className="text-xs text-zinc-500 font-medium">{label}</span>
+      <span className={cn("text-sm font-extrabold", colorClass)}>{value}</span>
+    </div>
   )
 }

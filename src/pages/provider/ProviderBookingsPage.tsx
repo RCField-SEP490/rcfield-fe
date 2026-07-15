@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight, Wrench, X, Clock, User } from "lucide-react"
 import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import { useCafeBookings, useCancelBooking } from "@/features/booking/hooks/use-booking"
+import { useCafeBookings, useCancelBooking, useBooking } from "@/features/booking/hooks/use-booking"
 import type { BookingStatus, CafeBookingListItem } from "@/features/booking/types/booking.types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -12,6 +12,186 @@ import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
+
+const PART_TYPE_LABELS: Record<string, string> = {
+  TIRE_WHEEL: "Bánh xe",
+  SPOILER: "Cánh gió",
+  CHASSIS: "Khung gầm",
+  MOTOR: "Motor",
+  SHELL: "Vỏ nhựa",
+  SERVO: "Servo",
+  REMOTE: "Tay điều khiển",
+  OTHER: "Khác",
+}
+
+const DAMAGE_STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  SETTLED: { label: "Đã thu", className: "bg-emerald-100 text-emerald-800" },
+  AWAITING_PAYMENT: { label: "Thu thêm", className: "bg-orange-100 text-orange-800" },
+  PENDING: { label: "Đang xử lý", className: "bg-amber-100 text-amber-800" },
+}
+
+function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
+  const { data: booking, isLoading } = useBooking(bookingId)
+  const damage = booking?.damage_breakdown
+
+  const booker = booking?.participants?.find((p) => p.participantType === "BOOKER") ?? booking?.participants?.[0]
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md bg-white shadow-2xl flex flex-col h-full overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <h2 className="text-sm font-black text-slate-900">
+            Chi tiết đặt lịch #{bookingId.substring(0, 8).toUpperCase()}
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center text-sm text-slate-400">Đang tải...</div>
+        ) : !booking ? (
+          <div className="flex-1 flex items-center justify-center text-sm text-slate-400">Không tìm thấy thông tin đặt lịch.</div>
+        ) : (
+          <div className="p-5 space-y-5">
+            {/* Status + mode badges */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {(() => {
+                const s = STATUS_LABELS[booking.status as BookingStatus]
+                return s ? (
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${s.className}`}>{s.label}</span>
+                ) : null
+              })()}
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}>
+                {booking.playMode === "RENTAL" ? "Thuê xe" : "Xe riêng"}
+              </span>
+            </div>
+
+            {/* Time slot */}
+            <div className="flex items-center gap-2 text-sm text-slate-700">
+              <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+              <span className="font-semibold">
+                {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
+              </span>
+              <span className="text-xs text-slate-400">
+                {new Date(booking.slotStart).toLocaleDateString("vi-VN")}
+              </span>
+            </div>
+
+            {/* Customer info */}
+            {booker?.resolvedName && (
+              <div className="flex items-start gap-2 text-sm text-slate-700">
+                <User className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">{booker.resolvedName}</span>
+                  {booker.resolvedPhone && (
+                    <span className="text-xs text-slate-400 ml-1">· {booker.resolvedPhone}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Session info */}
+            {booking.session && (
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-xs space-y-1.5">
+                <p className="font-semibold text-slate-700 text-[11px] uppercase tracking-wide">Ca chơi</p>
+                <div className="flex items-center justify-between text-slate-500">
+                  <span>Trạng thái</span>
+                  <span className="font-medium text-slate-700">{booking.session.status}</span>
+                </div>
+                {booking.session.actualStartAt && (
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Bắt đầu thực tế</span>
+                    <span className="font-medium text-slate-700">
+                      {new Date(booking.session.actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                )}
+                {booking.session.actualEndAt && (
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Kết thúc thực tế</span>
+                    <span className="font-medium text-slate-700">
+                      {new Date(booking.session.actualEndAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Damage breakdown */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-orange-500" />
+                <span className="text-sm font-black text-slate-900">Đền bù hư hỏng</span>
+                {damage && (() => {
+                  const s = DAMAGE_STATUS_LABELS[damage.status] ?? DAMAGE_STATUS_LABELS.PENDING
+                  return (
+                    <span className={`ml-auto inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${s.className}`}>
+                      {s.label}
+                    </span>
+                  )
+                })()}
+              </div>
+
+              {!damage ? (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-center">
+                  <p className="text-xs text-slate-400">Không có hư hỏng xe trong lần thuê này.</p>
+                </div>
+              ) : damage.lineItems.length === 0 ? (
+                <p className="text-xs text-slate-400">Chưa có hạng mục hư hỏng nào được ghi nhận.</p>
+              ) : (
+                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50">
+                      <tr className="text-left text-slate-500 font-semibold">
+                        <th className="py-2 px-3">Hạng mục</th>
+                        <th className="py-2 px-3 text-right">Linh kiện</th>
+                        <th className="py-2 px-3 text-right">Công</th>
+                        <th className="py-2 px-3 text-right">Thành tiền</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {damage.lineItems.map((item) => (
+                        <tr key={item.id}>
+                          <td className="py-2 px-3 font-medium text-slate-800">
+                            {PART_TYPE_LABELS[item.partType] ?? item.partType}
+                            {item.customPartName && (
+                              <span className="block text-[10px] text-slate-400">{item.customPartName}</span>
+                            )}
+                          </td>
+                          <td className="py-2 px-3 text-right text-slate-600">
+                            {item.partsPrice.toLocaleString("vi-VN")}đ
+                          </td>
+                          <td className="py-2 px-3 text-right text-slate-600">
+                            {item.laborPrice.toLocaleString("vi-VN")}đ
+                          </td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-800">
+                            {item.subtotal.toLocaleString("vi-VN")}đ
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-orange-50 border-t border-orange-100">
+                      <tr>
+                        <td colSpan={3} className="py-2.5 px-3 font-black text-slate-900 text-xs">
+                          Tổng đền bù
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-black text-orange-700">
+                          {damage.totalDamageCharge.toLocaleString("vi-VN")}đ
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const today = new Date().toISOString().split("T")[0]
 
@@ -88,6 +268,7 @@ export function ProviderBookingsPage() {
   const [selectedDate, setSelectedDate] = useState(today)
   const [selectedCafeId, setSelectedCafeId] = useState<string>("")
   const [cancelTarget, setCancelTarget] = useState<CafeBookingListItem | null>(null)
+  const [detailBookingId, setDetailBookingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [now] = useState(() => Date.now())
   const limit = 20
@@ -243,17 +424,27 @@ export function ProviderBookingsPage() {
                         </span>
                       </td>
                       <td className="py-3 pr-1 text-right">
-                        {canCancel && (
+                        <div className="flex items-center justify-end gap-1.5">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="h-7 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-2"
-                            onClick={() => setCancelTarget(booking)}
+                            className="h-7 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-2"
+                            onClick={() => setDetailBookingId(booking.id)}
                           >
-                            <XCircle className="h-3 w-3 mr-1" />
-                            Hủy
+                            Chi tiết
                           </Button>
-                        )}
+                          {canCancel && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-2"
+                              onClick={() => setCancelTarget(booking)}
+                            >
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Hủy
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -296,6 +487,13 @@ export function ProviderBookingsPage() {
           onConfirm={handleCancelConfirm}
           onCancel={() => setCancelTarget(null)}
           isPending={cancelMutation.isPending}
+        />
+      )}
+
+      {detailBookingId && (
+        <BookingDetailDrawer
+          bookingId={detailBookingId}
+          onClose={() => setDetailBookingId(null)}
         />
       )}
     </ProviderShell>

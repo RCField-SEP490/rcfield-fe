@@ -17,6 +17,17 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Badge } from "@/shared/ui/badge"
 
+const PART_TYPE_LABELS: Record<string, string> = {
+  TIRE_WHEEL: "Bánh xe / Lốp",
+  SPOILER: "Cánh gió",
+  CHASSIS: "Khung gầm",
+  MOTOR: "Motor / Động cơ",
+  SHELL: "Vỏ nhựa (Shell)",
+  SERVO: "Servo / Tay lái",
+  REMOTE: "Remote / Điều khiển",
+  OTHER: "Khác",
+}
+
 export function CustomerActiveSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
@@ -189,25 +200,44 @@ export function CustomerActiveSessionPage() {
         )}
 
         {session.status === "CHECKING_OUT" && session.damageClaim && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-950 rounded-2xl p-5 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0" />
-                <span className="text-xs font-black uppercase tracking-wider text-rose-600">ĐỐI CHIẾU TRẢ XE / PHẠT HƯ HẠI</span>
+          <div className="bg-rose-50 border border-rose-200 text-rose-950 rounded-2xl p-5 shadow-md space-y-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="text-xs font-black uppercase tracking-wider text-rose-600">Phát hiện hư hỏng sau phiên chơi</span>
+                <p className="text-sm font-bold text-rose-950">{session.damageClaim.description}</p>
               </div>
-              <h3 className="text-base font-black">Staff vừa báo cáo phát hiện hư hại sau phiên chơi!</h3>
-              <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                Vết trầy xước nặng được phát hiện lúc checkout. Vui lòng đối chiếu bằng chứng ảnh side-by-side.
-              </p>
             </div>
 
-            <Link
-              to={`/customer/damage-review/${session.sessionId}`}
-              className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-black px-4.5 py-3 rounded-xl shadow-md transition-all flex items-center gap-1.5 shrink-0 hover:scale-102 cursor-pointer"
-            >
-              Xem bằng chứng hư hại
-              <ChevronRight className="h-4 w-4" />
-            </Link>
+            {session.damageClaim.damageLineItems.length > 0 && (
+              <div className="space-y-2">
+                {session.damageClaim.damageLineItems.map((item) => (
+                  <div key={item.id} className="flex items-start justify-between bg-white/70 rounded-xl border border-rose-100 px-3 py-2 text-xs">
+                    <div className="space-y-0.5">
+                      <p className="font-extrabold text-rose-900">
+                        {PART_TYPE_LABELS[item.partType] ?? item.partType}
+                        {item.customPartName && <span className="font-semibold text-rose-700"> — {item.customPartName}</span>}
+                      </p>
+                      <div className="flex gap-3 text-[11px] text-rose-700 font-semibold">
+                        <span>Linh kiện: {item.partsPrice.toLocaleString("vi-VN")}đ</span>
+                        {item.laborPrice > 0 && <span>Công sửa: {item.laborPrice.toLocaleString("vi-VN")}đ</span>}
+                      </div>
+                    </div>
+                    <span className="font-extrabold text-rose-700 shrink-0 pl-3">{item.lineTotal.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-xl bg-rose-100 border border-rose-200 px-4 py-2.5">
+                  <span className="text-sm font-black text-rose-900">Tổng phí bồi thường:</span>
+                  <span className="text-base font-extrabold text-rose-700">
+                    {session.damageClaim.totalDamageCharge.toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-rose-700 font-semibold">
+              Nhân viên sẽ xác nhận trực tiếp. Nếu có thắc mắc, vui lòng trao đổi tại quầy.
+            </p>
           </div>
         )}
 

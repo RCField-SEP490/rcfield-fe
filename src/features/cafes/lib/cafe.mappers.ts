@@ -205,6 +205,7 @@ export function mapCatalogToExploreVehicle(catalog: VehicleCatalogLike): Vehicle
     pricePerHour: toNumber(catalog.hourlyRate),
     securityDeposit: toNumber(catalog.securityDeposit),
     status: countVal > 0 ? "available" : "maintenance",
+    availableCount: countVal,
     specs: {
       battery: specBattery,
       motor: specMotor,
