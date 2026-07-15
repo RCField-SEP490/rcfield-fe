@@ -106,7 +106,7 @@ export function ProviderConfigurationPage() {
 
               <Field label="Thời gian báo trước tối thiểu">
                 <select className={inputClassName} defaultValue="2">
-                  <option value="0">0 giờ - Cho phép walk-in</option>
+                  <option value="0">0 giờ - Cho phép khách vãng lai</option>
                   <option value="1">1 giờ</option>
                   <option value="2">2 giờ</option>
                   <option value="12">12 giờ</option>

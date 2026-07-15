@@ -453,7 +453,7 @@ export default function StaffSessionDetailPage() {
                     ...session.vehicles,
                     ...participantNames.slice(session.vehicles.length).map((name, i) => ({
                       vehicleId: `byoc-placeholder-${i}`,
-                      name: `Xe của ${name} (BYOC)`,
+                      name: `Xe tự mang của ${name}`,
                       type: "BYOC" as const,
                       imageUrl: undefined,
                     })),
@@ -605,7 +605,7 @@ export default function StaffSessionDetailPage() {
 
               <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
                 {isWalkInBooking
-                  ? "Đơn walk-in: nhân viên xác nhận trực tiếp tại quầy."
+                  ? "Đơn tại quầy: nhân viên xác nhận trực tiếp tại quầy."
                   : "Đơn đặt trước: hệ thống gửi thông báo và chờ khách phản hồi qua app."}
               </p>
             </StaffCard>

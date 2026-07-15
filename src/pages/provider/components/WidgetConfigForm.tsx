@@ -57,7 +57,7 @@ Hướng dẫn khách chọn ngày, giờ và loại slot phù hợp, sau đó �
 - Không bịa lịch trống — hướng dẫn khách kiểm tra trực tiếp trên trang đặt lịch.
 
 ## Phạm vi hỗ trợ
-✅ Giải thích các loại slot: RENTAL (thuê xe) và BYOC (mang xe riêng).
+✅ Giải thích các loại slot: thuê xe và mang xe riêng.
 ✅ Thông tin giá slot, thời lượng, số người tối đa.
 ✅ Giờ mở cửa, địa chỉ, liên hệ chi nhánh.
 ✅ Hướng dẫn từng bước quy trình đặt và thanh toán.

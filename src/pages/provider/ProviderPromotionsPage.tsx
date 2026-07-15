@@ -1176,7 +1176,7 @@ function PromotionForm({
         <Field label="Mã ưu đãi" error={showErrors ? errors.code : undefined} tooltip="Chuỗi ký tự khách nhập khi thanh toán để được giảm giá. Chỉ dùng chữ in hoa, số, dấu gạch ngang hoặc gạch dưới. Ví dụ: SUMMER20, DRIFT-10K">
           <Input aria-invalid={showErrors && !!errors.code} value={form.code} onChange={(event) => setField("code", event.target.value.toUpperCase())} placeholder="EX: DRIFTNIGHT20" className="h-11 rounded-lg bg-white font-mono font-bold" />
         </Field>
-        <Field label="Phạm vi áp dụng" error={showErrors ? errors.applicableTo : undefined} tooltip="Giới hạn mã chỉ dùng cho một hình thức chơi. Tất cả — áp dụng cho cả thuê xe (RENTAL) lẫn mang xe cá nhân (BYOC).">
+        <Field label="Phạm vi áp dụng" error={showErrors ? errors.applicableTo : undefined} tooltip="Giới hạn mã chỉ dùng cho một hình thức chơi. Tất cả — áp dụng cho cả thuê xe lẫn mang xe cá nhân.">
           <select aria-invalid={showErrors && !!errors.applicableTo} value={form.applicableTo} onChange={(event) => setField("applicableTo", event.target.value as PromoApplicableTo)} className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.applicableTo && "border-destructive focus-visible:border-destructive")}>
             <option value="ALL">Tất cả booking</option>
             <option value="RENTAL">Thuê xe</option>

@@ -97,7 +97,7 @@ export default function StaffByocPage() {
       {/* 1. Page Header with CTA action button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <StaffHeader
-          title="Xe tự mang của Khách (BYOC)"
+          title="Xe tự mang của khách"
           subtitle="Quản lý tem kiểm định an toàn kỹ thuật, tần số kết nối sóng và lốp xe do khách tự mang"
         />
 
@@ -333,7 +333,7 @@ export default function StaffByocPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-[#ea580c] font-extrabold text-sm">
                 <ShieldCheck className="size-5" />
-                <h3>Bảng kiểm nghiệm kỹ thuật BYOC</h3>
+                <h3>Bảng kiểm nghiệm xe tự mang</h3>
               </div>
               <button
                 onClick={() => setSelectedVerifyVehicleId(null)}

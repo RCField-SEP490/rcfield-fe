@@ -43,7 +43,7 @@ const features = [
     icon: CalendarCheck,
     color: "from-emerald-500 to-teal-500",
     title: "Đặt lịch & giữ chỗ",
-    desc: "Chọn khung giờ, đặt xe thuê (RENTAL) hoặc mang xe cá nhân (BYOC). Thanh toán cọc online nhanh chóng.",
+    desc: "Chọn khung giờ, đặt xe thuê hoặc mang xe cá nhân. Thanh toán cọc online nhanh chóng.",
     mockup: (
       <div className="h-44 w-full rounded-2xl bg-slate-950 p-4 border border-white/10 flex flex-col justify-between">
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -64,7 +64,7 @@ const features = [
           </motion.div>
         </div>
         <div className="flex gap-2">
-          <span className="text-3xs font-extrabold px-2 py-1 rounded-lg bg-white/5 text-slate-300">BYOC (Tự mang)</span>
+          <span className="text-3xs font-extrabold px-2 py-1 rounded-lg bg-white/5 text-slate-300">Xe tự mang</span>
           <span className="text-3xs font-extrabold px-2 py-1 rounded-lg bg-orange-600 text-white">RENTAL (Thuê xe)</span>
         </div>
       </div>

@@ -137,7 +137,7 @@ export default function StaffInspectionPage() {
         <Info className="size-12 text-blue-400" />
         <h3 className="text-lg font-bold text-[#1c1b1b]">Không cần kiểm tra trả xe</h3>
         <p className="text-sm text-[#6b7280] text-center max-w-xs font-semibold">
-          Chế độ mang xe riêng (BYOC) — khách tự chịu trách nhiệm với xe của họ, không cần biên bản trả xe.
+          Chế độ mang xe riêng — khách tự chịu trách nhiệm với xe của họ, không cần biên bản trả xe.
         </p>
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <StaffButton
@@ -311,7 +311,7 @@ export default function StaffInspectionPage() {
           <span className="text-xs text-[#6b7280] font-bold font-mono">Phiên chạy: {session.sessionId}</span>
           <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">
             {type === "CHECK_IN"
-              ? isByoc ? "Xác Nhận Xe Khách (BYOC Check-In)" : "Lập Biên Bản Bàn Giao (Check-In)"
+              ? isByoc ? "Xác nhận xe tự mang" : "Lập biên bản bàn giao"
               : "Lập Biên Bản Bàn Giao Xe Trả (Check-Out)"}
           </h2>
           {isByoc && (

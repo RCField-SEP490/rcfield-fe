@@ -586,7 +586,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       lastCheckedAt: new Date().toISOString(),
     }
     saveByocRegistry([newByoc, ...byocRegistry])
-    toast.success(`Đã đăng ký và kiểm định an toàn xe tự mang (BYOC) ${newByoc.id}!`)
+    toast.success(`Đã đăng ký và kiểm định an toàn xe tự mang ${newByoc.id}!`)
   }, [byocRegistry, saveByocRegistry])
 
   const updateByocSafety = useCallback((id: string, safetyChecked: boolean) => {
