@@ -1,9 +1,24 @@
 import { useEffect, useMemo, useState } from "react"
-import { contestCorrectResultsSchema, contestSubmitResultsSchema } from "@/features/contests/schemas/contest.schema"
-import type { ContestMatch, ContestMatchParticipant, ContestSubmitResultsBody } from "@/features/contests/types"
-import { formatDurationSeconds, getErrorMessage, getMatchParticipantName, getMatchParticipantSubtitle } from "@/features/contests/lib/contest-runtime"
+import {
+  contestCorrectResultsSchema,
+  contestSubmitResultsSchema,
+} from "@/features/contests/schemas/contest.schema"
+import type {
+  ContestMatch,
+  ContestMatchParticipant,
+  ContestSubmitResultsBody,
+} from "@/features/contests/types"
+import {
+  formatDurationSeconds,
+  getErrorMessage,
+  getMatchParticipantName,
+  getMatchParticipantSubtitle,
+} from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
-import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  Panel,
+  PanelTitle,
+} from "@/pages/provider/components/ProviderPrimitives"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -22,57 +37,66 @@ export function ContestMatchDetailPanel({
   match: ContestMatch | null
   runtime: RuntimeHook
 }) {
-  const [participants, setParticipants] = useState<Array<{
-    registration_id: string
-    slot_no: number
-    lane: string | null
-    grid_position: number | null
-    seed_no: number | null
-  }>>([])
-  const [results, setResults] = useState<Array<{
-    registration_id: string
-    finish_position: number | null
-    score: number | null
-    best_lap_seconds: number | null
-    total_time_seconds: number | null
-    is_winner: boolean
-    result_note: string | null
-    status: ContestMatchParticipant["status"]
-  }>>([])
+  const [participants, setParticipants] = useState<
+    Array<{
+      registration_id: string
+      slot_no: number
+      lane: string | null
+      grid_position: number | null
+      seed_no: number | null
+    }>
+  >([])
+  const [results, setResults] = useState<
+    Array<{
+      registration_id: string
+      finish_position: number | null
+      score: number | null
+      best_lap_seconds: number | null
+      total_time_seconds: number | null
+      is_winner: boolean
+      result_note: string | null
+      status: ContestMatchParticipant["status"]
+    }>
+  >([])
   const [reason, setReason] = useState("")
   const [forceCascade, setForceCascade] = useState(false)
 
   useEffect(() => {
     if (!match) return
-    setParticipants(
-      match.participants.map((participant) => ({
-        registration_id: participant.registration_id,
-        slot_no: participant.slot_no,
-        lane: participant.lane,
-        grid_position: participant.grid_position,
-        seed_no: participant.seed_no,
-      })),
-    )
-    setResults(
-      match.participants.map((participant) => ({
-        registration_id: participant.registration_id,
-        finish_position: participant.finish_position,
-        score: participant.score,
-        best_lap_seconds: participant.best_lap_seconds,
-        total_time_seconds: participant.total_time_seconds,
-        is_winner: participant.is_winner,
-        result_note: participant.result_note,
-        status: participant.status,
-      })),
-    )
-    setReason("")
-    setForceCascade(false)
+    queueMicrotask(() => {
+      setParticipants(
+        match.participants.map((participant) => ({
+          registration_id: participant.registration_id,
+          slot_no: participant.slot_no,
+          lane: participant.lane,
+          grid_position: participant.grid_position,
+          seed_no: participant.seed_no,
+        })),
+      )
+      setResults(
+        match.participants.map((participant) => ({
+          registration_id: participant.registration_id,
+          finish_position: participant.finish_position,
+          score: participant.score,
+          best_lap_seconds: participant.best_lap_seconds,
+          total_time_seconds: participant.total_time_seconds,
+          is_winner: participant.is_winner,
+          result_note: participant.result_note,
+          status: participant.status,
+        })),
+      )
+      setReason("")
+      setForceCascade(false)
+    })
   }, [match])
 
   const participantMap = useMemo(
     () =>
       new Map(
-        match?.participants.map((participant) => [participant.registration_id, participant]) ?? [],
+        match?.participants.map((participant) => [
+          participant.registration_id,
+          participant,
+        ]) ?? [],
       ),
     [match],
   )
@@ -80,8 +104,13 @@ export function ContestMatchDetailPanel({
   if (!match) {
     return (
       <Panel>
-        <PanelTitle title="Chi tiết trận đấu" subtitle="Chọn một trận hoặc lượt thi đấu để xem chi tiết." />
-        <p className="text-sm font-semibold text-[#747878]">Chưa có match nào được chọn.</p>
+        <PanelTitle
+          title="Chi tiết trận đấu"
+          subtitle="Chọn một trận hoặc lượt thi đấu để xem chi tiết."
+        />
+        <p className="text-sm font-semibold text-[#747878]">
+          Chưa có match nào được chọn.
+        </p>
       </Panel>
     )
   }
@@ -93,7 +122,9 @@ export function ContestMatchDetailPanel({
   ) => {
     setParticipants((current) =>
       current.map((participant) =>
-        participant.registration_id === registrationId ? { ...participant, [field]: value } : participant,
+        participant.registration_id === registrationId
+          ? { ...participant, [field]: value }
+          : participant,
       ),
     )
   }
@@ -112,7 +143,9 @@ export function ContestMatchDetailPanel({
   ) => {
     setResults((current) =>
       current.map((result) =>
-        result.registration_id === registrationId ? { ...result, [field]: value } : result,
+        result.registration_id === registrationId
+          ? { ...result, [field]: value }
+          : result,
       ),
     )
   }
@@ -131,7 +164,9 @@ export function ContestMatchDetailPanel({
       })
       toast.success("Đã cập nhật thứ tự thi đấu")
     } catch (error) {
-      toast.error("Không thể cập nhật participant", { description: getErrorMessage(error).message })
+      toast.error("Không thể cập nhật participant", {
+        description: getErrorMessage(error).message,
+      })
     }
   }
 
@@ -179,7 +214,9 @@ export function ContestMatchDetailPanel({
       })
       toast.success("Đã lưu kết quả")
     } catch (error) {
-      toast.error("Không thể submit result", { description: getErrorMessage(error).message })
+      toast.error("Không thể submit result", {
+        description: getErrorMessage(error).message,
+      })
     }
   }
 
@@ -197,10 +234,15 @@ export function ContestMatchDetailPanel({
     }
 
     try {
-      await runtime.correctResultsMutation.mutateAsync({ matchId: match.id, body: result.data })
+      await runtime.correctResultsMutation.mutateAsync({
+        matchId: match.id,
+        body: result.data,
+      })
       toast.success("Đã sửa kết quả")
     } catch (error) {
-      toast.error("Không thể correct result", { description: getErrorMessage(error).message })
+      toast.error("Không thể correct result", {
+        description: getErrorMessage(error).message,
+      })
     }
   }
 
@@ -215,7 +257,9 @@ export function ContestMatchDetailPanel({
       await runtime.advanceMatchMutation.mutateAsync(match.id)
       toast.success("Đã đẩy người thắng vào vòng sau")
     } catch (error) {
-      toast.error("Không thể advance match", { description: getErrorMessage(error).message })
+      toast.error("Không thể advance match", {
+        description: getErrorMessage(error).message,
+      })
     }
   }
 
@@ -227,54 +271,105 @@ export function ContestMatchDetailPanel({
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Badge className={`border ${getMatchStatusClass(match.status)}`}>{match.status}</Badge>
-        <Badge className="border border-[#c4c7c8] bg-[#f6f3f2] text-[#444748]">{match.match_type}</Badge>
+        <Badge className={`border ${getMatchStatusClass(match.status)}`}>
+          {match.status}
+        </Badge>
+        <Badge className="border border-[#c4c7c8] bg-[#f6f3f2] text-[#444748]">
+          {match.match_type}
+        </Badge>
       </div>
 
       <div className="space-y-4">
         <section>
-          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">Thứ tự thi đấu</h4>
+          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">
+            Thứ tự thi đấu
+          </h4>
           <div className="space-y-3">
             {participants.map((participant) => {
               const snapshot = participantMap.get(participant.registration_id)
               return (
-                <div key={participant.registration_id} className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
+                <div
+                  key={participant.registration_id}
+                  className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3"
+                >
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-bold text-[#1c1b1b]">{snapshot ? getMatchParticipantName(snapshot) : participant.registration_id.slice(0, 8)}</p>
-                        <DriverTitleChip label={snapshot?.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
+                        <p className="text-sm font-bold text-[#1c1b1b]">
+                          {snapshot
+                            ? getMatchParticipantName(snapshot)
+                            : participant.registration_id.slice(0, 8)}
+                        </p>
+                        <DriverTitleChip
+                          label={snapshot?.registration?.driver_title_label}
+                          className="px-2 py-0 text-[10px]"
+                        />
                       </div>
-                      {snapshot ? <p className="text-xs font-medium text-[#747878]">{getMatchParticipantSubtitle(snapshot) ?? "Chưa có email / check-in code"}</p> : null}
+                      {snapshot ? (
+                        <p className="text-xs font-medium text-[#747878]">
+                          {getMatchParticipantSubtitle(snapshot) ??
+                            "Chưa có email / check-in code"}
+                        </p>
+                      ) : null}
                     </div>
-                    <p className="text-xs font-semibold text-[#747878]">{snapshot?.registration?.status ?? "--"}</p>
+                    <p className="text-xs font-semibold text-[#747878]">
+                      {snapshot?.registration?.status ?? "--"}
+                    </p>
                   </div>
                   <div className="grid gap-3 md:grid-cols-4">
                     <Field label="Vị trí">
                       <Input
                         type="number"
                         value={participant.slot_no}
-                        onChange={(event) => updateParticipantValue(participant.registration_id, "slot_no", Number(event.target.value))}
+                        onChange={(event) =>
+                          updateParticipantValue(
+                            participant.registration_id,
+                            "slot_no",
+                            Number(event.target.value),
+                          )
+                        }
                       />
                     </Field>
                     <Field label="Làn">
                       <Input
                         value={participant.lane ?? ""}
-                        onChange={(event) => updateParticipantValue(participant.registration_id, "lane", event.target.value || null)}
+                        onChange={(event) =>
+                          updateParticipantValue(
+                            participant.registration_id,
+                            "lane",
+                            event.target.value || null,
+                          )
+                        }
                       />
                     </Field>
                     <Field label="Ô xuất phát">
                       <Input
                         type="number"
                         value={participant.grid_position ?? ""}
-                        onChange={(event) => updateParticipantValue(participant.registration_id, "grid_position", event.target.value ? Number(event.target.value) : null)}
+                        onChange={(event) =>
+                          updateParticipantValue(
+                            participant.registration_id,
+                            "grid_position",
+                            event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          )
+                        }
                       />
                     </Field>
                     <Field label="Hạt giống">
                       <Input
                         type="number"
                         value={participant.seed_no ?? ""}
-                        onChange={(event) => updateParticipantValue(participant.registration_id, "seed_no", event.target.value ? Number(event.target.value) : null)}
+                        onChange={(event) =>
+                          updateParticipantValue(
+                            participant.registration_id,
+                            "seed_no",
+                            event.target.value
+                              ? Number(event.target.value)
+                              : null,
+                          )
+                        }
                       />
                     </Field>
                   </div>
@@ -283,37 +378,80 @@ export function ContestMatchDetailPanel({
             })}
           </div>
           <div className="mt-3">
-            <Button variant="outline" className="rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]" onClick={() => void handleSaveParticipants()}>
+            <Button
+              variant="outline"
+              className="rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]"
+              onClick={() => void handleSaveParticipants()}
+            >
               Lưu thứ tự thi đấu
             </Button>
           </div>
         </section>
 
         <section>
-          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">Nhập kết quả</h4>
+          <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">
+            Nhập kết quả
+          </h4>
           <div className="space-y-3">
             {results.map((result) => (
-              <div key={result.registration_id} className="rounded-lg border border-[#e5e2e1] p-3">
+              <div
+                key={result.registration_id}
+                className="rounded-lg border border-[#e5e2e1] p-3"
+              >
                 <div className="mb-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-bold text-[#1c1b1b]">{participantMap.get(result.registration_id) ? getMatchParticipantName(participantMap.get(result.registration_id)) : result.registration_id.slice(0, 8)}</p>
-                    <DriverTitleChip label={participantMap.get(result.registration_id)?.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
+                    <p className="text-sm font-bold text-[#1c1b1b]">
+                      {participantMap.get(result.registration_id)
+                        ? getMatchParticipantName(
+                            participantMap.get(result.registration_id),
+                          )
+                        : result.registration_id.slice(0, 8)}
+                    </p>
+                    <DriverTitleChip
+                      label={
+                        participantMap.get(result.registration_id)?.registration
+                          ?.driver_title_label
+                      }
+                      className="px-2 py-0 text-[10px]"
+                    />
                   </div>
-                  <p className="text-xs font-medium text-[#747878]">{participantMap.get(result.registration_id) ? getMatchParticipantSubtitle(participantMap.get(result.registration_id)) ?? "Chưa có email / check-in code" : "Chưa có thông tin bổ sung"}</p>
+                  <p className="text-xs font-medium text-[#747878]">
+                    {participantMap.get(result.registration_id)
+                      ? (getMatchParticipantSubtitle(
+                          participantMap.get(result.registration_id),
+                        ) ?? "Chưa có email / check-in code")
+                      : "Chưa có thông tin bổ sung"}
+                  </p>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <Field label="Về đích">
                     <Input
                       type="number"
                       value={result.finish_position ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "finish_position", event.target.value ? Number(event.target.value) : null)}
+                      onChange={(event) =>
+                        updateResultValue(
+                          result.registration_id,
+                          "finish_position",
+                          event.target.value
+                            ? Number(event.target.value)
+                            : null,
+                        )
+                      }
                     />
                   </Field>
                   <Field label="Điểm">
                     <Input
                       type="number"
                       value={result.score ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "score", event.target.value ? Number(event.target.value) : null)}
+                      onChange={(event) =>
+                        updateResultValue(
+                          result.registration_id,
+                          "score",
+                          event.target.value
+                            ? Number(event.target.value)
+                            : null,
+                        )
+                      }
                     />
                   </Field>
                   <Field label="Lap tốt nhất (giây)">
@@ -321,7 +459,15 @@ export function ContestMatchDetailPanel({
                       type="number"
                       step="0.001"
                       value={result.best_lap_seconds ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "best_lap_seconds", event.target.value ? Number(event.target.value) : null)}
+                      onChange={(event) =>
+                        updateResultValue(
+                          result.registration_id,
+                          "best_lap_seconds",
+                          event.target.value
+                            ? Number(event.target.value)
+                            : null,
+                        )
+                      }
                     />
                   </Field>
                   <Field label="Tổng thời gian (giây)">
@@ -329,7 +475,15 @@ export function ContestMatchDetailPanel({
                       type="number"
                       step="0.001"
                       value={result.total_time_seconds ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "total_time_seconds", event.target.value ? Number(event.target.value) : null)}
+                      onChange={(event) =>
+                        updateResultValue(
+                          result.registration_id,
+                          "total_time_seconds",
+                          event.target.value
+                            ? Number(event.target.value)
+                            : null,
+                        )
+                      }
                     />
                   </Field>
                 </div>
@@ -338,7 +492,13 @@ export function ContestMatchDetailPanel({
                     <select
                       className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                       value={result.status}
-                      onChange={(event) => updateResultValue(result.registration_id, "status", event.target.value)}
+                      onChange={(event) =>
+                        updateResultValue(
+                          result.registration_id,
+                          "status",
+                          event.target.value,
+                        )
+                      }
                     >
                       <option value="READY">READY</option>
                       <option value="STARTED">STARTED</option>
@@ -351,7 +511,13 @@ export function ContestMatchDetailPanel({
                   <Field label="Ghi chú kết quả">
                     <Input
                       value={result.result_note ?? ""}
-                      onChange={(event) => updateResultValue(result.registration_id, "result_note", event.target.value || null)}
+                      onChange={(event) =>
+                        updateResultValue(
+                          result.registration_id,
+                          "result_note",
+                          event.target.value || null,
+                        )
+                      }
                     />
                   </Field>
                 </div>
@@ -359,12 +525,20 @@ export function ContestMatchDetailPanel({
                   <input
                     type="checkbox"
                     checked={result.is_winner}
-                    onChange={(event) => updateResultValue(result.registration_id, "is_winner", event.target.checked)}
+                    onChange={(event) =>
+                      updateResultValue(
+                        result.registration_id,
+                        "is_winner",
+                        event.target.checked,
+                      )
+                    }
                   />
                   Đánh dấu người thắng
                 </label>
                 <div className="mt-2 text-xs font-semibold text-[#747878]">
-                  Lap tốt nhất: {formatDurationSeconds(result.best_lap_seconds)} · Tổng thời gian: {formatDurationSeconds(result.total_time_seconds)}
+                  Lap tốt nhất: {formatDurationSeconds(result.best_lap_seconds)}{" "}
+                  · Tổng thời gian:{" "}
+                  {formatDurationSeconds(result.total_time_seconds)}
                 </div>
               </div>
             ))}
@@ -373,20 +547,39 @@ export function ContestMatchDetailPanel({
 
         <section className="space-y-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
           <Field label="Lý do cập nhật">
-            <Textarea rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />
+            <Textarea
+              rows={3}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
           </Field>
           <label className="flex items-center gap-2 text-sm font-semibold text-[#1c1b1b]">
-            <input type="checkbox" checked={forceCascade} onChange={(event) => setForceCascade(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={forceCascade}
+              onChange={(event) => setForceCascade(event.target.checked)}
+            />
             Cho phép làm mới nhánh kế tiếp khi sửa kết quả
           </label>
           <div className="flex flex-wrap gap-2">
-            <Button className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]" onClick={() => void handleSubmitResults()}>
+            <Button
+              className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+              onClick={() => void handleSubmitResults()}
+            >
               Lưu kết quả
             </Button>
-            <Button variant="outline" className="rounded-lg border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={() => void handleCorrectResults()}>
+            <Button
+              variant="outline"
+              className="rounded-lg border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              onClick={() => void handleCorrectResults()}
+            >
               Sửa kết quả
             </Button>
-            <Button variant="outline" className="rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" onClick={() => void handleAdvance()}>
+            <Button
+              variant="outline"
+              className="rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              onClick={() => void handleAdvance()}
+            >
               Đẩy người thắng vào vòng sau
             </Button>
           </div>
@@ -396,10 +589,18 @@ export function ContestMatchDetailPanel({
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
   return (
     <div>
-      <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</Label>
+      <Label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#747878]">
+        {label}
+      </Label>
       {children}
     </div>
   )

@@ -8,10 +8,10 @@ const testimonials = [
   },
   {
     name: "Ngọc Linh",
-    role: "BYOC player • TP. HCM",
+    role: "Khách mang xe riêng • TP. HCM",
     avatar: "NL",
     color: "bg-violet-500",
-    text: "Tôi hay mang xe riêng đi chơi, tính năng BYOC rất tiện. Đặt chỗ trước, đến nơi check-in là chạy luôn không cần chờ nhân viên sắp xếp.",
+    text: "Tôi hay mang xe riêng đi chơi, tính năng đăng ký xe tự mang rất tiện. Đặt chỗ trước, đến nơi check-in là chạy luôn không cần chờ nhân viên sắp xếp.",
   },
   {
     name: "Minh Khoa",

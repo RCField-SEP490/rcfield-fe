@@ -97,7 +97,7 @@ export function CustomerSubscriptionsPage() {
                       "Không giới hạn số lượt Check-in Serious Inspection.",
                       "Đặc quyền đặt lịch trước tối đa 14 ngày (bình thường là 7 ngày).",
                       "Đặc quyền tham gia các giải đua nội bộ RCField Cup.",
-                      "Miễn phí vệ sinh & bảo dưỡng xe BYOC cá nhân 2 lần/tháng."
+                      "Miễn phí vệ sinh & bảo dưỡng xe cá nhân 2 lần/tháng."
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-start gap-2.5 p-3 bg-slate-50/50 rounded-xl border border-slate-100 text-xs font-semibold text-slate-700">
                         <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0 mt-0.5" />

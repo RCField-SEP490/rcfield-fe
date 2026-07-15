@@ -1,11 +1,19 @@
 import type { Cafe, Vehicle } from "@/shared/data/explore-data"
-import type { BackendCafe, CafeImage, CafeListParams, TrackType } from "../types"
+import type {
+  BackendCafe,
+  CafeImage,
+  CafeListParams,
+  TrackType,
+} from "../types"
 import { sanitizeImageUrl, getCatalogImageUrl } from "@/shared/lib/utils"
 
 export const CAFE_PLACEHOLDER_IMAGE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='800' viewBox='0 0 1200 800'%3E%3Crect width='1200' height='800' fill='%23f1f5f9'/%3E%3Cpath d='M216 520c76-132 174-198 294-198 80 0 145 29 195 86 34-22 73-33 117-33 72 0 131 28 178 85 31 37 52 81 64 132H136c18-26 45-50 80-72z' fill='%23cbd5e1'/%3E%3Ccircle cx='442' cy='250' r='82' fill='%23fb923c'/%3E%3Ctext x='600' y='670' text-anchor='middle' font-family='Arial, sans-serif' font-size='54' font-weight='700' fill='%23334155'%3ERCField Cafe%3C/text%3E%3C/svg%3E"
 
-export function mapCafeToExploreCafe(cafe: BackendCafe, images: CafeImage[] = []): Cafe {
+export function mapCafeToExploreCafe(
+  cafe: BackendCafe,
+  images: CafeImage[] = [],
+): Cafe {
   const imageUrls = buildImageUrls(cafe, images)
   const slotFeeRate = toNumber(cafe.slotFeeRate)
   const minPrice = toNumber(cafe.minPrice ?? cafe.slotFeeRate)
@@ -24,7 +32,10 @@ export function mapCafeToExploreCafe(cafe: BackendCafe, images: CafeImage[] = []
     city: cafe.city,
     image: imageUrls[0] ?? CAFE_PLACEHOLDER_IMAGE,
     images: imageUrls,
-    priceRange: minPrice > 0 ? `Từ ${formatCompactCurrency(minPrice)}/giờ` : "Chưa cập nhật",
+    priceRange:
+      minPrice > 0
+        ? `Từ ${formatCompactCurrency(minPrice)}/giờ`
+        : "Chưa cập nhật",
     slotDurationMinutes: cafe.slotDurationMinutes,
     slotFeeRate,
     maxConcurrentBookings: cafe.maxConcurrentBookings,
@@ -73,9 +84,13 @@ export function toCafeListParams(params: {
     price_min: params.priceMin ?? min,
     price_max: params.priceMax ?? max,
     amenities: isActiveFilter(params.feature) ? [params.feature!] : undefined,
-    vehicle_type: isActiveFilter(params.vehicleType) ? params.vehicleType : undefined,
+    vehicle_type: isActiveFilter(params.vehicleType)
+      ? params.vehicleType
+      : undefined,
     sort_by: params.sortBy,
-    popular_filters: params.popularFilters?.length ? params.popularFilters : undefined,
+    popular_filters: params.popularFilters?.length
+      ? params.popularFilters
+      : undefined,
   }
 }
 
@@ -111,7 +126,10 @@ function buildImageUrls(cafe: BackendCafe, images: CafeImage[]) {
   return Array.from(new Set(mapped))
 }
 
-function buildMapCoordinates(latitude: BackendCafe["latitude"], longitude: BackendCafe["longitude"]) {
+function buildMapCoordinates(
+  latitude: BackendCafe["latitude"],
+  longitude: BackendCafe["longitude"],
+) {
   const lat = toNumber(latitude)
   const lng = toNumber(longitude)
 
@@ -130,7 +148,10 @@ function mapTrackTypeParam(trackType?: string): string | undefined {
 
 function mapPriceRangeToBounds(range?: string) {
   if (!isActiveFilter(range)) {
-    return { min: undefined as number | undefined, max: undefined as number | undefined }
+    return {
+      min: undefined as number | undefined,
+      max: undefined as number | undefined,
+    }
   }
   if (range === "under100") return { min: undefined, max: 100000 }
   if (range === "100to200") return { min: 100000, max: 200000 }
@@ -161,15 +182,20 @@ type VehicleCatalogLike = {
   id: string
   name?: string | null
   tier?: string
-  compatibleTrackTypes?: Array<string | { id?: string; code?: string; name?: string }> | null
+  compatibleTrackTypes?: Array<
+    string | { id?: string; code?: string; name?: string }
+  > | null
   hourlyRate?: number | string
   securityDeposit?: number | string
   total_units?: number | null
+  available_units?: number | null
   _count?: { units?: number | null } | null
   coverImageUrl?: string | null
 }
 
-export function mapCatalogToExploreVehicle(catalog: VehicleCatalogLike): Vehicle {
+export function mapCatalogToExploreVehicle(
+  catalog: VehicleCatalogLike,
+): Vehicle {
   const brandName = catalog.name ? catalog.name.split(" ")[0] : "Tamiya"
   let specBattery = "2S LiPo"
   let specMotor = "Brushed 540"
@@ -190,22 +216,26 @@ export function mapCatalogToExploreVehicle(catalog: VehicleCatalogLike): Vehicle
   }
 
   const compatibleTrack =
-    Array.isArray(catalog.compatibleTrackTypes) && catalog.compatibleTrackTypes.length > 0
+    Array.isArray(catalog.compatibleTrackTypes) &&
+    catalog.compatibleTrackTypes.length > 0
       ? formatCatalogTrackType(catalog.compatibleTrackTypes[0])
       : "Drift"
 
-  const countVal = catalog.total_units ?? catalog._count?.units ?? 0
+  const availableCount =
+    catalog.available_units ?? catalog.total_units ?? catalog._count?.units ?? 0
 
   return {
     id: catalog.id,
     name: catalog.name || "Xe địa hình RC",
     scale: specScale,
     type: compatibleTrack,
-    image: getCatalogImageUrl(catalog) || "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?q=80&w=600&auto=format&fit=crop",
+    image:
+      getCatalogImageUrl(catalog) ||
+      "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?q=80&w=600&auto=format&fit=crop",
     pricePerHour: toNumber(catalog.hourlyRate),
     securityDeposit: toNumber(catalog.securityDeposit),
-    status: countVal > 0 ? "available" : "maintenance",
-    availableCount: countVal,
+    status: availableCount > 0 ? "available" : "maintenance",
+    availableCount,
     specs: {
       battery: specBattery,
       motor: specMotor,
@@ -214,7 +244,9 @@ export function mapCatalogToExploreVehicle(catalog: VehicleCatalogLike): Vehicle
   }
 }
 
-function formatCatalogTrackType(trackType: string | { code?: string; name?: string }) {
+function formatCatalogTrackType(
+  trackType: string | { code?: string; name?: string },
+) {
   if (typeof trackType === "string") return formatTrackType(trackType)
   if (trackType.name) return trackType.name
   if (trackType.code) return formatTrackType(trackType.code)

@@ -229,7 +229,7 @@ export default function StaffDashboardPage() {
         {/* Walk-in Booking Shortcut */}
         <StaffCard className="flex flex-col justify-between p-6">
           <div>
-            <h4 className="font-bold text-[#1c1b1b] text-base mb-1">Khách Vãng Lai (Walk-in)</h4>
+            <h4 className="font-bold text-[#1c1b1b] text-base mb-1">Khách vãng lai</h4>
             <p className="text-xs text-[#6b7280] leading-relaxed">
               Tạo và ghi nhận nhanh thông tin lượt chơi, cấu hình xe chạy trực tiếp cho khách mua vé tại quầy.
             </p>
@@ -387,7 +387,7 @@ export default function StaffDashboardPage() {
                     <div className="flex justify-between items-center text-xs text-[#4c4a49] pt-2 border-t border-dashed border-[#e5e2e1]">
                       <span className="flex items-center gap-1.5 font-medium">
                         <Car className="size-3.5 text-[#6b7280]" />
-                        {activeSession.vehicles[0]?.name || "Xe tự mang (BYOC)"}
+                        {activeSession.vehicles[0]?.name || "Xe tự mang"}
                       </span>
                       <span className="flex items-center gap-1 text-[#ea580c] font-bold">
                         Chi tiết <ArrowRight className="size-3" />

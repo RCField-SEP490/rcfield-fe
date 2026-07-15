@@ -36,8 +36,16 @@ export function CafeBookingCard({
   menuItems,
 }: CafeBookingCardProps) {
   const slotFeeRate = cafe.slotFeeRate ?? 0
-  const slotDuration = cafe.slotDurationMinutes ?? 60
-  const durationLabel = slotDuration === 60 ? "1 giờ" : `${slotDuration} phút`
+  const slotDuration = cafe.slotDurationMinutes
+  const hasConfiguredSlotDuration =
+    typeof slotDuration === "number" &&
+    Number.isInteger(slotDuration) &&
+    slotDuration > 0
+  const durationLabel = hasConfiguredSlotDuration
+    ? slotDuration === 60
+      ? "1 giờ"
+      : `${slotDuration} phút`
+    : "Chưa cấu hình"
 
   const fnbTotal = useMemo(() => {
     return Object.entries(fnbQuantities).reduce((sum, [id, qty]) => {
@@ -46,7 +54,9 @@ export function CafeBookingCard({
     }, 0)
   }, [fnbQuantities, menuItems])
 
-  const vehiclePrice = cafe.availableVehicles.find((v) => v.id === selectedVehicleId)?.pricePerHour ?? 0
+  const vehiclePrice =
+    cafe.availableVehicles.find((v) => v.id === selectedVehicleId)
+      ?.pricePerHour ?? 0
   const totalEstimate = Number(slotFeeRate) + vehiclePrice + fnbTotal
 
   // Serialize F&B for URL
@@ -64,7 +74,10 @@ export function CafeBookingCard({
   return (
     <Card className="rounded-2xl border-slate-200 shadow-[0_18px_60px_rgba(15,23,42,0.12)] bg-white/95 backdrop-blur-md">
       <CardHeader className="p-4 pb-2">
-        <Badge variant="outline" className="w-fit rounded-full px-2.5 py-1 text-[11px] border-orange-100 text-orange-600 bg-orange-50/30">
+        <Badge
+          variant="outline"
+          className="w-fit rounded-full px-2.5 py-1 text-[11px] border-orange-100 text-orange-600 bg-orange-50/30"
+        >
           {durationLabel}/slot
         </Badge>
       </CardHeader>
@@ -88,7 +101,9 @@ export function CafeBookingCard({
         <div className="rounded-xl border border-slate-200 bg-slate-50/30 p-3 space-y-2">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>Tiền sân ({durationLabel})</span>
-            <span className="font-mono">{formatCurrency(Number(slotFeeRate))}</span>
+            <span className="font-mono">
+              {formatCurrency(Number(slotFeeRate))}
+            </span>
           </div>
           {vehiclePrice > 0 && (
             <div className="flex items-center justify-between text-xs text-slate-500">
@@ -103,15 +118,20 @@ export function CafeBookingCard({
             </div>
           )}
           <div className="border-t border-dashed border-slate-200 pt-2 flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-900">Tạm tính / slot</span>
-            <span className="text-sm font-black text-orange-600 font-mono">{formatCurrency(totalEstimate)}</span>
+            <span className="text-xs font-bold text-slate-900">
+              Tạm tính / slot
+            </span>
+            <span className="text-sm font-black text-orange-600 font-mono">
+              {formatCurrency(totalEstimate)}
+            </span>
           </div>
         </div>
 
-        <Button asChild className="h-11 w-full rounded-lg text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md transition-all active:scale-[0.98]">
-          <Link to={bookingPath}>
-            Đặt lịch ngay →
-          </Link>
+        <Button
+          asChild
+          className="h-11 w-full rounded-lg text-sm font-bold bg-orange-500 hover:bg-orange-600 text-white shadow-md transition-all active:scale-[0.98]"
+        >
+          <Link to={bookingPath}>Đặt lịch ngay →</Link>
         </Button>
 
         <p className="text-center text-[10px] text-slate-400">

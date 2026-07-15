@@ -192,7 +192,7 @@ export function CustomerVehiclesPage() {
             <div className="space-y-1">
               <h3 className="text-lg font-black text-slate-950 flex items-center gap-2">
                 <Car className="h-5 w-5 text-orange-500" />
-                Đăng ký xe BYOC cá nhân
+                Đăng ký xe cá nhân
               </h3>
               <p className="text-xs font-semibold text-slate-500">
                 Khai báo thông số kỹ thuật xe để Ban quản trị đối soát tần số tránh trùng bước sóng.

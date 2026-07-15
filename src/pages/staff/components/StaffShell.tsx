@@ -43,7 +43,7 @@ const staffNavGroups: NavGroup[] = [
       { label: "Đặt lịch ngày", icon: CalendarDays, path: routePaths.staffTodayBookings },
       { label: "Contest check-in", icon: Flag, path: routePaths.staffContests },
       { label: "Gọi món F&B", icon: Coffee, path: routePaths.staffFnbOrders },
-      { label: "Đăng ký xe BYOC", icon: ShieldCheck, path: routePaths.staffByoc },
+      { label: "Đăng ký xe tự mang", icon: ShieldCheck, path: routePaths.staffByoc },
       { label: "Tra cứu gói chơi", icon: Search, path: routePaths.staffPackages },
     ],
   },

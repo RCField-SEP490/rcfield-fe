@@ -59,7 +59,7 @@ export function PublicGlobalLeaderboardPage() {
           <select value={vehicleSource} onChange={(event) => setVehicleSource(event.target.value as typeof vehicleSource)} className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm">
             <option value="">Mọi vehicle source</option>
             <option value="RENTAL">RENTAL</option>
-            <option value="BYOC">BYOC</option>
+            <option value="BYOC">Xe tự mang</option>
           </select>
         </div>
 

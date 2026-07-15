@@ -84,7 +84,7 @@ function TrackCard({ config }: { config: TrackConfig }) {
       </div>
       <div className="p-3">
         <p className="text-sm font-bold text-slate-900">{config.track_type?.name ?? "Loại sân"}</p>
-        <p className="mt-0.5 text-xs text-slate-500">BYOC: tối đa {config.byoc_capacity} xe</p>
+        <p className="mt-0.5 text-xs text-slate-500">Xe tự mang: tối đa {config.byoc_capacity} xe</p>
         {config.description && (
           <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-600">{config.description}</p>
         )}

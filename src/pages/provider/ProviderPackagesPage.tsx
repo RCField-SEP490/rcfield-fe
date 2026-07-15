@@ -892,8 +892,8 @@ function PackageFormPanel({
             className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold"
           >
             <option value="RENTAL">Rental</option>
-            <option value="BYOC">BYOC</option>
-            <option value="ALL">Rental và BYOC</option>
+            <option value="BYOC">Xe tự mang</option>
+            <option value="ALL">Thuê xe và xe tự mang</option>
           </select>
         </Field>
         <div className="md:col-span-2">
@@ -1271,8 +1271,8 @@ function periodLabel(period: PackageBillingPeriod) {
 
 function playModeLabel(value: PackageApplicablePlayMode[]) {
   const modes = new Set(value)
-  if (modes.has("RENTAL") && modes.has("BYOC")) return "Rental và BYOC"
-  if (modes.has("BYOC")) return "BYOC"
+  if (modes.has("RENTAL") && modes.has("BYOC")) return "Thuê xe và xe tự mang"
+  if (modes.has("BYOC")) return "Xe tự mang"
   return "Rental"
 }
 

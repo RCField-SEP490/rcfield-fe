@@ -124,7 +124,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-[#1c1b1b]">Loại sân</h3>
-          <p className="text-xs text-[#747878]">Cấu hình từng sân: số slot RENTAL và BYOC tối đa</p>
+          <p className="text-xs text-[#747878]">Cấu hình từng sân: số chỗ thuê xe và xe tự mang tối đa</p>
         </div>
         {!showAddForm && (
           <Button

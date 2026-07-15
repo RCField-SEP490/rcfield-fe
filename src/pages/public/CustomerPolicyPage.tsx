@@ -8,7 +8,7 @@ const sections = [
   { id: "checkin", label: "Check-in & Bàn giao xe" },
   { id: "deposit", label: "Bồi thường hư hỏng" },
   { id: "session", label: "Phiên chơi & Gia hạn" },
-  { id: "byoc", label: "Mang xe cá nhân (BYOC)" },
+  { id: "byoc", label: "Mang xe cá nhân" },
   { id: "noshow", label: "Không đến (No-show)" },
   { id: "dispute", label: "Khiếu nại & Tranh chấp" },
 ]
@@ -74,7 +74,7 @@ export function CustomerPolicyPage() {
             <SectionTitle>1. Đặt lịch & Thanh toán</SectionTitle>
             <Prose>
               <p>
-                RCField hỗ trợ hai chế độ chơi: <strong>RENTAL</strong> (thuê xe của quán) và <strong>BYOC</strong> (mang xe cá nhân).
+                RCField hỗ trợ hai chế độ chơi: thuê xe của quán và mang xe cá nhân.
                 Khi đặt lịch, bạn chọn RC Cafe, khung giờ, chế độ chơi và các xe muốn thuê (nếu RENTAL).
               </p>
 
@@ -246,10 +246,10 @@ export function CustomerPolicyPage() {
 
           {/* 6. BYOC */}
           <section id="byoc" className="scroll-mt-24">
-            <SectionTitle>6. Mang xe cá nhân (BYOC)</SectionTitle>
+            <SectionTitle>6. Mang xe cá nhân</SectionTitle>
             <Prose>
               <p>
-                Chế độ BYOC (Bring Your Own Car) cho phép bạn mang xe RC cá nhân đến chơi tại sân.
+                Chế độ mang xe cá nhân cho phép bạn mang xe RC của mình đến chơi tại sân.
                 Quy định bồi thường cho xe thuê không áp dụng trong chế độ này.
               </p>
 
@@ -267,7 +267,7 @@ export function CustomerPolicyPage() {
 
               <h4>Trách nhiệm</h4>
               <p>
-                Trong chế độ BYOC, bạn chịu trách nhiệm với xe cá nhân của mình.
+                Với xe cá nhân, bạn chịu trách nhiệm về xe của mình.
                 RCField và RC Cafe <strong>không chịu trách nhiệm</strong> với hư hỏng xảy ra với xe bạn mang đến,
                 trừ khi được chứng minh là do lỗi của cơ sở vật chất sân.
               </p>
