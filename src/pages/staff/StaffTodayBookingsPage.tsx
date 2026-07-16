@@ -32,7 +32,11 @@ import {
   bookingQueryKeys,
 } from "@/features/booking/api/booking.api"
 import { VehicleStatus, type VehicleUnit } from "@/features/vehicles/types"
-import { cn, getCatalogImageUrl, sanitizeImageUrl } from "@/shared/lib/utils"
+import { cn, getCatalogImageUrl } from "@/shared/lib/utils"
+import { VehicleImage } from "@/shared/ui/vehicle-image"
+import { routePaths } from "@/app/router/route-paths"
+import { isCheckInDeadlineExpired } from "@/features/booking/lib/check-in-window"
+import { toast } from "sonner"
 import {
   StaffHeader,
   StaffCard,
@@ -218,26 +222,17 @@ function getFnbOnsiteAmount(booking: any): number {
 }
 
 function VehicleThumbnail({ unit }: { unit: VehicleUnit }) {
-  const [isImageUnavailable, setIsImageUnavailable] = useState(false)
-  const imageUrl = isImageUnavailable
-    ? null
-    : (sanitizeImageUrl(unit.distinctive_image_url) ??
-      getCatalogImageUrl(unit.catalog))
+  const imageUrl = unit.distinctive_image_url ?? getCatalogImageUrl(unit.catalog)
 
   return (
     <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-[#e5e2e1] bg-[#f5f3f2]">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={unit.catalog?.name || unit.identifier}
-          className="h-full w-full object-cover"
-          onError={() => setIsImageUnavailable(true)}
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center">
-          <Car className="size-7 text-[#6b7280]" />
-        </div>
-      )}
+      <VehicleImage
+        imageUrl={imageUrl}
+        alt={unit.catalog?.name || unit.identifier}
+        className="h-full w-full object-cover"
+        fallbackClassName="bg-[#f5f3f2] text-[#6b7280]"
+        iconClassName="size-7"
+      />
     </div>
   )
 }
@@ -248,13 +243,6 @@ export default function StaffTodayBookingsPage() {
   const { assignedCafeId, createWalkInBooking, startCheckIn } =
     useStaffOperations()
   const [nowTime] = useState(() => Date.now())
-
-  const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
-    queryKey: staffQueryKeys.todayBookings(),
-    queryFn: staffApi.getTodayBookings,
-    refetchInterval: 30_000,
-    refetchOnWindowFocus: true,
-  })
 
   // Primary navigation tab
   const [activeTab, setActiveTab] = useState<TabType>("LIST")
@@ -278,6 +266,7 @@ export default function StaffTodayBookingsPage() {
   // List states
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [playModeFilter, setPlayModeFilter] = useState<"ALL" | "RENTAL" | "BYOC">("ALL")
 
   const getTodayString = () => {
     const d = new Date()
@@ -286,6 +275,29 @@ export default function StaffTodayBookingsPage() {
     const date = String(d.getDate()).padStart(2, "0")
     return `${year}-${month}-${date}`
   }
+
+  const todayDate = getTodayString()
+  const [listDate, setListDate] = useState(todayDate)
+
+  const shiftListDate = (offset: number) => {
+    const [year, month, day] = listDate.split("-").map(Number)
+    const next = new Date(Date.UTC(year, month - 1, day + offset))
+    setListDate(next.toISOString().slice(0, 10))
+  }
+
+  const listDateLabel = new Intl.DateTimeFormat("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(`${listDate}T00:00:00`))
+
+  const { data: displayBookings = [], isLoading: loadingBookings } = useQuery({
+    queryKey: staffQueryKeys.bookings(listDate),
+    queryFn: () => staffApi.getBookings(listDate),
+    refetchInterval: listDate === todayDate ? 30_000 : false,
+    refetchOnWindowFocus: true,
+  })
 
   // Walk-in form states
   const [customerName, setCustomerName] = useState("")
@@ -300,7 +312,7 @@ export default function StaffTodayBookingsPage() {
   const [selectedSlot, setSelectedSlot] = useState("")
   const [selectedSlotEnd, setSelectedSlotEnd] = useState<string | null>(null)
   const [selectedVehicles, setSelectedVehicles] = useState<VehicleUnit[]>([])
-  const bookingDate = getTodayString()
+  const bookingDate = todayDate
 
   // Cafe details — dùng useQuery thay vì useEffect+setState
   const { data: cafeDetails, isLoading: isLoadingCafe } = useQuery({
@@ -619,6 +631,11 @@ export default function StaffTodayBookingsPage() {
   }
 
   const handleStartCheckIn = async (booking: CustomerBookingDetail | any) => {
+    if (isCheckInDeadlineExpired(getSlotStart(booking))) {
+      toast.error("Đơn đã quá thời hạn check-in 30 phút kể từ giờ bắt đầu")
+      return
+    }
+
     const startedSession = await startCheckIn(getBookingId(booking))
     const sessionId = startedSession?.sessionId ?? startedSession?.id
     if (sessionId) {
@@ -653,7 +670,9 @@ export default function StaffTodayBookingsPage() {
           .includes(searchTerm.toLowerCase())
       const matchStatus =
         statusFilter === "ALL" || booking.status === statusFilter
-      return matchSearch && matchStatus
+      const matchPlayMode =
+        playModeFilter === "ALL" || getPlayMode(booking) === playModeFilter
+      return matchSearch && matchStatus && matchPlayMode
     })
     .sort((a: any, b: any) => {
       const priorityDiff = getStatusSortPriority(a) - getStatusSortPriority(b)
@@ -670,12 +689,12 @@ export default function StaffTodayBookingsPage() {
       <StaffHeader
         title={
           activeTab === "LIST"
-            ? "Đặt Lịch Trong Ngày"
+            ? "Quản Lý Đặt Lịch"
             : "Đăng Ký Khách Vãng Lai"
         }
         subtitle={
           activeTab === "LIST"
-            ? "Quản lý check-in, giám sát tiến độ hoạt động các lượt đua trong ca trực"
+            ? "Tra cứu lịch đã qua, hôm nay và các lượt đặt sắp tới của cơ sở"
             : "Thiết lập nhanh ca đua trực tiếp cho khách hàng vãng lai thanh toán tại quầy"
         }
       />
@@ -694,7 +713,7 @@ export default function StaffTodayBookingsPage() {
               : "border-transparent text-[#6b7280] hover:text-[#1c1b1b]",
           )}
         >
-          Lịch đặt hôm nay
+          Lịch đặt
         </button>
         <button
           onClick={() => {
@@ -716,6 +735,35 @@ export default function StaffTodayBookingsPage() {
       {/* 3. TODAY BOOKINGS LIST VIEW */}
       {activeTab === "LIST" && (
         <div className="space-y-4">
+          <StaffCard className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#a09e9d]">Ngày xem lịch</p>
+              <p className="mt-1 text-base font-extrabold capitalize text-[#1c1b1b]">{listDateLabel}</p>
+              {listDate === todayDate && (
+                <p className="mt-0.5 text-xs font-semibold text-emerald-700">Đang hiển thị lịch hôm nay</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StaffButton type="button" size="sm" variant="outline" onClick={() => shiftListDate(-1)}>
+                Hôm trước
+              </StaffButton>
+              <input
+                type="date"
+                value={listDate}
+                onChange={(event) => setListDate(event.target.value)}
+                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-2 text-xs font-bold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none"
+              />
+              <StaffButton type="button" size="sm" variant="outline" onClick={() => shiftListDate(1)}>
+                Hôm sau
+              </StaffButton>
+              {listDate !== todayDate && (
+                <StaffButton type="button" size="sm" onClick={() => setListDate(todayDate)}>
+                  Hôm nay
+                </StaffButton>
+              )}
+            </div>
+          </StaffCard>
+
           {/* SEARCH & FILTERS BAR */}
           <div className="flex flex-col md:flex-row gap-3">
             <div className="relative flex-1">
@@ -753,6 +801,28 @@ export default function StaffTodayBookingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#e5e2e1] bg-white p-2">
+            <span className="px-1.5 text-xs font-bold text-[#6b7280]">Hình thức chơi</span>
+            {[
+              { code: "ALL", label: "Tất cả loại đơn" },
+              { code: "RENTAL", label: "Thuê xe của quán" },
+              { code: "BYOC", label: "Mang xe cá nhân" },
+            ].map((filter) => (
+              <button
+                key={filter.code}
+                onClick={() => setPlayModeFilter(filter.code as "ALL" | "RENTAL" | "BYOC")}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
+                  playModeFilter === filter.code
+                    ? "bg-[#ea580c] text-white shadow-sm"
+                    : "text-[#6b7280] hover:bg-[#fcf8f8] hover:text-[#1c1b1b]",
+                )}
+              >
+                {filter.label}
+              </button>
+            ))}
           </div>
 
           {/* QR CHECK-IN PANEL */}
@@ -881,6 +951,12 @@ export default function StaffTodayBookingsPage() {
                               : "Xe tự mang"}
                           </p>
                         </div>
+                        {qrBookingData.status === "CONFIRMED" &&
+                          isCheckInDeadlineExpired(qrBookingData.slotStart) && (
+                            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                              Đơn đã quá thời hạn check-in 30 phút kể từ giờ bắt đầu.
+                            </div>
+                          )}
                         {qrBookingData.status !== "CONFIRMED" && (
                           <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
                             {qrBookingData.status === "COMPLETED"
@@ -895,6 +971,7 @@ export default function StaffTodayBookingsPage() {
                           </div>
                         )}
                         {qrBookingData.status === "CONFIRMED" &&
+                          !isCheckInDeadlineExpired(qrBookingData.slotStart) &&
                           qrBookingData.session && (
                             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
                               Đã check-in lúc{" "}
@@ -907,6 +984,7 @@ export default function StaffTodayBookingsPage() {
                             </div>
                           )}
                         {qrBookingData.status === "CONFIRMED" &&
+                          !isCheckInDeadlineExpired(qrBookingData.slotStart) &&
                           !qrBookingData.session && (
                             <StaffButton
                               onClick={() => handleStartCheckIn(qrBookingData)}
@@ -958,6 +1036,10 @@ export default function StaffTodayBookingsPage() {
                       ].includes(session.status),
                     )
                   : undefined
+                const checkInWindowExpired =
+                  b.status === "CONFIRMED" &&
+                  isCheckInDeadlineExpired(slotStart) &&
+                  (!activeSession || activeSession.status === "CHECKED_IN")
                 const completedSession =
                   b.status === "COMPLETED"
                     ? b.sessions?.find(
@@ -984,24 +1066,26 @@ export default function StaffTodayBookingsPage() {
                     : "HOÀN THÀNH",
                   CANCELLED: "ĐÃ HỦY",
                 }
-                const displayLabel = activeSession
+                const displayLabel = checkInWindowExpired
+                  ? "QUÁ GIỜ CHECK-IN"
+                  : activeSession
                   ? (sessionStatusLabel[activeSession.status] ??
                     activeSession.status)
                   : (bookingStatusLabel[b.status] ?? b.status)
                 const badgeVariant =
-                  activeSession?.status === "ACTIVE" ||
-                  activeSession?.status === "EXTENDING"
-                    ? "success"
-                    : activeSession?.status === "CHECKED_IN" ||
-                        activeSession?.status === "CHECKING_OUT"
-                      ? "warning"
-                      : b.status === "CONFIRMED"
-                        ? "info"
-                        : b.status === "COMPLETED" && !hasPendingSettlement
-                          ? "success"
-                          : b.status === "CANCELLED" || b.status === "NO_SHOW"
-                            ? "neutral"
-                            : "warning"
+                  checkInWindowExpired
+                    ? "neutral"
+                    : activeSession?.status === "ACTIVE" || activeSession?.status === "EXTENDING"
+                      ? "success"
+                      : activeSession?.status === "CHECKED_IN" || activeSession?.status === "CHECKING_OUT"
+                        ? "warning"
+                        : b.status === "CONFIRMED"
+                          ? "info"
+                          : b.status === "COMPLETED" && !hasPendingSettlement
+                            ? "success"
+                            : b.status === "CANCELLED" || b.status === "NO_SHOW"
+                              ? "neutral"
+                              : "warning"
 
                 const hasFnb = fnbAmount > 0
                 const hasOnsiteFnb = fnbOnsiteAmount > 0
@@ -1046,7 +1130,7 @@ export default function StaffTodayBookingsPage() {
                         )}
                       </div>
                       <Link
-                        to={`/booking/${bookingId}`}
+                        to={routePaths.staffBookingDetail.replace(":bookingId", bookingId)}
                         className="flex items-center justify-center size-7 rounded-lg border border-[#e5e2e1] bg-white hover:bg-[#fcf8f8] text-[#6b7280] hover:text-[#1c1b1b] transition-colors shrink-0"
                       >
                         <ChevronRight className="size-3.5" />
@@ -1107,7 +1191,7 @@ export default function StaffTodayBookingsPage() {
                       )}
                       <span className="flex items-center gap-1.5">
                         <Tag className="size-3 text-[#ea580c]/70 shrink-0" />
-                        {playMode === "BYOC" ? "Tự mang xe" : "Thuê xe"}
+                        {playMode === "BYOC" ? "Mang xe cá nhân" : "Thuê xe của quán"}
                       </span>
                     </div>
 
@@ -1136,7 +1220,11 @@ export default function StaffTodayBookingsPage() {
                         </span>
                       )}
                       <div className="ml-auto">
-                        {activeSession ? (
+                        {checkInWindowExpired ? (
+                          <StaffButton disabled variant="outline" size="sm">
+                            Quá giờ check-in
+                          </StaffButton>
+                        ) : activeSession ? (
                           <StaffButton
                             onClick={() =>
                               navigate(
