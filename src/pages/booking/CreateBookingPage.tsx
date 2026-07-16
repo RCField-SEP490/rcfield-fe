@@ -185,6 +185,7 @@ export function CreateBookingPage() {
   const [date, setDate] = useState(
     searchParams.get("date") ?? getVietnamToday(),
   )
+  const [bookingCalendarStart] = useState(getVietnamToday)
   const [time, setTime] = useState(
     searchParams.get("slot") ?? bookingCatalog.timeOptions[0],
   )
@@ -791,6 +792,8 @@ export function CreateBookingPage() {
               onSelectTrack={setSelectedTrackConfig}
               slotDurationMinutes={slotDurationMinutes}
               minBookingNoticeMinutes={cafe.minBookingNoticeMinutes ?? 0}
+              minBookingDate={bookingCalendarStart}
+              maxAdvanceBookingDays={isMockId ? 30 : (realCafe?.maxAdvanceBookingDays ?? 0)}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
               onPlayModeChange={handlePlayModeChange}
               effectivePricePerHour={

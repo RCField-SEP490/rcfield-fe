@@ -1,4 +1,5 @@
 import { api } from '@/shared/lib/axios'
+import { sanitizeImageUrl } from '@/shared/lib/utils'
 import type {
   AvailabilityResponse,
   BookingListResponse,
@@ -57,7 +58,14 @@ export const bookingApi = {
 
   getBooking: async (id: string): Promise<BookingResponse> => {
     const res = await api.get<ApiEnvelope<BookingResponse>>(`/v1/bookings/${id}`)
-    return res.data.data
+    const booking = res.data.data
+    return {
+      ...booking,
+      vehicles: booking.vehicles.map((vehicle) => ({
+        ...vehicle,
+        coverImageUrl: sanitizeImageUrl(vehicle.coverImageUrl),
+      })),
+    }
   },
 
   listMyBookings: async (params: ListMyBookingsParams = {}): Promise<BookingListResponse> => {

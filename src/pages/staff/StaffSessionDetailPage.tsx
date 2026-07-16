@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useParams, useNavigate } from "react-router"
+import { useQuery } from "@tanstack/react-query"
 import {
   Clock,
   Car,
@@ -29,6 +30,36 @@ import {
   StaffBadge,
   StaffButton,
 } from "./components/StaffUI"
+import type {
+  CustomerBookingDetail,
+  MockDamageClaim,
+  MockSessionDetail,
+} from "@/shared/data/customer-operational-mock-data"
+
+type SessionView = Omit<MockSessionDetail, "damageClaim"> & {
+  damageClaim?: MockDamageClaim & {
+    finalCharge?: number
+    damageMultiplier?: number
+  }
+}
+
+type ApiBooking = Partial<CustomerBookingDetail> & {
+  id?: string
+  cafe?: { id?: string; name?: string; address?: string; phone?: string }
+  track?: { name?: string; type?: string }
+  mode?: CustomerBookingDetail["playMode"]
+  paymentComponents?: CustomerBookingDetail["payment_components"]
+}
+
+type SessionApiData = Partial<SessionView> & {
+  sessionId?: string
+  id?: string
+  bookingId?: string
+  actualStartAt?: string
+  actualEndAt?: string
+  slotEnd?: string
+  booking?: ApiBooking
+}
 
 export default function StaffSessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -47,43 +78,39 @@ export default function StaffSessionDetailPage() {
   const contextSession = sessions.find((s) => s.sessionId === sessionId)
   const contextBooking = contextSession ? bookings.find((b) => b.bookingId === contextSession.bookingId) : null
 
-  // API fallback: fetch directly when context doesn't have the session
-  const [apiData, setApiData] = useState<any>(null)
-  const [apiLoading, setApiLoading] = useState(!contextSession)
-
-  useEffect(() => {
-    if (contextSession || !sessionId) return
-    setApiLoading(true)
-    staffApi.getSessionDetail(sessionId)
-      .then((data) => setApiData(data))
-      .catch(() => setApiData(null))
-      .finally(() => setApiLoading(false))
-  }, [sessionId, contextSession?.sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // API fallback: completed and historical sessions are not necessarily in the
+  // operations context, so fetch their full detail directly.
+  const { data: apiData, isLoading: apiLoading } = useQuery<SessionApiData>({
+    queryKey: ["staff", "session-detail", sessionId],
+    queryFn: () => staffApi.getSessionDetail(sessionId!) as Promise<SessionApiData>,
+    enabled: Boolean(sessionId && !contextSession),
+    retry: false,
+  })
 
   // Merge: prefer context data, fall back to normalized API data
-  const session: any = contextSession ?? (apiData ? {
-    sessionId: apiData.sessionId ?? apiData.id ?? sessionId,
-    bookingId: apiData.bookingId ?? apiData.booking?.bookingId ?? apiData.booking?.id,
-    status: apiData.status,
+  const session = useMemo<SessionView | null>(() => contextSession ?? (apiData ? {
+    sessionId: apiData.sessionId ?? apiData.id ?? sessionId ?? "",
+    bookingId: apiData.bookingId ?? apiData.booking?.bookingId ?? "",
+    status: apiData.status ?? "COMPLETED",
     staffName: apiData.staffName ?? "",
     actualStart: apiData.actualStartAt ?? apiData.actualStart,
     actualEnd: apiData.actualEndAt ?? apiData.actualEnd,
-    plannedEnd: apiData.plannedEnd ?? apiData.slotEnd,
+    plannedEnd: apiData.plannedEnd ?? apiData.slotEnd ?? "",
     participants: apiData.participants ?? [],
     vehicles: apiData.vehicles ?? [],
     inspections: apiData.inspections ?? [],
-    extensionProposal: apiData.extensionProposal ?? null,
+    extensionProposal: apiData.extensionProposal,
     approvedExtensionFee: apiData.approvedExtensionFee,
     approvedExtensionMinutes: apiData.approvedExtensionMinutes,
     approvedExtensions: apiData.approvedExtensions ?? [],
     extensionPricingOptions: apiData.extensionPricingOptions ?? [],
-    damageClaim: apiData.damageClaim ?? null,
+    damageClaim: apiData.damageClaim,
     fnbOrders: apiData.fnbOrders ?? [],
-  } : null)
+  } : null), [apiData, contextSession, sessionId])
 
   const apiBooking = apiData?.booking
-  const booking: any = contextBooking ?? (apiBooking ? {
-    bookingId: apiBooking.bookingId ?? apiBooking.id,
+  const booking = useMemo<CustomerBookingDetail | null>(() => contextBooking ?? (apiBooking ? {
+    bookingId: apiBooking.bookingId ?? apiBooking.id ?? "",
     shortCode: apiBooking.shortCode ?? "",
     cafeId: apiBooking.cafeId ?? apiBooking.cafe?.id ?? "",
     cafeName: apiBooking.cafeName ?? apiBooking.cafe?.name ?? "",
@@ -109,7 +136,7 @@ export default function StaffSessionDetailPage() {
     plannedParticipants: apiBooking.plannedParticipants ?? [],
     plannedVehicles: apiBooking.plannedVehicles ?? [],
     sessions: [],
-  } : null)
+  } : null), [apiBooking, contextBooking])
 
   const isWalkInBooking = booking?.source === "STAFF_MANUAL"
   const canDirectExtend = isWalkInBooking
@@ -176,8 +203,8 @@ export default function StaffSessionDetailPage() {
 
   // Fetch live checkout inspection data for COMPLETED/CHECKING_OUT sessions
   useEffect(() => {
-    if (!sessionId || !session) return
-    if (session.status !== "COMPLETED" && session.status !== "CHECKING_OUT") return
+    const sessionStatus = session?.status
+    if (!sessionId || (sessionStatus !== "COMPLETED" && sessionStatus !== "CHECKING_OUT")) return
     staffApi.getSessionDetail(sessionId)
       .then((data) => {
         if (data.checkoutInspection) {

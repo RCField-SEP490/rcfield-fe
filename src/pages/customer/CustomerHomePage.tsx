@@ -127,7 +127,7 @@ function UpcomingBookingCard({ booking }: { booking: BookingListItem }) {
             {meta.label}
           </span>
           <Badge variant="outline" className={cn("text-[10px] font-bold border-none", booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-700" : "bg-sky-100 text-sky-700")}>
-            {booking.playMode === "RENTAL" ? "Thuê xe" : "Xe riêng"}
+            {booking.playMode === "RENTAL" ? "Thuê xe của quán" : "Mang xe cá nhân"}
           </Badge>
         </div>
         <p className="text-sm font-bold text-slate-800 truncate">{dateLabel} · {timeLabel}</p>

@@ -24,6 +24,8 @@ import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
 import type { BookingResponse, PaymentComponentType } from "@/features/booking/types/booking.types"
 import type { MockInspection } from "@/shared/data/customer-operational-mock-data"
+import { VehicleImage } from "@/shared/ui/vehicle-image"
+import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -67,6 +69,10 @@ const DIRECTION_LABEL: Record<string, string> = {
   BACK: "Sau",
   LEFT: "Trái",
   RIGHT: "Phải",
+  TOP: "Từ trên",
+  BOTTOM: "Từ dưới",
+  DETAIL: "Cận cảnh",
+  OTHER: "Ảnh tình trạng xe",
 }
 
 const PART_TYPE_LABELS: Record<string, string> = {
@@ -170,8 +176,10 @@ export function CustomerBookingDetailPage() {
 
   // ── Derived display data ────────────────────────────────────────────────────
 
-  const statusConfig = STATUS_CONFIG[booking.status]
-  const isPaid = ["CONFIRMED", "COMPLETED", "NO_SHOW"].includes(booking.status)
+  const checkInWindowExpired = hasExpiredCheckInWindow(booking)
+  const effectiveStatus = checkInWindowExpired ? "NO_SHOW" : booking.status
+  const statusConfig = STATUS_CONFIG[effectiveStatus]
+  const isPaid = ["CONFIRMED", "COMPLETED", "NO_SHOW"].includes(effectiveStatus)
 
   const slotFee = sumComponents(booking.payment_components, "SLOT_FEE")
   const rentalFee = sumComponents(booking.payment_components, "RENTAL_FEE")
@@ -201,6 +209,7 @@ export function CustomerBookingDetailPage() {
   const checkOutInspection = inspectionsWithPhotos.find((i) => i.type === "CHECK_OUT")
 
   const isLiveSession =
+    !checkInWindowExpired &&
     sessionDetail && ["ACTIVE", "EXTENDING", "CHECKED_IN", "CHECKING_OUT"].includes(sessionDetail.status)
 
   return (
@@ -370,13 +379,14 @@ export function CustomerBookingDetailPage() {
                     <div className="space-y-2">
                       {vehicleItems.map((v) => (
                         <div key={v.id} className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-2xs">
-                          {v.coverImageUrl ? (
-                            <img src={v.coverImageUrl} alt="" className="h-8 w-8 rounded-lg object-cover shrink-0" />
-                          ) : (
-                            <div className="h-8 w-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
-                              <Car className="h-4 w-4" />
-                            </div>
-                          )}
+                          <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0">
+                            <VehicleImage
+                              imageUrl={v.coverImageUrl}
+                              alt={v.catalogName ?? "Xe thuê"}
+                              className="h-full w-full object-cover"
+                              iconClassName="h-4 w-4"
+                            />
+                          </div>
                           <div>
                             <p className="text-xs font-extrabold text-slate-900">
                               {[v.catalogName, v.identifier].filter(Boolean).join(" · ")}
@@ -392,7 +402,7 @@ export function CustomerBookingDetailPage() {
             </Card>
 
             {/* Session summary */}
-            {booking.session && (
+            {booking.session && !checkInWindowExpired && (
               <Card className="border-slate-200/80 shadow-sm bg-white">
                 <CardHeader className="pb-3 border-b border-slate-100">
                   <CardTitle className="text-sm font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
@@ -442,7 +452,7 @@ export function CustomerBookingDetailPage() {
               </Card>
             )}
 
-            {!booking.session && (
+            {(!booking.session || checkInWindowExpired) && (
               <Card className="border-slate-200/80 shadow-sm bg-white">
                 <CardContent className="p-8 text-center space-y-2 border border-dashed border-slate-200 rounded-xl m-4">
                   <HelpCircle className="h-8 w-8 text-slate-300 mx-auto" />

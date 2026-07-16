@@ -8,6 +8,7 @@ import {
   CreditCard,
   Loader2,
   ChevronRight,
+  Car,
 } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
@@ -18,8 +19,10 @@ import { CustomerPageShell } from "./components/CustomerPageShell"
 import { ReviewReminderBanner } from "@/features/booking-review/components/ReviewReminderBanner"
 import { useMyBookings, useCancelBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
 import type { BookingStatus } from "@/features/booking/types/booking.types"
+import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
 type FilterKey = "all" | BookingStatus
+type PlayModeFilter = "all" | "RENTAL" | "BYOC"
 
 const STATUS_LABELS: Record<BookingStatus, { label: string; badge: string }> = {
   PENDING: { label: "Chờ thanh toán", badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" },
@@ -46,8 +49,15 @@ const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "CANCELLED", label: "Đã hủy" },
 ]
 
+const PLAY_MODE_FILTERS: Array<{ key: PlayModeFilter; label: string }> = [
+  { key: "all", label: "Tất cả loại đơn" },
+  { key: "RENTAL", label: "Thuê xe của quán" },
+  { key: "BYOC", label: "Mang xe cá nhân" },
+]
+
 export function CustomerBookingsPage() {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
+  const [playModeFilter, setPlayModeFilter] = useState<PlayModeFilter>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
   const [resumingId, setResumingId] = useState<string | null>(null)
@@ -57,9 +67,15 @@ export function CustomerBookingsPage() {
     setCurrentPage(1)
   }
 
+  const handlePlayModeFilterChange = (filter: PlayModeFilter) => {
+    setPlayModeFilter(filter)
+    setCurrentPage(1)
+  }
+
   const PAGE_SIZE = 10
   const status = activeFilter === "all" ? undefined : activeFilter
-  const { data, isLoading } = useMyBookings({ status, page: currentPage, limit: PAGE_SIZE })
+  const play_mode = playModeFilter === "all" ? undefined : playModeFilter
+  const { data, isLoading } = useMyBookings({ status, play_mode, page: currentPage, limit: PAGE_SIZE })
   const cancelMutation = useCancelBooking()
   const checkoutMutation = useCreateCheckout()
 
@@ -119,6 +135,27 @@ export function CustomerBookingsPage() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2.5">
+        <span className="inline-flex items-center gap-1.5 px-1.5 text-xs font-extrabold text-slate-600">
+          <Car className="h-3.5 w-3.5 text-orange-500" />
+          Hình thức chơi
+        </span>
+        {PLAY_MODE_FILTERS.map((filter) => (
+          <button
+            key={filter.key}
+            onClick={() => handlePlayModeFilterChange(filter.key)}
+            className={cn(
+              "rounded-xl px-3 py-1.5 text-xs font-bold transition-colors",
+              playModeFilter === filter.key
+                ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20"
+                : "text-slate-600 hover:bg-orange-50 hover:text-orange-700",
+            )}
+          >
+            {filter.label}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="py-16 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
       ) : bookings.length === 0 ? (
@@ -132,7 +169,10 @@ export function CustomerBookingsPage() {
           <div className="rounded-xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100">
             {bookings.map((booking) => {
               const sessStatus = booking.session?.status
-              const sessionOverride: { label: string; badge: string } | null = sessStatus === "ACTIVE"
+              const checkInExpired = hasExpiredCheckInWindow(booking)
+              const sessionOverride: { label: string; badge: string } | null = checkInExpired
+                ? null
+                : sessStatus === "ACTIVE"
                 ? { label: "Đang chơi",      badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" }
                 : sessStatus === "EXTENDING"
                 ? { label: "Đang gia hạn",   badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" }
@@ -141,13 +181,14 @@ export function CustomerBookingsPage() {
                 : sessStatus === "CHECKING_OUT"
                 ? { label: "Đang checkout",  badge: "bg-blue-100 text-blue-800 border-none font-bold text-xs" }
                 : null
-              const statusInfo = sessionOverride ?? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING)
-              const accentOverride = sessStatus === "ACTIVE" || sessStatus === "EXTENDING"
+              const effectiveStatus = checkInExpired ? "NO_SHOW" : booking.status
+              const statusInfo = sessionOverride ?? (STATUS_LABELS[effectiveStatus] ?? STATUS_LABELS.PENDING)
+              const accentOverride = !checkInExpired && (sessStatus === "ACTIVE" || sessStatus === "EXTENDING")
                 ? "bg-orange-400"
-                : sessStatus === "CHECKED_IN" || sessStatus === "CHECKING_OUT"
+                : !checkInExpired && (sessStatus === "CHECKED_IN" || sessStatus === "CHECKING_OUT")
                 ? "bg-amber-400"
                 : null
-              const accent = accentOverride ?? (ACCENT[booking.status] ?? "bg-slate-300")
+              const accent = accentOverride ?? (ACCENT[effectiveStatus] ?? "bg-slate-300")
               const slotStart = new Date(booking.slotStart)
               const slotEnd = new Date(booking.slotEnd)
               const shortId = booking.id.substring(0, 8).toUpperCase()
@@ -175,7 +216,7 @@ export function CustomerBookingsPage() {
                         {slotEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
                       </span>
                       <Badge className={cn("text-[10px] border-none font-bold shrink-0", booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700")}>
-                        {booking.playMode === "RENTAL" ? "Thuê xe" : "Xe riêng"}
+                        {booking.playMode === "RENTAL" ? "Thuê xe của quán" : "Mang xe cá nhân"}
                       </Badge>
                       {booking.status === "PENDING" && booking.paymentExpiresAt && (
                         <span className="flex items-center gap-1 text-amber-600 font-semibold ml-2">

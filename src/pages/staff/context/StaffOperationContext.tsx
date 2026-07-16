@@ -65,7 +65,7 @@ export interface StaffOperationContextType {
     staffNotes: string,
     damageFlagged: boolean,
     damageLineItems?: DamageLineItemInput[]
-  ) => Promise<void>
+  ) => Promise<boolean>
   proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => void
   addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => void
   updateFnbOrderStatus: (orderId: string, status: FnbOrder["status"]) => void
@@ -228,6 +228,8 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
             ? `Khung giờ ${new Date(bookingData.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
             : undefined,
         })
+        void fetchData()
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.bookingLists() })
         void queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() })
         return
       }
@@ -391,7 +393,11 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         participants: data.participants,
       })
       toast.success(`Tạo đơn đặt lịch trực tiếp ${res.bookingCode || ""} thành công!`)
-      await fetchData()
+      await Promise.all([
+        fetchData(),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.bookingLists() }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() }),
+      ])
       return true
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; errors?: { message: string }[] } }; message?: string }
@@ -399,7 +405,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       toast.error(`Lỗi khi tạo đơn: ${msg}`)
       return false
     }
-  }, [fetchData])
+  }, [fetchData, queryClient])
 
   const startCheckIn = useCallback(async (bookingId: string) => {
     try {
@@ -453,9 +459,10 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         }
       }
       await fetchData()
+      return true
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể gửi báo cáo kiểm xe")
-      throw err
+      return false
     }
   }, [fetchData])
 

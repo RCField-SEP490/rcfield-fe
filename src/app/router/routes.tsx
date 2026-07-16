@@ -212,6 +212,7 @@ export const router = createBrowserRouter([
           { path: routePaths.staffContestCheckIn, element: <StaffContestCheckInPage /> },
           { path: routePaths.staffContestRuntime, element: <StaffContestRuntimePage /> },
           { path: routePaths.staffTodayBookings, element: <StaffTodayBookingsPage /> },
+          { path: routePaths.staffBookingDetail, element: <BookingDetailPage /> },
           { path: routePaths.staffSessionDetail, element: <StaffSessionDetailPage /> },
           { path: routePaths.staffInspection, element: <StaffInspectionPage /> },
           { path: routePaths.staffCheckoutSummary, element: <StaffCheckoutSummaryPage /> },

@@ -15,6 +15,12 @@ import { SlotPriceLabel } from "@/shared/components/SlotPriceLabel"
 
 type PlayMode = "RENTAL" | "BYOC"
 
+function addCalendarDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number)
+  const result = new Date(Date.UTC(year, month - 1, day + days))
+  return result.toISOString().slice(0, 10)
+}
+
 interface TrackSelectionStepProps {
   cafeId: string
   date: string
@@ -27,6 +33,8 @@ interface TrackSelectionStepProps {
   onSelectTrack: (config: TrackConfig) => void
   slotDurationMinutes: number
   minBookingNoticeMinutes?: number
+  minBookingDate: string
+  maxAdvanceBookingDays: number
   openHour: number
   closeHour: number
   isScheduleConfigured: boolean
@@ -50,6 +58,8 @@ export function TrackSelectionStep({
   onSelectTrack,
   slotDurationMinutes,
   minBookingNoticeMinutes = 0,
+  minBookingDate,
+  maxAdvanceBookingDays,
   openHour,
   closeHour,
   isScheduleConfigured,
@@ -134,6 +144,8 @@ export function TrackSelectionStep({
           setSelectedSlotEnd={setSelectedSlotEnd}
           slotDurationMinutes={slotDurationMinutes}
           minBookingNoticeMinutes={minBookingNoticeMinutes}
+          minBookingDate={minBookingDate}
+          maxAdvanceBookingDays={maxAdvanceBookingDays}
           openHour={openHour}
           closeHour={closeHour}
           playMode={playMode}
@@ -166,6 +178,8 @@ function SlotPicker({
   setSelectedSlotEnd,
   slotDurationMinutes,
   minBookingNoticeMinutes = 0,
+  minBookingDate,
+  maxAdvanceBookingDays,
   openHour,
   closeHour,
   playMode,
@@ -181,6 +195,8 @@ function SlotPicker({
   setSelectedSlotEnd: (s: string | null) => void
   slotDurationMinutes: number
   minBookingNoticeMinutes?: number
+  minBookingDate: string
+  maxAdvanceBookingDays: number
   openHour: number
   closeHour: number
   playMode: PlayMode
@@ -201,6 +217,7 @@ function SlotPicker({
 
   const hasRental = trackConfig.max_concurrent > 0
   const hasByoc = trackConfig.byoc_capacity > 0
+  const maxBookingDate = addCalendarDays(minBookingDate, maxAdvanceBookingDays)
 
   return (
     <div className="rounded-xl border border-orange-100 bg-orange-50/30 p-4 space-y-4">
@@ -262,7 +279,8 @@ function SlotPicker({
         <Input
           type="date"
           value={date}
-          min={new Date().toLocaleDateString("sv-SE")}
+          min={minBookingDate}
+          max={maxBookingDate}
           onChange={(e) => {
             setDate(e.target.value)
             setSelectedSlot("")
@@ -271,6 +289,9 @@ function SlotPicker({
           className="h-8 w-auto text-xs"
         />
       </label>
+      <p className="-mt-2 text-[11px] font-medium text-muted-foreground">
+        Có thể đặt lịch đến hết ngày {new Date(`${maxBookingDate}T00:00:00`).toLocaleDateString("vi-VN")}.
+      </p>
 
       <div
         className={cn(

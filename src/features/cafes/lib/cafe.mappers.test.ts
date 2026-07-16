@@ -92,6 +92,7 @@ function buildBackendCafe(): BackendCafe {
     slotFeeRate: 150000,
     maxConcurrentBookings: 8,
     minBookingNoticeMinutes: 30,
+    maxAdvanceBookingDays: 30,
     byocCapacity: 4,
     rating: 4.7,
     reviewsCount: 38,

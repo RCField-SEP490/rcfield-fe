@@ -39,6 +39,7 @@ const defaultValues: ProviderCafeFormValues = {
   slot_fee_rate: 50000,
   max_concurrent_bookings: 6,
   min_booking_notice_minutes: 30,
+  max_advance_booking_days: 30,
   byoc_capacity: 3,
 }
 
@@ -100,6 +101,7 @@ export function ProviderCafeFormDialog({
         slot_fee_rate: Number(cafe.slotFeeRate),
         max_concurrent_bookings: cafe.maxConcurrentBookings,
         min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
+        max_advance_booking_days: cafe.maxAdvanceBookingDays,
         byoc_capacity: cafe.byocCapacity,
       })
       setFiles([])
@@ -189,6 +191,7 @@ export function ProviderCafeFormDialog({
                 <NumberField label="Phí slot" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} />
                 <NumberField label="Thời lượng slot" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} />
                 <NumberField label="Báo trước phút" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />
+                <NumberField label="Đặt trước tối đa (ngày)" value={values.max_advance_booking_days} onChange={(value) => setField("max_advance_booking_days", value ?? 1)} min={1} max={365} />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -329,12 +332,14 @@ function NumberField({
   value,
   onChange,
   min,
+  max,
   step = "1",
 }: {
   label: string
   value: number | ""
   onChange: (value: number | null) => void
   min?: number
+  max?: number
   step?: string
 }) {
   return (
@@ -344,6 +349,7 @@ function NumberField({
         type="number"
         value={value}
         min={min}
+        max={max}
         step={step}
         onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))}
         className="rounded-lg border-[#c4c7c8]"
