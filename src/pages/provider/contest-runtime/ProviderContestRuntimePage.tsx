@@ -12,9 +12,12 @@ import {
 import { getContestStatusClass } from "@/features/contests/lib/contest-status"
 import type {
   ContestEntryFeePaymentStatus,
+  ContestMatch,
+  ContestMatchParticipant,
   ContestMatchStatus,
   ContestRegistrationStatus,
   ContestRuntimeTab,
+  ContestUpdateMatchParticipantsBody,
 } from "@/features/contests/types"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
 import { ContestEventDayPanel } from "./components/ContestEventDayPanel"
@@ -64,12 +67,22 @@ export function ProviderContestRuntimePage() {
   const eventDay = useContestEventDay(contestId)
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
   const [selectedCafeId, setSelectedCafeId] = useState("")
+  const [stagedParticipantsByMatch, setStagedParticipantsByMatch] = useState<
+    Record<string, ContestUpdateMatchParticipantsBody["participants"]>
+  >({})
+  const [stagedHistory, setStagedHistory] = useState<
+    Array<Record<string, ContestUpdateMatchParticipantsBody["participants"]>>
+  >([])
 
   const contest = runtime.contestQuery.data
   const registrations = runtime.registrationsQuery.data ?? []
-  const matches = useMemo(
+  const apiMatches = useMemo(
     () => runtime.matchesQuery.data ?? [],
     [runtime.matchesQuery.data],
+  )
+  const matches = useMemo(
+    () => applyStagedParticipants(apiMatches, stagedParticipantsByMatch),
+    [apiMatches, stagedParticipantsByMatch],
   )
   const metrics = runtime.metricsQuery.data
   const auditLogs = runtime.auditLogsQuery.data ?? []
@@ -85,6 +98,7 @@ export function ProviderContestRuntimePage() {
       "KNOCKOUT",
   )
   const isKnockoutRuntime = runtimeFormat === "KNOCKOUT"
+  const hasStagedBracketChanges = Object.keys(stagedParticipantsByMatch).length > 0
 
   useEffect(() => {
     if (contest && !selectedCafeId) {
@@ -103,6 +117,13 @@ export function ProviderContestRuntimePage() {
       queueMicrotask(() => setSelectedMatchId(matches[0].id))
     }
   }, [matches, selectedMatchId])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setStagedParticipantsByMatch({})
+      setStagedHistory([])
+    })
+  }, [contestId])
 
   const handlePublishLeaderboard = async () => {
     try {
@@ -123,6 +144,89 @@ export function ProviderContestRuntimePage() {
       })
     } catch (error) {
       toast.error("Không thể sync global race records", {
+        description: getErrorMessage(error).message,
+      })
+    }
+  }
+
+  const stageParticipantAdvance = (sourceMatchId: string, targetMatchId: string, registrationId: string) => {
+    const sourceMatch = matches.find((match) => match.id === sourceMatchId)
+    const targetMatch = matches.find((match) => match.id === targetMatchId)
+    if (!sourceMatch || !targetMatch) return
+    const participant = sourceMatch.participants.find(
+      (item) => item.registration_id === registrationId,
+    )
+    if (!participant) return
+    if (targetMatch.round_no <= sourceMatch.round_no) {
+      toast.error("Chỉ kéo thả sang vòng kế tiếp hoặc vòng sâu hơn")
+      return
+    }
+    if (targetMatch.status === "COMPLETED") {
+      toast.error("Không thể kéo thả vào trận đã hoàn tất")
+      return
+    }
+
+    setStagedParticipantsByMatch((current) => {
+      setStagedHistory((history) => [...history, current])
+      const currentTarget =
+        current[targetMatchId] ??
+        targetMatch.participants.map((item) => ({
+          registration_id: item.registration_id,
+          slot_no: item.slot_no,
+          lane: item.lane,
+          grid_position: item.grid_position,
+          seed_no: item.seed_no,
+        }))
+
+      const deduped = currentTarget.filter(
+        (item) => item.registration_id !== registrationId,
+      )
+      if (deduped.length >= 2) {
+        toast.error("Trận knockout chỉ nhận tối đa 2 người")
+        return current
+      }
+
+      const nextSlotNo = deduped.length + 1
+      return {
+        ...current,
+        [targetMatchId]: [
+          ...deduped,
+          {
+            registration_id: registrationId,
+            slot_no: nextSlotNo,
+            lane: `L${nextSlotNo}`,
+            grid_position: null,
+            seed_no: participant.seed_no,
+          },
+        ],
+      }
+    })
+  }
+
+  const undoStagedBracket = () => {
+    setStagedHistory((history) => {
+      const previous = history.at(-1)
+      if (!previous) return history
+      setStagedParticipantsByMatch(previous)
+      return history.slice(0, -1)
+    })
+  }
+
+  const commitStagedBracket = async () => {
+    const entries = Object.entries(stagedParticipantsByMatch)
+    if (entries.length === 0) return
+    try {
+      for (const [matchId, participants] of entries) {
+        await runtime.updateParticipantsMutation.mutateAsync({
+          matchId,
+          body: { participants },
+        })
+      }
+      setStagedParticipantsByMatch({})
+      setStagedHistory([])
+      toast.success("Đã áp dụng sơ đồ nhánh đấu")
+    } catch (error) {
+      toast.error("Không thể lưu sơ đồ nhánh đấu", {
         description: getErrorMessage(error).message,
       })
     }
@@ -163,6 +267,8 @@ export function ProviderContestRuntimePage() {
       <ProviderPageHeader
         title={contest.name}
         description="Khu vận hành riêng cho tiếp nhận thi đấu, nhánh đấu, bảng xếp hạng và nhật ký của giải đấu."
+        titleClassName="max-w-4xl text-2xl leading-tight md:text-3xl xl:text-4xl break-words"
+        contentClassName="xl:flex-row xl:items-center"
         actions={
           <>
             <Badge
@@ -389,6 +495,11 @@ export function ProviderContestRuntimePage() {
                   matches={matches}
                   selectedMatchId={selectedMatchId}
                   onSelectMatch={setSelectedMatchId}
+                  canUndo={stagedHistory.length > 0}
+                  hasChanges={hasStagedBracketChanges}
+                  onUndo={undoStagedBracket}
+                  onCommit={commitStagedBracket}
+                  onStageAdvance={stageParticipantAdvance}
                 />
               </div>
             ) : (
@@ -401,7 +512,12 @@ export function ProviderContestRuntimePage() {
                 runtime={runtime}
               />
             )}
-            <ContestMatchDetailPanel match={selectedMatch} runtime={runtime} />
+            <ContestMatchDetailPanel
+              match={selectedMatch}
+              runtime={runtime}
+              isKnockoutRuntime={isKnockoutRuntime}
+              hasPendingBracketChanges={hasStagedBracketChanges}
+            />
           </div>
         ) : null}
 
@@ -418,6 +534,55 @@ export function ProviderContestRuntimePage() {
       </div>
     </ProviderShell>
   )
+}
+
+function applyStagedParticipants(
+  matches: ContestMatch[],
+  staged: Record<string, ContestUpdateMatchParticipantsBody["participants"]>,
+) {
+  if (Object.keys(staged).length === 0) return matches
+  return matches.map((match) => {
+    const nextParticipants = staged[match.id]
+    if (!nextParticipants) return match
+    const currentByRegistration = new Map(
+      match.participants.map((participant) => [
+        participant.registration_id,
+        participant,
+      ]),
+    )
+    return {
+      ...match,
+      participants: nextParticipants.map((item) => {
+        const current = currentByRegistration.get(item.registration_id)
+        if (!current) {
+          return {
+            id: `staged-${match.id}-${item.registration_id}`,
+            registration_id: item.registration_id,
+            slot_no: item.slot_no,
+            lane: item.lane ?? null,
+            grid_position: item.grid_position ?? null,
+            seed_no: item.seed_no ?? null,
+            status: "READY" as ContestMatchParticipant["status"],
+            score: null,
+            finish_position: null,
+            best_lap_seconds: null,
+            total_time_seconds: null,
+            is_winner: false,
+            result_note: null,
+            metadata: { staged: true },
+            registration: null,
+          }
+        }
+        return {
+          ...current,
+          slot_no: item.slot_no,
+          lane: item.lane ?? null,
+          grid_position: item.grid_position ?? null,
+          seed_no: item.seed_no ?? null,
+        }
+      }),
+    }
+  })
 }
 
 function updateRuntimeSearchParams(

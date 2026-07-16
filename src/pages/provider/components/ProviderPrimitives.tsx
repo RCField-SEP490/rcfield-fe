@@ -60,10 +60,14 @@ export function ProviderPageHeader({
   title,
   description,
   actions,
+  titleClassName,
+  contentClassName,
 }: {
   title: string
   description: string
   actions?: ReactNode
+  titleClassName?: string
+  contentClassName?: string
   flush?: boolean
 }) {
   return (
@@ -72,9 +76,9 @@ export function ProviderPageHeader({
         "sticky top-0 z-40 flex w-full flex-col gap-4 border-b border-[#c4c7c8] bg-[#fcf8f8]/80 px-4 py-4 backdrop-blur-md md:px-6"
       )}
     >
-      <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className={cn("flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center", contentClassName)}>
         <div className="min-w-0 flex-1">
-          <h2 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl">{title}</h2>
+          <h2 className={cn("text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl", titleClassName)}>{title}</h2>
           <p className="mt-2 text-sm font-semibold text-[#444748]">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

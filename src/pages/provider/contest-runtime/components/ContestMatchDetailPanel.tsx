@@ -33,9 +33,13 @@ type RuntimeHook = ReturnType<typeof useContestRuntime>
 export function ContestMatchDetailPanel({
   match,
   runtime,
+  isKnockoutRuntime = false,
+  hasPendingBracketChanges = false,
 }: {
   match: ContestMatch | null
   runtime: RuntimeHook
+  isKnockoutRuntime?: boolean
+  hasPendingBracketChanges?: boolean
 }) {
   const [participants, setParticipants] = useState<
     Array<{
@@ -114,6 +118,9 @@ export function ContestMatchDetailPanel({
       </Panel>
     )
   }
+
+  const readyForResultEntry =
+    match.match_type === "TIME_ATTACK" ? match.participants.length >= 1 : match.participants.length >= 2
 
   const updateParticipantValue = (
     registrationId: string,
@@ -267,7 +274,11 @@ export function ContestMatchDetailPanel({
     <Panel>
       <PanelTitle
         title={match.name ?? `Vòng ${match.round_no} · Trận ${match.match_no}`}
-        subtitle="Sắp thứ tự thi đấu, nhập kết quả và chỉnh sửa khi cần."
+        subtitle={
+          isKnockoutRuntime
+            ? "Kéo thả người vào sơ đồ bên trái, lưu sơ đồ, rồi mới nhập kết quả."
+            : "Sắp thứ tự thi đấu, nhập kết quả và chỉnh sửa khi cần."
+        }
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -280,6 +291,7 @@ export function ContestMatchDetailPanel({
       </div>
 
       <div className="space-y-4">
+        {!isKnockoutRuntime ? (
         <section>
           <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">
             Thứ tự thi đấu
@@ -357,21 +369,6 @@ export function ContestMatchDetailPanel({
                         }
                       />
                     </Field>
-                    <Field label="Hạt giống">
-                      <Input
-                        type="number"
-                        value={participant.seed_no ?? ""}
-                        onChange={(event) =>
-                          updateParticipantValue(
-                            participant.registration_id,
-                            "seed_no",
-                            event.target.value
-                              ? Number(event.target.value)
-                              : null,
-                          )
-                        }
-                      />
-                    </Field>
                   </div>
                 </div>
               )
@@ -387,7 +384,58 @@ export function ContestMatchDetailPanel({
             </Button>
           </div>
         </section>
+        ) : (
+          <section className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+            <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">
+              Người thi đấu của trận này
+            </h4>
+            <div className="space-y-2">
+              {match.participants.length > 0 ? (
+                match.participants.map((participant) => (
+                  <div
+                    key={participant.registration_id}
+                    className="rounded-lg border border-[#e5e2e1] bg-white px-3 py-2"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-[#1c1b1b]">
+                        {getMatchParticipantName(participant)}
+                      </p>
+                      <DriverTitleChip
+                        label={participant.registration?.driver_title_label}
+                        className="px-2 py-0 text-[10px]"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-[#747878]">
+                      Slot {participant.slot_no} · {participant.status}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm font-semibold text-[#747878]">
+                  Chưa có người thi đấu nào cho trận này.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
 
+        {!readyForResultEntry ? (
+          <section className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-5">
+            <h4 className="text-sm font-extrabold text-[#1c1b1b]">
+              Chưa mở nhập kết quả
+            </h4>
+            <p className="mt-2 text-sm font-semibold text-[#747878]">
+              {isKnockoutRuntime
+                ? "Hãy kéo thả đủ 2 người vào trận này từ sơ đồ nhánh đấu rồi lưu sơ đồ trước."
+                : "Trận này chưa có đủ người thi đấu để nhập kết quả."}
+            </p>
+            {hasPendingBracketChanges ? (
+              <p className="mt-2 text-xs font-bold uppercase tracking-wider text-orange-700">
+                Bạn còn thay đổi sơ đồ chưa lưu.
+              </p>
+            ) : null}
+          </section>
+        ) : (
         <section>
           <h4 className="mb-2 text-sm font-extrabold text-[#1c1b1b]">
             Nhập kết quả
@@ -544,6 +592,7 @@ export function ContestMatchDetailPanel({
             ))}
           </div>
         </section>
+        )}
 
         <section className="space-y-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
           <Field label="Lý do cập nhật">
@@ -564,6 +613,7 @@ export function ContestMatchDetailPanel({
           <div className="flex flex-wrap gap-2">
             <Button
               className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+              disabled={!readyForResultEntry || hasPendingBracketChanges}
               onClick={() => void handleSubmitResults()}
             >
               Lưu kết quả
@@ -571,6 +621,7 @@ export function ContestMatchDetailPanel({
             <Button
               variant="outline"
               className="rounded-lg border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              disabled={!readyForResultEntry || hasPendingBracketChanges}
               onClick={() => void handleCorrectResults()}
             >
               Sửa kết quả
@@ -578,6 +629,7 @@ export function ContestMatchDetailPanel({
             <Button
               variant="outline"
               className="rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              disabled={!readyForResultEntry || hasPendingBracketChanges}
               onClick={() => void handleAdvance()}
             >
               Đẩy người thắng vào vòng sau

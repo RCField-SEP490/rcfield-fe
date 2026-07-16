@@ -5,21 +5,60 @@ import { getMatchStatusClass, getMatchStatusLabel } from "@/features/contests/li
 import type { ContestMatch } from "@/features/contests/types"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
 
 export function ContestKnockoutBracket({
   matches,
   selectedMatchId,
   onSelectMatch,
+  onStageAdvance,
+  onUndo,
+  onCommit,
+  canUndo,
+  hasChanges,
 }: {
   matches: ContestMatch[]
   selectedMatchId: string | null
   onSelectMatch: (matchId: string) => void
+  onStageAdvance: (
+    sourceMatchId: string,
+    targetMatchId: string,
+    registrationId: string,
+  ) => void
+  onUndo: () => void
+  onCommit: () => void
+  canUndo: boolean
+  hasChanges: boolean
 }) {
   const groups = useMemo(() => groupMatchesByRound(matches), [matches])
 
   return (
     <Panel>
-      <PanelTitle title="Sơ đồ nhánh đấu" subtitle="Theo dõi các vòng kiểu World Cup và chọn từng trận để nhập kết quả." />
+      <PanelTitle
+        title="Sơ đồ nhánh đấu"
+        subtitle="Kéo người đi tiếp sang trận kế tiếp, bấm lưu sơ đồ rồi mới nhập kết quả cho trận đã đủ người."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-lg"
+              disabled={!canUndo}
+              onClick={onUndo}
+            >
+              Back
+            </Button>
+            <Button
+              type="button"
+              className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+              disabled={!hasChanges}
+              onClick={onCommit}
+            >
+              Lưu sơ đồ
+            </Button>
+          </div>
+        }
+      />
 
       {groups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
@@ -58,11 +97,47 @@ export function ContestKnockoutBracket({
                       {[0, 1].map((index) => {
                         const participant = match.participants[index]
                         return (
-                          <div key={index} className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2">
+                          <div
+                            key={index}
+                            className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2"
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => {
+                              const payload = event.dataTransfer.getData("text/plain")
+                              if (!payload) return
+                              try {
+                                const parsed = JSON.parse(payload) as {
+                                  sourceMatchId: string
+                                  registrationId: string
+                                }
+                                onStageAdvance(
+                                  parsed.sourceMatchId,
+                                  match.id,
+                                  parsed.registrationId,
+                                )
+                              } catch {
+                                return
+                              }
+                            }}
+                          >
                             {participant ? (
                               <>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-bold text-[#1c1b1b]">{getMatchParticipantName(participant)}</p>
+                                  <p
+                                    className="text-sm font-bold text-[#1c1b1b]"
+                                    draggable={Boolean(match.next_match_id)}
+                                    onDragStart={(event) => {
+                                      event.dataTransfer.setData(
+                                        "text/plain",
+                                        JSON.stringify({
+                                          sourceMatchId: match.id,
+                                          registrationId:
+                                            participant.registration_id,
+                                        }),
+                                      )
+                                    }}
+                                  >
+                                    {getMatchParticipantName(participant)}
+                                  </p>
                                   <DriverTitleChip label={participant.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
                                 </div>
                                 <p className="mt-1 text-xs font-semibold text-[#747878]">
@@ -70,7 +145,7 @@ export function ContestKnockoutBracket({
                                 </p>
                               </>
                             ) : (
-                              <p className="text-sm font-semibold text-[#747878]">Chờ xác định người thi đấu</p>
+                              <p className="text-sm font-semibold text-[#747878]">Thả người thi đấu vào đây</p>
                             )}
                           </div>
                         )
