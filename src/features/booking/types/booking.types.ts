@@ -240,6 +240,7 @@ export interface CheckAvailabilityParams {
 
 export interface ListMyBookingsParams {
   status?: BookingStatus
+  play_mode?: BookingPlayMode
   page?: number
   limit?: number
 }
