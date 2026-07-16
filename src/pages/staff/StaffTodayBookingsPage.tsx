@@ -392,7 +392,11 @@ export default function StaffTodayBookingsPage() {
           : null
       }
       const configuredOpenHour = parseHour(hours?.open)
-      const configuredCloseHour = parseHour(hours?.close)
+      let configuredCloseHour = parseHour(hours?.close)
+      // midnight (00:00) or any close ≤ open means next-day close → add 24
+      if (configuredOpenHour !== null && configuredCloseHour !== null && configuredCloseHour <= configuredOpenHour) {
+        configuredCloseHour = configuredCloseHour + 24
+      }
       const slotDurationMinutes = Number(cafeDetails?.slotDurationMinutes)
       return {
         openHour: configuredOpenHour ?? 0,

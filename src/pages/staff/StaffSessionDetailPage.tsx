@@ -43,9 +43,74 @@ export default function StaffSessionDetailPage() {
     refreshData,
   } = useStaffOperations()
 
-  // Find corresponding session and booking
-  const session = sessions.find((s) => s.sessionId === sessionId)
-  const booking = session ? bookings.find((b) => b.bookingId === session.bookingId) : null
+  // Find corresponding session and booking from context (may be missing for COMPLETED sessions)
+  const contextSession = sessions.find((s) => s.sessionId === sessionId)
+  const contextBooking = contextSession ? bookings.find((b) => b.bookingId === contextSession.bookingId) : null
+
+  // API fallback: fetch directly when context doesn't have the session
+  const [apiData, setApiData] = useState<any>(null)
+  const [apiLoading, setApiLoading] = useState(!contextSession)
+
+  useEffect(() => {
+    if (contextSession || !sessionId) return
+    setApiLoading(true)
+    staffApi.getSessionDetail(sessionId)
+      .then((data) => setApiData(data))
+      .catch(() => setApiData(null))
+      .finally(() => setApiLoading(false))
+  }, [sessionId, contextSession?.sessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Merge: prefer context data, fall back to normalized API data
+  const session: any = contextSession ?? (apiData ? {
+    sessionId: apiData.sessionId ?? apiData.id ?? sessionId,
+    bookingId: apiData.bookingId ?? apiData.booking?.bookingId ?? apiData.booking?.id,
+    status: apiData.status,
+    staffName: apiData.staffName ?? "",
+    actualStart: apiData.actualStartAt ?? apiData.actualStart,
+    actualEnd: apiData.actualEndAt ?? apiData.actualEnd,
+    plannedEnd: apiData.plannedEnd ?? apiData.slotEnd,
+    participants: apiData.participants ?? [],
+    vehicles: apiData.vehicles ?? [],
+    inspections: apiData.inspections ?? [],
+    extensionProposal: apiData.extensionProposal ?? null,
+    approvedExtensionFee: apiData.approvedExtensionFee,
+    approvedExtensionMinutes: apiData.approvedExtensionMinutes,
+    approvedExtensions: apiData.approvedExtensions ?? [],
+    extensionPricingOptions: apiData.extensionPricingOptions ?? [],
+    damageClaim: apiData.damageClaim ?? null,
+    fnbOrders: apiData.fnbOrders ?? [],
+  } : null)
+
+  const apiBooking = apiData?.booking
+  const booking: any = contextBooking ?? (apiBooking ? {
+    bookingId: apiBooking.bookingId ?? apiBooking.id,
+    shortCode: apiBooking.shortCode ?? "",
+    cafeId: apiBooking.cafeId ?? apiBooking.cafe?.id ?? "",
+    cafeName: apiBooking.cafeName ?? apiBooking.cafe?.name ?? "",
+    cafeAddress: apiBooking.cafeAddress ?? apiBooking.cafe?.address ?? "",
+    cafePhone: apiBooking.cafePhone ?? apiBooking.cafe?.phone ?? "",
+    trackName: apiBooking.trackName ?? apiBooking.track?.name ?? "",
+    trackType: apiBooking.trackType ?? apiBooking.track?.type ?? "",
+    bookingMode: apiBooking.bookingMode ?? "SINGLE",
+    playMode: apiBooking.playMode ?? apiBooking.mode ?? "RENTAL",
+    status: apiBooking.status ?? "COMPLETED",
+    slotStart: apiBooking.slotStart ?? "",
+    slotEnd: apiBooking.slotEnd ?? "",
+    slotCount: apiBooking.slotCount ?? 1,
+    depositAmount: Number(apiBooking.depositAmount ?? 0),
+    slotFee: Number(apiBooking.slotFee ?? 0),
+    rentalFee: Number(apiBooking.rentalFee ?? 0),
+    fnbPreorderFee: Number(apiBooking.fnbPreorderFee ?? 0),
+    discountAmount: Number(apiBooking.discountAmount ?? 0),
+    totalAmount: Number(apiBooking.totalAmount ?? 0),
+    paymentStatus: apiBooking.paymentStatus ?? "UNPAID",
+    source: apiBooking.source ?? "",
+    payment_components: apiBooking.payment_components ?? apiBooking.paymentComponents ?? [],
+    plannedParticipants: apiBooking.plannedParticipants ?? [],
+    plannedVehicles: apiBooking.plannedVehicles ?? [],
+    sessions: [],
+  } : null)
+
   const isWalkInBooking = booking?.source === "STAFF_MANUAL"
   const canDirectExtend = isWalkInBooking
 
@@ -56,6 +121,12 @@ export default function StaffSessionDetailPage() {
   const [availableFleet, setAvailableFleet] = useState<VehicleUnit[]>([])
   const [settlingPayment, setSettlingPayment] = useState(false)
   const [confirmSettleOpen, setConfirmSettleOpen] = useState(false)
+  const [counterSettled, setCounterSettled] = useState(false)
+  const [liveCheckoutInspection, setLiveCheckoutInspection] = useState<{
+    totalDamageCharge: number
+    damageFlagged: boolean
+    damageLineItems: { partType: string; customPartName?: string | null; partsPrice: number; laborPrice: number; lineTotal: number }[]
+  } | null>(null)
 
   // F&B local form state
   const [selectedItemName, setSelectedItemName] = useState("")
@@ -103,6 +174,19 @@ export default function StaffSessionDetailPage() {
     })
   }, [isWalkInBooking])
 
+  // Fetch live checkout inspection data for COMPLETED/CHECKING_OUT sessions
+  useEffect(() => {
+    if (!sessionId || !session) return
+    if (session.status !== "COMPLETED" && session.status !== "CHECKING_OUT") return
+    staffApi.getSessionDetail(sessionId)
+      .then((data) => {
+        if (data.checkoutInspection) {
+          setLiveCheckoutInspection(data.checkoutInspection)
+        }
+      })
+      .catch(() => { /* silent — context data used as fallback */ })
+  }, [sessionId, session?.status])
+
   // Fetch branch catalog data (Menu & Fleet)
   useEffect(() => {
     if (booking?.cafeId) {
@@ -130,6 +214,13 @@ export default function StaffSessionDetailPage() {
   }, [booking?.cafeId])
 
   if (!session || !booking) {
+    if (apiLoading) {
+      return (
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <p className="text-sm text-[#6b7280] font-semibold animate-pulse">Đang tải thông tin ca chơi...</p>
+        </div>
+      )
+    }
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center p-4">
         <AlertTriangle className="size-12 text-[#6b7280] mb-3 animate-bounce" />
@@ -170,6 +261,7 @@ export default function StaffSessionDetailPage() {
       setSettlingPayment(true)
       await staffApi.settlePendingPayments(booking.bookingId)
       toast.success("Xác nhận thanh toán thành công!")
+      setCounterSettled(true)
       await refreshData()
     } catch (err: unknown) {
       const message = getApiErrorInfo(err).message || (err instanceof Error ? err.message : String(err))
@@ -264,7 +356,7 @@ export default function StaffSessionDetailPage() {
     .filter((order) => order.orderType !== "PRE_ORDER" && order.status !== "CANCELLED")
   const fnbTotal = onsiteFnbOrders
     .reduce((sum, order) => sum + order.total, 0)
-  const damageCharge = session.damageClaim?.finalCharge ?? 0
+  const damageCharge = liveCheckoutInspection?.totalDamageCharge ?? session.damageClaim?.finalCharge ?? 0
 
   // ── Best Practice Billing Separation ──
   const depositAmount = 0
@@ -279,16 +371,27 @@ export default function StaffSessionDetailPage() {
   // Net amount customer hands over at the counter (positive = customer pays, negative = staff returns change)
   const netCounterAmount = totalCounterBill - depositRefundAmount
 
-  // UI flags
-  const hasPendingCounterPayment = booking.payment_components?.some(
-    (c) => c.status === "PENDING"
+  // Whether the API has already created counter-bill components (DAMAGE_CHARGE, extension, onsite FnB).
+  // When components exist, trust their status — no need for the inspection-derived fallback.
+  const hasAnyCounterComponent = booking.payment_components?.some(
+    (c) => !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(c.type) &&
+      !((c.type === "FNB_PREORDER" || c.type === "FB_PREORDER") && (c.status === "HELD" || c.status === "REFUNDED"))
   ) ?? false
+
+  // UI flags
+  // CHECKING_OUT fallback only fires when no counter component exists yet (pre-backend-fix sessions).
+  // Once components exist (even DISBURSED), component status is authoritative.
+  const hasPendingCounterPayment = !counterSettled && !!(
+    booking.payment_components?.some((c) => c.status === "PENDING") ||
+    (!hasAnyCounterComponent && session.status === "CHECKING_OUT" && totalCounterBill > 0) ||
+    (session.status === "COMPLETED" && totalCounterBill > 0 && booking.paymentStatus !== "PAID")
+  )
   const hasPendingDepositRefund = booking.payment_components?.some(
     (c) => c.type === "SECURITY_DEPOSIT" && c.status === "PENDING_REFUND"
   ) ?? false
   const isFullySettled = session.status === "COMPLETED" &&
     !hasPendingCounterPayment && !hasPendingDepositRefund &&
-    booking.payment_components?.some((c) => c.status === "DISBURSED")
+    (booking.payment_components?.some((c) => c.status === "DISBURSED") || booking.paymentStatus === "PAID")
 
   return (
     <div className="space-y-6">
@@ -741,15 +844,39 @@ export default function StaffSessionDetailPage() {
         </StaffCard>
       )}
 
-      {session.status === "CHECKING_OUT" && (
-        <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-blue-200 bg-blue-50">
+      {session.status === "CHECKING_OUT" && !checkOutInspection && (
+        <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-orange-200 bg-orange-50">
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-blue-900">Đã gửi biên bản trả xe cho khách</h4>
-            <p className="text-xs text-blue-800 leading-relaxed">
-              Chờ khách xác nhận biên bản trên ứng dụng. Sau khi khách đồng ý, hệ thống sẽ đóng phiên và cập nhật booking.
+            <h4 className="text-sm font-bold text-orange-900">Cần kiểm tra xe trước khi trả</h4>
+            <p className="text-xs text-orange-800 leading-relaxed">
+              Thực hiện kiểm tra xe và lập biên bản trả xe cho khách.
             </p>
           </div>
-          <StaffBadge variant="info">CHỜ KHÁCH XÁC NHẬN</StaffBadge>
+          <StaffButton
+            size="sm"
+            variant="primary"
+            onClick={() => navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)}
+          >
+            Xem biên bản & xác nhận
+          </StaffButton>
+        </StaffCard>
+      )}
+
+      {session.status === "CHECKING_OUT" && checkOutInspection && (
+        <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-amber-200 bg-amber-50">
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-amber-900">Chờ khách thanh toán tại quầy</h4>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Biên bản đã xác nhận. Thu phí dịch vụ tại quầy rồi xác nhận thanh toán bên dưới.
+            </p>
+          </div>
+          <StaffButton
+            size="sm"
+            variant="outline"
+            onClick={() => navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)}
+          >
+            Xem lại biên bản
+          </StaffButton>
         </StaffCard>
       )}
 

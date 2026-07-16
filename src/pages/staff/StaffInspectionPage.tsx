@@ -68,6 +68,7 @@ export default function StaffInspectionPage() {
   const [damageLineItems, setDamageLineItems] = useState<DamageLineItemInput[]>([])
   const [showCheckInBaselines, setShowCheckInBaselines] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (isByoc) {
@@ -93,10 +94,10 @@ export default function StaffInspectionPage() {
     } else if (type === "CHECK_OUT") {
       queueMicrotask(() => {
         setChecklist([
-          { id: "ck-o1", label: "Khung gầm xe nguyên vẹn, không nứt nẻ gãy vỡ", checked: true },
-          { id: "ck-o2", label: "Cánh gió vững chãi, không móp méo rơi rụng", checked: true },
-          { id: "ck-o3", label: "Động cơ điện (motor) hoạt động bình thường, không tỏa khét", checked: true },
-          { id: "ck-o4", label: "Vỏ nhựa (Shell) không có vết xước sâu hoặc móp rách mới", checked: true },
+          { id: "ck-o1", label: "Đã kiểm tra khung gầm xe (nứt, gãy, biến dạng)", checked: true },
+          { id: "ck-o2", label: "Đã kiểm tra cánh gió (móp méo, rơi rụng)", checked: true },
+          { id: "ck-o3", label: "Đã kiểm tra động cơ điện / motor (hoạt động, mùi khét)", checked: true },
+          { id: "ck-o4", label: "Đã kiểm tra vỏ nhựa / shell (xước sâu, móp rách)", checked: true },
         ])
       })
     }
@@ -230,65 +231,71 @@ export default function StaffInspectionPage() {
   const updateDamageItem = (index: number, field: keyof DamageLineItemInput, value: string | number) =>
     setDamageLineItems((prev) => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
+    setIsSubmitting(true)
 
-    if (isByoc) {
-      const missing = byocPhotos.filter((p) => !p.url)
-      if (missing.length > 0) {
-        toast.error(`Vui lòng chụp ảnh xác nhận xe cho: ${missing.map((p) => p.participantName).join(", ")}`)
-        return
-      }
-      const directions = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
-      submitInspection(
-        session.sessionId,
-        type,
-        byocPhotos.map((p, i) => ({
-          direction: directions[i % directions.length],
-          url: p.url,
-          notes: p.notes || `Xe của ${p.participantName}`,
-        })),
-        checklist,
-        staffNotes,
-        false,
-        undefined,
-      )
-    } else {
-      const missingPhotos = Object.entries(photoUrls).filter(([, url]) => !url)
-      if (missingPhotos.length > 0) {
-        toast.error("Vui lòng chụp đủ 4 góc FRONT, BACK, LEFT, RIGHT để lập biên bản!")
-        return
-      }
-      if (damageFlagged && damageLineItems.length === 0) {
-        toast.error("Vui lòng thêm ít nhất một hạng mục hư hỏng.")
-        return
-      }
-      if (damageFlagged && damageLineItems.some((item) => item.partType === "OTHER" && !item.customPartName?.trim())) {
-        toast.error('Vui lòng nhập tên hư hỏng cho mục "Khác".')
-        return
+    try {
+      if (isByoc) {
+        const missing = byocPhotos.filter((p) => !p.url)
+        if (missing.length > 0) {
+          toast.error(`Vui lòng chụp ảnh xác nhận xe cho: ${missing.map((p) => p.participantName).join(", ")}`)
+          return
+        }
+        const directions = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
+        await submitInspection(
+          session.sessionId,
+          type,
+          byocPhotos.map((p, i) => ({
+            direction: directions[i % directions.length],
+            url: p.url,
+            notes: p.notes || `Xe của ${p.participantName}`,
+          })),
+          checklist,
+          staffNotes,
+          false,
+          undefined,
+        )
+      } else {
+        const missingPhotos = Object.entries(photoUrls).filter(([, url]) => !url)
+        if (missingPhotos.length > 0) {
+          toast.error("Vui lòng chụp đủ 4 góc FRONT, BACK, LEFT, RIGHT để lập biên bản!")
+          return
+        }
+        if (damageFlagged && damageLineItems.length === 0) {
+          toast.error("Vui lòng thêm ít nhất một hạng mục hư hỏng.")
+          return
+        }
+        if (damageFlagged && damageLineItems.some((item) => item.partType === "OTHER" && !item.customPartName?.trim())) {
+          toast.error('Vui lòng nhập tên hư hỏng cho mục "Khác".')
+          return
+        }
+
+        const photosArray = Object.entries(photoUrls).map(([direction, url]) => ({
+          direction: direction as "FRONT" | "BACK" | "LEFT" | "RIGHT",
+          url,
+          notes: photoNotes[direction],
+        }))
+
+        await submitInspection(
+          session.sessionId,
+          type,
+          photosArray,
+          checklist,
+          staffNotes,
+          damageFlagged,
+          damageFlagged ? damageLineItems : undefined,
+        )
       }
 
-      const photosArray = Object.entries(photoUrls).map(([direction, url]) => ({
-        direction: direction as "FRONT" | "BACK" | "LEFT" | "RIGHT",
-        url,
-        notes: photoNotes[direction],
-      }))
-
-      submitInspection(
-        session.sessionId,
-        type,
-        photosArray,
-        checklist,
-        staffNotes,
-        damageFlagged,
-        damageFlagged ? damageLineItems : undefined,
-      )
-    }
-
-    if (type === "CHECK_OUT") {
-      navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
-    } else {
-      navigate(`/staff/sessions/${session.sessionId}`)
+      if (type === "CHECK_OUT") {
+        navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
+      } else {
+        navigate(`/staff/sessions/${session.sessionId}`)
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -485,7 +492,7 @@ export default function StaffInspectionPage() {
           <StaffCard className="space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-2">
               <ClipboardList className="size-4.5 text-[#ea580c]" />
-              {isByoc ? "Xác nhận điều kiện tham gia" : "Danh mục kiểm tra an toàn linh kiện"}
+              {isByoc ? "Xác nhận điều kiện tham gia" : type === "CHECK_OUT" ? "Xác nhận đã kiểm tra linh kiện" : "Danh mục kiểm tra an toàn linh kiện"}
             </h3>
             <div className="space-y-3.5">
               {checklist.map((item) => (
@@ -664,9 +671,14 @@ export default function StaffInspectionPage() {
             type="submit"
             variant="primary"
             className="flex-1 uppercase tracking-wider gap-1.5 font-bold"
+            disabled={isSubmitting}
           >
             <FileCheck className="size-4.5" />
-            {isByoc ? "Xác nhận xe khách" : "Lưu biên bản kiểm định"}
+            {isSubmitting
+              ? "Đang lưu..."
+              : isByoc
+                ? "Xác nhận xe khách"
+                : "Lưu biên bản kiểm định"}
           </StaffButton>
         </div>
       </form>

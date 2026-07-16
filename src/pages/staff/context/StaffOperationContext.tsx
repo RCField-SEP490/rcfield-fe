@@ -65,7 +65,7 @@ export interface StaffOperationContextType {
     staffNotes: string,
     damageFlagged: boolean,
     damageLineItems?: DamageLineItemInput[]
-  ) => void
+  ) => Promise<void>
   proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => void
   addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => void
   updateFnbOrderStatus: (orderId: string, status: FnbOrder["status"]) => void
@@ -140,6 +140,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     try {
       const todayBookings = await staffApi.getTodayBookings()
       setBookings(todayBookings)
+      queryClient.setQueryData(staffQueryKeys.todayBookings(), todayBookings)
 
       // Sync active F&B orders
       const extractedFnb: FnbOrder[] = []
@@ -162,7 +163,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     } catch (err: any) {
       console.error("Failed to load today bookings:", err)
     }
-  }, [])
+  }, [queryClient])
 
   useEffect(() => {
     if (role === "staff") {
@@ -178,9 +179,6 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       const data = msg.data as { sessionId?: string; type?: string; note?: string } | undefined
 
       if (msg.event === "CUSTOMER_CHECKIN_CONFIRMED") {
-        toast.success("Khách đã xác nhận nhận xe", {
-          description: data?.sessionId ? `Phiên ${data.sessionId} đã chuyển sang ACTIVE.` : undefined,
-        })
         void fetchData()
         return
       }
@@ -446,7 +444,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       })
 
       if (type === "CHECK_IN") {
-        toast.success(`Gửi báo cáo Check-In kiểm xe thành công. Đang chờ khách hàng xác nhận.`)
+        toast.success("Check-In thành công")
       } else {
         if (damageFlagged) {
           toast.warning(`Phát hiện hư hỏng xe! Vui lòng xem lại biên bản và xác nhận với khách.`)
@@ -457,6 +455,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       await fetchData()
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể gửi báo cáo kiểm xe")
+      throw err
     }
   }, [fetchData])
 

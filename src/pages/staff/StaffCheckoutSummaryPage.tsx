@@ -51,7 +51,6 @@ interface CheckoutInspection {
 export default function StaffCheckoutSummaryPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
-
   const [loading, setLoading] = useState(true)
   const [checkoutInspection, setCheckoutInspection] =
     useState<CheckoutInspection | null>(null)
@@ -61,9 +60,6 @@ export default function StaffCheckoutSummaryPage() {
   const [editMode, setEditMode] = useState(false)
   const [editItems, setEditItems] = useState<DamageLineItemInput[]>([])
   const [savingItems, setSavingItems] = useState(false)
-
-  // Confirm checkout
-  const [confirming, setConfirming] = useState(false)
 
   // Dispute escalation
   const [disputeOpen, setDisputeOpen] = useState(false)
@@ -159,8 +155,10 @@ export default function StaffCheckoutSummaryPage() {
     }
   }
 
+  const [confirming, setConfirming] = useState(false)
+
   const handleConfirmCheckout = async () => {
-    if (!checkoutInspection) return
+    if (!checkoutInspection || !sessionId) return
     setConfirming(true)
     try {
       await staffApi.confirmCheckout(

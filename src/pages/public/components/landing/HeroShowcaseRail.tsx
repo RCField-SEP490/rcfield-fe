@@ -17,9 +17,9 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
   if (isLoading) {
     return (
       <div className="relative hidden h-[520px] lg:block">
-        <div className="absolute right-2 top-18 h-[320px] w-[360px] animate-pulse rounded-[32px] bg-white/70" />
-        <div className="absolute left-2 top-5 h-[180px] w-[220px] animate-pulse rounded-[24px] bg-white/60" />
-        <div className="absolute left-10 top-[320px] h-[110px] w-[250px] animate-pulse rounded-[24px] bg-white/55" />
+        <div className="absolute right-0 top-10 z-10 h-[340px] w-[300px] animate-pulse rounded-[32px] bg-white/70" />
+        <div className="absolute left-0 top-6 z-0 h-[125px] w-[150px] animate-pulse rounded-[24px] bg-white/60" />
+        <div className="absolute bottom-16 left-4 z-20 h-[90px] w-[220px] animate-pulse rounded-[24px] bg-white/55" />
       </div>
     )
   }
@@ -43,7 +43,7 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
   return (
     <div className="relative hidden h-[520px] lg:block">
       {secondaryVenue ? (
-        <FloatingMiniCard venue={secondaryVenue} className="left-0 top-8 w-[230px]" />
+        <FloatingMiniCard venue={secondaryVenue} className="left-0 top-6 z-0 w-[150px]" />
       ) : null}
 
       {tertiaryVenue ? (
@@ -51,7 +51,7 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
           variants={softReveal}
           initial={prefersReducedMotion ? false : "hidden"}
           animate={prefersReducedMotion ? undefined : "visible"}
-          className="absolute bottom-20 left-8 rounded-[24px] border border-white/70 bg-white/94 px-5 py-4 shadow-[var(--landing-shadow-soft)]"
+          className="absolute bottom-16 left-4 z-20 rounded-[24px] border border-white/70 bg-white/94 px-5 py-4 shadow-[var(--landing-shadow-soft)]"
         >
           <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-orange-500">Vừa đặt xong</p>
           <p className="mt-2 text-base font-black text-slate-950">{tertiaryVenue.name}</p>
@@ -67,13 +67,13 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
         initial={prefersReducedMotion ? false : "hidden"}
         animate={prefersReducedMotion ? undefined : "visible"}
         whileHover={prefersReducedMotion ? undefined : "hover"}
-        className="absolute right-0 top-10"
+        className="absolute right-0 top-10 z-10"
       >
         <motion.article
           variants={heroFloat}
           initial="rest"
           whileHover="hover"
-          className="w-[370px] overflow-hidden rounded-[32px] border border-white/80 bg-white shadow-[var(--landing-shadow-strong)]"
+          className="w-[300px] overflow-hidden rounded-[32px] border border-white/80 bg-white shadow-[var(--landing-shadow-strong)]"
         >
           <div className="relative aspect-[1.16] overflow-hidden bg-[var(--landing-surface-soft)]">
             <VenueVisual venue={primaryVenue} size="hero" />
@@ -143,11 +143,11 @@ function FloatingMiniCard({
       <div className="relative aspect-[1.4] overflow-hidden bg-[var(--landing-surface-soft)]">
         <VenueVisual venue={venue} size="mini" />
       </div>
-      <div className="space-y-1.5 p-4">
-        <h3 className="line-clamp-1 text-base font-black text-slate-950">{venue.name}</h3>
-        <p className="flex items-center gap-2 text-xs font-medium text-slate-500">
-          <MapPin className="h-3.5 w-3.5 text-orange-500" />
-          {venue.cityLabel}
+      <div className="space-y-1 p-3">
+        <h3 className="line-clamp-1 text-sm font-black text-slate-950">{venue.name}</h3>
+        <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
+          <MapPin className="h-3 w-3 shrink-0 text-orange-500" />
+          <span className="truncate">{venue.cityLabel}</span>
         </p>
       </div>
     </motion.article>

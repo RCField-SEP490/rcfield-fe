@@ -23,7 +23,6 @@ export const routePaths = {
   customerSubscriptions: "/customer/subscriptions",
   customerVehicles: "/customer/vehicles",
   customerReviews: "/customer/reviews",
-  customerInspectionConfirm: "/customer/inspections/:sessionId",
   customerActiveSession: "/customer/sessions/:sessionId",
   customerDamageReview: "/customer/damage-review/:sessionId",
   customerExtensionResponse: "/customer/extension-response/:sessionId",

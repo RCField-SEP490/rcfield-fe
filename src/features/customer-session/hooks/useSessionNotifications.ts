@@ -30,14 +30,6 @@ export function useSessionNotifications(enabled = true): void {
       // Dispatch global event for active pages to refetch
       window.dispatchEvent(new CustomEvent("refresh-session-detail"))
 
-      if (msg.event === "SESSION_CHECKOUT_INSPECTION") {
-        const params = data?.inspectionId ? `?inspectionId=${encodeURIComponent(data.inspectionId)}` : ""
-        toast.info("Staff vừa gửi biên bản trả xe", {
-          description: "Vui lòng kiểm tra ảnh, checklist và xác nhận.",
-        })
-        navigate(`/customer/inspections/${sessionId}${params}`)
-        return
-      }
 
       if (msg.event === "SESSION_EXTENSION_PROPOSED") {
         toast.info("Staff vừa gửi đề xuất gia hạn", {

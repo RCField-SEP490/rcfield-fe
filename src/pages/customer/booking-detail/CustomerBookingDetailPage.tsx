@@ -178,7 +178,11 @@ export function CustomerBookingDetailPage() {
   const depositAmount = 0
   const fnbPreorderFee = sumComponents(booking.payment_components, "FNB_PREORDER", "FB_PREORDER")
   const damageBreakdown = booking.damage_breakdown
-  const damageCharge = damageBreakdown?.totalDamageCharge ?? 0
+  // Read damage from payment_components first (backend creates DAMAGE_CHARGE PENDING when inspection submitted),
+  // fall back to damage_breakdown field if available.
+  const damageComponentAmount = Number(booking.payment_components.find((c) => c.type === "DAMAGE_CHARGE")?.amount ?? 0)
+  const damageCharge = damageComponentAmount || (damageBreakdown?.totalDamageCharge ?? 0)
+  const hasPendingDamage = booking.payment_components.some((c) => c.type === "DAMAGE_CHARGE" && c.status === "PENDING")
   const totalAmount = slotFee + rentalFee + fnbPreorderFee + damageCharge
 
   const participantNames = booking.participants.map(
@@ -252,6 +256,27 @@ export function CustomerBookingDetailPage() {
             </button>
           )}
         </div>
+
+        {/* Pending damage charge notice */}
+        {hasPendingDamage && (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-extrabold text-rose-900">Phát sinh phí đền bù hư hỏng xe</p>
+              <p className="text-xs text-rose-700 font-semibold mt-0.5">
+                Nhân viên đã ghi nhận hư hỏng. Vui lòng thanh toán <strong>{damageCharge.toLocaleString("vi-VN")}đ</strong> trực tiếp tại quầy.
+              </p>
+              {sessionDetail && (
+                <button
+                  onClick={() => navigate(`/customer/sessions/${sessionDetail.sessionId}`)}
+                  className="mt-2 text-xs font-bold text-rose-700 underline underline-offset-2"
+                >
+                  Xem chi tiết biên bản →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 2-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

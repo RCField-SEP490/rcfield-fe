@@ -277,10 +277,21 @@ export function BookingDetailPage() {
   const damageComponent = onsiteComponents.find((c) => c.type === "DAMAGE_CHARGE")
   const damageCharge = Number(damageComponent?.amount ?? 0)
 
+  // Fallback: when no DAMAGE_CHARGE component exists yet (e.g. session is CHECKING_OUT and
+  // backend hasn't billed it yet), read damage from booking.damage_breakdown or sessionDetail.damageClaim
+  const breakdownDamageCharge = Number(booking?.damage_breakdown?.totalDamageCharge ?? 0)
+  const sessionClaimCharge = Number(sessionDetail?.damageClaim?.totalDamageCharge ?? 0)
+  const effectiveDamageCharge =
+    damageCharge > 0
+      ? damageCharge
+      : booking?.session?.status === "CHECKING_OUT"
+        ? (breakdownDamageCharge || sessionClaimCharge)
+        : 0
+
   // ── Best Practice: Deposit ONLY offsets vehicle damage ──
-  const depositConsumedByDamage = Math.min(depositAmount, damageCharge)
+  const depositConsumedByDamage = Math.min(depositAmount, effectiveDamageCharge)
   const depositRefundAmount = depositAmount - depositConsumedByDamage
-  const damageExceedingDeposit = Math.max(0, damageCharge - depositAmount)
+  const damageExceedingDeposit = Math.max(0, effectiveDamageCharge - depositAmount)
 
   // Counter bill = F&B onsite + Extension + damage exceeding deposit
   const counterComponents = onsiteComponents.filter((c) => c.type !== "DAMAGE_CHARGE")
@@ -293,7 +304,9 @@ export function BookingDetailPage() {
     (c) => c.type === "FB_PREORDER" || c.type === "FNB_PREORDER"
   )
 
-  const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING")
+  // Mark unpaid when there's a PENDING component OR when damage exists that isn't billed yet
+  const hasUnbilledDamage = effectiveDamageCharge > 0 && !damageComponent
+  const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING") && !hasUnbilledDamage
 
   const transactions: PaymentTransactionResponse[] = booking?.payment_transactions ?? []
   const gatewayLabel = (gateway: string) =>
@@ -957,25 +970,44 @@ export function BookingDetailPage() {
                               <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
                               <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
                             </div>
-                            {(booking?.damage_breakdown?.lineItems?.length ?? 0) > 0 && (
-                              <div className="ml-2 space-y-1 rounded-lg bg-rose-50 border border-rose-100 p-2.5">
-                                {booking!.damage_breakdown!.lineItems.map((item) => (
-                                  <div key={item.id} className="flex items-start justify-between text-[11px]">
-                                    <div className="space-y-0.5">
-                                      <p className="font-bold text-rose-900">
-                                        {PART_TYPE_LABELS[item.partType] ?? item.partType}
-                                        {item.customPartName && <span className="font-normal text-rose-700"> — {item.customPartName}</span>}
-                                      </p>
-                                      <div className="flex gap-2 text-[10px] text-rose-600">
-                                        <span>Linh kiện: {formatCurrency(item.partsPrice)}</span>
-                                        {item.laborPrice > 0 && <span>Công: {formatCurrency(item.laborPrice)}</span>}
+                            {(() => {
+                              const lineItems = booking?.damage_breakdown?.lineItems?.length
+                                ? booking.damage_breakdown.lineItems.map((item) => ({
+                                    id: item.id,
+                                    partType: item.partType,
+                                    customPartName: item.customPartName,
+                                    partsPrice: item.partsPrice,
+                                    laborPrice: item.laborPrice,
+                                    subtotal: item.subtotal,
+                                  }))
+                                : (sessionDetail?.damageClaim?.damageLineItems ?? []).map((item) => ({
+                                    id: item.id,
+                                    partType: item.partType,
+                                    customPartName: item.customPartName,
+                                    partsPrice: item.partsPrice,
+                                    laborPrice: item.laborPrice,
+                                    subtotal: item.lineTotal,
+                                  }))
+                              return lineItems.length > 0 ? (
+                                <div className="ml-2 space-y-1 rounded-lg bg-rose-50 border border-rose-100 p-2.5">
+                                  {lineItems.map((item) => (
+                                    <div key={item.id} className="flex items-start justify-between text-[11px]">
+                                      <div className="space-y-0.5">
+                                        <p className="font-bold text-rose-900">
+                                          {PART_TYPE_LABELS[item.partType] ?? item.partType}
+                                          {item.customPartName && <span className="font-normal text-rose-700"> — {item.customPartName}</span>}
+                                        </p>
+                                        <div className="flex gap-2 text-[10px] text-rose-600">
+                                          <span>Linh kiện: {formatCurrency(item.partsPrice)}</span>
+                                          {item.laborPrice > 0 && <span>Công: {formatCurrency(item.laborPrice)}</span>}
+                                        </div>
                                       </div>
+                                      <span className="font-bold text-rose-700 tabular-nums shrink-0 pl-2">{formatCurrency(item.subtotal)}</span>
                                     </div>
-                                    <span className="font-bold text-rose-700 tabular-nums shrink-0 pl-2">{formatCurrency(item.subtotal)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              ) : null
+                            })()}
                           </div>
                         )}
                       </div>

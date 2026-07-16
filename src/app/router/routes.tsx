@@ -47,7 +47,6 @@ import { CustomerContestRegistrationsPage } from "@/pages/customer/CustomerConte
 import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
 import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
-import { CustomerInspectionConfirmPage } from "@/pages/customer/inspection/CustomerInspectionConfirmPage"
 import { CustomerActiveSessionPage } from "@/pages/customer/session/CustomerActiveSessionPage"
 import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamageReviewPage"
 import { CustomerExtensionResponsePage } from "@/pages/customer/extension/CustomerExtensionResponsePage"
@@ -190,7 +189,6 @@ export const router = createBrowserRouter([
           { path: routePaths.customerSubscriptions, element: <PlaceholderPage title="Customer subscriptions" /> },
           { path: routePaths.customerVehicles, element: <CustomerVehiclesPage /> },
           { path: routePaths.customerReviews, element: <CustomerReviewsPage /> },
-          { path: routePaths.customerInspectionConfirm, element: <CustomerInspectionConfirmPage /> },
           { path: routePaths.customerActiveSession, element: <CustomerActiveSessionPage /> },
           { path: routePaths.customerDamageReview, element: <CustomerDamageReviewPage /> },
           { path: routePaths.customerExtensionResponse, element: <CustomerExtensionResponsePage /> },

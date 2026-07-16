@@ -65,22 +65,7 @@ export function NotificationBell() {
     if (!n.readAt) markReadMutation.mutate(n.id)
     setOpen(false)
 
-    if (n.type === "SESSION_CHECKOUT_INSPECTION") {
-      try {
-        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
-        const activeBooking = bookingsRes.data.find(
-          (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
-        )
-        if (activeBooking) {
-          const detail = await bookingApi.getBooking(activeBooking.id)
-          if (detail.session) {
-            navigate(`/customer/inspections/${detail.session.id}`)
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi điều hướng biên bản:", err)
-      }
-    } else if (n.type === "SESSION_EXTENSION_PROPOSED") {
+    if (n.type === "SESSION_EXTENSION_PROPOSED") {
       try {
         const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
         const activeBooking = bookingsRes.data.find((b) => b.status === "CONFIRMED")
