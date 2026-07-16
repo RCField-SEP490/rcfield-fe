@@ -177,16 +177,43 @@ function getInitials(name: string) {
     .toUpperCase()
 }
 
-export function MetricCard({ label, value, helper, icon, tone }: { label: string; value: string; helper: string; icon: ReactNode; tone: ProviderTone }) {
+export function MetricCard({
+  label,
+  value,
+  helper,
+  icon,
+  tone,
+  compact = false,
+  className,
+}: {
+  label: string
+  value: string
+  helper: string
+  icon: ReactNode
+  tone: ProviderTone
+  compact?: boolean
+  className?: string
+}) {
   return (
-    <article className="flex min-h-44 flex-col justify-between rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <article
+      className={cn(
+        "flex flex-col justify-between rounded-xl border border-[#c4c7c8] bg-white shadow-sm",
+        compact ? "min-h-32 p-4" : "min-h-44 p-6",
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-start justify-between gap-4",
+          compact ? "mb-3" : "mb-4",
+        )}
+      >
         <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</span>
-        <span className="text-[#5d5f5f] [&_svg]:size-6">{icon}</span>
+        <span className={cn("text-[#5d5f5f]", compact ? "[&_svg]:size-5" : "[&_svg]:size-6")}>{icon}</span>
       </div>
       <div>
-        <div className="text-2xl font-extrabold leading-tight tracking-tight text-[#1c1b1b]">{value}</div>
-        <div className={cn("mt-3 flex items-center gap-1.5 text-xs font-bold", toneText(tone))}>
+        <div className={cn("font-extrabold leading-tight tracking-tight text-[#1c1b1b]", compact ? "text-xl" : "text-2xl")}>{value}</div>
+        <div className={cn("flex items-center gap-1.5 text-xs font-bold", compact ? "mt-2" : "mt-3", toneText(tone))}>
           {tone === "danger" ? <TrendingDown className="size-4" /> : <TrendingUp className="size-4" />}
           <span>{helper}</span>
         </div>

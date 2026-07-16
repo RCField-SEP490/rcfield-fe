@@ -296,11 +296,11 @@ export function ProviderContestWorkspacePage({
       <ProviderPageHeader
         title={contest.name}
         description={
-          <div className="space-y-3">
-            <p className="max-w-3xl text-sm font-semibold text-[#444748]">
+          <div className="space-y-2">
+            <p className="max-w-2xl text-sm font-semibold text-[#444748]">
               {sectionSummaries[section]}
             </p>
-            <div className="flex flex-wrap gap-2 text-xs font-bold text-[#5d5f5f]">
+            <div className="flex flex-wrap gap-1.5 text-[11px] font-bold text-[#5d5f5f]">
               <HeaderMeta label="Trạng thái" value={getContestStatusLabel(contest.status)} />
               <HeaderMeta
                 label="Format"
@@ -317,8 +317,8 @@ export function ProviderContestWorkspacePage({
             </div>
           </div>
         }
-        titleClassName="max-w-[min(100%,42rem)] line-clamp-2 text-[2rem] leading-[1.02] md:text-[2.6rem]"
-        contentClassName="sm:flex-col xl:flex-row xl:items-start"
+        titleClassName="max-w-[min(100%,26rem)] line-clamp-2 text-[1.85rem] leading-[1.02] md:text-[2.15rem]"
+        contentClassName="lg:flex-row lg:items-start"
         actions={
           <>
             <Badge className={`border ${getContestStatusClass(contest.status)}`}>
@@ -327,7 +327,7 @@ export function ProviderContestWorkspacePage({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2]"
+              className="h-9 rounded-lg border-[#c4c7c8] bg-white px-3 text-sm text-[#1c1b1b] hover:bg-[#f6f3f2]"
               onClick={() =>
                 navigate(routePaths.providerContestEdit.replace(":contestId", contest.id))
               }
@@ -337,7 +337,7 @@ export function ProviderContestWorkspacePage({
             <Button
               type="button"
               variant="outline"
-              className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2]"
+              className="h-9 gap-2 rounded-lg border-[#c4c7c8] bg-white px-3 text-sm text-[#1c1b1b] hover:bg-[#f6f3f2]"
               onClick={() =>
                 navigate(getContestWorkspacePath(contest.id, "bracket"))
               }
@@ -347,7 +347,7 @@ export function ProviderContestWorkspacePage({
             </Button>
             <Button
               type="button"
-              className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+              className="h-9 gap-2 rounded-lg bg-[#1c1b1b] px-3 text-sm text-white hover:bg-[#313030]"
               onClick={() => void handlePublishLeaderboard()}
             >
               <BarChart3 className="size-4" />
@@ -356,7 +356,7 @@ export function ProviderContestWorkspacePage({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
+              className="h-9 rounded-lg border-orange-200 bg-orange-50 px-3 text-sm text-orange-700 hover:bg-orange-100"
               disabled={!metrics?.leaderboard.published}
               onClick={() => void handleSyncRaceRecords()}
             >
@@ -367,13 +367,14 @@ export function ProviderContestWorkspacePage({
       />
 
       {section === "overview" ? (
-        <section className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Đăng ký"
             value={String(metrics?.registration_counts.total ?? registrations.length)}
             helper={`${metrics?.registration_counts.confirmed ?? 0} đã duyệt / ${metrics?.registration_counts.checked_in ?? 0} đã check-in`}
             icon={<Flag />}
             tone="info"
+            compact
           />
           <MetricCard
             label="Thi đấu"
@@ -381,6 +382,7 @@ export function ProviderContestWorkspacePage({
             helper={`${metrics?.match_counts.completed ?? 0} đã hoàn tất`}
             icon={<PlayCircle />}
             tone="success"
+            compact
           />
           <MetricCard
             label="Bảng xếp hạng"
@@ -392,6 +394,7 @@ export function ProviderContestWorkspacePage({
             }
             icon={<BarChart3 />}
             tone={metrics?.leaderboard.published ? "success" : "warning"}
+            compact
           />
           <MetricCard
             label="Đồng bộ toàn hệ thống"
@@ -403,11 +406,12 @@ export function ProviderContestWorkspacePage({
             }
             icon={<CalendarCheck2 />}
             tone={metrics?.global_sync.synced ? "success" : "neutral"}
+            compact
           />
         </section>
       ) : (
-        <section className="mb-4 flex flex-wrap items-center gap-2">
-          <Badge className="border border-[#c4c7c8] bg-white text-[#444748]">
+        <section className="mb-3 flex flex-wrap items-center gap-2">
+          <Badge className="border border-[#c4c7c8] bg-white px-2.5 py-1 text-xs text-[#444748]">
             {sectionSummaries[section]}
           </Badge>
         </section>
@@ -545,7 +549,7 @@ export function ProviderContestWorkspacePage({
 
 function HeaderMeta({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-[#e5e2e1] bg-white px-3 py-1.5">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e2e1] bg-white px-2.5 py-1">
       <span className="text-[#747878]">{label}</span>
       <span className="text-[#1c1b1b]">{value}</span>
     </span>
