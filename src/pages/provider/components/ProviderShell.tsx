@@ -42,6 +42,12 @@ import { Button } from "@/shared/ui/button"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { ProviderHeader, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  contestWorkspaceSections,
+  defaultContestWorkspaceSection,
+  getContestWorkspacePath,
+  parseContestWorkspaceContext,
+} from "@/pages/provider/contest-runtime/contest-workspace"
 import { ImpersonationBanner } from "@/shared/components/ImpersonationBanner"
 
 type NavItem = { label: string; icon: ElementType; to: string }
@@ -394,18 +400,18 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   }
 
   const renderContestSubMenu = (isMobile: boolean) => {
-    const rawContestId = location.pathname.startsWith("/provider/contests/") ? location.pathname.split("/")[3] ?? "" : ""
-    const contestId = rawContestId && rawContestId !== "new" ? rawContestId : ""
+    const context = parseContestWorkspaceContext(location.pathname)
+    const contestId = context?.contestId ?? ""
+    const currentSection = context?.section ?? defaultContestWorkspaceSection
     const isContestContext = Boolean(contestId)
-    const contestLinks = [
+    const generalLinks = [
       { label: "Danh sách contest", to: routePaths.providerContests },
       { label: "Tạo contest", to: routePaths.providerContestCreate },
-      ...(isContestContext ? [{ label: "Runtime hiện tại", to: routePaths.providerContestRuntime.replace(":contestId", contestId) }] : []),
     ]
 
     return (
       <div className="mt-1.5 ml-6 space-y-1 border-l border-[#e5e2e1] pl-3">
-        {contestLinks.map((link) => {
+        {generalLinks.map((link) => {
           const active = location.pathname === link.to
           return (
             <Link
@@ -423,6 +429,34 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             </Link>
           )
         })}
+        {isContestContext ? (
+          <>
+            <div className="px-2 pt-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#b0b4b4]">
+              Workspace giải đấu
+            </div>
+            {contestWorkspaceSections.map((link) => {
+              const to = getContestWorkspacePath(contestId, link.key)
+              const active =
+                location.pathname === to ||
+                (context?.isLegacyRuntime && link.key === currentSection)
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={() => {
+                    if (isMobile) setMobileMenuOpen(false)
+                  }}
+                  className={cn(
+                    "flex rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                    active ? "bg-orange-100/50 text-orange-700" : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
+          </>
+        ) : null}
       </div>
     )
   }

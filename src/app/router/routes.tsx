@@ -108,6 +108,7 @@ import type { UserRole } from "@/shared/types/common"
 import { ProviderContestsPage } from "@/pages/provider/ProviderContestsPage"
 import { ProviderContestFormPage } from "@/pages/provider/ProviderContestFormPage"
 import { ProviderContestRuntimePage } from "@/pages/provider/contest-runtime/ProviderContestRuntimePage"
+import { ProviderContestWorkspacePage } from "@/pages/provider/contest-runtime/ProviderContestWorkspacePage"
 
 const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (
   <RoleGuard allowedRoles={allowedRoles}>{element}</RoleGuard>
@@ -265,6 +266,13 @@ export const router = createBrowserRouter([
           { path: routePaths.providerContests, element: providerGuardRoute(<ProviderContestsPage />) },
           { path: routePaths.providerContestCreate, element: providerGuardRoute(<ProviderContestFormPage />) },
           { path: routePaths.providerContestEdit, element: providerGuardRoute(<ProviderContestFormPage />) },
+          { path: routePaths.providerContestOverview, element: providerGuardRoute(<ProviderContestWorkspacePage section="overview" />) },
+          { path: routePaths.providerContestRegistrations, element: providerGuardRoute(<ProviderContestWorkspacePage section="registrations" />) },
+          { path: routePaths.providerContestOperations, element: providerGuardRoute(<ProviderContestWorkspacePage section="operations" />) },
+          { path: routePaths.providerContestBracket, element: providerGuardRoute(<ProviderContestWorkspacePage section="bracket" />) },
+          { path: routePaths.providerContestLeaderboard, element: providerGuardRoute(<ProviderContestWorkspacePage section="leaderboard" />) },
+          { path: routePaths.providerContestAudit, element: providerGuardRoute(<ProviderContestWorkspacePage section="audit" />) },
+          { path: routePaths.providerContestDiscipline, element: providerGuardRoute(<ProviderContestWorkspacePage section="discipline" />) },
           { path: routePaths.providerContestRuntime, element: providerGuardRoute(<ProviderContestRuntimePage />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },

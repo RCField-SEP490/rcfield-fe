@@ -56,6 +56,9 @@ export const contestQueryKeys = {
     [...contestQueryKeys.all, "audit-logs", contestId] as const,
   leaderboard: (contestId?: string) =>
     [...contestQueryKeys.all, "leaderboard", contestId] as const,
+  staffAssignments: (contestId?: string) =>
+    [...contestQueryKeys.all, "staff-assignments", contestId] as const,
+  bans: (contestId?: string) => [...contestQueryKeys.all, "bans", contestId] as const,
   lookup: (contestId?: string, checkInCode?: string) =>
     [...contestQueryKeys.all, "lookup", contestId, checkInCode] as const,
   myRegistrations: (params?: Record<string, unknown>) =>
