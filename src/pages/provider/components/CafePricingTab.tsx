@@ -114,6 +114,7 @@ function SlotSettingsPanel({
   const [slotFee, setSlotFee] = useState(Number(cafe.slotFeeRate))
   const [slotDuration, setSlotDuration] = useState(cafe.slotDurationMinutes)
   const [bookingNotice, setBookingNotice] = useState(cafe.minBookingNoticeMinutes)
+  const [maxAdvanceBookingDays, setMaxAdvanceBookingDays] = useState(cafe.maxAdvanceBookingDays)
   const [isEditing, setIsEditing] = useState(false)
 
   useEffect(() => {
@@ -121,6 +122,7 @@ function SlotSettingsPanel({
       setSlotFee(Number(cafe.slotFeeRate))
       setSlotDuration(cafe.slotDurationMinutes)
       setBookingNotice(cafe.minBookingNoticeMinutes)
+      setMaxAdvanceBookingDays(cafe.maxAdvanceBookingDays)
     })
   }, [cafe])
 
@@ -142,6 +144,7 @@ function SlotSettingsPanel({
         slot_duration_minutes: slotDuration,
         max_concurrent_bookings: cafe.maxConcurrentBookings,
         min_booking_notice_minutes: bookingNotice,
+        max_advance_booking_days: maxAdvanceBookingDays,
         byoc_capacity: cafe.byocCapacity,
         amenity_ids: cafe.amenityIds ?? [],
         rules: cafe.rules ?? [],
@@ -163,6 +166,7 @@ function SlotSettingsPanel({
     setSlotFee(Number(cafe.slotFeeRate))
     setSlotDuration(cafe.slotDurationMinutes)
     setBookingNotice(cafe.minBookingNoticeMinutes)
+    setMaxAdvanceBookingDays(cafe.maxAdvanceBookingDays)
     setIsEditing(false)
   }
 
@@ -188,10 +192,11 @@ function SlotSettingsPanel({
           <SlotInfoRow label="Phí slot" value={`${slotFee.toLocaleString("vi-VN")}đ / slot`} />
           <SlotInfoRow label="Thời lượng slot" value={`${slotDuration} phút`} />
           <SlotInfoRow label="Đặt trước tối thiểu" value={`${bookingNotice} phút`} />
+          <SlotInfoRow label="Đặt trước tối đa" value={`${maxAdvanceBookingDays} ngày`} />
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <div className="space-y-1">
               <Label className="text-xs text-[#5c5a5a]">Phí slot (VNĐ)</Label>
               <Input
@@ -223,6 +228,17 @@ function SlotSettingsPanel({
                 min={0}
                 value={bookingNotice}
                 onChange={(e) => setBookingNotice(Number(e.target.value) || 0)}
+                className="rounded-lg border-[#c4c7c8]"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-[#5c5a5a]">Đặt trước tối đa (ngày)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={maxAdvanceBookingDays}
+                onChange={(e) => setMaxAdvanceBookingDays(Math.min(365, Math.max(1, Number(e.target.value) || 1)))}
                 className="rounded-lg border-[#c4c7c8]"
               />
             </div>
