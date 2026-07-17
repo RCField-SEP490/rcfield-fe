@@ -59,6 +59,7 @@ import { AdminCafesPage } from "@/pages/admin/AdminCafesPage"
 import { AdminDisputesPage } from "@/pages/admin/AdminDisputesPage"
 import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage"
 import { AdminFeatureFlagsPage } from "@/pages/admin/AdminFeatureFlagsPage"
+import { AdminFeaturedPopupsPage } from "@/pages/admin/AdminFeaturedPopupsPage"
 import { AdminTrustScoreLogsPage } from "@/pages/admin/AdminTrustScoreLogsPage"
 import { AdminSystemChatPage } from "@/pages/admin/AdminSystemChatPage"
 import { AdminKnowledgeBasePage } from "@/pages/admin/AdminKnowledgeBasePage"
@@ -283,6 +284,7 @@ export const router = createBrowserRouter([
           { path: routePaths.adminDisputes, element: guardRoute(<AdminDisputesPage />, ["admin"]) },
           { path: routePaths.adminPayments, element: guardRoute(<AdminPaymentsPage />, ["admin"]) },
           { path: routePaths.adminFeatureFlags, element: guardRoute(<AdminFeatureFlagsPage />, ["admin"]) },
+          { path: routePaths.adminFeaturedPopups, element: guardRoute(<AdminFeaturedPopupsPage />, ["admin"]) },
           { path: routePaths.adminTrustScoreLogs, element: guardRoute(<AdminTrustScoreLogsPage />, ["admin"]) },
           { path: routePaths.adminSystemChat, element: guardRoute(<AdminSystemChatPage />, ["admin"]) },
           { path: routePaths.adminKnowledgeBase, element: guardRoute(<AdminKnowledgeBasePage />, ["admin"]) },

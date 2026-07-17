@@ -4,6 +4,10 @@ import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import { getCafes } from "@/features/explore/api/explore.api"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import {
+  featuredPopupApi,
+  featuredPopupQueryKeys,
+} from "@/features/explore/api/featured-popup.api"
 import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { ExploreMapOverlay } from "./components/ExploreMapOverlay"
@@ -19,6 +23,7 @@ import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { favoriteApi } from "@/features/explore/api/favorite.api"
+import { Dialog, DialogContent } from "@/shared/ui/dialog"
 
 const emphasizedEase: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
@@ -46,6 +51,7 @@ export function ExplorePage() {
   const [hoveredCafeId, setHoveredCafeId] = useState<string | null>(null)
   const [mapBounds, setMapBounds] = useState<MapBounds | null>(null)
   const [searchOnMove, setSearchOnMove] = useState(false)
+  const [dismissedPopupId, setDismissedPopupId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
     return (localStorage.getItem("explore_view_mode") as "grid" | "list") || "list"
   })
@@ -159,11 +165,39 @@ export function ExplorePage() {
   })
 
   const contests = useMemo(() => contestsData?.data ?? [], [contestsData?.data])
+  const featuredPopupQuery = useQuery({
+    queryKey: featuredPopupQueryKeys.active(),
+    queryFn: featuredPopupApi.getActive,
+  })
+  const activeFeaturedPopup = featuredPopupQuery.data
+  const popupDismissed =
+    !activeFeaturedPopup ||
+    dismissedPopupId === activeFeaturedPopup.id ||
+    sessionStorage.getItem(
+      `explore_featured_popup_dismissed_${activeFeaturedPopup.id}`,
+    ) === "true"
 
   const filteredContests = useMemo(() => {
     const query = filters.query.trim().toLowerCase()
-    if (!query) return contests
-    return contests.filter(
+    const ranked = [...contests].sort((a, b) => {
+      const statusScore = (status: string) => {
+        switch (status) {
+          case "RUNNING":
+            return 0
+          case "OPEN":
+            return 1
+          case "CLOSED":
+            return 2
+          case "COMPLETED":
+            return 3
+          default:
+            return 4
+        }
+      }
+      return statusScore(a.status) - statusScore(b.status)
+    })
+    if (!query) return ranked
+    return ranked.filter(
       (c) =>
         c.name.toLowerCase().includes(query) ||
         (c.description && c.description.toLowerCase().includes(query)) ||
@@ -495,6 +529,99 @@ export function ExplorePage() {
       )}
 
       <CafeQuickViewDialog cafe={quickViewCafe} onClose={() => setQuickViewCafe(null)} onBookNow={handleBookNow} />
+
+      <Dialog
+        open={Boolean(activeFeaturedPopup) && !popupDismissed}
+        onOpenChange={(open) => {
+          if (!open && activeFeaturedPopup) {
+            setDismissedPopupId(activeFeaturedPopup.id)
+            sessionStorage.setItem(
+              `explore_featured_popup_dismissed_${activeFeaturedPopup.id}`,
+              "true",
+            )
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl overflow-hidden border-none p-0">
+          {activeFeaturedPopup ? (
+            <FeaturedContestPopup
+              title={activeFeaturedPopup.title}
+              subtitle={activeFeaturedPopup.subtitle}
+              imageUrl={activeFeaturedPopup.image_url}
+              ctaLabel={activeFeaturedPopup.cta_label}
+              onAction={() => {
+                const popup = activeFeaturedPopup
+                if (!popup) return
+                sessionStorage.setItem(
+                  `explore_featured_popup_dismissed_${popup.id}`,
+                  "true",
+                )
+                setDismissedPopupId(popup.id)
+                if (popup.contest_id) {
+                  navigate(`/contests/${popup.contest_id}`)
+                  return
+                }
+                if (popup.cta_url) {
+                  window.location.assign(popup.cta_url)
+                }
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+function FeaturedContestPopup({
+  title,
+  subtitle,
+  imageUrl,
+  ctaLabel,
+  onAction,
+}: {
+  title: string
+  subtitle: string | null
+  imageUrl: string | null
+  ctaLabel: string
+  onAction: () => void
+}) {
+  return (
+    <div className="grid overflow-hidden bg-[#101317] text-white md:grid-cols-[1.05fr_0.95fr]">
+      <div className="relative min-h-[260px]">
+        {imageUrl ? (
+          <img src={imageUrl} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#fb923c,transparent_42%),linear-gradient(135deg,#111827,#1f2937_55%,#7c2d12)]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-black/20 to-transparent" />
+        <div className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-orange-200 backdrop-blur">
+          Featured Contest
+        </div>
+      </div>
+      <div className="flex flex-col justify-between p-7">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-300">
+            Kham pha giai dau dang hot
+          </p>
+          <h2 className="mt-3 text-3xl font-black leading-tight">{title}</h2>
+          <p className="mt-4 text-sm leading-7 text-slate-300">
+            {subtitle ?? "Thong tin giai dau noi bat dang duoc he thong uu tien hien thi tren trang kham pha."}
+          </p>
+        </div>
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Popup dong do admin dieu phoi
+          </div>
+          <button
+            type="button"
+            onClick={onAction}
+            className="rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-white transition hover:bg-orange-400"
+          >
+            {ctaLabel}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

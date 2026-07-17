@@ -7,6 +7,7 @@ import {
   CircleHelp,
   Compass,
   CreditCard,
+  Image,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -71,6 +72,7 @@ const adminNavGroups: NavGroup[] = [
   {
     heading: "Hệ thống",
     items: [
+      { label: "Featured popup", icon: Image, to: routePaths.adminFeaturedPopups },
       { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
     ],
   },

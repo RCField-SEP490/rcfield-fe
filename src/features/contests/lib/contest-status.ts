@@ -6,6 +6,44 @@ import type {
   ContestRegistrationStatus,
 } from "../types"
 
+export function getEffectiveContestStatus(
+  contest: Pick<
+    ContestItem,
+    | "status"
+    | "registration_opens_at"
+    | "registration_closes_at"
+    | "starts_at"
+    | "ends_at"
+  >,
+  now = new Date(),
+): ContestItem["status"] {
+  if (contest.status === "DRAFT" || contest.status === "CANCELLED") {
+    return contest.status
+  }
+
+  const endsAt = parseDate(contest.ends_at)
+  if (endsAt && endsAt.getTime() <= now.getTime()) {
+    return "COMPLETED"
+  }
+
+  const startsAt = parseDate(contest.starts_at)
+  if (startsAt && startsAt.getTime() <= now.getTime()) {
+    return "RUNNING"
+  }
+
+  const registrationClosesAt = parseDate(contest.registration_closes_at)
+  if (registrationClosesAt && registrationClosesAt.getTime() <= now.getTime()) {
+    return "CLOSED"
+  }
+
+  const registrationOpensAt = parseDate(contest.registration_opens_at)
+  if (registrationOpensAt && registrationOpensAt.getTime() <= now.getTime()) {
+    return "OPEN"
+  }
+
+  return contest.status
+}
+
 export function getContestStatusClass(status: ContestItem["status"]) {
   switch (status) {
     case "OPEN":
@@ -174,4 +212,10 @@ export function getJourneyStatusLabel(status: CustomerJourneyStatus | null) {
     default:
       return "Đang cập nhật"
   }
+}
+
+function parseDate(value: string | null | undefined) {
+  if (!value) return null
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
 }

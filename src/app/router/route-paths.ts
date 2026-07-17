@@ -88,6 +88,7 @@ export const routePaths = {
   adminDisputes: "/admin/disputes",
   adminPayments: "/admin/payments",
   adminFeatureFlags: "/admin/feature-flags",
+  adminFeaturedPopups: "/admin/featured-popups",
   adminTrustScoreLogs: "/admin/trust-score-logs",
   adminSystemChat: "/admin/system-chat",
   adminKnowledgeBase: "/admin/knowledge-base",

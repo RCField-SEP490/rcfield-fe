@@ -1,10 +1,22 @@
-import { Calendar, Users, MapPin, Award, ArrowRight } from "lucide-react"
+import type { ReactNode } from "react"
+import {
+  ArrowRight,
+  Calendar,
+  MapPin,
+  Sparkles,
+  Timer,
+  Trophy,
+  Users,
+} from "lucide-react"
 import { Link } from "react-router"
-import type { ContestItem } from "@/features/contests/types"
-import { formatCurrency } from "@/shared/lib/format"
-import { getContestStatusClass } from "@/features/contests/lib/contest-status"
+
 import { routePaths } from "@/app/router/route-paths"
-import { Badge } from "@/shared/ui/badge"
+import {
+  getContestStatusClass,
+  getContestStatusLabel,
+  getEffectiveContestStatus,
+} from "@/features/contests/lib/contest-status"
+import type { ContestItem } from "@/features/contests/types"
 import { cn } from "@/shared/lib/utils"
 
 interface ContestExploreCardProps {
@@ -12,139 +24,237 @@ interface ContestExploreCardProps {
 }
 
 export function ContestExploreCard({ contest }: ContestExploreCardProps) {
-  const statusClass = getContestStatusClass(contest.status)
-
-  const formatDateTime = (isoString?: string | null) => {
-    if (!isoString) return "--"
-    try {
-      const d = new Date(isoString)
-      return d.toLocaleString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-      })
-    } catch {
-      return isoString
-    }
-  }
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "OPEN":
-        return "Đang mở đăng ký"
-      case "CLOSED":
-        return "Đóng đăng ký"
-      case "RUNNING":
-        return "Đang diễn ra"
-      case "COMPLETED":
-        return "Đã kết thúc"
-      case "CANCELLED":
-        return "Đã hủy"
-      default:
-        return status
-    }
-  }
-
-  // Fallback gradient/background if no banner image is provided
-  const hasBanner = !!contest.banner_image_url
+  const effectiveStatus = getEffectiveContestStatus(contest)
+  const statusClass = getContestStatusClass(effectiveStatus)
+  const hasBanner = Boolean(contest.banner_image_url)
+  const publicStats = contest.public_stats
+  const runtimeSummary = contest.runtime_summary
+  const capacityRemaining = publicStats?.capacity_remaining
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:translate-y-[-2px] hover:shadow-md h-full">
-      {/* Top Banner section */}
+    <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/70">
       <Link
         to={routePaths.contestDetail.replace(":contestId", contest.id)}
-        className={cn(
-          "relative aspect-[18/10] w-full overflow-hidden shrink-0 flex items-center justify-center",
-          !hasBanner && "bg-gradient-to-br from-orange-500 to-red-600"
-        )}
+        className="relative block aspect-[16/10] overflow-hidden"
       >
         {hasBanner ? (
           <img
             src={contest.banner_image_url!}
             alt={contest.name}
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-white text-center">
-            <Award className="h-10 w-10 text-white/90 mb-2 animate-bounce-slow" />
-            <span className="text-xs font-black tracking-widest uppercase text-orange-200">RC TOURNAMENT</span>
-          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#fdba74,transparent_32%),linear-gradient(135deg,#0f172a,#1e293b_56%,#7c2d12)]" />
         )}
-
-        {/* Status Badge */}
-        <span className={cn(
-          "absolute left-3 top-3 z-10 rounded border px-2 py-0.5 text-[10px] font-extrabold shadow-sm backdrop-blur-md",
-          statusClass
-        )}>
-          {getStatusLabel(contest.status)}
-        </span>
-      </Link>
-
-      {/* Info Section */}
-      <div className="flex flex-1 flex-col justify-between p-5 space-y-4">
-        <div className="space-y-2">
-          {/* Format / Type tags */}
-          <div className="flex flex-wrap gap-1.5">
-            <Badge variant="outline" className="border-orange-100 bg-orange-50 text-[10px] font-bold text-orange-700">
-              {contest.contest_type?.name || "Giải đấu"}
-            </Badge>
-            <Badge variant="secondary" className="bg-slate-100 text-[10px] font-bold text-slate-700">
-              {contest.contest_format?.name || "Thể thức"}
-            </Badge>
-          </div>
-
-          {/* Name & Desc */}
-          <Link
-            to={routePaths.contestDetail.replace(":contestId", contest.id)}
-            className="block text-base font-extrabold text-slate-900 line-clamp-1 hover:text-orange-600 transition-colors"
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/15 to-transparent" />
+        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          <span
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[10px] font-extrabold shadow-sm backdrop-blur-md",
+              statusClass,
+            )}
           >
-            {contest.name}
-          </Link>
-          <p className="text-xs font-medium text-slate-500 line-clamp-2 min-h-[32px]">
-            {contest.description || "Tham gia ngay để tranh tài cùng các tay đua RC khác."}
-          </p>
-
-          <div className="pt-2 space-y-2 text-xs font-semibold text-slate-600">
-            {/* Host Branch */}
-            <div className="flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-red-500" />
-              <span className="truncate">{contest.host_branch?.cafe?.name || "Tất cả chi nhánh"}</span>
+            {getContestStatusLabel(effectiveStatus)}
+          </span>
+          {effectiveStatus === "RUNNING" ? (
+            <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">
+              Live bracket
+            </span>
+          ) : null}
+        </div>
+        <div className="absolute bottom-4 left-4 right-4">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-200">
+                {contest.contest_type?.name ?? "RC Contest"}
+              </p>
+              <h3 className="mt-2 line-clamp-2 text-xl font-black text-white">
+                {contest.name}
+              </h3>
             </div>
-
-            {/* DateTime */}
-            <div className="flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-              <span>
-                {formatDateTime(contest.starts_at)} - {formatDateTime(contest.ends_at)}
-              </span>
-            </div>
-
-            {/* Capacity */}
-            <div className="flex items-center gap-2">
-              <Users className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-              <span>Sức chứa: {contest.capacity ? `${contest.capacity} tay đua` : "Không giới hạn"}</span>
+            <div className="rounded-2xl border border-white/15 bg-black/20 px-3 py-2 text-right backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                Lệ phí
+              </p>
+              <p className="text-sm font-black text-white">
+                {formatEntryFee(contest.entry_fee)}
+              </p>
             </div>
           </div>
         </div>
+      </Link>
 
-        {/* Footer Pricing / Call to Action */}
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+      <div className="flex flex-1 flex-col justify-between p-5">
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <Tag>{contest.contest_format?.name ?? "Thể thức"}</Tag>
+            <Tag>{contest.track_type?.name ?? "Track"}</Tag>
+            {contest.highlight_rounds?.length ? (
+              <Tag tone="orange">
+                {contest.highlight_rounds.length} vòng nổi bật
+              </Tag>
+            ) : null}
+          </div>
+
+          <p className="line-clamp-2 min-h-10 text-sm leading-6 text-slate-500">
+            {contest.description ||
+              "Xem tiến trình thi đấu, bracket các vòng và kết quả được công bố từ giải."}
+          </p>
+
+          <div className="grid gap-3 text-sm font-semibold text-slate-600">
+            <MetaRow
+              icon={<MapPin className="h-4 w-4 text-red-500" />}
+              value={contest.host_branch?.cafe?.name || "Tất cả chi nhánh"}
+            />
+            <MetaRow
+              icon={<Calendar className="h-4 w-4 text-slate-400" />}
+              value={`${formatDateTime(contest.starts_at)} - ${formatDateTime(contest.ends_at)}`}
+            />
+            <MetaRow
+              icon={<Users className="h-4 w-4 text-slate-400" />}
+              value={
+                capacityRemaining === null || capacityRemaining === undefined
+                  ? contest.capacity
+                    ? `Sức chứa ${contest.capacity} tay đua`
+                    : "Không giới hạn số người chơi"
+                  : `Còn ${capacityRemaining} chỗ trên ${contest.capacity ?? "mức mở"}`
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Metric
+              icon={<Users className="size-3.5" />}
+              label="Đăng ký"
+              value={String(publicStats?.registration_count ?? 0)}
+            />
+            <Metric
+              icon={<Sparkles className="size-3.5" />}
+              label="Xác nhận"
+              value={String(publicStats?.confirmed_count ?? 0)}
+            />
+            <Metric
+              icon={<Trophy className="size-3.5" />}
+              label="Vòng"
+              value={String(runtimeSummary?.total_rounds ?? 0)}
+            />
+          </div>
+
+          {effectiveStatus === "RUNNING" || effectiveStatus === "COMPLETED" ? (
+            <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-3">
+              <div className="flex items-center gap-2 text-orange-700">
+                <Timer className="size-4" />
+                <p className="text-xs font-black uppercase tracking-wide">
+                  Theo dõi vòng đấu
+                </p>
+              </div>
+              <p className="mt-2 text-sm font-semibold text-slate-700">
+                {runtimeSummary?.has_live_matches
+                  ? "Giải đang có trận live. Vào chi tiết để xem sơ đồ và người vào vòng trong."
+                  : "Bracket và lịch sử từng vòng đã sẵn sàng để xem trong trang chi tiết."}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lệ phí tham gia</p>
-            <p className="text-sm font-black text-orange-600">
-              {contest.entry_fee > 0 ? `${formatCurrency(contest.entry_fee)} VND` : "Miễn phí"}
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              CTA
+            </p>
+            <p className="text-sm font-extrabold text-slate-900">
+              Xem giải và đăng ký
             </p>
           </div>
           <Link
             to={routePaths.contestDetail.replace(":contestId", contest.id)}
-            className="flex items-center gap-1 rounded-lg bg-slate-950 px-3.5 py-2 text-xs font-bold text-white shadow hover:bg-slate-800 transition"
+            className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800"
           >
             Chi tiết
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </div>
+    </article>
+  )
+}
+
+function Tag({
+  children,
+  tone = "slate",
+}: {
+  children: ReactNode
+  tone?: "slate" | "orange"
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
+        tone === "orange"
+          ? "bg-orange-50 text-orange-700"
+          : "bg-slate-100 text-slate-700",
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+function Metric({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
+      <div className="flex items-center gap-1.5 text-slate-400">{icon}</div>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="text-sm font-black text-slate-900">{value}</p>
     </div>
   )
+}
+
+function MetaRow({
+  icon,
+  value,
+}: {
+  icon: ReactNode
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="shrink-0">{icon}</span>
+      <span className="truncate">{value}</span>
+    </div>
+  )
+}
+
+function formatDateTime(isoString?: string | null) {
+  if (!isoString) return "--"
+  try {
+    const date = new Date(isoString)
+    return date.toLocaleString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+    })
+  } catch {
+    return isoString
+  }
+}
+
+function formatEntryFee(value: number) {
+  if (value <= 0) return "Miễn phí"
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value)
 }

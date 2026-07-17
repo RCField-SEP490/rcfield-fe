@@ -112,6 +112,33 @@ export type ContestPublicStats = {
   capacity_remaining: number | null
 }
 
+export type ContestHighlightRoundWinner = {
+  registration_id: string
+  participant_name: string | null
+  participant_email: string | null
+  driver_handle: string | null
+  source_match_id: string
+  source_match_name: string | null
+}
+
+export type ContestHighlightRound = {
+  round_no: number
+  label: string
+  match_count: number
+  completed_match_count: number
+  winners: ContestHighlightRoundWinner[]
+}
+
+export type ContestRuntimeSummary = {
+  total_matches: number
+  total_rounds: number
+  current_round_no: number | null
+  has_live_matches: boolean
+  live_match_id: string | null
+  completed_matches: number
+  highlight_rounds: ContestHighlightRound[]
+}
+
 export type ContestItem = {
   id: string
   provider_id: string | null
@@ -168,6 +195,9 @@ export type ContestItem = {
   staff_assignments?: ContestStaffAssignment[]
   operator_access?: boolean
   my_registration?: ContestRegistration | null
+  published_leaderboard?: ContestLeaderboardPayload | null
+  runtime_summary?: ContestRuntimeSummary | null
+  highlight_rounds?: ContestHighlightRound[]
 }
 
 export type ContestListResponse = {
@@ -255,7 +285,6 @@ export type ContestRegistration = {
 }
 
 export type ContestEntryPaymentResponse = {
-  transaction_id: string
   txn_ref: string
   amount: number
   payment_url: string

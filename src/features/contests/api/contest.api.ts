@@ -81,6 +81,13 @@ function mapContestItem(raw: any): ContestItem {
     staff_assignments: Array.isArray(raw.staff_assignments)
       ? raw.staff_assignments
       : [],
+    published_leaderboard: raw.published_leaderboard ?? raw.config?.published_leaderboard ?? null,
+    runtime_summary: raw.runtime_summary ?? null,
+    highlight_rounds: Array.isArray(raw.highlight_rounds)
+      ? raw.highlight_rounds
+      : Array.isArray(raw.runtime_summary?.highlight_rounds)
+        ? raw.runtime_summary.highlight_rounds
+        : [],
     operator_access: Boolean(raw.operator_access),
     my_registration: raw.my_registration
       ? mapContestRegistration(raw.my_registration)
