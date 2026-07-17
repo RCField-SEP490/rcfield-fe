@@ -62,12 +62,14 @@ export function ProviderPageHeader({
   actions,
   titleClassName,
   contentClassName,
+  h2Title,
 }: {
-  title: string
+  title: ReactNode
   description?: ReactNode
   actions?: ReactNode
   titleClassName?: string
   contentClassName?: string
+  h2Title?: string
   flush?: boolean
 }) {
   return (
@@ -78,7 +80,12 @@ export function ProviderPageHeader({
     >
       <div className={cn("flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-center", contentClassName)}>
         <div className="min-w-0 flex-1">
-          <h2 title={title} className={cn("text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl", titleClassName)}>{title}</h2>
+          <h2
+            title={h2Title ?? (typeof title === "string" ? title : undefined)}
+            className={cn("text-3xl font-extrabold leading-[1.1] tracking-tight text-[#1c1b1b] md:text-4xl", titleClassName)}
+          >
+            {title}
+          </h2>
           {typeof description === "string" ? <p className="mt-2 text-sm font-semibold text-[#444748]">{description}</p> : description ? <div className="mt-2">{description}</div> : null}
         </div>
         <div className="flex flex-wrap items-center gap-3">

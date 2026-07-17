@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { BarChart3, CalendarCheck2, Flag, PlayCircle } from "lucide-react"
+import { BarChart3, CalendarCheck2, Flag, PlayCircle, MoreHorizontal } from "lucide-react"
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
@@ -24,6 +24,12 @@ import { ProviderPageHeader, MetricCard } from "@/pages/provider/components/Prov
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
 import { ContestDisciplinePanel } from "./components/ContestDisciplinePanel"
 import { ContestEventDayPanel } from "./components/ContestEventDayPanel"
@@ -294,75 +300,97 @@ export function ProviderContestWorkspacePage({
   return (
     <ProviderShell contentClassName="max-w-none">
       <ProviderPageHeader
-        title={contest.name}
-        description={
-          <div className="space-y-2">
-            <p className="max-w-2xl text-sm font-semibold text-[#444748]">
-              {sectionSummaries[section]}
-            </p>
-            <div className="flex flex-wrap gap-1.5 text-[11px] font-bold text-[#5d5f5f]">
-              <HeaderMeta label="Trạng thái" value={getContestStatusLabel(contest.status)} />
-              <HeaderMeta
-                label="Format"
-                value={contest.contest_format?.name ?? runtimeFormat}
-              />
-              <HeaderMeta
-                label="Thời gian"
-                value={`${formatShortDate(contest.starts_at)} - ${formatShortDate(contest.ends_at)}`}
-              />
-              <HeaderMeta
-                label="Đăng ký"
-                value={`${metrics?.registration_counts.total ?? registrations.length} người`}
-              />
-            </div>
-          </div>
-        }
-        titleClassName="max-w-[min(100%,26rem)] line-clamp-2 text-[1.85rem] leading-[1.02] md:text-[2.15rem]"
-        contentClassName="lg:flex-row lg:items-start"
-        actions={
-          <>
-            <Badge className={`border ${getContestStatusClass(contest.status)}`}>
+        title={
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            <span
+              className="max-w-[15rem] md:max-w-[20rem] truncate text-xl font-extrabold tracking-tight text-[#1c1b1b] md:text-2xl"
+              title={contest.name}
+            >
+              {contest.name}
+            </span>
+            <Badge className={`border text-[10px] font-bold px-2 py-0.5 ${getContestStatusClass(contest.status)}`}>
               {getContestStatusLabel(contest.status)}
             </Badge>
-            <Button
-              type="button"
+            <Badge
               variant="outline"
-              className="h-9 rounded-lg border-[#c4c7c8] bg-white px-3 text-sm text-[#1c1b1b] hover:bg-[#f6f3f2]"
-              onClick={() =>
-                navigate(routePaths.providerContestEdit.replace(":contestId", contest.id))
-              }
+              className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
             >
-              Chỉnh sửa giải đấu
-            </Button>
+              Format: {contest.contest_format?.name ?? runtimeFormat}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
+            >
+              Thời gian: {formatShortDate(contest.starts_at)} - {formatShortDate(contest.ends_at)}
+            </Badge>
+            <Badge
+              variant="outline"
+              className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
+            >
+              Đăng ký: {metrics?.registration_counts.total ?? registrations.length} người
+            </Badge>
+          </div>
+        }
+        h2Title={contest.name}
+        description={
+          <p className="text-[11px] font-semibold text-[#5d5f5f]">
+            {sectionSummaries[section]}
+          </p>
+        }
+        titleClassName="w-full"
+        contentClassName="sm:items-center"
+        actions={
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
-              className="h-9 gap-2 rounded-lg border-[#c4c7c8] bg-white px-3 text-sm text-[#1c1b1b] hover:bg-[#f6f3f2]"
+              className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] bg-white px-3 text-xs font-bold text-[#1c1b1b] hover:bg-[#f6f3f2]"
               onClick={() =>
                 navigate(getContestWorkspacePath(contest.id, "bracket"))
               }
             >
-              <PlayCircle className="size-4" />
+              <PlayCircle className="size-3.5" />
               Mở nhánh đấu
             </Button>
             <Button
               type="button"
-              className="h-9 gap-2 rounded-lg bg-[#1c1b1b] px-3 text-sm text-white hover:bg-[#313030]"
+              className="h-8 gap-1.5 rounded-lg bg-[#1c1b1b] px-3 text-xs font-bold text-white hover:bg-[#313030]"
               onClick={() => void handlePublishLeaderboard()}
             >
-              <BarChart3 className="size-4" />
+              <BarChart3 className="size-3.5" />
               Công bố bảng xếp hạng
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 rounded-lg border-orange-200 bg-orange-50 px-3 text-sm text-orange-700 hover:bg-orange-100"
-              disabled={!metrics?.leaderboard.published}
-              onClick={() => void handleSyncRaceRecords()}
-            >
-              Đồng bộ toàn hệ thống
-            </Button>
-          </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2] rounded-lg"
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Thao tác khác</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 border border-[#c4c7c8] bg-white shadow-md z-50">
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] transition-colors"
+                  onClick={() =>
+                    navigate(routePaths.providerContestEdit.replace(":contestId", contest.id))
+                  }
+                >
+                  Chỉnh sửa giải đấu
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!metrics?.leaderboard.published}
+                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  onClick={() => void handleSyncRaceRecords()}
+                >
+                  Đồng bộ toàn hệ thống
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         }
       />
 
@@ -547,14 +575,7 @@ export function ProviderContestWorkspacePage({
   )
 }
 
-function HeaderMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e2e1] bg-white px-2.5 py-1">
-      <span className="text-[#747878]">{label}</span>
-      <span className="text-[#1c1b1b]">{value}</span>
-    </span>
-  )
-}
+
 
 function formatShortDate(value: string | null) {
   if (!value) return "--"
