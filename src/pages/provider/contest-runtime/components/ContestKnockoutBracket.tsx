@@ -1,8 +1,9 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
+import { GripVertical } from "lucide-react"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { formatMatchLabel, formatContestDateTime, getMatchParticipantName, groupMatchesByRound } from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusClass, getMatchStatusLabel } from "@/features/contests/lib/contest-status"
-import type { ContestMatch } from "@/features/contests/types"
+import type { ContestMatch, ContestMatchParticipant } from "@/features/contests/types"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -31,12 +32,14 @@ export function ContestKnockoutBracket({
   hasChanges: boolean
 }) {
   const groups = useMemo(() => groupMatchesByRound(matches), [matches])
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
 
   return (
     <Panel>
       <PanelTitle
         title="Sơ đồ nhánh đấu"
-        subtitle="Kéo người đi tiếp sang trận kế tiếp, bấm lưu sơ đồ rồi mới nhập kết quả cho trận đã đủ người."
+        subtitle="Kéo người thắng từ trận đã hoàn tất sang vòng sâu hơn. Bấm lưu sơ đồ rồi mới nhập kết quả cho trận đã đủ người."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -99,9 +102,19 @@ export function ContestKnockoutBracket({
                         return (
                           <div
                             key={index}
-                            className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2"
-                            onDragOver={(event) => event.preventDefault()}
+                            className={`rounded-lg border px-3 py-2 transition-colors ${
+                              dropTargetId === `${match.id}-${index}` && !participant
+                                ? "border-orange-300 bg-orange-50"
+                                : "border-[#e5e2e1] bg-[#fcf8f8]"
+                            }`}
+                            onDragOver={(event) => {
+                              event.preventDefault()
+                              if (!participant) setDropTargetId(`${match.id}-${index}`)
+                            }}
+                            onDragLeave={() => setDropTargetId(null)}
                             onDrop={(event) => {
+                              setDropTargetId(null)
+                              setDraggingId(null)
                               const payload = event.dataTransfer.getData("text/plain")
                               if (!payload) return
                               try {
@@ -120,30 +133,15 @@ export function ContestKnockoutBracket({
                             }}
                           >
                             {participant ? (
-                              <>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p
-                                    className="text-sm font-bold text-[#1c1b1b]"
-                                    draggable={Boolean(match.next_match_id)}
-                                    onDragStart={(event) => {
-                                      event.dataTransfer.setData(
-                                        "text/plain",
-                                        JSON.stringify({
-                                          sourceMatchId: match.id,
-                                          registrationId:
-                                            participant.registration_id,
-                                        }),
-                                      )
-                                    }}
-                                  >
-                                    {getMatchParticipantName(participant)}
-                                  </p>
-                                  <DriverTitleChip label={participant.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
-                                </div>
-                                <p className="mt-1 text-xs font-semibold text-[#747878]">
-                                  {participant.is_winner ? "Đang là người thắng" : participant.status}
-                                </p>
-                              </>
+                              <ParticipantRow
+                                participant={participant}
+                                match={match}
+                                isDragging={draggingId === `${match.id}-${participant.registration_id}`}
+                                onDragStart={() =>
+                                  setDraggingId(`${match.id}-${participant.registration_id}`)
+                                }
+                                onDragEnd={() => setDraggingId(null)}
+                              />
                             ) : (
                               <p className="text-sm font-semibold text-[#747878]">Thả người thi đấu vào đây</p>
                             )}
@@ -159,5 +157,59 @@ export function ContestKnockoutBracket({
         </div>
       )}
     </Panel>
+  )
+}
+
+function ParticipantRow({
+  participant,
+  match,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+}: {
+  participant: ContestMatchParticipant
+  match: ContestMatch
+  isDragging: boolean
+  onDragStart: () => void
+  onDragEnd: () => void
+}) {
+  const canDrag =
+    Boolean(match.next_match_id) &&
+    match.status === "COMPLETED" &&
+    participant.is_winner
+
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-2 ${isDragging ? "opacity-50" : ""}`}
+      draggable={canDrag}
+      onDragStart={(event) => {
+        if (!canDrag) {
+          event.preventDefault()
+          return
+        }
+        event.dataTransfer.setData(
+          "text/plain",
+          JSON.stringify({
+            sourceMatchId: match.id,
+            registrationId: participant.registration_id,
+          }),
+        )
+        onDragStart()
+      }}
+      onDragEnd={onDragEnd}
+    >
+      {canDrag ? (
+        <GripVertical className="size-4 shrink-0 text-[#747878]" />
+      ) : null}
+      <p className={`text-sm font-bold ${canDrag ? "text-[#1c1b1b]" : "text-[#5d5f5f]"}`}>
+        {getMatchParticipantName(participant)}
+      </p>
+      <DriverTitleChip label={participant.registration?.driver_title_label} className="px-2 py-0 text-[10px]" />
+      {participant.is_winner ? (
+        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+          Winner
+        </Badge>
+      ) : null}
+    </div>
   )
 }

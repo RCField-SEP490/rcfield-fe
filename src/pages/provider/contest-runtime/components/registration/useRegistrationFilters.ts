@@ -30,6 +30,20 @@ export function useRegistrationFilters(registrations: ContestRegistration[]) {
       pending: registrations.filter((item) => item.status === "PENDING").length,
       confirmed: registrations.filter((item) => item.status === "CONFIRMED").length,
       checkedIn: registrations.filter((item) => item.status === "CHECKED_IN").length,
+      revenue: {
+        expected: registrations
+          .filter((item) => item.status !== "CANCELLED")
+          .reduce((sum, item) => sum + (item.entryFeeAmount ?? 0), 0),
+        paid: registrations
+          .filter((item) => item.paymentStatus === "MARKED_PAID")
+          .reduce((sum, item) => sum + (item.entryFeeAmount ?? 0), 0),
+        pending: registrations
+          .filter((item) => ["PENDING_PAYMENT", "PENDING_REVIEW"].includes(item.paymentStatus))
+          .reduce((sum, item) => sum + (item.entryFeeAmount ?? 0), 0),
+        waived: registrations
+          .filter((item) => item.paymentStatus === "WAIVED")
+          .reduce((sum, item) => sum + (item.entryFeeAmount ?? 0), 0),
+      },
     }),
     [registrations],
   )

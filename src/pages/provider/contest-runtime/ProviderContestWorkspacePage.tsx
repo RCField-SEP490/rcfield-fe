@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { BarChart3, CalendarCheck2, Flag, PlayCircle, MoreHorizontal } from "lucide-react"
+import { BarChart3, CalendarCheck2, Flag, PlayCircle, MoreHorizontal, CircleDollarSign } from "lucide-react"
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
@@ -433,7 +433,7 @@ export function ProviderContestWorkspacePage({
       />
 
       {section === "overview" ? (
-        <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard
             label="Đăng ký"
             value={String(metrics?.registration_counts.total ?? registrations.length)}
@@ -472,6 +472,14 @@ export function ProviderContestWorkspacePage({
             }
             icon={<CalendarCheck2 />}
             tone={metrics?.global_sync.synced ? "success" : "neutral"}
+            compact
+          />
+          <MetricCard
+            label="Doanh thu lệ phí"
+            value={formatVnd(metrics?.revenue?.paid_revenue ?? 0)}
+            helper={`Dự kiến ${formatVnd(metrics?.revenue?.expected_revenue ?? 0)} · Chờ ${formatVnd(metrics?.revenue?.pending_revenue ?? 0)}`}
+            icon={<CircleDollarSign />}
+            tone="success"
             compact
           />
         </section>
@@ -678,6 +686,14 @@ function applyStagedParticipants(
       }),
     }
   })
+}
+
+function formatVnd(value: number) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value)
 }
 
 function updateWorkspaceSearchParams(
