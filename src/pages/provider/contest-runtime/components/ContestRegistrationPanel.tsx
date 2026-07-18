@@ -142,6 +142,12 @@ export function ContestRegistrationPanel({
           title="Quản lý người chơi và đăng ký"
           subtitle="Tách riêng phần duyệt danh sách, xử lý lệ phí tay và trạng thái tham gia."
         />
+        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+          Lệ phí là phí tham gia contest. Customer có thể thanh toán VNPay nếu
+          registration đang chờ phí; còn nút "Đánh dấu đã thu" dùng khi
+          provider/staff đã thu trực tiếp bên ngoài hệ thống và cần xác nhận lại
+          trên dashboard.
+        </div>
 
         <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_220px_220px]">
           <div className="relative">
@@ -183,7 +189,9 @@ export function ContestRegistrationPanel({
         </div>
 
         <div className="space-y-3">
-          {filteredRegistrations.map((registration) => (
+          {filteredRegistrations.map((registration) => {
+            const actions = getRegistrationActions(registration)
+            return (
             <article
               key={registration.id}
               className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4"
@@ -248,21 +256,21 @@ export function ContestRegistrationPanel({
                 <div className="flex flex-wrap gap-2 xl:max-w-[440px] xl:justify-end">
                   <TinyAction
                     label="Đánh dấu đã thu"
-                    disabled={registration.paymentStatus === "MARKED_PAID"}
+                    disabled={!actions.canMarkPaid}
                     onClick={() =>
                       setDialogState({ kind: "markPaid", registration })
                     }
                   />
                   <TinyAction
                     label="Miễn phí"
-                    disabled={registration.paymentStatus === "WAIVED"}
+                    disabled={!actions.canWaive}
                     onClick={() =>
                       setDialogState({ kind: "waive", registration })
                     }
                   />
                   <Button
                     className="h-8 rounded-lg bg-emerald-600 px-3 text-xs text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={registration.status !== "PENDING"}
+                    disabled={!actions.canApprove}
                     onClick={() =>
                       setDialogState({ kind: "approve", registration })
                     }
@@ -272,7 +280,7 @@ export function ContestRegistrationPanel({
                   <Button
                     variant="outline"
                     className="h-8 rounded-lg border-red-200 bg-red-50 px-3 text-xs text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={registration.status === "CANCELLED"}
+                    disabled={!actions.canReject}
                     onClick={() =>
                       setDialogState({ kind: "reject", registration })
                     }
@@ -282,7 +290,7 @@ export function ContestRegistrationPanel({
                   <Button
                     variant="outline"
                     className="h-8 rounded-lg border-[#c4c7c8] bg-white px-3 text-xs text-[#1c1b1b] hover:bg-[#f6f3f2] disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={registration.status === "CANCELLED"}
+                    disabled={!actions.canCancel}
                     onClick={() =>
                       setDialogState({ kind: "cancel", registration })
                     }
@@ -292,7 +300,8 @@ export function ContestRegistrationPanel({
                 </div>
               </div>
             </article>
-          ))}
+            )
+          })}
 
           {filteredRegistrations.length === 0 ? (
             <div className="rounded-lg border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
@@ -397,6 +406,27 @@ function dialogTitle(kind: DialogState["kind"]) {
       return "Hủy đăng ký"
     default:
       return "Cập nhật đăng ký"
+  }
+}
+
+function getRegistrationActions(registration: ContestRegistration) {
+  const editablePaymentStatuses: ContestRegistration["paymentStatus"][] = [
+    "PENDING_PAYMENT",
+    "PENDING_REVIEW",
+  ]
+  const canEditBeforeCheckIn =
+    registration.status === "PENDING" || registration.status === "CONFIRMED"
+
+  return {
+    canMarkPaid:
+      canEditBeforeCheckIn &&
+      editablePaymentStatuses.includes(registration.paymentStatus),
+    canWaive:
+      canEditBeforeCheckIn &&
+      editablePaymentStatuses.includes(registration.paymentStatus),
+    canApprove: registration.status === "PENDING",
+    canReject: registration.status === "PENDING",
+    canCancel: registration.status === "PENDING" || registration.status === "CONFIRMED",
   }
 }
 

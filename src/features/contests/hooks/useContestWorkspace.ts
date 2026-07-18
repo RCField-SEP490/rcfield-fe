@@ -16,12 +16,6 @@ export function useContestWorkspace(
   const runtime = useContestRuntime(contestId, options)
   const eventDay = useContestEventDay(contestId)
 
-  const contest = runtime.contestQuery.data
-  const hostCafeId =
-    contest?.host_branch?.cafe_id ??
-    contest?.participating_branches[0]?.cafe_id ??
-    undefined
-
   const staffAssignmentsQuery = useQuery({
     queryKey: contestQueryKeys.staffAssignments(contestId),
     queryFn: () => contestApi.listStaffAssignments(contestId!),
@@ -35,9 +29,9 @@ export function useContestWorkspace(
   })
 
   const staffOptionsQuery = useQuery({
-    queryKey: [...staffQueryKeys.list(hostCafeId), "contest-workspace"],
-    queryFn: () => staffApi.listStaff(hostCafeId),
-    enabled: Boolean(hostCafeId),
+    queryKey: [...staffQueryKeys.list(), "contest-workspace"],
+    queryFn: () => staffApi.listStaff(),
+    enabled: Boolean(contestId),
   })
 
   const invalidateGovernance = async () => {

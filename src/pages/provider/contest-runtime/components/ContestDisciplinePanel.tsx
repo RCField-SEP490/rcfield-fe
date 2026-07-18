@@ -119,8 +119,13 @@ export function ContestDisciplinePanel({
         <Panel>
           <PanelTitle
             title="Phân công nhân sự"
-            subtitle="Gắn staff vận hành trực tiếp cho contest hiện tại."
+            subtitle="Gắn tài khoản staff thật để staff đó có quyền vận hành contest hiện tại."
           />
+          <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+            Dropdown bên dưới là danh sách staff account. Thông tin chi nhánh
+            chỉ dùng để nhận diện staff đang thuộc cafe nào, không phải gán
+            quyền cho chi nhánh.
+          </div>
           <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
             <select
               className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
@@ -132,7 +137,7 @@ export function ContestDisciplinePanel({
                 .filter((item) => !activeStaffIds.has(item.id))
                 .map((staff) => (
                   <option key={staff.id} value={staff.id}>
-                    {staff.fullName} · {staff.cafeName}
+                    {staff.fullName} · {staff.email ?? "chưa có email"}
                   </option>
                 ))}
             </select>
@@ -159,7 +164,7 @@ export function ContestDisciplinePanel({
                       {assignment.staff?.full_name ?? assignment.staff_id}
                     </p>
                     <p className="text-xs font-semibold text-[#747878]">
-                      {assignment.staff?.email ?? "Chưa có email"}
+                      Staff ID: {assignment.staff_id} · {assignment.staff?.email ?? "Chưa có email"}
                     </p>
                   </div>
                 </div>

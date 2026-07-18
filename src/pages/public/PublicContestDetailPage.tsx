@@ -304,7 +304,10 @@ export function PublicContestDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="leaderboard" className="mt-0 space-y-6">
-                  <ContestLeaderboardSection leaderboard={leaderboard} />
+                  <ContestLeaderboardSection
+                    leaderboard={leaderboard}
+                    matches={matches}
+                  />
                 </TabsContent>
 
                 <TabsContent value="registration" className="mt-0 space-y-6">
@@ -854,9 +857,24 @@ function ContestBracketBoard({
 
 function ContestLeaderboardSection({
   leaderboard,
+  matches,
 }: {
   leaderboard: ContestLeaderboardPayload | null
+  matches: ContestMatch[]
 }) {
+  const participantNameByRegistrationId = useMemo(() => {
+    const names = new Map<string, string>()
+    for (const match of matches) {
+      for (const participant of match.participants) {
+        const name = getMatchParticipantName(participant)
+        if (!name.startsWith("Registration ")) {
+          names.set(participant.registration_id, name)
+        }
+      }
+    }
+    return names
+  }, [matches])
+
   return (
     <Card className="rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
       <div className="flex items-center gap-2">
@@ -909,7 +927,8 @@ function ContestLeaderboardSection({
                       <div className="space-y-1">
                         <p className="font-bold text-slate-900">
                           {entry.display_name ??
-                            `Registration ${entry.registration_id.slice(0, 8)}`}
+                            participantNameByRegistrationId.get(entry.registration_id) ??
+                            `Người chơi #${entry.registration_id.slice(0, 8)}`}
                         </p>
                         {entry.driver_title_label ? (
                           <p className="text-xs font-bold text-orange-700">
@@ -1075,10 +1094,6 @@ function ContestAsideStatus({
               ? `Vòng ${runtimeSummary.current_round_no}`
               : "Chưa có"
           }
-        />
-        <StatusRow
-          label="Trận đang live"
-          value={runtimeSummary?.has_live_matches ? "Có" : "Không"}
         />
         <StatusRow
           label="Hành trình của bạn"
