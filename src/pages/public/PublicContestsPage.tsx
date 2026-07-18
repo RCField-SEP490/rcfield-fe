@@ -23,7 +23,10 @@ export function PublicContestsPage() {
     queryFn: () => contestApi.listContests({ limit: 100 }),
   })
 
-  const contests = contestsQuery.data?.data ?? []
+  const contests = useMemo(
+    () => contestsQuery.data?.data ?? [],
+    [contestsQuery.data?.data],
+  )
   const rankedContests = useMemo(() => rankContestsForDiscovery(contests), [contests])
   const featuredContest = rankedContests[0] ?? null
   const secondaryContests = rankedContests.slice(1)

@@ -51,6 +51,7 @@ export function ContestFilterBar({
 
   // Keep the local keyword in sync when the URL changes from elsewhere.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local input with external URL param
     setKeyword(paramKeyword)
   }, [paramKeyword])
 

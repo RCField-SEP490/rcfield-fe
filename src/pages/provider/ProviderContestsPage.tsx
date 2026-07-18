@@ -47,8 +47,14 @@ export function ProviderContestsPage() {
     },
   })
 
-  const contests = contestsQuery.data?.data ?? []
-  const laneCountContests = status ? laneCountsQuery.data?.data ?? [] : contests
+  const contests = useMemo(
+    () => contestsQuery.data?.data ?? [],
+    [contestsQuery.data?.data],
+  )
+  const laneCountContests = useMemo(
+    () => (status ? laneCountsQuery.data?.data ?? [] : contests),
+    [status, laneCountsQuery.data?.data, contests],
+  )
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: laneCountContests.length }
     for (const contest of laneCountContests) {
