@@ -2,14 +2,31 @@ import { useMemo, useState } from "react"
 import type { ContestAuditLogItem } from "@/features/contests/types"
 import { getAuditGroup } from "@/features/contests/lib/contest-runtime"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import { Button } from "@/shared/ui/button"
 
-export function ContestAuditPanel({ logs }: { logs: ContestAuditLogItem[] }) {
+export function ContestAuditPanel({
+  logs,
+  page,
+  limit,
+  total,
+  onPageChange,
+}: {
+  logs: ContestAuditLogItem[]
+  page: number
+  limit: number
+  total: number
+  onPageChange: (page: number) => void
+}) {
   const [filter, setFilter] = useState<"all" | "contest" | "registration" | "match">("all")
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null)
 
   const filteredLogs = useMemo(() => {
     return filter === "all" ? logs : logs.filter((log) => getAuditGroup(log) === filter)
   }, [filter, logs])
+
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+  const canGoPrevious = page > 1
+  const canGoNext = page < totalPages
 
   return (
     <Panel>
@@ -69,6 +86,32 @@ export function ContestAuditPanel({ logs }: { logs: ContestAuditLogItem[] }) {
         {filteredLogs.length === 0 ? (
           <p className="text-sm font-semibold text-[#747878]">Chưa có audit log nào.</p>
         ) : null}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-xs font-semibold text-[#747878]">
+          Trang {page} / {totalPages} · {total} bản ghi
+        </p>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canGoPrevious}
+            onClick={() => onPageChange(page - 1)}
+          >
+            Trước
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canGoNext}
+            onClick={() => onPageChange(page + 1)}
+          >
+            Sau
+          </Button>
+        </div>
       </div>
     </Panel>
   )

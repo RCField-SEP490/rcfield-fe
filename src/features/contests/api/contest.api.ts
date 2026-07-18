@@ -13,6 +13,7 @@ import type {
   ContestMatch,
   ContestMatchesQuery,
   ContestMetrics,
+  PaginatedResponse,
   ContestRegistration,
   ContestRegistrationsQuery,
   ContestRaceRecordSyncResult,
@@ -52,8 +53,10 @@ export const contestQueryKeys = {
       : ([...contestQueryKeys.all, "matches", contestId] as const),
   metrics: (contestId?: string) =>
     [...contestQueryKeys.all, "metrics", contestId] as const,
-  auditLogs: (contestId?: string) =>
-    [...contestQueryKeys.all, "audit-logs", contestId] as const,
+  auditLogs: (contestId?: string, params?: Record<string, unknown>) =>
+    params
+      ? ([...contestQueryKeys.all, "audit-logs", contestId, params] as const)
+      : ([...contestQueryKeys.all, "audit-logs", contestId] as const),
   leaderboard: (contestId?: string) =>
     [...contestQueryKeys.all, "leaderboard", contestId] as const,
   staffAssignments: (contestId?: string) =>
@@ -185,6 +188,17 @@ function mapContestMatch(raw: any): ContestMatch {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const contestApi = {
+  listAuditLogs: async (
+    contestId: string,
+    params?: { page?: number; limit?: number },
+  ): Promise<PaginatedResponse<ContestAuditLogItem>> => {
+    const res = await api.get<PaginatedResponse<ContestAuditLogItem>>(
+      `/v1/contests/${contestId}/audit-logs`,
+      { params },
+    )
+    return res.data
+  },
+
   listContestTypes: async (): Promise<ContestCatalogType[]> => {
     const res = await api.get<ApiEnvelope<ContestCatalogType[]>>(
       "/v1/contest-catalog/types",
@@ -380,13 +394,6 @@ export const contestApi = {
   ): Promise<ContestRaceRecordSyncResult> => {
     const res = await api.post<ApiEnvelope<ContestRaceRecordSyncResult>>(
       `/v1/contests/${contestId}/sync-race-records`,
-    )
-    return res.data.data
-  },
-
-  listAuditLogs: async (contestId: string): Promise<ContestAuditLogItem[]> => {
-    const res = await api.get<ApiEnvelope<ContestAuditLogItem[]>>(
-      `/v1/contests/${contestId}/audit-logs`,
     )
     return res.data.data
   },

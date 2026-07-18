@@ -3,13 +3,18 @@ import { contestApi, contestQueryKeys } from "../api/contest.api"
 import { useContestEventDay } from "./useContestEventDay"
 import { useContestRuntime } from "./useContestRuntime"
 import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
-import type { ContestMatchesQuery, ContestRegistrationsQuery } from "../types"
+import type {
+  ContestMatchesQuery,
+  ContestRegistrationsQuery,
+  ContestAuditLogsQuery,
+} from "../types"
 
 export function useContestWorkspace(
   contestId?: string,
   options?: {
     registrations?: ContestRegistrationsQuery
     matches?: ContestMatchesQuery
+    auditLogs?: ContestAuditLogsQuery
     enabled?: {
       registrations?: boolean
       matches?: boolean

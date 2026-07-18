@@ -19,6 +19,7 @@ import type {
   ContestMatchStatus,
   ContestRegistrationStatus,
   ContestUpdateMatchParticipantsBody,
+  ContestAuditLogsQuery,
 } from "@/features/contests/types"
 import { ProviderPageHeader, MetricCard } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -73,6 +74,10 @@ export function ProviderContestWorkspacePage({
   const matchStatus = searchParams.get("matchStatus") ?? ""
   const participantQuery = searchParams.get("participantQuery") ?? ""
   const roundNo = searchParams.get("roundNo") ?? ""
+  const auditPage = Math.max(1, Number(searchParams.get("auditPage") || "1"))
+  const auditLimit = [10, 20, 50, 100].includes(Number(searchParams.get("auditLimit")))
+    ? Number(searchParams.get("auditLimit"))
+    : 20
 
   const needsRegistrations =
     section === "overview" ||
@@ -100,6 +105,10 @@ export function ProviderContestWorkspacePage({
       participant_query: participantQuery || undefined,
       round_no: roundNo ? Number(roundNo) : undefined,
     },
+    auditLogs: {
+      page: auditPage,
+      limit: auditLimit,
+    } as ContestAuditLogsQuery,
     enabled: {
       registrations: needsRegistrations,
       matches: needsMatches,
@@ -131,7 +140,9 @@ export function ProviderContestWorkspacePage({
     [apiMatches, stagedParticipantsByMatch],
   )
   const metrics = workspace.runtime.metricsQuery.data
-  const auditLogs = workspace.runtime.auditLogsQuery.data ?? []
+  const auditLogsResponse = workspace.runtime.auditLogsQuery.data
+  const auditLogs = auditLogsResponse?.data ?? []
+  const auditMeta = auditLogsResponse?.meta
   const leaderboard = getPublishedLeaderboard(contest)
   const selectedMatch = useMemo(
     () => matches.find((match) => match.id === selectedMatchId) ?? null,
@@ -171,6 +182,13 @@ export function ProviderContestWorkspacePage({
       setStagedHistory([])
     })
   }, [contestId])
+
+  const handleAuditPageChange = (nextPage: number) => {
+    updateWorkspaceSearchParams(searchParams, setSearchParams, {
+      auditPage: String(nextPage),
+      auditLimit: String(auditLimit),
+    })
+  }
 
   const handlePublishLeaderboard = async () => {
     try {
@@ -583,7 +601,15 @@ export function ProviderContestWorkspacePage({
         />
       ) : null}
 
-      {section === "audit" ? <ContestAuditPanel logs={auditLogs} /> : null}
+      {section === "audit" ? (
+        <ContestAuditPanel
+          logs={auditLogs}
+          page={auditPage}
+          limit={auditLimit}
+          total={auditMeta?.total ?? auditLogs.length}
+          onPageChange={handleAuditPageChange}
+        />
+      ) : null}
 
       {section === "discipline" ? (
         <ContestDisciplinePanel

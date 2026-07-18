@@ -210,6 +210,16 @@ export type ContestListResponse = {
   }
 }
 
+export type PaginatedResponse<T> = {
+  success: boolean
+  data: T[]
+  meta?: {
+    total: number
+    page: number
+    limit: number
+  }
+}
+
 export type ContestVehicleRuleInput = {
   vehicle_policy: ContestVehiclePolicy
   assignment_policy?: "AT_CHECK_IN" | "PRE_ASSIGNED"
@@ -483,6 +493,13 @@ export type ContestMatchesQuery = {
   status?: ContestMatchStatus
   cafe_id?: string
   participant_query?: string
+}
+
+
+
+export type ContestAuditLogsQuery = {
+  page?: number
+  limit?: number
 }
 
 export type ContestUpdateMatchParticipantsBody = {

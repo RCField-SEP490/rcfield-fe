@@ -7,6 +7,7 @@ import type {
   ContestRegistrationsQuery,
   ContestSubmitResultsBody,
   ContestUpdateMatchParticipantsBody,
+  ContestAuditLogsQuery,
 } from "../types"
 
 export function useContestRuntime(
@@ -14,6 +15,7 @@ export function useContestRuntime(
   options?: {
     registrations?: ContestRegistrationsQuery
     matches?: ContestMatchesQuery
+    auditLogs?: ContestAuditLogsQuery
     enabled?: {
       registrations?: boolean
       matches?: boolean
@@ -55,8 +57,8 @@ export function useContestRuntime(
   })
 
   const auditLogsQuery = useQuery({
-    queryKey: contestQueryKeys.auditLogs(contestId),
-    queryFn: () => contestApi.listAuditLogs(contestId!),
+    queryKey: contestQueryKeys.auditLogs(contestId, options?.auditLogs),
+    queryFn: () => contestApi.listAuditLogs(contestId!, options?.auditLogs),
     enabled: Boolean(contestId) && enabled.auditLogs,
   })
 
