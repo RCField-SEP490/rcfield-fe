@@ -8,3 +8,8 @@ export { MatchStatusBadge } from "./match-status-badge"
 export type { MatchStatusBadgeProps } from "./match-status-badge"
 export { JourneyStatusBadge } from "./journey-status-badge"
 export type { JourneyStatusBadgeProps } from "./journey-status-badge"
+export { ContestFilterBar } from "./contest-filter-bar"
+export type {
+  ContestFilterField,
+  ContestFilterOption,
+} from "./contest-filter-bar"
