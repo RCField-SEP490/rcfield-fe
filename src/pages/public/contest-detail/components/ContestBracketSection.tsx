@@ -1,0 +1,270 @@
+import { Swords, Trophy } from "lucide-react"
+
+import {
+  formatContestDateTime,
+  formatMatchLabel,
+  getMatchParticipantName,
+} from "@/features/contests/lib/contest-runtime"
+import {
+  getContestStatusLabel,
+  getMatchStatusClass,
+  getMatchStatusLabel,
+} from "@/features/contests/lib/contest-status"
+import type {
+  ContestHighlightRound,
+  ContestItem,
+  ContestMatch,
+  ContestMatchParticipant,
+  ContestRegistration,
+} from "@/features/contests/types"
+import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
+import { Card } from "@/shared/ui/card"
+
+import { Info } from "./DetailPrimitives"
+
+export function ContestRuntimeOverview({
+  effectiveStatus,
+  runtimeSummary,
+  highlightRounds,
+}: {
+  effectiveStatus: ContestItem["status"]
+  runtimeSummary: ContestItem["runtime_summary"]
+  highlightRounds: ContestHighlightRound[]
+}) {
+  return (
+    <>
+      <Card className="rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-extrabold text-slate-900">
+              Theo dõi các vòng đấu
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Public có thể xem bracket, danh sách người đi tiếp và lịch sử thi
+              đấu khi giải đang diễn ra hoặc đã hoàn thành.
+            </p>
+          </div>
+          <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">
+            {getContestStatusLabel(effectiveStatus)}
+          </span>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-4">
+          <Info
+            label="Tổng số trận"
+            value={String(runtimeSummary?.total_matches ?? 0)}
+          />
+          <Info
+            label="Tổng số vòng"
+            value={String(runtimeSummary?.total_rounds ?? 0)}
+          />
+          <Info
+            label="Vòng hiện tại"
+            value={runtimeSummary?.current_round_no ? `Vòng ${runtimeSummary.current_round_no}` : "--"}
+          />
+          <Info
+            label="Đã hoàn thành"
+            value={String(runtimeSummary?.completed_matches ?? 0)}
+          />
+        </div>
+      </Card>
+
+      <Card className="rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Trophy className="size-5 text-orange-500" />
+          <h3 className="text-lg font-extrabold text-slate-900">
+            Người đã vào vòng trong
+          </h3>
+        </div>
+        <div className="mt-5 space-y-4">
+          {highlightRounds.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">
+              Chưa có dữ liệu vòng đấu nổi bật để hiển thị.
+            </div>
+          ) : (
+            highlightRounds.map((round) => (
+              <div
+                key={round.round_no}
+                className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">
+                      {round.label || `Vòng ${round.round_no}`}
+                    </p>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {round.completed_match_count}/{round.match_count} trận đã
+                      chốt kết quả
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-bold text-white">
+                    {round.winners.length} người đi tiếp
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {round.winners.map((winner) => (
+                    <div
+                      key={`${round.round_no}-${winner.registration_id}`}
+                      className="rounded-xl border border-orange-100 bg-white p-3"
+                    >
+                      <p className="font-bold text-slate-900">
+                        {winner.participant_name ??
+                          winner.participant_email ??
+                          `Registration ${winner.registration_id.slice(0, 8)}`}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Đi tiếp từ {winner.source_match_name ?? "trận đã hoàn thành"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
+    </>
+  )
+}
+
+export function ContestBracketBoard({
+  matches,
+  groupedMatches,
+  existingRegistration,
+  loading,
+}: {
+  matches: ContestMatch[]
+  groupedMatches: Array<{ roundNo: number; matches: ContestMatch[] }>
+  existingRegistration: ContestRegistration | null
+  loading: boolean
+}) {
+  return (
+    <Card className="rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm">
+      <div className="flex items-center gap-2 text-slate-900">
+        <Swords className="size-5 text-orange-500" />
+        <h3 className="text-lg font-extrabold">Sơ đồ thi đấu</h3>
+      </div>
+      <p className="mt-2 text-sm text-slate-500">
+        Hiển thị theo từng vòng, đồng thời tô nổi các trận có bạn tham gia nếu
+        bạn đã đăng ký vào giải.
+      </p>
+
+      <div className="mt-5">
+        {loading ? (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-72 animate-pulse rounded-2xl bg-slate-100"
+              />
+            ))}
+          </div>
+        ) : matches.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm font-medium text-slate-500">
+            Chưa có trận nào được công bố trên bracket của giải đấu này.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex min-w-max gap-4 pb-2">
+              {groupedMatches.map((group) => (
+                <section key={group.roundNo} className="w-[320px] shrink-0 space-y-3">
+                  <div>
+                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                      Vòng {group.roundNo}
+                    </p>
+                  </div>
+                  {group.matches.map((match) => {
+                    const hasMyParticipant = match.participants.some(
+                      (participant) =>
+                        participant.registration?.is_my_registration ||
+                        participant.registration_id === existingRegistration?.id,
+                    )
+                    return (
+                      <article
+                        key={match.id}
+                        className={`rounded-2xl border p-4 ${
+                          hasMyParticipant
+                            ? "border-orange-200 bg-orange-50/60"
+                            : "border-slate-200 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-extrabold text-slate-900">
+                              {formatMatchLabel(match)}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              {formatContestDateTime(match.scheduled_at)}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${getMatchStatusClass(match.status)}`}
+                          >
+                            {getMatchStatusLabel(match.status)}
+                          </span>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {match.participants.length > 0 ? (
+                            match.participants.map((participant) => (
+                              <BracketParticipantRow
+                                key={participant.id}
+                                participant={participant}
+                                highlight={
+                                  participant.registration?.is_my_registration ||
+                                  participant.registration_id === existingRegistration?.id
+                                }
+                              />
+                            ))
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-500">
+                              Chưa chốt người thi đấu cho trận này.
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    )
+                  })}
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function BracketParticipantRow({
+  participant,
+  highlight = false,
+}: {
+  participant: ContestMatchParticipant
+  highlight?: boolean
+}) {
+  return (
+    <div
+      className={`rounded-xl border px-3 py-3 ${
+        highlight
+          ? "border-orange-200 bg-white"
+          : "border-slate-200 bg-slate-50/60"
+      }`}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-bold text-slate-900">
+          {getMatchParticipantName(participant)}
+        </p>
+        <DriverTitleChip label={participant.registration?.driver_title_label} />
+        {participant.is_winner ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+            Winner
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-1 text-xs font-semibold text-slate-500">
+        {participant.status}
+        {participant.finish_position
+          ? ` · Về ${participant.finish_position}`
+          : ""}
+      </p>
+    </div>
+  )
+}
