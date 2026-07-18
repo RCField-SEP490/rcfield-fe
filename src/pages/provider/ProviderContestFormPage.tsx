@@ -25,6 +25,7 @@ import {
   PanelTitle,
   ProviderPageHeader,
 } from "@/pages/provider/components/ProviderPrimitives"
+import { getContestWorkspacePath } from "@/pages/provider/contest-runtime/contest-workspace"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -425,12 +426,7 @@ export function ProviderContestFormPage() {
                 variant="outline"
                 className="h-10 gap-2 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
                 onClick={() =>
-                  navigate(
-                    routePaths.providerContestRuntime.replace(
-                      ":contestId",
-                      contestId,
-                    ),
-                  )
+                  navigate(getContestWorkspacePath(contestId, "overview"))
                 }
               >
                 <PlayCircle className="size-4" />
@@ -906,12 +902,7 @@ export function ProviderContestFormPage() {
                   type="button"
                   className="mt-4 h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
                   onClick={() =>
-                    navigate(
-                      routePaths.providerContestRuntime.replace(
-                        ":contestId",
-                        contestId!,
-                      ),
-                    )
+                    navigate(getContestWorkspacePath(contestId!, "overview"))
                   }
                 >
                   <PlayCircle className="size-4" />

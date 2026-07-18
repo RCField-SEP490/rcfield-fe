@@ -73,7 +73,6 @@ export const routePaths = {
   providerContests: "/provider/contests",
   providerContestCreate: "/provider/contests/new",
   providerContestEdit: "/provider/contests/:contestId/edit",
-  providerContestRuntime: "/provider/contests/:contestId/runtime",
   providerContestOverview: "/provider/contests/:contestId/overview",
   providerContestRegistrations: "/provider/contests/:contestId/registrations",
   providerContestOperations: "/provider/contests/:contestId/operations",

@@ -108,7 +108,6 @@ import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
 import { ProviderContestsPage } from "@/pages/provider/ProviderContestsPage"
 import { ProviderContestFormPage } from "@/pages/provider/ProviderContestFormPage"
-import { ProviderContestRuntimePage } from "@/pages/provider/contest-runtime/ProviderContestRuntimePage"
 import { ProviderContestWorkspacePage } from "@/pages/provider/contest-runtime/ProviderContestWorkspacePage"
 
 const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (
@@ -274,7 +273,6 @@ export const router = createBrowserRouter([
           { path: routePaths.providerContestLeaderboard, element: providerGuardRoute(<ProviderContestWorkspacePage section="leaderboard" />) },
           { path: routePaths.providerContestAudit, element: providerGuardRoute(<ProviderContestWorkspacePage section="audit" />) },
           { path: routePaths.providerContestDiscipline, element: providerGuardRoute(<ProviderContestWorkspacePage section="discipline" />) },
-          { path: routePaths.providerContestRuntime, element: providerGuardRoute(<ProviderContestRuntimePage />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
           { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },

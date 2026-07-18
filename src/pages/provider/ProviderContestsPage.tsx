@@ -9,6 +9,7 @@ import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.ap
 import { getContestStatusClass } from "@/features/contests/lib/contest-status"
 import type { ContestItem, ContestStatus } from "@/features/contests/types"
 import { Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
+import { getContestWorkspacePath } from "@/pages/provider/contest-runtime/contest-workspace"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -207,7 +208,7 @@ export function ProviderContestsPage() {
                       type="button"
                       variant="outline"
                       className="h-9 gap-2 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                      onClick={() => navigate(routePaths.providerContestRuntime.replace(":contestId", contest.id))}
+                      onClick={() => navigate(getContestWorkspacePath(contest.id, "overview"))}
                     >
                       <Flag className="size-4" />
                       Vận hành
