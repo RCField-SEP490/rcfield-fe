@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react"
-import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, PlayCircle, Save } from "lucide-react"
 import { useNavigate, useParams } from "react-router"
@@ -20,66 +19,28 @@ import {
 } from "@/features/contests/api/contest.api"
 import { contestUpsertSchema } from "@/features/contests/schemas/contest.schema"
 import type { ContestUpsertBody } from "@/features/contests/types"
-import {
-  Panel,
-  PanelTitle,
-  ProviderPageHeader,
-} from "@/pages/provider/components/ProviderPrimitives"
+import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { getContestWorkspacePath } from "@/pages/provider/contest-runtime/contest-workspace"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
-import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import { Label } from "@/shared/ui/label"
-import { Textarea } from "@/shared/ui/textarea"
 
-type ContestFormState = {
-  name: string
-  description: string
-  contest_type_id: string
-  contest_format_id: string
-  contest_template_id: string
-  track_type_id: string
-  participating_cafe_ids: string[]
-  starts_at: string
-  ends_at: string
-  registration_opens_at: string
-  registration_closes_at: string
-  capacity: string
-  entry_fee: string
-  banner_image_url: string
-  vehicle_policy: "RENTAL_ONLY" | "BYOC_ONLY" | "MIXED"
-  assignment_policy: "AT_CHECK_IN" | "PRE_ASSIGNED"
-}
-
-type ResourceLockScope = "FULL_BRANCH" | "SELECTED_TRACKS"
-
-type ResourceLockState = Record<
-  string,
-  {
-    scope: ResourceLockScope
-    track_config_ids: string[]
-  }
->
-
-const defaultForm: ContestFormState = {
-  name: "",
-  description: "",
-  contest_type_id: "",
-  contest_format_id: "",
-  contest_template_id: "",
-  track_type_id: "",
-  participating_cafe_ids: [],
-  starts_at: "",
-  ends_at: "",
-  registration_opens_at: "",
-  registration_closes_at: "",
-  capacity: "16",
-  entry_fee: "0",
-  banner_image_url: "",
-  vehicle_policy: "RENTAL_ONLY",
-  assignment_policy: "AT_CHECK_IN",
-}
+import { ContestBasicInfoSection } from "./contest-form/ContestBasicInfoSection"
+import { ContestBranchesSection } from "./contest-form/ContestBranchesSection"
+import { ContestRulesSection } from "./contest-form/ContestRulesSection"
+import { ContestRuntimePanel } from "./contest-form/ContestRuntimePanel"
+import type {
+  ContestFormState,
+  ResourceLockScope,
+  ResourceLockState,
+} from "./contest-form/contest-form-types"
+import { defaultForm } from "./contest-form/contest-form-types"
+import {
+  buildResourceLocks,
+  getErrorMessage,
+  getRuntimeFormatFromCode,
+  stripManagedContestConfig,
+  toInputDateTime,
+} from "./contest-form/contest-form-utils"
 
 export function ProviderContestFormPage() {
   const navigate = useNavigate()
@@ -438,568 +399,40 @@ export function ProviderContestFormPage() {
       />
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel>
-          <PanelTitle
-            title="Thông tin giải đấu"
-            subtitle="Thiết lập loại giải, lịch thi đấu và mốc đăng ký."
-          />
-          <div className="grid gap-4 md:grid-cols-2">
-            <Field label="Tên giải đấu" error={validationErrors["name"]}>
-              <Input
-                value={form.name}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, name: e.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label="Loại đường đua"
-              error={validationErrors["track_type_id"]}
-            >
-              <select
-                className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                value={form.track_type_id}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, track_type_id: e.target.value }))
-                }
-              >
-                <option value="">Chọn loại đường đua</option>
-                {trackTypesQuery.data?.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label="Loại giải"
-              error={validationErrors["contest_type_id"]}
-            >
-              <select
-                className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                value={form.contest_type_id}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    contest_type_id: e.target.value,
-                    contest_template_id: "",
-                  }))
-                }
-              >
-                <option value="">Chọn loại giải</option>
-                {typesQuery.data?.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label="Hình thức thi đấu"
-              error={validationErrors["contest_format_id"]}
-            >
-              <select
-                className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                value={form.contest_format_id}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    contest_format_id: e.target.value,
-                    contest_template_id: "",
-                  }))
-                }
-              >
-                <option value="">Chọn hình thức thi đấu</option>
-                {formatsQuery.data?.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label="Mẫu vận hành"
-              className="md:col-span-2"
-              error={validationErrors["contest_template_id"]}
-            >
-              <select
-                className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                value={form.contest_template_id}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    contest_template_id: e.target.value,
-                  }))
-                }
-              >
-                <option value="">Chọn mẫu vận hành</option>
-                {templatesQuery.data?.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label="Bắt đầu thi đấu"
-              error={validationErrors["starts_at"]}
-            >
-              <Input
-                type="datetime-local"
-                value={form.starts_at}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, starts_at: e.target.value }))
-                }
-              />
-            </Field>
-            <Field label="Kết thúc thi đấu" error={validationErrors["ends_at"]}>
-              <Input
-                type="datetime-local"
-                value={form.ends_at}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, ends_at: e.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label="Mở đăng ký"
-              error={validationErrors["registration_opens_at"]}
-            >
-              <Input
-                type="datetime-local"
-                value={form.registration_opens_at}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    registration_opens_at: e.target.value,
-                  }))
-                }
-              />
-            </Field>
-            <Field
-              label="Đóng đăng ký"
-              error={validationErrors["registration_closes_at"]}
-            >
-              <Input
-                type="datetime-local"
-                value={form.registration_closes_at}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    registration_closes_at: e.target.value,
-                  }))
-                }
-              />
-            </Field>
-            <Field label="Sức chứa tối đa" error={validationErrors["capacity"]}>
-              <Input
-                value={form.capacity}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, capacity: e.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label="Lệ phí tham gia (VND)"
-              error={validationErrors["entry_fee"]}
-            >
-              <Input
-                value={form.entry_fee}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, entry_fee: e.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label="Banner giải đấu"
-              className="md:col-span-2"
-              error={validationErrors["banner_image_url"]}
-            >
-              <Input
-                value={form.banner_image_url}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, banner_image_url: e.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label="Mô tả"
-              className="md:col-span-2"
-              error={validationErrors["description"]}
-            >
-              <Textarea
-                rows={4}
-                value={form.description}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, description: e.target.value }))
-                }
-              />
-            </Field>
-          </div>
-        </Panel>
+        <ContestBasicInfoSection
+          form={form}
+          setForm={setForm}
+          validationErrors={validationErrors}
+          trackTypes={trackTypesQuery.data}
+          contestTypes={typesQuery.data}
+          contestFormats={formatsQuery.data}
+          contestTemplates={templatesQuery.data}
+        />
 
         <div className="space-y-4">
-          <Panel>
-            <PanelTitle
-              title="Chi nhánh tham gia"
-              subtitle="Chọn chi nhánh và cách khóa tài nguyên cho từng nơi tổ chức."
-            />
-            {validationErrors["participating_cafe_ids"] && (
-              <p className="mb-2 text-xs font-semibold text-red-500">
-                {validationErrors["participating_cafe_ids"]}
-              </p>
-            )}
-            {validationErrors["resource_locks"] ? (
-              <p className="mb-2 text-xs font-semibold text-red-500">
-                {validationErrors["resource_locks"]}
-              </p>
-            ) : null}
+          <ContestBranchesSection
+            form={form}
+            setForm={setForm}
+            validationErrors={validationErrors}
+            cafes={cafes}
+            trackConfigsByCafe={trackConfigsByCafe}
+            resourceLocks={resourceLocks}
+            setResourceLocks={setResourceLocks}
+          />
 
-            <div className="space-y-3">
-              {cafes.map((cafe) => {
-                const checked = form.participating_cafe_ids.includes(cafe.id)
-                const trackConfigs = (trackConfigsByCafe[cafe.id] ?? []).filter(
-                  (item) => item.is_active,
-                )
-                const lockState = resourceLocks[cafe.id] ?? {
-                  scope: "FULL_BRANCH" as const,
-                  track_config_ids: [],
-                }
-                const singleTrack = trackConfigs.length <= 1
+          <ContestRulesSection
+            form={form}
+            setForm={setForm}
+            validationErrors={validationErrors}
+            selectedFormat={selectedFormat}
+            selectedTemplate={selectedTemplate}
+          />
 
-                return (
-                  <div
-                    key={cafe.id}
-                    className="rounded-lg border border-[#e5e2e1] p-3"
-                  >
-                    <label className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) =>
-                          setForm((current) => ({
-                            ...current,
-                            participating_cafe_ids: e.target.checked
-                              ? [...current.participating_cafe_ids, cafe.id]
-                              : current.participating_cafe_ids.filter(
-                                  (id) => id !== cafe.id,
-                                ),
-                          }))
-                        }
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-[#1c1b1b]">
-                          {cafe.name}
-                        </p>
-                        <p className="text-xs font-medium text-[#747878]">
-                          {cafe.district}, {cafe.city}
-                        </p>
-                      </div>
-                    </label>
-
-                    {checked ? (
-                      <div className="mt-3 rounded-lg bg-[#fcf8f8] p-3">
-                        {singleTrack ? (
-                          <p className="text-sm font-semibold text-[#5d5f5f]">
-                            Chi nhánh này hiện chỉ có một sân hoạt động. Hệ
-                            thống sẽ tự khóa toàn bộ chi nhánh trong khung giờ
-                            giải đấu.
-                          </p>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <label className="rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-sm font-semibold text-[#1c1b1b]">
-                                <input
-                                  type="radio"
-                                  className="mr-2"
-                                  checked={lockState.scope === "FULL_BRANCH"}
-                                  onChange={() =>
-                                    setResourceLocks((current) => ({
-                                      ...current,
-                                      [cafe.id]: {
-                                        scope: "FULL_BRANCH",
-                                        track_config_ids: [],
-                                      },
-                                    }))
-                                  }
-                                />
-                                Khóa toàn bộ chi nhánh
-                              </label>
-                              <label className="rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-sm font-semibold text-[#1c1b1b]">
-                                <input
-                                  type="radio"
-                                  className="mr-2"
-                                  checked={
-                                    lockState.scope === "SELECTED_TRACKS"
-                                  }
-                                  onChange={() =>
-                                    setResourceLocks((current) => ({
-                                      ...current,
-                                      [cafe.id]: {
-                                        scope: "SELECTED_TRACKS",
-                                        track_config_ids:
-                                          current[cafe.id]?.track_config_ids ??
-                                          [],
-                                      },
-                                    }))
-                                  }
-                                />
-                                Chỉ khóa sân được chọn
-                              </label>
-                            </div>
-
-                            {lockState.scope === "SELECTED_TRACKS" ? (
-                              <div className="space-y-2">
-                                {trackConfigs.map((trackConfig) => {
-                                  const trackChecked =
-                                    lockState.track_config_ids.includes(
-                                      trackConfig.id,
-                                    )
-                                  return (
-                                    <label
-                                      key={trackConfig.id}
-                                      className="flex items-start gap-3 rounded-lg border border-[#e5e2e1] bg-white px-3 py-2"
-                                    >
-                                      <input
-                                        type="checkbox"
-                                        checked={trackChecked}
-                                        onChange={(e) =>
-                                          setResourceLocks((current) => {
-                                            const existing = current[
-                                              cafe.id
-                                            ] ?? {
-                                              scope: "SELECTED_TRACKS" as const,
-                                              track_config_ids: [],
-                                            }
-                                            return {
-                                              ...current,
-                                              [cafe.id]: {
-                                                ...existing,
-                                                scope: "SELECTED_TRACKS",
-                                                track_config_ids: e.target
-                                                  .checked
-                                                  ? [
-                                                      ...existing.track_config_ids,
-                                                      trackConfig.id,
-                                                    ]
-                                                  : existing.track_config_ids.filter(
-                                                      (id) =>
-                                                        id !== trackConfig.id,
-                                                    ),
-                                              },
-                                            }
-                                          })
-                                        }
-                                      />
-                                      <div>
-                                        <p className="text-sm font-bold text-[#1c1b1b]">
-                                          {trackConfig.track_type?.name ??
-                                            "Sân thi đấu"}
-                                        </p>
-                                        <p className="text-xs font-medium text-[#747878]">
-                                          Tối đa {trackConfig.max_concurrent}{" "}
-                                          lượt thuê cùng lúc
-                                        </p>
-                                      </div>
-                                    </label>
-                                  )
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-sm font-semibold text-[#5d5f5f]">
-                                Mọi booking mới trong khung giờ giải đấu tại chi
-                                nhánh này sẽ bị chặn để dành tài nguyên cho
-                                giải.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
-          </Panel>
-
-          <Panel>
-            <PanelTitle
-              title="Quy tắc vận hành"
-              subtitle="Thiết lập xe thi đấu và tóm tắt cách hệ thống sẽ vận hành contest."
-            />
-            <div className="space-y-4">
-              <Field
-                label="Nguồn xe thi đấu"
-                error={validationErrors["vehicle_rule.vehicle_policy"]}
-              >
-                <select
-                  className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                  value={form.vehicle_policy}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      vehicle_policy: e.target
-                        .value as ContestFormState["vehicle_policy"],
-                    }))
-                  }
-                >
-                  <option value="RENTAL_ONLY">Chỉ dùng xe thuê</option>
-                  <option value="MIXED">Xe thuê hoặc xe cá nhân</option>
-                  <option value="BYOC_ONLY">Chỉ dùng xe cá nhân</option>
-                </select>
-              </Field>
-              <Field
-                label="Thời điểm gán xe"
-                error={validationErrors["vehicle_rule.assignment_policy"]}
-              >
-                <select
-                  className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                  value={form.assignment_policy}
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      assignment_policy: e.target
-                        .value as ContestFormState["assignment_policy"],
-                    }))
-                  }
-                >
-                  <option value="AT_CHECK_IN">Gán xe khi check-in</option>
-                  <option value="PRE_ASSIGNED">
-                    Gán xe trước khi check-in
-                  </option>
-                </select>
-              </Field>
-
-              <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-                <p className="text-sm font-bold text-[#1c1b1b]">
-                  Tóm tắt vận hành
-                </p>
-                <div className="mt-3 space-y-2 text-sm font-semibold text-[#5d5f5f]">
-                  <p>Hình thức thi đấu: {selectedFormat?.name ?? "--"}</p>
-                  <p>Mẫu vận hành: {selectedTemplate?.name ?? "--"}</p>
-                  <p>
-                    Luồng bắt buộc: Đăng ký → Duyệt → Check-in → Xếp nhánh → Thi
-                    đấu
-                  </p>
-                  <p>Người chơi chỉ được vào thi đấu sau khi đã check-in.</p>
-                </div>
-              </div>
-            </div>
-          </Panel>
-
-          {isEdit ? (
-            <Panel>
-              <PanelTitle
-                title="Vận hành giải đấu"
-                subtitle="Màn này chỉ giữ phần cấu hình. Mọi thao tác tiếp nhận, check-in, xếp nhánh và nhập kết quả nằm ở khu vận hành riêng."
-              />
-              <div className="rounded-lg border border-dashed border-[#c4c7c8] bg-[#fcf8f8] p-6">
-                <p className="text-sm font-semibold text-[#5d5f5f]">
-                  Sau khi lưu cấu hình, hãy chuyển sang màn vận hành để tiếp
-                  nhận người chơi, check-in, tạo nhánh đấu và nhập kết quả.
-                </p>
-                <Button
-                  type="button"
-                  className="mt-4 h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
-                  onClick={() =>
-                    navigate(getContestWorkspacePath(contestId!, "overview"))
-                  }
-                >
-                  <PlayCircle className="size-4" />
-                  Mở màn vận hành
-                </Button>
-              </div>
-            </Panel>
+          {isEdit && contestId ? (
+            <ContestRuntimePanel contestId={contestId} />
           ) : null}
         </div>
       </div>
     </ProviderShell>
   )
-}
-
-function Field({
-  label,
-  className,
-  error,
-  children,
-}: {
-  label: string
-  className?: string
-  error?: string
-  children: ReactNode
-}) {
-  return (
-    <div className={cn("space-y-1.5", className)}>
-      <Label className="block text-sm font-bold text-[#1c1b1b]">{label}</Label>
-      {children}
-      {error ? (
-        <p className="mt-1 text-xs font-semibold text-red-500">{error}</p>
-      ) : null}
-    </div>
-  )
-}
-
-function toInputDateTime(value: string) {
-  const date = new Date(value)
-  const offset = date.getTimezoneOffset()
-  const normalized = new Date(date.getTime() - offset * 60_000)
-  return normalized.toISOString().slice(0, 16)
-}
-
-function getErrorMessage(error: unknown) {
-  const maybe = error as { response?: { data?: { message?: string } } }
-  return maybe.response?.data?.message ?? "Vui lòng kiểm tra lại dữ liệu."
-}
-
-function getRuntimeFormatFromCode(
-  code?: string | null,
-): "TIME_TRIAL" | "KNOCKOUT" {
-  return code === "TIME_TRIAL" ? "TIME_TRIAL" : "KNOCKOUT"
-}
-
-function stripManagedContestConfig(
-  config: Record<string, unknown> | null | undefined,
-) {
-  const nextConfig = { ...(config ?? {}) }
-  delete nextConfig.format
-  delete nextConfig.runtime_format
-  delete nextConfig.resource_locks
-  return nextConfig
-}
-
-function buildResourceLocks(
-  cafeIds: string[],
-  trackConfigsByCafe: Record<string, TrackConfig[]>,
-  resourceLocks: ResourceLockState,
-) {
-  return cafeIds.map((cafeId) => {
-    const trackConfigs = (trackConfigsByCafe[cafeId] ?? []).filter(
-      (item) => item.is_active,
-    )
-    const lockState = resourceLocks[cafeId]
-
-    if (trackConfigs.length <= 1) {
-      return {
-        cafe_id: cafeId,
-        scope: "FULL_BRANCH" as const,
-        track_config_ids: trackConfigs.map((item) => item.id),
-      }
-    }
-
-    if (lockState?.scope === "SELECTED_TRACKS") {
-      return {
-        cafe_id: cafeId,
-        scope: "SELECTED_TRACKS" as const,
-        track_config_ids: lockState.track_config_ids.filter((trackId) =>
-          trackConfigs.some((item) => item.id === trackId),
-        ),
-      }
-    }
-
-    return {
-      cafe_id: cafeId,
-      scope: "FULL_BRANCH" as const,
-      track_config_ids: trackConfigs.map((item) => item.id),
-    }
-  })
 }
