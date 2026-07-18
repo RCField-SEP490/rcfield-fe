@@ -10,7 +10,17 @@ import { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
 import type { ContestMatchStatus } from "@/features/contests/types"
 import { ContestMatchBoard } from "@/pages/provider/contest-runtime/components/ContestMatchBoard"
 import { ContestMatchDetailPanel } from "@/pages/provider/contest-runtime/components/match-detail/ContestMatchDetailPanel"
+import { StaffSearchInput } from "../components/StaffSearchInput"
+import { StaffSelect } from "../components/StaffSelect"
 import { StaffCard, StaffHeader } from "../components/StaffUI"
+
+const matchStatusOptions = [
+  { value: "DRAFT", label: "DRAFT" },
+  { value: "READY", label: "READY" },
+  { value: "RUNNING", label: "RUNNING" },
+  { value: "COMPLETED", label: "COMPLETED" },
+  { value: "CANCELLED", label: "CANCELLED" },
+]
 
 export default function StaffContestRuntimePage() {
   const { contestId } = useParams()
@@ -63,41 +73,33 @@ export default function StaffContestRuntimePage() {
       />
 
       <StaffCard className="grid gap-3 lg:grid-cols-3">
-        <input
+        <StaffSearchInput
           value={participantQuery}
-          onChange={(event) =>
+          onChange={(value) =>
             updateRuntimeParams(searchParams, setSearchParams, {
-              participantQuery: event.target.value,
+              participantQuery: value,
             })
           }
           placeholder="Tìm participant theo tên"
-          className="h-10 rounded-lg border border-[#d9d5d4] px-3 text-sm"
         />
-        <select
+        <StaffSelect
           value={matchStatus}
-          onChange={(event) =>
+          onChange={(value) =>
             updateRuntimeParams(searchParams, setSearchParams, {
-              matchStatus: event.target.value,
+              matchStatus: value,
             })
           }
-          className="h-10 rounded-lg border border-[#d9d5d4] px-3 text-sm"
-        >
-          <option value="">Tất cả match status</option>
-          <option value="DRAFT">DRAFT</option>
-          <option value="READY">READY</option>
-          <option value="RUNNING">RUNNING</option>
-          <option value="COMPLETED">COMPLETED</option>
-          <option value="CANCELLED">CANCELLED</option>
-        </select>
-        <input
+          options={matchStatusOptions}
+          placeholder="Tất cả match status"
+        />
+        <StaffSearchInput
           value={roundNo}
-          onChange={(event) =>
+          onChange={(value) =>
             updateRuntimeParams(searchParams, setSearchParams, {
-              roundNo: event.target.value.replace(/[^\d]/g, ""),
+              roundNo: value.replace(/[^\d]/g, ""),
             })
           }
           placeholder="Lọc theo round"
-          className="h-10 rounded-lg border border-[#d9d5d4] px-3 text-sm"
         />
       </StaffCard>
 
