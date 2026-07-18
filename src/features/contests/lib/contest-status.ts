@@ -21,27 +21,7 @@ export function getEffectiveContestStatus(
     return contest.status
   }
 
-  const endsAt = parseDate(contest.ends_at)
-  if (endsAt && endsAt.getTime() <= now.getTime()) {
-    return "COMPLETED"
-  }
-
-  const startsAt = parseDate(contest.starts_at)
-  if (startsAt && startsAt.getTime() <= now.getTime()) {
-    return "RUNNING"
-  }
-
-  const registrationClosesAt = parseDate(contest.registration_closes_at)
-  if (registrationClosesAt && registrationClosesAt.getTime() <= now.getTime()) {
-    return "CLOSED"
-  }
-
-  const registrationOpensAt = parseDate(contest.registration_opens_at)
-  if (registrationOpensAt && registrationOpensAt.getTime() <= now.getTime()) {
-    return "OPEN"
-  }
-
-  return contest.status
+  return getContestTimeWindowPhase(contest, now) ?? contest.status
 }
 
 export type ContestRegistrationAvailability =
@@ -67,15 +47,9 @@ export function getContestRegistrationAvailability(
   if (contest.status === "DRAFT") return "DRAFT"
   if (contest.status === "CANCELLED") return "CANCELLED"
 
-  const endsAt = parseDate(contest.ends_at)
-  if (endsAt && endsAt.getTime() <= now.getTime()) return "COMPLETED"
-
-  const startsAt = parseDate(contest.starts_at)
-  if (startsAt && startsAt.getTime() <= now.getTime()) return "RUNNING"
-
-  const registrationClosesAt = parseDate(contest.registration_closes_at)
-  if (registrationClosesAt && registrationClosesAt.getTime() <= now.getTime()) {
-    return "CLOSED"
+  const phase = getContestTimeWindowPhase(contest, now)
+  if (phase === "COMPLETED" || phase === "RUNNING" || phase === "CLOSED") {
+    return phase
   }
 
   const registrationOpensAt = parseDate(contest.registration_opens_at)
@@ -281,4 +255,39 @@ function parseDate(value: string | null | undefined) {
   if (!value) return null
   const parsed = new Date(value)
   return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+type ContestTimeWindowPhase = "COMPLETED" | "RUNNING" | "CLOSED" | "OPEN"
+
+function getContestTimeWindowPhase(
+  contest: Pick<
+    ContestItem,
+    | "registration_opens_at"
+    | "registration_closes_at"
+    | "starts_at"
+    | "ends_at"
+  >,
+  now: Date,
+): ContestTimeWindowPhase | null {
+  const endsAt = parseDate(contest.ends_at)
+  if (endsAt && endsAt.getTime() <= now.getTime()) {
+    return "COMPLETED"
+  }
+
+  const startsAt = parseDate(contest.starts_at)
+  if (startsAt && startsAt.getTime() <= now.getTime()) {
+    return "RUNNING"
+  }
+
+  const registrationClosesAt = parseDate(contest.registration_closes_at)
+  if (registrationClosesAt && registrationClosesAt.getTime() <= now.getTime()) {
+    return "CLOSED"
+  }
+
+  const registrationOpensAt = parseDate(contest.registration_opens_at)
+  if (registrationOpensAt && registrationOpensAt.getTime() <= now.getTime()) {
+    return "OPEN"
+  }
+
+  return null
 }
