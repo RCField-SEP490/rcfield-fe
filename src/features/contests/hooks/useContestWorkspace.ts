@@ -25,9 +25,9 @@ export function useContestWorkspace(
   const runtime = useContestRuntime(contestId, options)
   const eventDay = useContestEventDay(contestId)
   const enabled = {
-    staffAssignments: options?.enabled?.staffAssignments ?? true,
-    bans: options?.enabled?.bans ?? true,
-    staffOptions: options?.enabled?.staffOptions ?? true,
+    staffAssignments: options?.enabled?.staffAssignments ?? false,
+    bans: options?.enabled?.bans ?? false,
+    staffOptions: options?.enabled?.staffOptions ?? false,
   }
 
   const staffAssignmentsQuery = useQuery({

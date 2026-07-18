@@ -44,7 +44,6 @@ import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { ProviderHeader, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import {
   contestWorkspaceSections,
-  defaultContestWorkspaceSection,
   getContestWorkspacePath,
   parseContestWorkspaceContext,
 } from "@/pages/provider/contest-runtime/contest-workspace"
@@ -402,7 +401,6 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   const renderContestSubMenu = (isMobile: boolean) => {
     const context = parseContestWorkspaceContext(location.pathname)
     const contestId = context?.contestId ?? ""
-    const currentSection = context?.section ?? defaultContestWorkspaceSection
     const isContestContext = Boolean(contestId)
     const generalLinks = [
       { label: "Danh sách contest", to: routePaths.providerContests },
@@ -436,9 +434,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             </div>
             {contestWorkspaceSections.map((link) => {
               const to = getContestWorkspacePath(contestId, link.key)
-              const active =
-                location.pathname === to ||
-                (context?.isLegacyRuntime && link.key === currentSection)
+              const active = location.pathname === to
               return (
                 <Link
                   key={to}

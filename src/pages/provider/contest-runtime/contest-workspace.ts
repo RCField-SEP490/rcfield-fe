@@ -38,6 +38,5 @@ export function parseContestWorkspaceContext(pathname: string) {
   return {
     contestId,
     section,
-    isLegacyRuntime: rawSection === "runtime",
   }
 }

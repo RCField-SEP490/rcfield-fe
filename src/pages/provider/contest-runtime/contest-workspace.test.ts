@@ -18,17 +18,15 @@ describe("contest workspace helpers", () => {
     ).toEqual({
       contestId: "contest-1",
       section: "overview",
-      isLegacyRuntime: false,
     })
   })
 
-  it("treats runtime as a legacy route", () => {
+  it("returns null section for unknown paths", () => {
     expect(
       parseContestWorkspaceContext("/provider/contests/contest-1/runtime"),
     ).toEqual({
       contestId: "contest-1",
       section: null,
-      isLegacyRuntime: true,
     })
   })
 
