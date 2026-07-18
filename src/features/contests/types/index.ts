@@ -551,8 +551,60 @@ export type ContestRegistrationCreateBody = {
   booking_id?: string
   vehicle_id?: string
   vehicle_source?: "RENTAL" | "BYOC"
+  rental_slot?: {
+    cafe_id: string
+    slot_start: string
+    slot_end: string
+    track_config_id?: string | null
+    vehicle_catalog_id?: string | null
+  }
   byoc_vehicle_name?: string
   byoc_vehicle_brand?: string
   byoc_vehicle_class?: string
   byoc_vehicle_notes?: string
 }
+export type ContestRentalCafeOption = {
+  id: string
+  name: string
+  city: string | null
+  district: string | null
+}
+
+export type ContestRentalTrackConfig = {
+  id: string
+  cafe_id: string
+  track_type_id: string
+  track_type_name: string | null
+  max_concurrent: number
+}
+
+export type ContestRentalVehicleCatalog = {
+  id: string
+  cafe_id: string
+  name: string
+  tier: string
+  hourly_rate: number
+  cover_image_url: string | null
+  compatible_track_types: string[]
+}
+
+export type ContestRentalOptions = {
+  cafes: ContestRentalCafeOption[]
+  track_configs: ContestRentalTrackConfig[]
+  vehicle_catalogs: ContestRentalVehicleCatalog[]}
+
+export type ContestAvailableRentalVehicleUnit = {
+  id: string
+  identifier: string | null
+  color: string | null
+}
+
+export type ContestAvailableRentalCatalogGroup = {
+  catalog_id: string
+  catalog_name: string
+  tier: string
+  hourly_rate: number
+  cover_image_url: string | null
+  available_units: ContestAvailableRentalVehicleUnit[]}
+
+export type ContestAvailableRentalVehiclesResponse = ContestAvailableRentalCatalogGroup[]

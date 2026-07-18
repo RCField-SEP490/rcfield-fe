@@ -6,6 +6,8 @@ import type {
   ContestEntryPaymentResponse,
   ContestCatalogFormat,
   ContestCatalogType,
+  ContestRentalOptions,
+  ContestAvailableRentalVehiclesResponse,
   ContestItem,
   ContestLeaderboardPayload,
   ContestListParams,
@@ -188,6 +190,24 @@ function mapContestMatch(raw: any): ContestMatch {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const contestApi = {
+  getContestRentalOptions: async (contestId: string): Promise<ContestRentalOptions> => {
+    const res = await api.get<ApiEnvelope<ContestRentalOptions>>(
+      `/v1/contests/${contestId}/rental-options`,
+    )
+    return res.data.data
+  },
+
+  getContestAvailableRentalVehicles: async (
+    contestId: string,
+    params: { cafe_id: string; slot_start: string; slot_end: string; track_config_id?: string | null },
+  ): Promise<ContestAvailableRentalVehiclesResponse> => {
+    const res = await api.get<ApiEnvelope<ContestAvailableRentalVehiclesResponse>>(
+      `/v1/contests/${contestId}/available-rental-vehicles`,
+      { params },
+    )
+    return res.data.data
+  },
+
   listAuditLogs: async (
     contestId: string,
     params?: { page?: number; limit?: number },
