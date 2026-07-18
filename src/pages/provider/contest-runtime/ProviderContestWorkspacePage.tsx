@@ -36,7 +36,7 @@ import { ContestEventDayPanel } from "./components/ContestEventDayPanel"
 import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
 import { ContestMatchBoard } from "./components/ContestMatchBoard"
-import { ContestMatchDetailPanel } from "./components/ContestMatchDetailPanel"
+import { ContestMatchDetailPanel } from "./components/match-detail/ContestMatchDetailPanel"
 import { ContestRegistrationPanel } from "./components/ContestRegistrationPanel"
 import { ContestRuntimeOverview } from "./components/ContestRuntimeOverview"
 import {

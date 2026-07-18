@@ -9,7 +9,7 @@ import {
 import { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
 import type { ContestMatchStatus } from "@/features/contests/types"
 import { ContestMatchBoard } from "@/pages/provider/contest-runtime/components/ContestMatchBoard"
-import { ContestMatchDetailPanel } from "@/pages/provider/contest-runtime/components/ContestMatchDetailPanel"
+import { ContestMatchDetailPanel } from "@/pages/provider/contest-runtime/components/match-detail/ContestMatchDetailPanel"
 import { StaffCard, StaffHeader } from "../components/StaffUI"
 
 export default function StaffContestRuntimePage() {
