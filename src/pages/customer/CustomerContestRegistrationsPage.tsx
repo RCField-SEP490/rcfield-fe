@@ -21,17 +21,19 @@ import {
   formatMatchLabel,
   getRegistrationDisplayName,
 } from "@/features/contests/lib/contest-runtime"
+import { getPaymentStatusLabel } from "@/features/contests/lib/contest-status"
 import {
-  getJourneyStatusClass,
-  getJourneyStatusLabel,
-  getPaymentStatusClass,
-  getPaymentStatusLabel,
-  getRegistrationStatusClass,
-  getRegistrationStatusLabel,
-} from "@/features/contests/lib/contest-status"
+  ContestFilterBar,
+  ContestStatusBadge,
+  JourneyStatusBadge,
+  PaymentStatusBadge,
+  RegistrationStatusBadge,
+} from "@/features/contests/components"
 import { CustomerPageShell } from "@/pages/customer/components/CustomerPageShell"
 import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
+import { EmptyState } from "@/shared/ui/empty-state"
+import { CardListSkeleton } from "@/shared/ui/loading-state"
 import {
   Dialog,
   DialogContent,
@@ -42,7 +44,6 @@ import {
 } from "@/shared/ui/dialog"
 
 const journeyOptions = [
-  { value: "ALL", label: "Tất cả hành trình" },
   { value: "PENDING_APPROVAL", label: "Chờ duyệt" },
   { value: "APPROVED_WAITING_CHECKIN", label: "Chờ check-in" },
   { value: "READY_TO_RACE", label: "Sẵn sàng đua" },
@@ -53,7 +54,6 @@ const journeyOptions = [
 ] as const
 
 const contestStatusOptions = [
-  { value: "ALL", label: "Mọi trạng thái giải" },
   { value: "OPEN", label: "Đang mở" },
   { value: "CLOSED", label: "Đã đóng đăng ký" },
   { value: "RUNNING", label: "Đang diễn ra" },
@@ -62,7 +62,7 @@ const contestStatusOptions = [
 
 export function CustomerContestRegistrationsPage() {
   const queryClient = useQueryClient()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [cancelId, setCancelId] = useState<string | null>(null)
   const query = searchParams.get("query") ?? ""
   const journeyStatus = searchParams.get("journey") ?? "ALL"
@@ -137,76 +137,50 @@ export function CustomerContestRegistrationsPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_220px]">
-          <input
-            value={query}
-            onChange={(event) =>
-              updateSearchParams(setSearchParams, {
-                query: event.target.value,
-                page: null,
-              })
-            }
-            placeholder="Tìm theo tên giải, tên người chơi hoặc email"
-            className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-orange-300 focus:bg-white"
-          />
-          <select
-            value={journeyStatus}
-            onChange={(event) =>
-              updateSearchParams(setSearchParams, {
-                journey: event.target.value,
-              })
-            }
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm"
-          >
-            {journeyOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={contestStatus}
-            onChange={(event) =>
-              updateSearchParams(setSearchParams, {
-                contestStatus: event.target.value,
-              })
-            }
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm"
-          >
-            {contestStatusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <ContestFilterBar
+          className="mt-5 lg:grid-cols-[minmax(0,1fr)_220px_220px]"
+          inputClassName="h-11 rounded-2xl border-slate-200 bg-slate-50 px-4 text-sm focus:border-orange-300 focus:bg-white"
+          selectClassName="h-11 rounded-2xl border-slate-200 bg-white px-4"
+          searchPlaceholder="Tìm theo tên giải, tên người chơi hoặc email"
+          fields={[
+            {
+              param: "journey",
+              options: [...journeyOptions],
+              allLabel: "Tất cả hành trình",
+              allValue: "ALL",
+            },
+            {
+              param: "contestStatus",
+              options: [...contestStatusOptions],
+              allLabel: "Mọi trạng thái giải",
+              allValue: "ALL",
+            },
+          ]}
+        />
       </div>
 
       <div className="space-y-4">
         {registrationsQuery.isLoading ? (
-          Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-52 animate-pulse rounded-3xl bg-muted"
-            />
-          ))
+          <CardListSkeleton
+            count={3}
+            className="space-y-4"
+            itemClassName="h-52 rounded-3xl"
+          />
         ) : registrations.length === 0 ? (
-          <div className="rounded-3xl border-2 border-dashed border-slate-200 bg-white p-12 text-center shadow-sm">
-            <Trophy className="mx-auto mb-4 size-12 text-slate-300" />
-            <h3 className="text-lg font-bold text-slate-900">
-              Bạn chưa có contest phù hợp bộ lọc
-            </h3>
-            <p className="mx-auto mt-2 mb-6 max-w-sm text-sm text-slate-500">
-              Hãy khám phá thêm các giải đang mở đăng ký hoặc điều chỉnh bộ lọc
-              để xem hành trình thi đấu của bạn.
-            </p>
-            <Button
-              asChild
-              className="rounded-xl bg-orange-600 px-6 py-5 font-bold text-white hover:bg-orange-700"
-            >
-              <Link to="/contests">Khám phá giải đấu</Link>
-            </Button>
-          </div>
+          <EmptyState
+            icon={Trophy}
+            title="Bạn chưa có contest phù hợp bộ lọc"
+            description="Hãy khám phá thêm các giải đang mở đăng ký hoặc điều chỉnh bộ lọc để xem hành trình thi đấu của bạn."
+            className="rounded-3xl border-2 border-slate-200 bg-white p-12 shadow-sm"
+            action={
+              <Button
+                asChild
+                className="rounded-xl bg-orange-600 px-6 py-5 font-bold text-white hover:bg-orange-700"
+              >
+                <Link to="/contests">Khám phá giải đấu</Link>
+              </Button>
+            }
+          />
         ) : (
           registrations.map((registration) => {
             const contest = registration.contest
@@ -259,23 +233,15 @@ export function CustomerContestRegistrationsPage() {
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${getJourneyStatusClass(registration.customerJourneyStatus)}`}
-                          >
-                            {getJourneyStatusLabel(
-                              registration.customerJourneyStatus,
-                            )}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${getRegistrationStatusClass(registration.status)}`}
-                          >
-                            {getRegistrationStatusLabel(registration.status)}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${getPaymentStatusClass(registration.paymentStatus)}`}
-                          >
-                            {getPaymentStatusLabel(registration.paymentStatus)}
-                          </span>
+                          <JourneyStatusBadge
+                            status={registration.customerJourneyStatus}
+                          />
+                          <RegistrationStatusBadge
+                            status={registration.status}
+                          />
+                          <PaymentStatusBadge
+                            status={registration.paymentStatus}
+                          />
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           <InfoTile
@@ -391,7 +357,17 @@ export function CustomerContestRegistrationsPage() {
                           Gợi ý theo dõi
                         </h4>
                         <div className="mt-3 space-y-2 text-sm text-slate-600">
-                          <p>Contest: {contest?.status ?? "--"}</p>
+                          <div className="flex items-center gap-2">
+                            <span>Contest:</span>
+                            {contest ? (
+                              <ContestStatusBadge
+                                status={contest.status}
+                                size="sm"
+                              />
+                            ) : (
+                              "--"
+                            )}
+                          </div>
                           <p>
                             Người thi đấu:{" "}
                             {registration.participant?.email ?? "Đang cập nhật"}
@@ -497,20 +473,6 @@ function InfoTile({
       </div>
     </div>
   )
-}
-
-function updateSearchParams(
-  setSearchParams: ReturnType<typeof useSearchParams>[1],
-  nextValues: Record<string, string | null>,
-) {
-  setSearchParams((current) => {
-    const next = new URLSearchParams(current)
-    for (const [key, value] of Object.entries(nextValues)) {
-      if (!value || value === "ALL") next.delete(key)
-      else next.set(key, value)
-    }
-    return next
-  })
 }
 
 function getErrorMessage(error: unknown) {
