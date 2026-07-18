@@ -10,28 +10,42 @@ export function useContestWorkspace(
   options?: {
     registrations?: ContestRegistrationsQuery
     matches?: ContestMatchesQuery
+    enabled?: {
+      registrations?: boolean
+      matches?: boolean
+      metrics?: boolean
+      auditLogs?: boolean
+      staffAssignments?: boolean
+      bans?: boolean
+      staffOptions?: boolean
+    }
   },
 ) {
   const queryClient = useQueryClient()
   const runtime = useContestRuntime(contestId, options)
   const eventDay = useContestEventDay(contestId)
+  const enabled = {
+    staffAssignments: options?.enabled?.staffAssignments ?? true,
+    bans: options?.enabled?.bans ?? true,
+    staffOptions: options?.enabled?.staffOptions ?? true,
+  }
 
   const staffAssignmentsQuery = useQuery({
     queryKey: contestQueryKeys.staffAssignments(contestId),
     queryFn: () => contestApi.listStaffAssignments(contestId!),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.staffAssignments,
   })
 
   const bansQuery = useQuery({
     queryKey: contestQueryKeys.bans(contestId),
     queryFn: () => contestApi.listBans(contestId!),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.bans,
   })
 
   const staffOptionsQuery = useQuery({
     queryKey: [...staffQueryKeys.list(), "contest-workspace"],
     queryFn: () => staffApi.listStaff(),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.staffOptions,
   })
 
   const invalidateGovernance = async () => {

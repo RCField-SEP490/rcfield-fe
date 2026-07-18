@@ -14,9 +14,21 @@ export function useContestRuntime(
   options?: {
     registrations?: ContestRegistrationsQuery
     matches?: ContestMatchesQuery
+    enabled?: {
+      registrations?: boolean
+      matches?: boolean
+      metrics?: boolean
+      auditLogs?: boolean
+    }
   },
 ) {
   const queryClient = useQueryClient()
+  const enabled = {
+    registrations: options?.enabled?.registrations ?? true,
+    matches: options?.enabled?.matches ?? true,
+    metrics: options?.enabled?.metrics ?? true,
+    auditLogs: options?.enabled?.auditLogs ?? true,
+  }
 
   const contestQuery = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
@@ -27,25 +39,25 @@ export function useContestRuntime(
   const registrationsQuery = useQuery({
     queryKey: contestQueryKeys.registrations(contestId, options?.registrations),
     queryFn: () => contestApi.listContestRegistrations(contestId!, options?.registrations),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.registrations,
   })
 
   const matchesQuery = useQuery({
     queryKey: contestQueryKeys.matches(contestId, options?.matches),
     queryFn: () => contestApi.listMatches(contestId!, options?.matches),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.matches,
   })
 
   const metricsQuery = useQuery({
     queryKey: contestQueryKeys.metrics(contestId),
     queryFn: () => contestApi.getMetrics(contestId!),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.metrics,
   })
 
   const auditLogsQuery = useQuery({
     queryKey: contestQueryKeys.auditLogs(contestId),
     queryFn: () => contestApi.listAuditLogs(contestId!),
-    enabled: Boolean(contestId),
+    enabled: Boolean(contestId) && enabled.auditLogs,
   })
 
   const invalidateRuntime = async () => {

@@ -74,6 +74,17 @@ export function ProviderContestWorkspacePage({
   const participantQuery = searchParams.get("participantQuery") ?? ""
   const roundNo = searchParams.get("roundNo") ?? ""
 
+  const needsRegistrations =
+    section === "overview" ||
+    section === "registrations" ||
+    section === "operations" ||
+    section === "bracket" ||
+    section === "discipline"
+  const needsMatches = section === "overview" || section === "bracket"
+  const needsMetrics = section === "overview" || section === "leaderboard"
+  const needsAuditLogs = section === "audit"
+  const needsGovernance = section === "discipline"
+
   const workspace = useContestWorkspace(contestId, {
     registrations: {
       status: (registrationStatus || undefined) as
@@ -88,6 +99,15 @@ export function ProviderContestWorkspacePage({
       status: (matchStatus || undefined) as ContestMatchStatus | undefined,
       participant_query: participantQuery || undefined,
       round_no: roundNo ? Number(roundNo) : undefined,
+    },
+    enabled: {
+      registrations: needsRegistrations,
+      matches: needsMatches,
+      metrics: needsMetrics,
+      auditLogs: needsAuditLogs,
+      staffAssignments: needsGovernance,
+      bans: needsGovernance,
+      staffOptions: needsGovernance,
     },
   })
 
@@ -327,7 +347,7 @@ export function ProviderContestWorkspacePage({
               variant="outline"
               className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
             >
-              Đăng ký: {metrics?.registration_counts.total ?? registrations.length} người
+              Đăng ký: {metrics?.registration_counts.total ?? (workspace.runtime.registrationsQuery.isSuccess ? registrations.length : "--")} người
             </Badge>
           </div>
         }
