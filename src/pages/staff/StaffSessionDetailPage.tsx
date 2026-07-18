@@ -24,6 +24,7 @@ import { menuApi } from "@/features/menu/api/menu.api"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import type { MenuItem } from "@/features/menu/types"
 import { getApiErrorInfo } from "@/shared/lib/utils"
+import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import { toast } from "sonner"
 import {
   StaffCard,
@@ -612,10 +613,11 @@ export default function StaffSessionDetailPage() {
                         >
                           <div className="flex items-center gap-3">
                             {photoUrl ? (
-                              <img
+                              <ZoomableInspectionImage
                                 src={photoUrl}
                                 alt={v.name}
-                                className="size-9 rounded-lg object-cover border border-[#e5e2e1] shrink-0"
+                                className="size-9 rounded-lg border border-[#e5e2e1] object-cover"
+                                buttonClassName="size-9 shrink-0 rounded-lg"
                               />
                             ) : (
                               <div className="flex size-9 items-center justify-center rounded-lg bg-white border border-[#e5e2e1] shrink-0">

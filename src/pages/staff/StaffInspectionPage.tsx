@@ -18,6 +18,7 @@ import { staffApi, type DamageLineItemInput } from "@/features/staff/api/staff.a
 import { uploadImage } from "@/features/uploads/api/upload.api"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
+import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import {
   StaffCard,
   StaffButton,
@@ -402,27 +403,45 @@ export default function StaffInspectionPage() {
                   </div>
 
                   {/* Photo upload zone */}
-                  <label
-                    htmlFor={`byoc-photo-${index}`}
+                  <div
                     className={cn(
-                      "aspect-video rounded-xl border-2 border-dashed border-[#e5e2e1] bg-[#fcf8f8] flex flex-col items-center justify-center cursor-pointer hover:border-[#ea580c] hover:bg-[#fff3eb]/30 overflow-hidden relative group transition-all",
+                      "aspect-video rounded-xl border-2 border-dashed border-[#e5e2e1] bg-[#fcf8f8] overflow-hidden relative group transition-all",
                       slot.url && "border-solid border-[#e5e2e1]",
                       !slot.url && "border-rose-200"
                     )}
                   >
                     {slot.url ? (
                       <>
-                        <img src={slot.url} alt={slot.participantName} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Camera className="size-5 text-white" />
+                        <div
+                          className="h-full w-full"
+                          onClickCapture={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                          }}
+                        >
+                          <ZoomableInspectionImage
+                            src={slot.url}
+                            alt={`Xe tự mang của ${slot.participantName}`}
+                            className="h-full w-full object-cover"
+                            buttonClassName="h-full w-full"
+                          />
                         </div>
+                        <label
+                          htmlFor={`byoc-photo-${index}`}
+                          className="absolute bottom-2 right-2 cursor-pointer rounded-lg bg-black/70 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          Đổi ảnh
+                        </label>
                       </>
                     ) : (
-                      <>
+                      <label
+                        htmlFor={`byoc-photo-${index}`}
+                        className="flex h-full w-full cursor-pointer flex-col items-center justify-center hover:bg-[#fff3eb]/30"
+                      >
                         <Camera className="size-6 text-[#6b7280] mb-1.5" />
                         <span className="text-xs font-bold text-[#ea580c]">+ Chụp ảnh xe</span>
                         <span className="text-[10px] text-[#a09e9d] mt-0.5 font-semibold px-2 text-center">Toàn cảnh xe để xác nhận</span>
-                      </>
+                      </label>
                     )}
                     <input
                       id={`byoc-photo-${index}`}
@@ -432,7 +451,7 @@ export default function StaffInspectionPage() {
                       className="sr-only"
                       onChange={(e) => handleByocPhotoChange(index, e)}
                     />
-                  </label>
+                  </div>
 
                   {/* Notes field */}
                   {slot.url && (
@@ -488,7 +507,12 @@ export default function StaffInspectionPage() {
                   {rentalPhotos.map((photo, index) => (
                     <div key={photo.id} className="overflow-hidden rounded-xl border border-[#e5e2e1] bg-white">
                       <div className="relative aspect-video bg-[#f5f3f2]">
-                        <img src={photo.url} alt={`Ảnh bàn giao xe ${index + 1}`} className="h-full w-full object-cover" />
+                        <ZoomableInspectionImage
+                          src={photo.url}
+                          alt={`Ảnh bàn giao xe ${index + 1}`}
+                          className="h-full w-full object-cover"
+                          buttonClassName="h-full w-full"
+                        />
                         <button
                           type="button"
                           onClick={() => setRentalPhotos((previous) => previous.filter((item) => item.id !== photo.id))}
@@ -518,7 +542,12 @@ export default function StaffInspectionPage() {
                   <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-blue-800">Ảnh bàn giao lúc nhận xe</p>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {checkInInspection.photos.map((photo, index) => (
-                      <img key={`${photo.url}-${index}`} src={photo.url} alt={`Ảnh nhận xe ${index + 1}`} className="aspect-video w-full rounded-lg border border-blue-200 object-cover" />
+                      <ZoomableInspectionImage
+                        key={`${photo.url}-${index}`}
+                        src={photo.url}
+                        alt={`Ảnh nhận xe ${index + 1}`}
+                        className="aspect-video w-full rounded-lg border border-blue-200 object-cover"
+                      />
                     ))}
                   </div>
                 </div>

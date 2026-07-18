@@ -20,6 +20,7 @@ import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { staffApi } from "@/features/staff/api/staff.api"
 import { VehicleImage } from "@/shared/ui/vehicle-image"
+import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
 const DIRECTION_LABELS: Record<string, string> = {
@@ -804,10 +805,10 @@ export function BookingDetailPage() {
                   <div className="grid grid-cols-2 gap-3">
                     {checkInPhotos.map((photo, idx) => (
                       <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <img
+                        <ZoomableInspectionImage
                           src={photo.url}
                           alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="w-full aspect-video object-cover"
+                          className="aspect-video w-full object-cover"
                         />
                         <div className="bg-muted/50 px-2.5 py-1.5">
                           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -840,10 +841,10 @@ export function BookingDetailPage() {
                   <div className="grid grid-cols-2 gap-3">
                     {checkOutPhotos.map((photo, idx) => (
                       <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <img
+                        <ZoomableInspectionImage
                           src={photo.url}
                           alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="w-full aspect-video object-cover"
+                          className="aspect-video w-full object-cover"
                         />
                         <div className="bg-muted/50 px-2.5 py-1.5">
                           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">

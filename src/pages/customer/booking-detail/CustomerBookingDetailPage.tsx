@@ -25,6 +25,7 @@ import { customerSessionApi } from "@/features/customer-session/api/customer-ses
 import type { BookingResponse, PaymentComponentType } from "@/features/booking/types/booking.types"
 import type { MockInspection } from "@/shared/data/customer-operational-mock-data"
 import { VehicleImage } from "@/shared/ui/vehicle-image"
+import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -107,10 +108,10 @@ function InspectionPhotosCard({ inspection }: { inspection: MockInspection }) {
         <div className="grid grid-cols-2 gap-3">
           {inspection.photos.map((photo, idx) => (
             <div key={idx} className="rounded-xl overflow-hidden border border-slate-100">
-              <img
+              <ZoomableInspectionImage
                 src={photo.url}
                 alt={`Ảnh ${DIRECTION_LABEL[photo.direction] ?? photo.direction}`}
-                className="w-full aspect-video object-cover"
+                className="aspect-video w-full object-cover"
               />
               <div className="bg-slate-50 px-2.5 py-1.5">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">

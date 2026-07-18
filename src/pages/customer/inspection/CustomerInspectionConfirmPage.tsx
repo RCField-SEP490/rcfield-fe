@@ -12,6 +12,8 @@ import {
   Maximize2,
   ChevronLeft,
   ChevronRight,
+  Minus,
+  Plus,
   Bookmark,
   ShieldCheck,
   Check
@@ -36,6 +38,7 @@ export function CustomerInspectionConfirmPage() {
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60)
   const [activePhotoIdx, setActivePhotoIdx] = useState<number>(0)
   const [showLightbox, setShowLightbox] = useState<boolean>(false)
+  const [lightboxZoom, setLightboxZoom] = useState<number>(1)
   const [disagreeMode, setDisagreeMode] = useState<boolean>(false)
   const [disagreeText, setDisagreeText] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
@@ -247,7 +250,10 @@ export function CustomerInspectionConfirmPage() {
                 </div>
 
                 <button 
-                  onClick={() => setShowLightbox(true)}
+                  onClick={() => {
+                    setLightboxZoom(1)
+                    setShowLightbox(true)
+                  }}
                   className="absolute bottom-3 right-3 h-9 w-9 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white cursor-pointer hover:bg-black/80 transition-colors"
                 >
                   <Maximize2 className="h-4.5 w-4.5" />
@@ -420,9 +426,14 @@ export function CustomerInspectionConfirmPage() {
             Đóng [ESC]
           </button>
           
-          <div className="max-w-4xl w-full h-[80vh] flex items-center justify-center relative">
+          <div className="max-w-4xl w-full h-[80vh] flex items-center justify-center relative overflow-auto">
             {activePhoto?.url ? (
-              <img src={activePhoto.url} alt="" className="max-h-full max-w-full object-contain" />
+              <img
+                src={activePhoto.url}
+                alt={`Ảnh kiểm xe ${activePhoto.direction}`}
+                style={{ transform: `scale(${lightboxZoom})`, transition: "transform 150ms ease" }}
+                className="max-h-full max-w-full object-contain"
+              />
             ) : (
               <div className="text-sm font-bold text-white/70">Chưa có ảnh kiểm xe</div>
             )}
@@ -431,6 +442,27 @@ export function CustomerInspectionConfirmPage() {
             <div className="absolute bottom-4 left-4 right-4 bg-black/60 border border-white/10 backdrop-blur-md p-4 rounded-xl text-white space-y-1 text-center">
               <span className="text-[10px] font-black text-orange-400 tracking-wider uppercase">GÓC CHỤP: {activePhoto?.direction ?? "N/A"}</span>
               <p className="text-xs font-semibold text-white/90">{activePhoto?.notes || "Ảnh chất lượng cao kiểm tra chi tiết thiết bị."}</p>
+            </div>
+            <div className="absolute top-4 left-4 flex items-center gap-2 rounded-xl border border-white/20 bg-black/60 p-1.5 text-white">
+              <button
+                type="button"
+                aria-label="Thu nhỏ ảnh"
+                disabled={lightboxZoom <= 1}
+                onClick={() => setLightboxZoom((value) => Math.max(1, value - 0.5))}
+                className="rounded-lg p-2 disabled:opacity-40 hover:bg-white/10"
+              >
+                <Minus className="size-4" />
+              </button>
+              <span className="min-w-10 text-center text-xs font-bold">{Math.round(lightboxZoom * 100)}%</span>
+              <button
+                type="button"
+                aria-label="Phóng to ảnh"
+                disabled={lightboxZoom >= 3}
+                onClick={() => setLightboxZoom((value) => Math.min(3, value + 0.5))}
+                className="rounded-lg p-2 disabled:opacity-40 hover:bg-white/10"
+              >
+                <Plus className="size-4" />
+              </button>
             </div>
           </div>
         </div>
