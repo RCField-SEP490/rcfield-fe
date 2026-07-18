@@ -36,6 +36,7 @@ import {
 import {
   getContestStatusClass,
   getContestStatusLabel,
+  getContestRegistrationAvailability,
   getEffectiveContestStatus,
   getJourneyStatusClass,
   getJourneyStatusLabel,
@@ -43,6 +44,7 @@ import {
   getMatchStatusLabel,
   getPaymentStatusLabel,
   getRegistrationStatusLabel,
+  type ContestRegistrationAvailability,
 } from "@/features/contests/lib/contest-status"
 import type {
   ContestHighlightRound,
@@ -173,7 +175,10 @@ export function PublicContestDetailPage() {
   const highlightRounds = contest?.highlight_rounds ?? runtimeSummary?.highlight_rounds ?? []
   const leaderboard = contest?.published_leaderboard ?? null
   const effectiveStatus = contest ? getEffectiveContestStatus(contest) : null
-  const registrationClosed = effectiveStatus !== "OPEN"
+  const registrationAvailability = contest
+    ? getContestRegistrationAvailability(contest)
+    : null
+  const registrationClosed = registrationAvailability !== "AVAILABLE"
   const allowsByoc =
     contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY" ||
     contest?.vehicle_rule?.vehicle_policy === "MIXED"
@@ -336,7 +341,7 @@ export function PublicContestDetailPage() {
                 />
                 <ContestRegistrationPanel
                   contest={contest}
-                  effectiveStatus={effectiveStatus ?? contest.status}
+                  registrationAvailability={registrationAvailability ?? "DRAFT"}
                   role={role}
                   profileName={profile?.email ?? profile?.fullName ?? "--"}
                   existingRegistration={existingRegistration}
@@ -1086,7 +1091,7 @@ function ContestAsideStatus({
 
 function ContestRegistrationPanel({
   contest,
-  effectiveStatus,
+  registrationAvailability,
   role,
   profileName,
   existingRegistration,
@@ -1117,7 +1122,7 @@ function ContestRegistrationPanel({
   onRegister,
 }: {
   contest: ContestItem
-  effectiveStatus: ContestItem["status"]
+  registrationAvailability: ContestRegistrationAvailability
   role: string | null
   profileName: string
   existingRegistration: ContestRegistration | null
@@ -1166,7 +1171,7 @@ function ContestRegistrationPanel({
   onRegister: () => void
 }) {
   const registrationBlockedMessage = getRegistrationBlockedMessage(
-    effectiveStatus,
+    registrationAvailability,
     contest,
   )
 
@@ -1483,7 +1488,7 @@ function ContestRegistrationPanel({
               {registerPending
                 ? "Đang gửi đăng ký..."
                 : registrationClosed
-                  ? getClosedButtonLabel(effectiveStatus)
+                  ? getClosedButtonLabel(registrationAvailability)
                   : "Gửi đăng ký tham gia"}
             </Button>
           </div>
@@ -1653,10 +1658,12 @@ function getErrorMessage(error: unknown) {
 }
 
 function getRegistrationBlockedMessage(
-  status: ContestItem["status"],
+  status: ContestRegistrationAvailability,
   contest: ContestItem,
 ) {
   switch (status) {
+    case "NOT_OPEN_YET":
+      return `Giải sẽ mở đăng ký từ ${formatContestDateTime(contest.registration_opens_at)}. Bạn có thể xem trước thể thức, chi nhánh và chuẩn bị booking phù hợp.`
     case "CLOSED":
       return `Giải đã đóng đăng ký từ ${formatContestDateTime(contest.registration_closes_at)}. Bạn vẫn có thể vào tab Trận đấu để theo dõi bracket và các vòng đã vào trong.`
     case "RUNNING":
@@ -1670,7 +1677,7 @@ function getRegistrationBlockedMessage(
   }
 }
 
-function getClosedButtonLabel(status: ContestItem["status"]) {
+function getClosedButtonLabel(status: ContestRegistrationAvailability) {
   switch (status) {
     case "CLOSED":
       return "Đã đóng đăng ký"

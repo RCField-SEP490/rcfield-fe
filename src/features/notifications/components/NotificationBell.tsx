@@ -65,7 +65,16 @@ export function NotificationBell() {
     if (!n.readAt) markReadMutation.mutate(n.id)
     setOpen(false)
 
-    if (n.type === "SESSION_CHECKOUT_INSPECTION") {
+    const contestId = typeof n.data?.contest_id === "string" ? n.data.contest_id : null
+    if (contestId && n.type.startsWith("CONTEST_")) {
+      if (user?.role === "customer") {
+        navigate(`/contests/${contestId}`)
+      } else if (user?.role === "provider") {
+        navigate(`/provider/contests/${contestId}/overview`)
+      } else if (user?.role === "staff") {
+        navigate(`/staff/contests/${contestId}/check-in`)
+      }
+    } else if (n.type === "SESSION_CHECKOUT_INSPECTION") {
       try {
         const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
         const activeBooking = bookingsRes.data.find(

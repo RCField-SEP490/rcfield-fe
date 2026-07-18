@@ -19,6 +19,12 @@ export type NotificationType =
   | 'CUSTOMER_EXTENSION_REJECTED'
   | 'CUSTOMER_PAYMENT_CONFIRMED'
   | 'BOOKING_REVIEW_REQUEST'
+  | 'CONTEST_REGISTRATION_CREATED'
+  | 'CONTEST_REGISTRATION_APPROVED'
+  | 'CONTEST_REGISTRATION_REJECTED'
+  | 'CONTEST_REGISTRATION_CANCELLED'
+  | 'CONTEST_CHECKIN_CONFIRMED'
+  | 'CONTEST_REMINDER'
 
 export interface Notification {
   id: string
@@ -26,6 +32,7 @@ export interface Notification {
   type: NotificationType
   title: string
   message: string
+  data: Record<string, unknown> | null
   readAt: string | null
   createdAt: string
 }

@@ -1,10 +1,15 @@
 import { useQuery } from "@tanstack/react-query"
-import { Calendar, MapPin, Users, Award, ShieldAlert } from "lucide-react"
+import { Calendar, MapPin, Users, Award, ShieldAlert, Trophy } from "lucide-react"
 import { Link } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
-import { getContestStatusClass, getContestStatusLabel } from "@/features/contests/lib/contest-status"
+import {
+  getContestStatusClass,
+  getContestRegistrationAvailability,
+  getEffectiveContestStatus,
+  getRegistrationAvailabilityLabel,
+} from "@/features/contests/lib/contest-status"
 import { Badge } from "@/shared/ui/badge"
 
 export function PublicContestsPage() {
@@ -29,39 +34,34 @@ export function PublicContestsPage() {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value)
   }
 
-  // Get status gradient for the card header
-  const getHeaderGradient = (status: string) => {
-    switch (status) {
-      case "OPEN":
-        return "from-emerald-500 to-teal-600"
-      case "RUNNING":
-        return "from-orange-500 to-amber-600"
-      case "COMPLETED":
-        return "from-slate-600 to-slate-800"
-      case "CANCELLED":
-        return "from-red-500 to-rose-600"
-      default:
-        return "from-slate-400 to-slate-500"
-    }
-  }
-
   return (
-    <main className="w-full bg-slate-50/50 py-10">
+    <main className="w-full bg-[#f7f4f2] py-8">
       <section className="mx-auto max-w-6xl px-4 sm:px-6">
-        {/* Banner Section */}
-        <div className="relative mb-10 overflow-hidden rounded-3xl bg-slate-900 px-6 py-12 shadow-xl shadow-slate-900/10 text-white sm:px-12 sm:py-16">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.25),transparent_50%)]" />
-          <div className="absolute -bottom-16 -right-16 size-64 rounded-full bg-orange-600/10 blur-3xl" />
-          <div className="relative max-w-2xl">
-            <Badge className="mb-4 bg-orange-500 text-white hover:bg-orange-600 border-none font-bold text-xs uppercase px-3 py-1 tracking-wider">
+        <div className="mb-8 rounded-2xl border border-[#e5e2e1] bg-white px-5 py-6 shadow-sm sm:px-7">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <Badge className="mb-3 border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-50">
+                <Trophy className="mr-1.5 size-3.5" />
               Hệ thống giải đấu
             </Badge>
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl font-display">
+              <h1 className="text-2xl font-black text-[#1f2424] sm:text-3xl">
               Đấu Trường RC Field
             </h1>
-            <p className="mt-4 text-base font-medium text-slate-300 sm:text-lg max-w-xl leading-relaxed">
-              Khám phá và đăng ký các giải đấu xe điều khiển kịch tính, giao lưu cùng cộng đồng racer chuyên nghiệp.
+              <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-[#5d5f5f]">
+                Chọn giải phù hợp, xem bracket và leaderboard công khai, rồi đăng ký thi đấu tại chi nhánh gần bạn.
             </p>
+          </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <SummaryStat label="Giải" value={String(contests.length)} />
+              <SummaryStat
+                label="Đang mở"
+                value={String(contests.filter((item) => getContestRegistrationAvailability(item) === "AVAILABLE").length)}
+              />
+              <SummaryStat
+                label="Live"
+                value={String(contests.filter((item) => getEffectiveContestStatus(item) === "RUNNING").length)}
+              />
+            </div>
           </div>
         </div>
 
@@ -85,30 +85,40 @@ export function PublicContestsPage() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {contests.map((contest) => {
-              const statusClass = getContestStatusClass(contest.status)
-              const statusLabel = getContestStatusLabel(contest.status)
-              const headerGrad = getHeaderGradient(contest.status)
+              const effectiveStatus = getEffectiveContestStatus(contest)
+              const registrationAvailability = getContestRegistrationAvailability(contest)
+              const statusClass = getContestStatusClass(effectiveStatus)
+              const statusLabel = getRegistrationAvailabilityLabel(registrationAvailability)
+              const hasBanner = Boolean(contest.banner_image_url)
 
               return (
                 <Link
                   key={contest.id}
                   to={routePaths.contestDetail.replace(":contestId", contest.id)}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-md"
+                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#e5e2e1] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-md"
                 >
-                  {/* Decorative Gradient Header block */}
-                  <div className={`h-24 bg-gradient-to-r ${headerGrad} p-4 text-white relative`}>
-                    <div className="absolute inset-0 bg-black/10 opacity-30 group-hover:opacity-10 transition-opacity" />
-                    <div className="relative flex items-center justify-between">
-                      <span className="inline-flex items-center rounded-full bg-white/20 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider backdrop-blur-sm">
+                  <div className="relative h-32 overflow-hidden bg-[#1f2424]">
+                    {hasBanner ? (
+                      <img
+                        src={contest.banner_image_url!}
+                        alt={contest.name}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-[linear-gradient(135deg,#1f2424,#3f3027_54%,#c45a1a)]" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                    <div className="absolute left-4 right-4 top-4 flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black uppercase text-[#3b3f40] shadow-sm">
                         {contest.contest_format?.name || "Standard"}
                       </span>
-                      <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider bg-white ${statusClass.split(" ")[1]} border-white`}>
+                      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black shadow-sm ${statusClass}`}>
                         {statusLabel}
                       </span>
                     </div>
-                    <div className="absolute bottom-3 left-4 flex items-center gap-1.5 text-white/90">
+                    <div className="absolute bottom-4 left-4 right-4 flex items-center gap-1.5 text-white">
                       <Award className="size-4 shrink-0" />
-                      <span className="text-xs font-bold truncate max-w-[200px]">
+                      <span className="truncate text-xs font-black">
                         {contest.contest_type?.name || "Tự do"}
                       </span>
                     </div>
@@ -145,6 +155,17 @@ export function PublicContestsPage() {
                         {formatCurrency(contest.entry_fee)}
                       </div>
                     </div>
+                    <div className="mt-4 rounded-full bg-[#1f2424] px-4 py-2.5 text-center text-xs font-black text-white transition group-hover:bg-orange-600">
+                      {registrationAvailability === "AVAILABLE"
+                        ? "Xem chi tiết và đăng ký"
+                        : registrationAvailability === "NOT_OPEN_YET"
+                          ? "Xem lịch mở đăng ký"
+                        : effectiveStatus === "RUNNING"
+                          ? "Xem bracket live"
+                          : effectiveStatus === "COMPLETED"
+                            ? "Xem leaderboard"
+                            : "Xem chi tiết"}
+                    </div>
                   </div>
                 </Link>
               )
@@ -153,5 +174,14 @@ export function PublicContestsPage() {
         )}
       </section>
     </main>
+  )
+}
+
+function SummaryStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-20 rounded-xl border border-[#e5e2e1] bg-[#f7f4f2] px-3 py-2">
+      <p className="text-base font-black text-[#1f2424]">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-[#747878]">{label}</p>
+    </div>
   )
 }

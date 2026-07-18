@@ -13,8 +13,9 @@ import { Link } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
 import {
   getContestStatusClass,
-  getContestStatusLabel,
+  getContestRegistrationAvailability,
   getEffectiveContestStatus,
+  getRegistrationAvailabilityLabel,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 import { cn } from "@/shared/lib/utils"
@@ -25,6 +26,7 @@ interface ContestExploreCardProps {
 
 export function ContestExploreCard({ contest }: ContestExploreCardProps) {
   const effectiveStatus = getEffectiveContestStatus(contest)
+  const registrationAvailability = getContestRegistrationAvailability(contest)
   const statusClass = getContestStatusClass(effectiveStatus)
   const hasBanner = Boolean(contest.banner_image_url)
   const publicStats = contest.public_stats
@@ -54,7 +56,7 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
               statusClass,
             )}
           >
-            {getContestStatusLabel(effectiveStatus)}
+            {getRegistrationAvailabilityLabel(registrationAvailability)}
           </span>
           {effectiveStatus === "RUNNING" ? (
             <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">
@@ -163,7 +165,11 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
               CTA
             </p>
             <p className="text-sm font-extrabold text-slate-900">
-              Xem giải và đăng ký
+              {registrationAvailability === "AVAILABLE"
+                ? "Xem giải và đăng ký"
+                : registrationAvailability === "NOT_OPEN_YET"
+                  ? "Xem lịch mở đăng ký"
+                  : "Xem diễn biến giải"}
             </p>
           </div>
           <Link

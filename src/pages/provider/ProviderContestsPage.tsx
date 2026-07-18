@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Flag, Pencil, Play, Plus, Square, Trash2 } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Flag, Pencil, Play, Plus, Square, Trash2, Users } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
 import { getContestStatusClass } from "@/features/contests/lib/contest-status"
-import type { ContestStatus } from "@/features/contests/types"
+import type { ContestItem, ContestStatus } from "@/features/contests/types"
 import { Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
@@ -149,6 +149,7 @@ export function ProviderContestsPage() {
                       <span>Entry fee: {formatCurrency(contest.entry_fee)}</span>
                       <span>Chi nhánh: {contest.participating_branches.length}</span>
                     </div>
+                    <ContestHealthBadges contest={contest} />
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -210,6 +211,82 @@ export function ProviderContestsPage() {
       </Panel>
     </ProviderShell>
   )
+}
+
+function ContestHealthBadges({ contest }: { contest: ContestItem }) {
+  const stats = contest.public_stats
+  const registrationCount = stats?.registration_count ?? 0
+  const confirmedCount = stats?.confirmed_count ?? 0
+  const checkedInCount = stats?.checked_in_count ?? 0
+  const capacityRemaining = stats?.capacity_remaining
+  const staffCount = contest.staff_assignments?.length ?? 0
+  const runtimeSummary = contest.runtime_summary
+  const totalRounds = runtimeSummary?.total_rounds ?? 0
+  const hasLiveMatches = Boolean(runtimeSummary?.has_live_matches)
+  const leaderboardPublished = Boolean(contest.published_leaderboard)
+
+  const badges = [
+    {
+      key: "registrations",
+      icon: <Users className="size-3.5" />,
+      label:
+        capacityRemaining === null || capacityRemaining === undefined
+          ? `${registrationCount} đăng ký`
+          : `${registrationCount} đăng ký · còn ${capacityRemaining}`,
+      tone: registrationCount > 0 ? "ok" : "warn",
+    },
+    {
+      key: "approval",
+      icon: confirmedCount > 0 ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />,
+      label: `${confirmedCount} duyệt · ${checkedInCount} check-in`,
+      tone: confirmedCount > 0 ? "ok" : "warn",
+    },
+    {
+      key: "staff",
+      icon: staffCount > 0 ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />,
+      label: staffCount > 0 ? `${staffCount} staff` : "Chưa phân công staff",
+      tone: staffCount > 0 ? "ok" : "warn",
+    },
+    {
+      key: "runtime",
+      icon: totalRounds > 0 ? <CheckCircle2 className="size-3.5" /> : <Flag className="size-3.5" />,
+      label: hasLiveMatches ? "Có trận live" : totalRounds > 0 ? `${totalRounds} vòng đấu` : "Chưa tạo bracket",
+      tone: hasLiveMatches ? "live" : totalRounds > 0 ? "ok" : "neutral",
+    },
+    {
+      key: "leaderboard",
+      icon: leaderboardPublished ? <CheckCircle2 className="size-3.5" /> : <AlertTriangle className="size-3.5" />,
+      label: leaderboardPublished ? "Đã publish leaderboard" : "Chưa publish leaderboard",
+      tone: leaderboardPublished ? "ok" : "neutral",
+    },
+  ] as const
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {badges.map((badge) => (
+        <span
+          key={badge.key}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${getHealthBadgeClass(badge.tone)}`}
+        >
+          {badge.icon}
+          {badge.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function getHealthBadgeClass(tone: "ok" | "warn" | "neutral" | "live") {
+  switch (tone) {
+    case "ok":
+      return "border-emerald-200 bg-emerald-50 text-emerald-700"
+    case "warn":
+      return "border-amber-200 bg-amber-50 text-amber-800"
+    case "live":
+      return "border-blue-200 bg-blue-50 text-blue-700"
+    default:
+      return "border-[#e5e2e1] bg-[#f6f3f2] text-[#5d5f5f]"
+  }
 }
 
 function updateContestFilters(
