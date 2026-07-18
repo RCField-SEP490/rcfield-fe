@@ -5,11 +5,8 @@ import {
   formatMatchLabel,
   getMatchParticipantName,
 } from "@/features/contests/lib/contest-runtime"
-import {
-  getContestStatusLabel,
-  getMatchStatusClass,
-  getMatchStatusLabel,
-} from "@/features/contests/lib/contest-status"
+import { MatchStatusBadge } from "@/features/contests/components"
+import { getContestStatusLabel } from "@/features/contests/lib/contest-status"
 import type {
   ContestHighlightRound,
   ContestItem,
@@ -19,6 +16,8 @@ import type {
 } from "@/features/contests/types"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Card } from "@/shared/ui/card"
+import { EmptyState } from "@/shared/ui/empty-state"
+import { CardListSkeleton } from "@/shared/ui/loading-state"
 
 import { Info } from "./DetailPrimitives"
 
@@ -77,9 +76,10 @@ export function ContestRuntimeOverview({
         </div>
         <div className="mt-5 space-y-4">
           {highlightRounds.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-sm text-slate-500">
-              Chưa có dữ liệu vòng đấu nổi bật để hiển thị.
-            </div>
+            <EmptyState
+              title="Chưa có dữ liệu vòng đấu nổi bật để hiển thị."
+              className="rounded-2xl border-slate-200 p-5"
+            />
           ) : (
             highlightRounds.map((round) => (
               <div
@@ -150,18 +150,16 @@ export function ContestBracketBoard({
 
       <div className="mt-5">
         {loading ? (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-72 animate-pulse rounded-2xl bg-slate-100"
-              />
-            ))}
-          </div>
+          <CardListSkeleton
+            count={3}
+            className="grid gap-4 space-y-0 lg:grid-cols-3"
+            itemClassName="h-72 rounded-2xl"
+          />
         ) : matches.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm font-medium text-slate-500">
-            Chưa có trận nào được công bố trên bracket của giải đấu này.
-          </div>
+          <EmptyState
+            title="Chưa có trận nào được công bố trên bracket của giải đấu này."
+            className="rounded-2xl border-slate-200 p-6"
+          />
         ) : (
           <div className="overflow-x-auto">
             <div className="flex min-w-max gap-4 pb-2">
@@ -196,11 +194,10 @@ export function ContestBracketBoard({
                               {formatContestDateTime(match.scheduled_at)}
                             </p>
                           </div>
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-bold ${getMatchStatusClass(match.status)}`}
-                          >
-                            {getMatchStatusLabel(match.status)}
-                          </span>
+                          <MatchStatusBadge
+                            status={match.status}
+                            className="h-auto px-2.5 py-1 text-[11px] font-bold"
+                          />
                         </div>
                         <div className="mt-3 space-y-2">
                           {match.participants.length > 0 ? (

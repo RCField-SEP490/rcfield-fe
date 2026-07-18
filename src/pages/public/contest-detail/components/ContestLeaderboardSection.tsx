@@ -11,6 +11,7 @@ import type {
   ContestMatch,
 } from "@/features/contests/types"
 import { Card } from "@/shared/ui/card"
+import { EmptyState } from "@/shared/ui/empty-state"
 
 import { Info } from "./DetailPrimitives"
 
@@ -47,9 +48,10 @@ export function ContestLeaderboardSection({
       </p>
 
       {!leaderboard?.entries?.length ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-6 text-sm text-slate-500">
-          Chưa có leaderboard được công bố cho giải đấu này.
-        </div>
+        <EmptyState
+          title="Chưa có leaderboard được công bố cho giải đấu này."
+          className="mt-5 rounded-2xl border-slate-200 p-6"
+        />
       ) : (
         <>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">

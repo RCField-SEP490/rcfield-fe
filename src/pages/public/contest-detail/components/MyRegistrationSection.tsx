@@ -1,17 +1,16 @@
 import { Swords } from "lucide-react"
 
+import { MatchStatusBadge } from "@/features/contests/components"
 import {
   formatContestDateTime,
   formatMatchLabel,
   getMatchParticipantName,
 } from "@/features/contests/lib/contest-runtime"
-import {
-  getMatchStatusClass,
-  getMatchStatusLabel,
-} from "@/features/contests/lib/contest-status"
 import type { ContestMatch, ContestRegistration } from "@/features/contests/types"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Card } from "@/shared/ui/card"
+import { EmptyState } from "@/shared/ui/empty-state"
+import { CardListSkeleton } from "@/shared/ui/loading-state"
 
 export function MyRegistrationMatches({
   registration,
@@ -34,16 +33,12 @@ export function MyRegistrationMatches({
 
       <div className="mt-5 space-y-4">
         {loading ? (
-          Array.from({ length: 2 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse rounded-2xl bg-slate-100"
-            />
-          ))
+          <CardListSkeleton count={2} itemClassName="h-28 rounded-2xl" />
         ) : matches.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-sm font-medium text-slate-500">
-            Bạn chưa có match nào hiển thị trong bracket hiện tại.
-          </div>
+          <EmptyState
+            title="Bạn chưa có match nào hiển thị trong bracket hiện tại."
+            className="rounded-2xl border-slate-200 p-6"
+          />
         ) : (
           matches.map((match) => {
             const myParticipant =
@@ -72,11 +67,10 @@ export function MyRegistrationMatches({
                       Thi đấu lúc {formatContestDateTime(match.scheduled_at)}
                     </p>
                   </div>
-                  <span
-                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${getMatchStatusClass(match.status)}`}
-                  >
-                    {getMatchStatusLabel(match.status)}
-                  </span>
+                  <MatchStatusBadge
+                    status={match.status}
+                    className="h-auto px-2.5 py-1 font-bold"
+                  />
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <BracketCard

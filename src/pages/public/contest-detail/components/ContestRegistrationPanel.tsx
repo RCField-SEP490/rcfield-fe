@@ -1,9 +1,8 @@
 import { CalendarClock, CreditCard, Info as InfoIcon, ShieldCheck } from "lucide-react"
 
+import { JourneyStatusBadge } from "@/features/contests/components"
 import { formatContestDateTime } from "@/features/contests/lib/contest-runtime"
 import {
-  getJourneyStatusClass,
-  getJourneyStatusLabel,
   getPaymentStatusLabel,
   getRegistrationStatusLabel,
   type ContestRegistrationAvailability,
@@ -133,11 +132,10 @@ export function ContestRegistrationPanel({
                 Bạn đã đăng ký giải đấu này
               </span>
             </div>
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getJourneyStatusClass(existingRegistration.customerJourneyStatus)}`}
-            >
-              {getJourneyStatusLabel(existingRegistration.customerJourneyStatus)}
-            </span>
+            <JourneyStatusBadge
+              status={existingRegistration.customerJourneyStatus}
+              className="h-auto px-3 py-1 font-bold"
+            />
             <div className="grid grid-cols-2 gap-3 border-t border-orange-100 pt-2 text-xs">
               <div>
                 <p className="font-bold text-slate-400">Trạng thái đăng ký</p>

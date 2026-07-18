@@ -23,6 +23,7 @@ import {
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem, ContestRegistration } from "@/features/contests/types"
 import { Card } from "@/shared/ui/card"
+import { Skeleton } from "@/shared/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 
 import { ContestBracketBoard, ContestRuntimeOverview } from "./components/ContestBracketSection"
@@ -224,7 +225,7 @@ export function PublicContestDetailPage() {
       </Link>
 
       {!contest ? (
-        <div className="h-96 animate-pulse rounded-3xl bg-muted" />
+        <Skeleton className="h-96 rounded-3xl" />
       ) : (
         <div className="space-y-8">
           <ContestHero contest={contest} effectiveStatus={effectiveStatus ?? contest.status} />

@@ -1,8 +1,5 @@
+import { ContestStatusBadge } from "@/features/contests/components"
 import { formatContestDateTime } from "@/features/contests/lib/contest-runtime"
-import {
-  getContestStatusClass,
-  getContestStatusLabel,
-} from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 
 import { formatCurrency } from "../utils"
@@ -14,8 +11,6 @@ export function ContestHero({
   contest: ContestItem
   effectiveStatus: ContestItem["status"]
 }) {
-  const statusClass = getContestStatusClass(effectiveStatus)
-
   return (
     <section className="overflow-hidden rounded-2xl border border-[#e5e2e1] bg-white shadow-sm">
       <div className="relative min-h-[340px] overflow-hidden bg-[#1f2424] p-6 text-white sm:p-8 lg:p-10">
@@ -33,11 +28,10 @@ export function ContestHero({
               {contest.contest_type?.name ?? "Giải đấu"} ·{" "}
               {contest.contest_format?.name ?? "Standard"}
             </span>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusClass}`}
-            >
-              {getContestStatusLabel(effectiveStatus)}
-            </span>
+            <ContestStatusBadge
+              status={effectiveStatus}
+              className="h-auto px-3 py-1 font-semibold"
+            />
           </div>
           <div className="max-w-4xl">
             <h1 className="mt-8 text-3xl font-black leading-tight sm:text-5xl">
