@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, CheckCircle2, Flag, Pencil, Play, Plus, Square, Trash2, Users } from "lucide-react"
 import { Link, useNavigate, useSearchParams } from "react-router"
@@ -28,6 +29,11 @@ export function ProviderContestsPage() {
     queryKey: contestQueryKeys.list({ scope: "managed", query, status, contest_format_id: formatId }),
     queryFn: () => contestApi.listContests({ scope: "managed", limit: 100, query: query || undefined, status: (status || undefined) as ContestStatus | undefined, contest_format_id: formatId || undefined }),
   })
+  const laneCountsQuery = useQuery({
+    queryKey: contestQueryKeys.list({ scope: "managed", query, contest_format_id: formatId, lanes: true }),
+    queryFn: () => contestApi.listContests({ scope: "managed", limit: 100, query: query || undefined, contest_format_id: formatId || undefined }),
+    enabled: Boolean(status),
+  })
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, action }: { id: string; action: "open" | "close" | "cancel" }) => {
@@ -41,6 +47,14 @@ export function ProviderContestsPage() {
   })
 
   const contests = contestsQuery.data?.data ?? []
+  const laneCountContests = status ? laneCountsQuery.data?.data ?? [] : contests
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: laneCountContests.length }
+    for (const contest of laneCountContests) {
+      counts[contest.status] = (counts[contest.status] ?? 0) + 1
+    }
+    return counts
+  }, [laneCountContests])
 
   const handleStatusAction = async (id: string, action: "open" | "close" | "cancel") => {
     try {
@@ -107,6 +121,33 @@ export function ProviderContestsPage() {
               </option>
             ))}
           </select>
+        </div>
+        <div className="mb-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+          {contestStatusLanes.map((lane) => {
+            const isActive = status === lane.value || (!status && lane.value === "")
+            return (
+              <button
+                key={lane.label}
+                type="button"
+                onClick={() => updateContestFilters(searchParams, setSearchParams, { status: lane.value })}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  isActive
+                    ? "border-[#1f2424] bg-[#1f2424] text-white shadow-sm"
+                    : "border-[#e5e2e1] bg-[#f7f4f2] text-[#1f2424] hover:border-orange-200 hover:bg-orange-50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-black uppercase">{lane.label}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-black ${isActive ? "bg-white/15 text-white" : "bg-white text-[#5d5f5f]"}`}>
+                    {statusCounts[lane.value || "ALL"] ?? 0}
+                  </span>
+                </div>
+                <p className={`mt-1 text-xs font-semibold ${isActive ? "text-white/75" : "text-[#747878]"}`}>
+                  {lane.hint}
+                </p>
+              </button>
+            )
+          })}
         </div>
 
         {contestsQuery.isLoading ? (
@@ -212,6 +253,15 @@ export function ProviderContestsPage() {
     </ProviderShell>
   )
 }
+
+const contestStatusLanes = [
+  { label: "Tất cả", value: "", hint: "Toàn bộ contest" },
+  { label: "Draft", value: "DRAFT", hint: "Chuẩn bị cấu hình" },
+  { label: "Open", value: "OPEN", hint: "Đang nhận đăng ký" },
+  { label: "Running", value: "RUNNING", hint: "Vận hành bracket" },
+  { label: "Completed", value: "COMPLETED", hint: "Leaderboard/kết quả" },
+  { label: "Cancelled", value: "CANCELLED", hint: "Đã hủy" },
+] as const
 
 function ContestHealthBadges({ contest }: { contest: ContestItem }) {
   const stats = contest.public_stats
