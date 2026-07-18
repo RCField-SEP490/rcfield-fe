@@ -11,11 +11,11 @@ import {
 import { Link } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
+import { ContestAvailabilityBadge } from "@/features/contests/components"
 import {
-  getContestStatusClass,
+  getContestCtaLabel,
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
-  getRegistrationAvailabilityLabel,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 import { cn } from "@/shared/lib/utils"
@@ -27,7 +27,6 @@ interface ContestExploreCardProps {
 export function ContestExploreCard({ contest }: ContestExploreCardProps) {
   const effectiveStatus = getEffectiveContestStatus(contest)
   const registrationAvailability = getContestRegistrationAvailability(contest)
-  const statusClass = getContestStatusClass(effectiveStatus)
   const hasBanner = Boolean(contest.banner_image_url)
   const publicStats = contest.public_stats
   const runtimeSummary = contest.runtime_summary
@@ -50,14 +49,10 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/15 to-transparent" />
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-          <span
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-[10px] font-extrabold shadow-sm backdrop-blur-md",
-              statusClass,
-            )}
-          >
-            {getRegistrationAvailabilityLabel(registrationAvailability)}
-          </span>
+          <ContestAvailabilityBadge
+            contest={contest}
+            className="rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-sm backdrop-blur-md"
+          />
           {effectiveStatus === "RUNNING" ? (
             <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">
               Live bracket
@@ -165,11 +160,7 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
               CTA
             </p>
             <p className="text-sm font-extrabold text-slate-900">
-              {registrationAvailability === "AVAILABLE"
-                ? "Xem giải và đăng ký"
-                : registrationAvailability === "NOT_OPEN_YET"
-                  ? "Xem lịch mở đăng ký"
-                  : "Xem diễn biến giải"}
+              {getContestCtaLabel(registrationAvailability, effectiveStatus)}
             </p>
           </div>
           <Link

@@ -81,6 +81,17 @@ export function getRegistrationAvailabilityLabel(
   }
 }
 
+export function getContestCtaLabel(
+  availability: ContestRegistrationAvailability,
+  status: ContestItem["status"],
+): string {
+  if (availability === "AVAILABLE") return "Xem chi tiết và đăng ký"
+  if (availability === "NOT_OPEN_YET") return "Xem lịch mở đăng ký"
+  if (status === "RUNNING") return "Xem bracket live"
+  if (status === "COMPLETED") return "Xem leaderboard"
+  return "Xem chi tiết"
+}
+
 export function getContestStatusClass(status: ContestItem["status"]) {
   switch (status) {
     case "OPEN":

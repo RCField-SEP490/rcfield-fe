@@ -4,7 +4,8 @@ import { Link } from "react-router"
 import { motion } from "framer-motion"
 import { routePaths } from "@/app/router/route-paths"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
-import { getContestStatusLabel } from "@/features/contests/lib/contest-status"
+import { ContestAvailabilityBadge } from "@/features/contests/components"
+import { CardListSkeleton } from "@/shared/ui/loading-state"
 
 export function UpcomingContests() {
   const { data: contestsResponse, isLoading } = useQuery({
@@ -71,16 +72,14 @@ export function UpcomingContests() {
 
         {/* List */}
         {isLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-80 animate-pulse rounded-3xl bg-slate-800" />
-            ))}
-          </div>
+          <CardListSkeleton
+            count={3}
+            className="grid gap-6 space-y-0 sm:grid-cols-2 lg:grid-cols-3"
+            itemClassName="h-80 rounded-3xl bg-slate-800"
+          />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {upcomingContests.map((contest, index) => {
-              const statusLabel = getContestStatusLabel(contest.status)
-
               return (
                 <motion.div
                   key={contest.id}
@@ -97,9 +96,10 @@ export function UpcomingContests() {
                       <span className="rounded-lg bg-orange-500/10 border border-orange-500/20 px-2.5 py-0.5 text-2xs font-extrabold uppercase tracking-wider text-orange-400">
                         {contest.contest_format?.name || "GP Series"}
                       </span>
-                      <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-2xs font-extrabold uppercase tracking-wider text-emerald-400">
-                        {statusLabel}
-                      </span>
+                      <ContestAvailabilityBadge
+                        contest={contest}
+                        className="rounded-full border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-2xs font-extrabold uppercase tracking-wider text-emerald-400"
+                      />
                     </div>
 
                     {/* Title */}
