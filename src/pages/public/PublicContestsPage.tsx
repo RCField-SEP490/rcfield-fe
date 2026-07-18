@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, Calendar, MapPin, Users, Award, ShieldAlert, Trophy } from "lucide-react"
 import { Link } from "react-router"
@@ -9,6 +9,7 @@ import { ContestAvailabilityBadge } from "@/features/contests/components"
 import {
   getContestCtaLabel,
   getContestRegistrationAvailability,
+  getContestStatusLabel,
   getEffectiveContestStatus,
   type ContestRegistrationAvailability,
 } from "@/features/contests/lib/contest-status"
@@ -16,20 +17,56 @@ import type { ContestItem } from "@/features/contests/types"
 import { Badge } from "@/shared/ui/badge"
 import { EmptyState } from "@/shared/ui/empty-state"
 import { CardListSkeleton } from "@/shared/ui/loading-state"
+import { Input } from "@/shared/ui/input"
 
 export function PublicContestsPage() {
+  const [query, setQuery] = useState("")
+  const [formatFilter, setFormatFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState("")
+
   const contestsQuery = useQuery({
     queryKey: contestQueryKeys.list({ public: true }),
     queryFn: () => contestApi.listContests({ limit: 100 }),
   })
+  const formatsQuery = useQuery({
+    queryKey: contestQueryKeys.catalogFormats(),
+    queryFn: contestApi.listContestFormats,
+  })
 
-  const contests = useMemo(
+  const allContests = useMemo(
     () => contestsQuery.data?.data ?? [],
     [contestsQuery.data?.data],
   )
+  const contests = useMemo(() => {
+    return allContests.filter((contest) => {
+      const matchesQuery =
+        !query ||
+        contest.name.toLowerCase().includes(query.toLowerCase()) ||
+        (contest.description ?? "").toLowerCase().includes(query.toLowerCase())
+      const matchesFormat =
+        !formatFilter || contest.contest_format?.id === formatFilter
+      const matchesStatus =
+        !statusFilter || getEffectiveContestStatus(contest) === statusFilter
+      return matchesQuery && matchesFormat && matchesStatus
+    })
+  }, [allContests, query, formatFilter, statusFilter])
   const rankedContests = useMemo(() => rankContestsForDiscovery(contests), [contests])
   const featuredContest = rankedContests[0] ?? null
   const secondaryContests = rankedContests.slice(1)
+  const formatOptions = useMemo(
+    () => (formatsQuery.data ?? []).map((f) => ({ value: f.id, label: f.name })),
+    [formatsQuery.data],
+  )
+  const statusOptions = useMemo(
+    () =>
+      (["OPEN", "CLOSED", "RUNNING", "COMPLETED", "CANCELLED"] as const).map(
+        (status) => ({
+          value: status,
+          label: getContestStatusLabel(status),
+        }),
+      ),
+    [],
+  )
 
   return (
     <main className="w-full bg-[#f7f4f2] py-8">
@@ -68,33 +105,70 @@ export function PublicContestsPage() {
             className="grid gap-6 space-y-0 md:grid-cols-2 lg:grid-cols-3"
             itemClassName="h-96 rounded-2xl"
           />
-        ) : contests.length === 0 ? (
-          <EmptyState
-            icon={ShieldAlert}
-            title="Chưa có giải đấu công khai"
-            description="Hiện tại các giải đấu đang được chuẩn bị. Vui lòng quay lại sau để cập nhật thông tin mới nhất."
-            className="rounded-3xl border-2 border-slate-200 bg-white p-16 shadow-sm"
-          />
-        ) : featuredContest ? (
-          <div className="space-y-6">
-            <FeaturedContestShowcase contest={featuredContest} />
+        ) : (
+          <>
+            <div className="mb-6 grid gap-3 rounded-2xl border border-[#e5e2e1] bg-white p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tìm giải đấu..."
+                className="h-10 border-[#c4c7c8]"
+              />
+              <select
+                value={formatFilter}
+                onChange={(event) => setFormatFilter(event.target.value)}
+                className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+              >
+                <option value="">Tất cả thể thức</option>
+                {formatOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+              >
+                <option value="">Tất cả trạng thái</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black text-[#1f2424]">Tất cả giải đấu</h2>
-                <p className="text-sm font-medium text-[#747878]">
-                  Ưu tiên giải đang live, đang mở đăng ký và sắp mở để người chơi không bỏ lỡ mốc quan trọng.
-                </p>
+            {contests.length === 0 ? (
+              <EmptyState
+                icon={ShieldAlert}
+                title="Chưa có giải đấu phù hợp"
+                description="Thử đổi bộ lọc hoặc quay lại sau để xem giải đấu mới."
+                className="rounded-3xl border-2 border-slate-200 bg-white p-16 shadow-sm"
+              />
+            ) : featuredContest ? (
+              <div className="space-y-6">
+                <FeaturedContestShowcase contest={featuredContest} />
+
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-black text-[#1f2424]">Tất cả giải đấu</h2>
+                    <p className="text-sm font-medium text-[#747878]">
+                      Ưu tiên giải đang live, đang mở đăng ký và sắp mở để người chơi không bỏ lỡ mốc quan trọng.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {secondaryContests.map((contest) => (
+                    <ContestListCard key={contest.id} contest={contest} />
+                  ))}
+                </div>
               </div>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {secondaryContests.map((contest) => (
-                <ContestListCard key={contest.id} contest={contest} />
-              ))}
-            </div>
-          </div>
-        ) : null}
+            ) : null}
+          </>
+        )}
       </section>
     </main>
   )

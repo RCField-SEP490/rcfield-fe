@@ -56,6 +56,17 @@ export function PublicContestDetailPage() {
   const [byocVehicleClass, setByocVehicleClass] = useState("")
   const [byocVehicleNotes, setByocVehicleNotes] = useState("")
   const [activeTab, setActiveTab] = useState<DetailTab>("overview")
+  const [rentalMode, setRentalMode] = useState<"EXISTING_BOOKING" | "NEW_RENTAL">(
+    "EXISTING_BOOKING",
+  )
+  const [rentalSlotValue, setRentalSlotValue] = useState<{
+    cafe_id: string
+    slot_start: string
+    slot_end: string
+    track_config_id?: string | null
+    vehicle_catalog_id?: string | null
+  } | null>(null)
+  const [rentalSlotEstimate, setRentalSlotEstimate] = useState(0)
 
   const contestQuery = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
@@ -98,6 +109,13 @@ export function PublicContestDetailPage() {
           byoc_vehicle_brand: byocVehicleBrand || undefined,
           byoc_vehicle_class: byocVehicleClass || undefined,
           byoc_vehicle_notes: byocVehicleNotes || undefined,
+        })
+      }
+      if (rentalMode === "NEW_RENTAL") {
+        if (!rentalSlotValue) throw new Error("Thiếu thông tin thuê xe")
+        return contestApi.registerContest(contestId, {
+          vehicle_source: "RENTAL",
+          rental_slot: rentalSlotValue,
         })
       }
       return contestApi.registerContest(contestId, {
@@ -169,6 +187,9 @@ export function PublicContestDetailPage() {
       : []
   const bookingHelperMessage = useMemo(() => {
     if (!contest) return null
+    if (rentalMode === "NEW_RENTAL") {
+      return "Hệ thống sẽ tạo booking thuê xe mới cho bạn. Bạn có thể chọn chi nhánh, khung giờ và dòng xe phù hợp."
+    }
     if (myBookingsQuery.isLoading) {
       return "Đang tải danh sách booking phù hợp..."
     }
@@ -176,8 +197,8 @@ export function PublicContestDetailPage() {
 
     const branchName = contest.host_branch?.cafe?.name ?? "chi nhánh tổ chức"
     const trackName = contest.track_type?.name ?? "track tương ứng"
-    return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Hãy tạo booking trước rồi quay lại đăng ký contest.`
-  }, [contest, myBookingsQuery.isLoading, bookingOptions.length])
+    return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Hãy chọn "Thuê xe ngay" hoặc tạo booking trước rồi quay lại đăng ký contest.`
+  }, [contest, myBookingsQuery.isLoading, bookingOptions.length, rentalMode])
 
   const handleRegister = async () => {
     try {
@@ -352,6 +373,14 @@ export function PublicContestDetailPage() {
                   registrationClosed={registrationClosed}
                   registerPending={registerMutation.isPending}
                   onRegister={() => void handleRegister()}
+                  rentalMode={rentalMode}
+                  setRentalMode={setRentalMode}
+                  rentalSlotValue={rentalSlotValue}
+                  rentalSlotEstimate={rentalSlotEstimate}
+                  onRentalSlotChange={(value, estimate) => {
+                    setRentalSlotValue(value)
+                    setRentalSlotEstimate(estimate)
+                  }}
                 />
               </div>
             </div>

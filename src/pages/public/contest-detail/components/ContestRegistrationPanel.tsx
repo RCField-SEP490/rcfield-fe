@@ -1,4 +1,4 @@
-import { CalendarClock, CreditCard, Info as InfoIcon, ShieldCheck } from "lucide-react"
+import { CalendarClock, Info as InfoIcon, ShieldCheck } from "lucide-react"
 
 import { JourneyStatusBadge } from "@/features/contests/components"
 import { formatContestDateTime } from "@/features/contests/lib/contest-runtime"
@@ -15,6 +15,7 @@ import { Label } from "@/shared/ui/label"
 
 import { formatCurrency } from "../utils"
 import { MiniInfo } from "./DetailPrimitives"
+import { ContestRentalSlotPicker, type RentalSlotValue } from "./ContestRentalSlotPicker"
 
 export function ContestRegistrationPanel({
   contest,
@@ -47,6 +48,11 @@ export function ContestRegistrationPanel({
   registrationClosed,
   registerPending,
   onRegister,
+  rentalMode,
+  setRentalMode,
+  rentalSlotValue,
+  rentalSlotEstimate,
+  onRentalSlotChange,
 }: {
   contest: ContestItem
   registrationAvailability: ContestRegistrationAvailability
@@ -96,6 +102,11 @@ export function ContestRegistrationPanel({
   registrationClosed: boolean
   registerPending: boolean
   onRegister: () => void
+  rentalMode: "EXISTING_BOOKING" | "NEW_RENTAL"
+  setRentalMode: (mode: "EXISTING_BOOKING" | "NEW_RENTAL") => void
+  rentalSlotValue: RentalSlotValue | null
+  rentalSlotEstimate: number
+  onRentalSlotChange: (value: RentalSlotValue, estimate: number) => void
 }) {
   const registrationBlockedMessage = getRegistrationBlockedMessage(
     registrationAvailability,
@@ -291,128 +302,183 @@ export function ContestRegistrationPanel({
                 </div>
               </div>
             ) : (
-              <>
-                <div>
-                  <Label className="mb-2 block text-xs font-bold text-slate-700">
-                    Lịch đặt đã xác nhận
-                  </Label>
-                  <select
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                    value={selectedBookingId}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-2">
+                  <button
+                    type="button"
+                    className={`rounded-xl px-3 py-2.5 text-xs font-bold transition ${rentalMode === "EXISTING_BOOKING" ? "bg-slate-900 text-white" : "bg-white text-slate-600"}`}
                     disabled={registrationClosed}
-                    onChange={(event) => {
-                      setSelectedBookingId(event.target.value)
-                      setSelectedVehicleId("")
-                    }}
+                    onClick={() => setRentalMode("EXISTING_BOOKING")}
                   >
-                    <option value="">-- Chọn lịch đặt sân phù hợp --</option>
-                    {bookingOptions.map((booking) => (
-                      <option key={booking.id} value={booking.id}>
-                        {new Date(booking.slotStart).toLocaleString("vi-VN", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}{" "}
-                        · Mã: {booking.id.slice(0, 8)}
-                      </option>
-                    ))}
-                  </select>
-                  {bookingHelperMessage ? (
-                    <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
-                      <span>{bookingHelperMessage}</span>
+                    Dùng booking đã có
+                  </button>
+                  <button
+                    type="button"
+                    className={`rounded-xl px-3 py-2.5 text-xs font-bold transition ${rentalMode === "NEW_RENTAL" ? "bg-orange-600 text-white" : "bg-white text-slate-600"}`}
+                    disabled={registrationClosed}
+                    onClick={() => setRentalMode("NEW_RENTAL")}
+                  >
+                    Thuê xe ngay
+                  </button>
+                </div>
+
+                {rentalMode === "EXISTING_BOOKING" ? (
+                  <>
+                    <div>
+                      <Label className="mb-2 block text-xs font-bold text-slate-700">
+                        Lịch đặt đã xác nhận
+                      </Label>
+                      <select
+                        className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        value={selectedBookingId}
+                        disabled={registrationClosed}
+                        onChange={(event) => {
+                          setSelectedBookingId(event.target.value)
+                          setSelectedVehicleId("")
+                        }}
+                      >
+                        <option value="">-- Chọn lịch đặt sân phù hợp --</option>
+                        {bookingOptions.map((booking) => (
+                          <option key={booking.id} value={booking.id}>
+                            {new Date(booking.slotStart).toLocaleString("vi-VN", {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })}{" "}
+                            · Mã: {booking.id.slice(0, 8)}
+                          </option>
+                        ))}
+                      </select>
+                      {bookingHelperMessage ? (
+                        <div className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                          <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
+                          <span>{bookingHelperMessage}</span>
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
 
-                <div>
-                  <Label className="mb-2 block text-xs font-bold text-slate-700">
-                    Xe thuê từ lịch đặt
-                  </Label>
-                  <select
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-slate-50 disabled:text-slate-400"
-                    value={selectedVehicleId}
-                    onChange={(event) =>
-                      setSelectedVehicleId(event.target.value)
-                    }
-                    disabled={registrationClosed || !selectedBooking}
-                  >
-                    <option value="">-- Chọn xe thi đấu --</option>
-                    {selectedBooking?.vehicles.map((vehicle) => (
-                      <option key={vehicle.vehicleId} value={vehicle.vehicleId}>
-                        {vehicle.catalogName ??
-                          vehicle.identifier ??
-                          `Xe #${vehicle.vehicleId.slice(0, 8)}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div>
+                      <Label className="mb-2 block text-xs font-bold text-slate-700">
+                        Xe thuê từ lịch đặt
+                      </Label>
+                      <select
+                        className="h-10 w-full rounded-lg border border-slate-200 bg-card px-3 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-slate-50 disabled:text-slate-400"
+                        value={selectedVehicleId}
+                        onChange={(event) =>
+                          setSelectedVehicleId(event.target.value)
+                        }
+                        disabled={registrationClosed || !selectedBooking}
+                      >
+                        <option value="">-- Chọn xe thi đấu --</option>
+                        {selectedBooking?.vehicles.map((vehicle) => (
+                          <option key={vehicle.vehicleId} value={vehicle.vehicleId}>
+                            {vehicle.catalogName ??
+                              vehicle.identifier ??
+                              `Xe #${vehicle.vehicleId.slice(0, 8)}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                {selectedBooking ? (
-                  <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm sm:grid-cols-2">
-                    <MiniInfo
-                      label="Booking đã chọn"
-                      value={new Date(selectedBooking.slotStart).toLocaleString(
-                        "vi-VN",
-                        {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        },
-                      )}
+                    {selectedBooking ? (
+                      <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm sm:grid-cols-2">
+                        <MiniInfo
+                          label="Booking đã chọn"
+                          value={new Date(selectedBooking.slotStart).toLocaleString(
+                            "vi-VN",
+                            {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            },
+                          )}
+                        />
+                        <MiniInfo
+                          label="Chi nhánh"
+                          value={
+                            selectedBooking.cafe?.name ??
+                            contest.host_branch?.cafe?.name ??
+                            "--"
+                          }
+                        />
+                        <MiniInfo
+                          label="Track"
+                          value={
+                            selectedBooking.track_type_name ??
+                            contest.track_type?.name ??
+                            "--"
+                          }
+                        />
+                        <MiniInfo
+                          label="Xe thi đấu"
+                          value={
+                            selectedVehicle?.catalogName ??
+                            selectedVehicle?.identifier ??
+                            (selectedVehicle
+                              ? `Xe #${selectedVehicle.vehicleId.slice(0, 8)}`
+                              : "--")
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <ContestRentalSlotPicker
+                      contestId={contest.id}
+                      value={rentalSlotValue}
+                      onChange={onRentalSlotChange}
+                      disabled={registrationClosed}
                     />
-                    <MiniInfo
-                      label="Chi nhánh"
-                      value={
-                        selectedBooking.cafe?.name ??
-                        contest.host_branch?.cafe?.name ??
-                        "--"
-                      }
-                    />
-                    <MiniInfo
-                      label="Track"
-                      value={
-                        selectedBooking.track_type_name ??
-                        contest.track_type?.name ??
-                        "--"
-                      }
-                    />
-                    <MiniInfo
-                      label="Xe thi đấu"
-                      value={
-                        selectedVehicle?.catalogName ??
-                        selectedVehicle?.identifier ??
-                        (selectedVehicle
-                          ? `Xe #${selectedVehicle.vehicleId.slice(0, 8)}`
-                          : "--")
-                      }
-                    />
-                  </div>
-                ) : null}
-              </>
+                    {rentalSlotEstimate > 0 ? (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-emerald-900">Tiền thuê xe ước tính</span>
+                          <span className="font-black text-emerald-700">{formatCurrency(rentalSlotEstimate)}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-emerald-700">
+                          Hệ thống sẽ tạo booking PENDING. Bạn thanh toán booking thuê xe, sau đó provider mới duyệt đăng ký giải.
+                        </p>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
             )}
 
-            <div>
-              <Label className="mb-2 block text-xs font-bold text-slate-700">
-                Lệ phí giải đấu
-              </Label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-3 size-4 text-slate-400" />
-                <Input
-                  className="border-slate-200 pl-9 font-bold text-slate-900"
-                  value={formatCurrency(contest.entry_fee)}
-                  readOnly
-                />
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-bold text-slate-700">Lệ phí giải đấu</span>
+                <span className="font-black text-slate-900">{formatCurrency(contest.entry_fee)}</span>
               </div>
+              {rentalMode === "NEW_RENTAL" && rentalSlotEstimate > 0 ? (
+                <>
+                  <div className="my-2 border-t border-slate-200" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-bold text-slate-700">Tiền thuê xe</span>
+                    <span className="font-black text-slate-900">{formatCurrency(rentalSlotEstimate)}</span>
+                  </div>
+                  <div className="my-2 border-t border-slate-200" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-black text-slate-900">Tổng ước tính</span>
+                    <span className="font-black text-orange-600">{formatCurrency(contest.entry_fee + rentalSlotEstimate)}</span>
+                  </div>
+                </>
+              ) : null}
             </div>
 
             <Button
               type="button"
-              className="mt-6 w-full rounded-xl bg-orange-600 py-6 text-sm font-bold text-white shadow-md shadow-orange-600/10 transition hover:bg-orange-700"
+              className="mt-2 w-full rounded-xl bg-orange-600 py-6 text-sm font-bold text-white shadow-md shadow-orange-600/10 transition hover:bg-orange-700"
               disabled={
                 registrationClosed ||
                 registerPending ||
                 (registrationMode === "BYOC"
                   ? byocVehicleName.trim().length === 0
-                  : !selectedBookingId || !selectedVehicleId)
+                  : rentalMode === "EXISTING_BOOKING"
+                    ? !selectedBookingId || !selectedVehicleId
+                    : !rentalSlotValue?.cafe_id ||
+                      !rentalSlotValue?.slot_start ||
+                      !rentalSlotValue?.slot_end ||
+                      !rentalSlotValue?.vehicle_catalog_id)
               }
               onClick={onRegister}
             >
