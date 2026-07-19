@@ -214,6 +214,51 @@ html {
     --font-heading: 'Plus Jakarta Sans', sans-serif;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
+
+  .contest-hero-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--color-brand-dark) 0%,
+      var(--color-brand-indigo) 55%,
+      var(--color-brand-orange) 100%
+    );
+  }
+
+  .contest-hero-gradient-subtle {
+    background: linear-gradient(
+      135deg,
+      var(--color-brand-dark) 0%,
+      color-mix(in oklch, var(--color-brand-indigo) 60%, var(--color-brand-dark)) 70%,
+      color-mix(in oklch, var(--color-brand-orange) 40%, var(--color-brand-dark)) 100%
+    );
+  }
+
+  .live-pulse-dot {
+    position: relative;
+  }
+
+  .live-pulse-dot::before {
+    content: "";
+    position: absolute;
+    left: -0.75rem;
+    top: 50%;
+    width: 0.375rem;
+    height: 0.375rem;
+    transform: translateY(-50%);
+    border-radius: 9999px;
+    background-color: var(--color-destructive);
+    animation: live-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes live-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
 }
 
 @layer components {

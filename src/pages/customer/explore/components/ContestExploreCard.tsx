@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
 import {
-  ArrowRight,
   Calendar,
   MapPin,
   Sparkles,
@@ -33,11 +32,11 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
   const capacityRemaining = publicStats?.capacity_remaining
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-200/70">
-      <Link
-        to={routePaths.contestDetail.replace(":contestId", contest.id)}
-        className="relative block aspect-[16/10] overflow-hidden"
-      >
+    <Link
+      to={routePaths.contestDetail.replace(":contestId", contest.id)}
+      className="group flex h-full flex-col overflow-hidden rounded-[28px] border border-border bg-card shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl hover:shadow-muted/40"
+    >
+      <div className="relative block aspect-[16/10] overflow-hidden">
         {hasBanner ? (
           <img
             src={contest.banner_image_url!}
@@ -45,7 +44,7 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
             className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#fdba74,transparent_32%),linear-gradient(135deg,#0f172a,#1e293b_56%,#7c2d12)]" />
+          <div className="contest-hero-gradient absolute inset-0" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/15 to-transparent" />
         <div className="absolute left-4 top-4 flex flex-wrap gap-2">
@@ -54,7 +53,7 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
             className="rounded-full px-2.5 py-1 text-[10px] font-extrabold shadow-sm backdrop-blur-md"
           />
           {effectiveStatus === "RUNNING" ? (
-            <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">
+            <span className="live-pulse-dot rounded-full border border-white/15 bg-white/10 pl-5 pr-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">
               Live bracket
             </span>
           ) : null}
@@ -62,7 +61,7 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
         <div className="absolute bottom-4 left-4 right-4">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-200">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand-amber">
                 {contest.contest_type?.name ?? "RC Contest"}
               </p>
               <h3 className="mt-2 line-clamp-2 text-xl font-black text-white">
@@ -79,7 +78,7 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
             </div>
           </div>
         </div>
-      </Link>
+      </div>
 
       <div className="flex flex-1 flex-col justify-between p-5">
         <div className="space-y-4">
@@ -87,28 +86,28 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
             <Tag>{contest.contest_format?.name ?? "Thể thức"}</Tag>
             <Tag>{contest.track_type?.name ?? "Track"}</Tag>
             {contest.highlight_rounds?.length ? (
-              <Tag tone="orange">
+              <Tag tone="accent">
                 {contest.highlight_rounds.length} vòng nổi bật
               </Tag>
             ) : null}
           </div>
 
-          <p className="line-clamp-2 min-h-10 text-sm leading-6 text-slate-500">
+          <p className="line-clamp-2 min-h-10 text-sm leading-6 text-muted-foreground">
             {contest.description ||
               "Xem tiến trình thi đấu, bracket các vòng và kết quả được công bố từ giải."}
           </p>
 
-          <div className="grid gap-3 text-sm font-semibold text-slate-600">
+          <div className="grid gap-3 text-sm font-semibold text-muted-foreground">
             <MetaRow
               icon={<MapPin className="h-4 w-4 text-red-500" />}
               value={contest.host_branch?.cafe?.name || "Tất cả chi nhánh"}
             />
             <MetaRow
-              icon={<Calendar className="h-4 w-4 text-slate-400" />}
+              icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
               value={`${formatDateTime(contest.starts_at)} - ${formatDateTime(contest.ends_at)}`}
             />
             <MetaRow
-              icon={<Users className="h-4 w-4 text-slate-400" />}
+              icon={<Users className="h-4 w-4 text-muted-foreground" />}
               value={
                 capacityRemaining === null || capacityRemaining === undefined
                   ? contest.capacity
@@ -118,6 +117,25 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
               }
             />
           </div>
+
+          {capacityRemaining !== null && capacityRemaining !== undefined && contest.capacity ? (
+            <div>
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <span>Chỗ còn</span>
+                <span>
+                  {capacityRemaining}/{contest.capacity}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{
+                    width: `${Math.min(100, Math.round((capacityRemaining / contest.capacity) * 100))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-3 gap-2">
             <Metric
@@ -138,14 +156,14 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
           </div>
 
           {effectiveStatus === "RUNNING" || effectiveStatus === "COMPLETED" ? (
-            <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-3">
-              <div className="flex items-center gap-2 text-orange-700">
+            <div className="rounded-2xl border border-primary/10 bg-primary/5 p-3">
+              <div className="flex items-center gap-2 text-primary">
                 <Timer className="size-4" />
                 <p className="text-xs font-black uppercase tracking-wide">
                   Theo dõi vòng đấu
                 </p>
               </div>
-              <p className="mt-2 text-sm font-semibold text-slate-700">
+              <p className="mt-2 text-sm font-semibold text-muted-foreground">
                 {runtimeSummary?.has_live_matches
                   ? "Giải đang có trận live. Vào chi tiết để xem sơ đồ và người vào vòng trong."
                   : "Bracket và lịch sử từng vòng đã sẵn sàng để xem trong trang chi tiết."}
@@ -154,42 +172,38 @@ export function ContestExploreCard({ contest }: ContestExploreCardProps) {
           ) : null}
         </div>
 
-        <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
+        <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              CTA
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Hành động
             </p>
-            <p className="text-sm font-extrabold text-slate-900">
+            <p className="text-sm font-extrabold text-foreground">
               {getContestCtaLabel(registrationAvailability, effectiveStatus)}
             </p>
           </div>
-          <Link
-            to={routePaths.contestDetail.replace(":contestId", contest.id)}
-            className="inline-flex items-center gap-1 rounded-full bg-slate-950 px-4 py-2.5 text-xs font-black text-white transition hover:bg-slate-800"
-          >
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-4 py-2.5 text-xs font-black text-background transition group-hover:bg-primary">
             Chi tiết
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
+          </span>
         </div>
       </div>
-    </article>
+    </Link>
   )
 }
 
 function Tag({
   children,
-  tone = "slate",
+  tone = "muted",
 }: {
   children: ReactNode
-  tone?: "slate" | "orange"
+  tone?: "muted" | "accent"
 }) {
   return (
     <span
       className={cn(
         "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
-        tone === "orange"
-          ? "bg-orange-50 text-orange-700"
-          : "bg-slate-100 text-slate-700",
+        tone === "accent"
+          ? "bg-accent/20 text-accent-foreground"
+          : "bg-muted text-muted-foreground",
       )}
     >
       {children}
@@ -207,12 +221,12 @@ function Metric({
   value: string
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-      <div className="flex items-center gap-1.5 text-slate-400">{icon}</div>
-      <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+    <div className="rounded-2xl border border-border bg-muted/50 p-3">
+      <div className="flex items-center gap-1.5 text-muted-foreground">{icon}</div>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="text-sm font-black text-slate-900">{value}</p>
+      <p className="text-sm font-black text-foreground">{value}</p>
     </div>
   )
 }

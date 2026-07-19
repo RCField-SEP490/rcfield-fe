@@ -235,11 +235,11 @@ export function PublicContestDetailPage() {
   }
 
   return (
-    <section className="bg-[#f7f4f2]">
+    <section className="bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <Link
         to={routePaths.contests}
-        className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-[#5d5f5f] transition hover:text-[#1f2424]"
+        className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
         <span>Quay lại danh sách giải đấu</span>
@@ -256,22 +256,22 @@ export function PublicContestDetailPage() {
             onValueChange={(value) => setActiveTab(value as DetailTab)}
             className="space-y-6"
           >
-            <TabsList className="flex w-full flex-wrap gap-2 rounded-2xl border border-[#e5e2e1] bg-white p-2 shadow-sm">
-              <TabsTrigger value="overview" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-[#1f2424] data-[state=active]:text-white">
+            <TabsList className="flex w-full flex-wrap gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
+              <TabsTrigger value="overview" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Tổng quan
               </TabsTrigger>
-              <TabsTrigger value="matches" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-[#1f2424] data-[state=active]:text-white">
+              <TabsTrigger value="matches" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 Trận đấu
               </TabsTrigger>
               <TabsTrigger
                 value="leaderboard"
-                className="rounded-xl px-4 py-2.5 data-[state=active]:bg-[#1f2424] data-[state=active]:text-white"
+                className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 Bảng xếp hạng
               </TabsTrigger>
               <TabsTrigger
                 value="registration"
-                className="rounded-xl px-4 py-2.5 data-[state=active]:bg-[#1f2424] data-[state=active]:text-white"
+                className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               >
                 Đăng ký của tôi
               </TabsTrigger>
@@ -317,14 +317,14 @@ export function PublicContestDetailPage() {
                       loading={matchesQuery.isLoading}
                     />
                   ) : (
-                    <Card className="rounded-3xl border border-slate-200/80 p-6 shadow-sm">
+                    <Card className="rounded-3xl border border-border bg-card p-6 shadow-sm">
                       <div className="flex items-start gap-3">
-                        <InfoIcon className="mt-0.5 size-5 shrink-0 text-orange-500" />
+                        <InfoIcon className="mt-0.5 size-5 shrink-0 text-primary" />
                         <div className="space-y-2">
-                          <h3 className="text-lg font-extrabold text-slate-900">
+                          <h3 className="text-lg font-extrabold text-foreground">
                             Chưa có đăng ký của bạn
                           </h3>
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm text-muted-foreground">
                             Hãy hoàn thành đăng ký ở khung bên phải. Sau khi
                             được duyệt và được xếp trận, bracket của bạn sẽ hiện
                             tại đây.
@@ -402,10 +402,10 @@ function ContestAsideStatus({
   existingRegistration: ContestRegistration | null
 }) {
   return (
-    <Card className="rounded-2xl border border-[#e5e2e1] bg-white p-6 shadow-sm">
+    <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center gap-2">
         <ShieldCheck className="size-5 text-emerald-500" />
-        <h3 className="text-lg font-black text-[#1f2424]">
+        <h3 className="text-lg font-black text-foreground">
           Trạng thái theo dõi
         </h3>
       </div>

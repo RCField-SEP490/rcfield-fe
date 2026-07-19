@@ -36,6 +36,7 @@ export function ContestRentalSlotPicker({
 
   useEffect(() => {
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingOptions(true)
     contestApi
       .getContestRentalOptions(contestId)
@@ -63,6 +64,7 @@ export function ContestRentalSlotPicker({
 
   useEffect(() => {
     if (!value?.cafe_id || !value?.slot_start || !value?.slot_end) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAvailable([])
       return
     }
@@ -96,6 +98,7 @@ export function ContestRentalSlotPicker({
 
   useEffect(() => {
     if (value) onChange(value, rentalFeeEstimate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rentalFeeEstimate])
 
   if (loadingOptions || !options) {

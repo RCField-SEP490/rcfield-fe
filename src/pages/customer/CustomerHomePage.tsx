@@ -11,6 +11,7 @@ import {
   CreditCard,
   MapPin,
   Package,
+  Trophy,
   Zap,
 } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
@@ -70,9 +71,10 @@ function HeroGreeting({ name, avatarUrl }: { name: string; avatarUrl?: string })
 
 function QuickActions() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
       {[
         { icon: MapPin,       label: "Tìm sân",      to: routePaths.cafes,              color: "bg-orange-500" },
+        { icon: Trophy,       label: "Giải đấu",     to: routePaths.contests,           color: "bg-brand-indigo" },
         { icon: CalendarCheck,label: "Lịch đặt",     to: routePaths.customerBookings,   color: "bg-emerald-500" },
         { icon: Package,      label: "Gói hội viên", to: routePaths.customerPackages,   color: "bg-violet-500" },
         { icon: Car,          label: "Đội xe",        to: routePaths.customerVehicles,   color: "bg-sky-500" },
@@ -80,12 +82,12 @@ function QuickActions() {
         <Link
           key={to}
           to={to}
-          className="flex flex-col items-center gap-2.5 rounded-2xl border border-slate-100 bg-white px-3 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          className="flex flex-col items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
         >
           <div className={cn("flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-sm", color)}>
             <Icon className="h-5 w-5" />
           </div>
-          <span className="text-xs font-bold text-slate-700">{label}</span>
+          <span className="text-xs font-bold text-foreground">{label}</span>
         </Link>
       ))}
     </div>

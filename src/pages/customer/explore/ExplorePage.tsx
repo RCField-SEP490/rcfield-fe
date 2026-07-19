@@ -17,17 +17,17 @@ import { ExploreResultsHeader } from "./components/ExploreResultsHeader"
 import { CafeHorizontalCard } from "./components/CafeHorizontalCard"
 import { CafeGridCard } from "./components/CafeGridCard"
 import { ContestExploreCard } from "./components/ContestExploreCard"
+import { ContestDiscoveryRail } from "./components/ContestDiscoveryRail"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
 import { buildBookingUrl, cafeInBounds, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
-import { ArrowRight, Calendar, Map, Trophy, Users } from "lucide-react"
+import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { favoriteApi } from "@/features/explore/api/favorite.api"
 import { Dialog, DialogContent } from "@/shared/ui/dialog"
 import {
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
-  getRegistrationAvailabilityLabel,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 
@@ -311,16 +311,16 @@ export function ExplorePage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.35 }}
-            className="mb-6 flex items-center justify-between border-b border-slate-200/60 pb-4"
+            className="mb-6 flex items-center justify-between border-b border-border pb-4"
           >
-            <div className="flex gap-1 rounded-xl bg-slate-200/50 p-1">
+            <div className="flex gap-1 rounded-xl bg-muted p-1">
               <button
                 type="button"
                 onClick={() => filters.setSearchTarget("cafes")}
                 className={`relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   filters.searchTarget === "cafes"
-                    ? "bg-white text-orange-600 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Cơ sở RC Cafe
@@ -330,8 +330,8 @@ export function ExplorePage() {
                 onClick={() => filters.setSearchTarget("contests")}
                 className={`relative rounded-lg px-4 py-2 text-xs font-bold transition-all duration-300 ${
                   filters.searchTarget === "contests"
-                    ? "bg-white text-orange-600 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 Giải đấu RC
@@ -344,7 +344,7 @@ export function ExplorePage() {
                   initial={{ opacity: 0, x: 8 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 8 }}
-                  className="text-xs font-semibold text-slate-500"
+                  className="text-xs font-semibold text-muted-foreground"
                 >
                   {filteredContests.length} giải đấu khả dụng
                 </motion.span>
@@ -383,11 +383,7 @@ export function ExplorePage() {
                   />
                 </div>
 
-                <ContestDiscoveryRail
-                  contests={contestRailItems}
-                  onOpenContests={() => filters.setSearchTarget("contests")}
-                  onOpenContest={(contestId) => navigate(`/contests/${contestId}`)}
-                />
+                <ContestDiscoveryRail contests={contestRailItems} />
 
                 {/* Card list */}
                 <AnimatePresence mode="popLayout">
@@ -602,137 +598,6 @@ export function ExplorePage() {
       </Dialog>
     </div>
   )
-}
-
-function ContestDiscoveryRail({
-  contests,
-  onOpenContests,
-  onOpenContest,
-}: {
-  contests: ContestItem[]
-  onOpenContests: () => void
-  onOpenContest: (contestId: string) => void
-}) {
-  if (contests.length === 0) return null
-
-  const featured = contests[0]
-  const availability = getContestRegistrationAvailability(featured)
-  const effectiveStatus = getEffectiveContestStatus(featured)
-  const capacityRemaining = featured.public_stats?.capacity_remaining
-  const statusLabel = getRegistrationAvailabilityLabel(availability)
-
-  return (
-    <section className="mb-5 overflow-hidden rounded-2xl border border-[#e5e2e1] bg-white shadow-sm">
-      <div className="grid md:grid-cols-[1.15fr_0.85fr]">
-        <button
-          type="button"
-          onClick={() => onOpenContest(featured.id)}
-          className="group relative min-h-[190px] overflow-hidden text-left"
-        >
-          {featured.banner_image_url ? (
-            <img
-              src={featured.banner_image_url}
-              alt={featured.name}
-              className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,#1f2424,#3b3029_54%,#c45a1a)]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/40 to-black/10" />
-          <div className="relative flex min-h-[190px] flex-col justify-between p-5 text-white">
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[11px] font-black backdrop-blur">
-                <Trophy className="size-3.5 text-orange-200" />
-                Góc giải đấu
-              </span>
-              <span className="rounded-full border border-white/20 bg-white/90 px-3 py-1 text-[11px] font-black text-[#1f2424]">
-                {statusLabel}
-              </span>
-            </div>
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-200">
-                {featured.contest_format?.name ?? "RC Contest"}
-              </p>
-              <h3 className="mt-2 line-clamp-2 max-w-xl text-2xl font-black leading-tight">
-                {featured.name}
-              </h3>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold text-slate-100">
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="size-3.5" />
-                  {formatRailDate(featured.starts_at)}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Users className="size-3.5" />
-                  {capacityRemaining === null || capacityRemaining === undefined
-                    ? `${featured.public_stats?.registration_count ?? 0} đăng ký`
-                    : `Còn ${capacityRemaining} chỗ`}
-                </span>
-              </div>
-            </div>
-          </div>
-        </button>
-
-        <div className="flex flex-col justify-between gap-4 p-5">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-600">
-              Thi đấu cùng cộng đồng
-            </p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[#5d5f5f]">
-              Xem giải đang mở đăng ký, bracket live và leaderboard đã công bố ngay trong RCField.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            {contests.slice(1).map((contest) => {
-              const itemAvailability = getContestRegistrationAvailability(contest)
-              return (
-                <button
-                  key={contest.id}
-                  type="button"
-                  onClick={() => onOpenContest(contest.id)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[#e5e2e1] bg-[#f7f4f2] px-3 py-2 text-left transition hover:border-orange-200 hover:bg-orange-50"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-black text-[#1f2424]">
-                      {contest.name}
-                    </span>
-                    <span className="text-[11px] font-bold text-[#747878]">
-                      {getRegistrationAvailabilityLabel(itemAvailability)}
-                    </span>
-                  </span>
-                  <ArrowRight className="size-4 shrink-0 text-orange-600" />
-                </button>
-              )
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={onOpenContests}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1f2424] px-4 py-3 text-sm font-black text-white transition hover:bg-orange-600"
-          >
-            Xem tất cả giải đấu
-            <ArrowRight className="size-4" />
-          </button>
-        </div>
-      </div>
-      {effectiveStatus === "RUNNING" ? (
-        <div className="border-t border-orange-100 bg-orange-50 px-5 py-3 text-xs font-bold text-orange-800">
-          Có giải đang diễn ra. Vào chi tiết để xem bracket live và người đã vào vòng trong.
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-function formatRailDate(value: string | null) {
-  if (!value) return "Đang cập nhật"
-  return new Date(value).toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
 }
 
 function FeaturedContestPopup({
