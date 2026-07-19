@@ -307,8 +307,8 @@ export function DailySlotGrid({
         variant="secondary"
         className="rounded-md px-2 py-1 text-[11px] font-medium"
       >
-        {operationalSlots} slot/ngày · {String(openHour).padStart(2, "0")}:00–
-        {String(closeHour).padStart(2, "0")}:00
+        {operationalSlots} slot/ngày · {String(openHour % 24).padStart(2, "0")}:00–
+        {String(closeHour % 24).padStart(2, "0")}:00
       </Badge>
     </div>
   )

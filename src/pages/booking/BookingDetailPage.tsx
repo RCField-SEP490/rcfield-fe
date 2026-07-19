@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { env } from "@/shared/lib/env"
 import {
   AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, Clock3, Gamepad2,
-  ImageOff, Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
+  Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
@@ -19,12 +19,19 @@ import { useQueryClient } from "@tanstack/react-query"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { staffApi } from "@/features/staff/api/staff.api"
+import { VehicleImage } from "@/shared/ui/vehicle-image"
+import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
+import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
 const DIRECTION_LABELS: Record<string, string> = {
   FRONT: "Trước",
   BACK: "Sau",
   LEFT: "Trái",
   RIGHT: "Phải",
+  TOP: "Từ trên",
+  BOTTOM: "Từ dưới",
+  DETAIL: "Cận cảnh",
+  OTHER: "Ảnh tình trạng xe",
 }
 
 const PART_TYPE_LABELS: Record<string, string> = {
@@ -277,10 +284,21 @@ export function BookingDetailPage() {
   const damageComponent = onsiteComponents.find((c) => c.type === "DAMAGE_CHARGE")
   const damageCharge = Number(damageComponent?.amount ?? 0)
 
+  // Fallback: when no DAMAGE_CHARGE component exists yet (e.g. session is CHECKING_OUT and
+  // backend hasn't billed it yet), read damage from booking.damage_breakdown or sessionDetail.damageClaim
+  const breakdownDamageCharge = Number(booking?.damage_breakdown?.totalDamageCharge ?? 0)
+  const sessionClaimCharge = Number(sessionDetail?.damageClaim?.totalDamageCharge ?? 0)
+  const effectiveDamageCharge =
+    damageCharge > 0
+      ? damageCharge
+      : booking?.session?.status === "CHECKING_OUT"
+        ? (breakdownDamageCharge || sessionClaimCharge)
+        : 0
+
   // ── Best Practice: Deposit ONLY offsets vehicle damage ──
-  const depositConsumedByDamage = Math.min(depositAmount, damageCharge)
+  const depositConsumedByDamage = Math.min(depositAmount, effectiveDamageCharge)
   const depositRefundAmount = depositAmount - depositConsumedByDamage
-  const damageExceedingDeposit = Math.max(0, damageCharge - depositAmount)
+  const damageExceedingDeposit = Math.max(0, effectiveDamageCharge - depositAmount)
 
   // Counter bill = F&B onsite + Extension + damage exceeding deposit
   const counterComponents = onsiteComponents.filter((c) => c.type !== "DAMAGE_CHARGE")
@@ -293,7 +311,9 @@ export function BookingDetailPage() {
     (c) => c.type === "FB_PREORDER" || c.type === "FNB_PREORDER"
   )
 
-  const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING")
+  // Mark unpaid when there's a PENDING component OR when damage exists that isn't billed yet
+  const hasUnbilledDamage = effectiveDamageCharge > 0 && !damageComponent
+  const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING") && !hasUnbilledDamage
 
   const transactions: PaymentTransactionResponse[] = booking?.payment_transactions ?? []
   const gatewayLabel = (gateway: string) =>
@@ -318,8 +338,14 @@ export function BookingDetailPage() {
   const refundDeposit = refundComponents.filter(c => c.type === "SECURITY_DEPOSIT").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
   const refundFnb = refundComponents.filter(c => c.type === "FNB_PREORDER" || c.type === "FB_PREORDER").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
 
+  const checkInWindowExpired = booking ? hasExpiredCheckInWindow(booking) : false
+  const effectiveBookingStatus: BookingStatus | undefined = checkInWindowExpired
+    ? "NO_SHOW"
+    : booking?.status
+
   const isActiveSession = !!booking?.session &&
     ["ACTIVE", "EXTENDING", "CHECKED_IN", "CHECKING_OUT"].includes(booking.session!.status) &&
+    !checkInWindowExpired &&
     !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking!.status)
 
   // F&B on-site orders from session (paid at counter, not a payment_component)
@@ -330,9 +356,11 @@ export function BookingDetailPage() {
   // Total estimated counter bill = payment_component-tracked fees + on-site F&B
   const totalEstimatedCounterBill = totalCounterBill + onsiteFnbTotal
 
-  const statusInfo = booking ? (STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING) : null
+  const statusInfo = effectiveBookingStatus
+    ? (STATUS_LABELS[effectiveBookingStatus] ?? STATUS_LABELS.PENDING)
+    : null
 
-  const sessionBadgeOverride = booking?.session ? (() => {
+  const sessionBadgeOverride = booking?.session && !checkInWindowExpired ? (() => {
     switch (booking.session.status) {
       case "CHECKED_IN": return { label: "Đang check-in", className: "bg-amber-100 text-amber-700" }
       case "ACTIVE":     return { label: "Đang chơi",     className: "bg-orange-100 text-orange-700" }
@@ -402,7 +430,7 @@ export function BookingDetailPage() {
 
          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
           <main className="space-y-4">
-            {booking.session && ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(booking.session.status) && !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking.status) && (
+            {booking.session && !checkInWindowExpired && ["ACTIVE", "CHECKED_IN", "EXTENDING", "CHECKING_OUT"].includes(booking.session.status) && !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking.status) && (
               (booking.session.status === "ACTIVE" || booking.session.status === "EXTENDING") ? (
                 <Card className="rounded-xl shadow-sm overflow-hidden border-orange-100">
                   <div className="h-1 bg-gradient-to-r from-orange-500 to-orange-600" />
@@ -509,17 +537,21 @@ export function BookingDetailPage() {
               </CardHeader>
               <CardContent>
                 {(() => {
-                  const sess = booking.session
+                  const sess = checkInWindowExpired ? null : booking.session
                   const sessStatus = sess?.status
+                  const timelineStatus = checkInWindowExpired ? "NO_SHOW" : booking.status
 
                   // Check-in step
-                  const checkinDone = !!sess
+                  const checkinDone = !checkInWindowExpired && !!sess
                   const checkinActive = sessStatus === "CHECKED_IN"
-                  const checkinTitle = !sess ? "Chờ check-in"
+                  const checkinTitle = checkInWindowExpired ? "Quá giờ check-in"
+                    : !sess ? "Chờ check-in"
                     : sessStatus === "CHECKED_IN" ? "Đang check-in"
                     : "Đã check-in"
                   const checkinStaff = sessionDetail?.staffName
-                  const checkinDesc = !sess
+                  const checkinDesc = checkInWindowExpired
+                    ? "Đơn đã quá thời hạn check-in 30 phút và được ghi nhận là không đến."
+                    : !sess
                     ? `Dự kiến: ${slotLabel}`
                     : sessStatus === "CHECKED_IN"
                     ? checkinStaff
@@ -533,11 +565,11 @@ export function BookingDetailPage() {
 
                   // Playing step
                   const showPlayStep = !!sess && sessStatus !== "CHECKED_IN"
-                  const playDone = sessStatus === "CHECKING_OUT" || booking.status === "COMPLETED"
+                  const playDone = sessStatus === "CHECKING_OUT" || timelineStatus === "COMPLETED"
                   const playActive = sessStatus === "ACTIVE" || sessStatus === "EXTENDING"
                   const playTitle = sessStatus === "EXTENDING" ? "Đang gia hạn"
                     : sessStatus === "CHECKING_OUT" ? "Đang hoàn tất checkout"
-                    : sessStatus === "COMPLETED" || booking.status === "COMPLETED" ? "Đã kết thúc phiên chơi"
+                    : sessStatus === "COMPLETED" || timelineStatus === "COMPLETED" ? "Đã kết thúc phiên chơi"
                     : "Đang chơi"
                   const playDesc = (sessStatus === "ACTIVE" || sessStatus === "EXTENDING")
                     ? `Kết thúc dự kiến: ${new Date(sess!.plannedEndAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
@@ -548,7 +580,9 @@ export function BookingDetailPage() {
                     : "Phiên chơi đã kết thúc"
 
                   // Completion step
-                  const completedDesc = booking.status === "COMPLETED" && sess?.actualEndAt
+                  const completedDesc = timelineStatus === "NO_SHOW"
+                    ? "Khách không đến check-in đúng hạn"
+                    : timelineStatus === "COMPLETED" && sess?.actualEndAt
                     ? formatDateTime(new Date(sess.actualEndAt))
                     : "Sau khi check-out hoàn tất"
 
@@ -559,9 +593,9 @@ export function BookingDetailPage() {
                         icon={CheckCircle2}
                         title="Đặt thành công"
                         description={formatDateTime(new Date(booking.createdAt))}
-                        done={booking.status !== "PENDING"}
+                        done={timelineStatus !== "PENDING"}
                       />
-                      {booking.status === "PENDING" && paymentExpiry && (
+                      {timelineStatus === "PENDING" && paymentExpiry && (
                         <TimelineItem
                           icon={Clock3}
                           title="Chờ thanh toán"
@@ -569,7 +603,7 @@ export function BookingDetailPage() {
                         />
                       )}
                       <TimelineItem
-                        icon={checkinDone ? CheckCircle2 : Clock3}
+                        icon={checkInWindowExpired ? XCircle : checkinDone ? CheckCircle2 : Clock3}
                         title={checkinTitle}
                         description={checkinDesc}
                         done={checkinDone && !checkinActive}
@@ -586,9 +620,9 @@ export function BookingDetailPage() {
                       )}
                       <TimelineItem
                         icon={CalendarClock}
-                        title="Hoàn thành"
+                        title={timelineStatus === "NO_SHOW" ? "Không đến" : "Hoàn thành"}
                         description={completedDesc}
-                        done={booking.status === "COMPLETED"}
+                        done={timelineStatus === "COMPLETED"}
                       />
                     </div>
                   )
@@ -695,13 +729,12 @@ export function BookingDetailPage() {
                   {booking.vehicles.map((v, i) => (
                     <div key={v.id} className="flex items-center gap-4 rounded-xl border p-3">
                       <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
-                        {v.coverImageUrl ? (
-                          <img src={v.coverImageUrl} alt={v.catalogName ?? "Xe"} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center">
-                            <ImageOff className="h-6 w-6 text-muted-foreground/40" />
-                          </div>
-                        )}
+                        <VehicleImage
+                          imageUrl={v.coverImageUrl}
+                          alt={v.catalogName ?? "Xe thuê"}
+                          className="h-full w-full object-cover"
+                          fallbackClassName="bg-muted text-muted-foreground/50"
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate">{v.catalogName ?? `Xe ${i + 1}`}</p>
@@ -772,10 +805,10 @@ export function BookingDetailPage() {
                   <div className="grid grid-cols-2 gap-3">
                     {checkInPhotos.map((photo, idx) => (
                       <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <img
+                        <ZoomableInspectionImage
                           src={photo.url}
                           alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="w-full aspect-video object-cover"
+                          className="aspect-video w-full object-cover"
                         />
                         <div className="bg-muted/50 px-2.5 py-1.5">
                           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -808,10 +841,10 @@ export function BookingDetailPage() {
                   <div className="grid grid-cols-2 gap-3">
                     {checkOutPhotos.map((photo, idx) => (
                       <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <img
+                        <ZoomableInspectionImage
                           src={photo.url}
                           alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="w-full aspect-video object-cover"
+                          className="aspect-video w-full object-cover"
                         />
                         <div className="bg-muted/50 px-2.5 py-1.5">
                           <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -830,7 +863,7 @@ export function BookingDetailPage() {
           </main>
 
           <aside className="space-y-4">
-            {booking.status === "CONFIRMED" && new Date() < new Date(booking.slotEnd) && (
+            {booking.status === "CONFIRMED" && !checkInWindowExpired && new Date() < new Date(booking.slotEnd) && (
               <Card className="rounded-xl text-center shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-center gap-2">
@@ -957,25 +990,44 @@ export function BookingDetailPage() {
                               <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
                               <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
                             </div>
-                            {(booking?.damage_breakdown?.lineItems?.length ?? 0) > 0 && (
-                              <div className="ml-2 space-y-1 rounded-lg bg-rose-50 border border-rose-100 p-2.5">
-                                {booking!.damage_breakdown!.lineItems.map((item) => (
-                                  <div key={item.id} className="flex items-start justify-between text-[11px]">
-                                    <div className="space-y-0.5">
-                                      <p className="font-bold text-rose-900">
-                                        {PART_TYPE_LABELS[item.partType] ?? item.partType}
-                                        {item.customPartName && <span className="font-normal text-rose-700"> — {item.customPartName}</span>}
-                                      </p>
-                                      <div className="flex gap-2 text-[10px] text-rose-600">
-                                        <span>Linh kiện: {formatCurrency(item.partsPrice)}</span>
-                                        {item.laborPrice > 0 && <span>Công: {formatCurrency(item.laborPrice)}</span>}
+                            {(() => {
+                              const lineItems = booking?.damage_breakdown?.lineItems?.length
+                                ? booking.damage_breakdown.lineItems.map((item) => ({
+                                    id: item.id,
+                                    partType: item.partType,
+                                    customPartName: item.customPartName,
+                                    partsPrice: item.partsPrice,
+                                    laborPrice: item.laborPrice,
+                                    subtotal: item.subtotal,
+                                  }))
+                                : (sessionDetail?.damageClaim?.damageLineItems ?? []).map((item) => ({
+                                    id: item.id,
+                                    partType: item.partType,
+                                    customPartName: item.customPartName,
+                                    partsPrice: item.partsPrice,
+                                    laborPrice: item.laborPrice,
+                                    subtotal: item.lineTotal,
+                                  }))
+                              return lineItems.length > 0 ? (
+                                <div className="ml-2 space-y-1 rounded-lg bg-rose-50 border border-rose-100 p-2.5">
+                                  {lineItems.map((item) => (
+                                    <div key={item.id} className="flex items-start justify-between text-[11px]">
+                                      <div className="space-y-0.5">
+                                        <p className="font-bold text-rose-900">
+                                          {PART_TYPE_LABELS[item.partType] ?? item.partType}
+                                          {item.customPartName && <span className="font-normal text-rose-700"> — {item.customPartName}</span>}
+                                        </p>
+                                        <div className="flex gap-2 text-[10px] text-rose-600">
+                                          <span>Linh kiện: {formatCurrency(item.partsPrice)}</span>
+                                          {item.laborPrice > 0 && <span>Công: {formatCurrency(item.laborPrice)}</span>}
+                                        </div>
                                       </div>
+                                      <span className="font-bold text-rose-700 tabular-nums shrink-0 pl-2">{formatCurrency(item.subtotal)}</span>
                                     </div>
-                                    <span className="font-bold text-rose-700 tabular-nums shrink-0 pl-2">{formatCurrency(item.subtotal)}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              ) : null
+                            })()}
                           </div>
                         )}
                       </div>
@@ -1110,7 +1162,7 @@ export function BookingDetailPage() {
               </Card>
             )}
 
-            {["PENDING", "CONFIRMED"].includes(booking.status) && (
+            {["PENDING", "CONFIRMED"].includes(booking.status) && !checkInWindowExpired && (
               <>
                 <Button variant="outline" className="w-full" disabled>
                   <RotateCcw className="h-4 w-4" /> Thay đổi lịch

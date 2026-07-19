@@ -1,7 +1,7 @@
 import type { PaymentComponentResponse } from "@/features/booking/types/booking.types"
 
 export interface InspectionPhoto {
-  direction: "FRONT" | "BACK" | "LEFT" | "RIGHT"
+  direction: "FRONT" | "BACK" | "LEFT" | "RIGHT" | "TOP" | "BOTTOM" | "DETAIL" | "OTHER"
   url: string
   notes?: string
 }

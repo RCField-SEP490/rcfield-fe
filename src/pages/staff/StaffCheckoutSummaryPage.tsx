@@ -51,7 +51,6 @@ interface CheckoutInspection {
 export default function StaffCheckoutSummaryPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
-
   const [loading, setLoading] = useState(true)
   const [checkoutInspection, setCheckoutInspection] =
     useState<CheckoutInspection | null>(null)
@@ -62,24 +61,21 @@ export default function StaffCheckoutSummaryPage() {
   const [editItems, setEditItems] = useState<DamageLineItemInput[]>([])
   const [savingItems, setSavingItems] = useState(false)
 
-  // Confirm checkout
-  const [confirming, setConfirming] = useState(false)
-
   // Dispute escalation
   const [disputeOpen, setDisputeOpen] = useState(false)
   const [disputeNote, setDisputeNote] = useState("")
   const [escalating, setEscalating] = useState(false)
 
-  const loadSession = useCallback(async () => {
+  const loadSession = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true)
+      if (showLoading) setLoading(true)
       const data = await staffApi.getSessionDetail(sessionId!)
       setCheckoutInspection(data.checkoutInspection ?? null)
       setSessionStatus(data.status ?? "")
     } catch {
-      toast.error("Không thể tải thông tin phiên chơi.")
+      if (showLoading) toast.error("Không thể tải thông tin phiên chơi.")
     } finally {
-      setLoading(false)
+      if (showLoading) setLoading(false)
     }
   }, [sessionId])
 
@@ -89,6 +85,18 @@ export default function StaffCheckoutSummaryPage() {
       void loadSession()
     })
   }, [sessionId, loadSession])
+
+  // Khách có thể xác nhận biên bản và thanh toán phí phát sinh ở màn hình
+  // riêng. Đồng bộ trạng thái ngắn để staff không thao tác trên CHECKING_OUT
+  // đã cũ rồi nhận lỗi INVALID_SESSION_STATE.
+  useEffect(() => {
+    if (!sessionId || sessionStatus !== "CHECKING_OUT") return
+
+    const intervalId = window.setInterval(() => {
+      void loadSession(false)
+    }, 5_000)
+    return () => window.clearInterval(intervalId)
+  }, [sessionId, sessionStatus, loadSession])
 
   const enterEditMode = () => {
     if (!checkoutInspection) return
@@ -159,20 +167,33 @@ export default function StaffCheckoutSummaryPage() {
     }
   }
 
+  const [confirming, setConfirming] = useState(false)
+
   const handleConfirmCheckout = async () => {
-    if (!checkoutInspection) return
+    if (!checkoutInspection || !sessionId) return
     setConfirming(true)
     try {
-      await staffApi.confirmCheckout(
+      const result = await staffApi.confirmCheckout(
         sessionId!,
         checkoutInspection.inspectionId,
       )
-      toast.success("Đã xác nhận trả xe thành công. Phiên chơi đã hoàn tất!")
+      toast.success(
+        result.alreadyCompleted
+          ? "Khách đã hoàn tất checkout. Trạng thái phiên đã được đồng bộ."
+          : "Đã xác nhận trả xe thành công. Phiên chơi đã hoàn tất!",
+      )
       void loadSession()
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })
+      const response = (err as { response?: { data?: { message?: string; code?: string } } })
         ?.response?.data?.message
-      toast.error(msg ?? "Không thể xác nhận checkout.")
+      const code = (err as { response?: { data?: { code?: string } } })
+        ?.response?.data?.code
+      if (code === "INVALID_SESSION_STATE") {
+        await loadSession(false)
+        toast.info("Trạng thái phiên đã được cập nhật. Vui lòng kiểm tra lại.")
+      } else {
+        toast.error(response ?? "Không thể xác nhận checkout.")
+      }
     } finally {
       setConfirming(false)
     }

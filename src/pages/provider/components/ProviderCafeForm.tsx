@@ -73,6 +73,7 @@ const defaultValues: ProviderCafeFormValues = {
   slot_fee_rate: 50000,
   max_concurrent_bookings: 6,
   min_booking_notice_minutes: 30,
+  max_advance_booking_days: 30,
   byoc_capacity: 3,
   amenity_ids: [],
   rules: [],
@@ -164,6 +165,7 @@ export function ProviderCafeForm({
         slot_fee_rate: Number(cafe.slotFeeRate),
         max_concurrent_bookings: cafe.maxConcurrentBookings,
         min_booking_notice_minutes: cafe.minBookingNoticeMinutes,
+        max_advance_booking_days: cafe.maxAdvanceBookingDays,
         byoc_capacity: cafe.byocCapacity,
         amenity_ids: cafe.amenityIds ?? [],
         rules: cafe.rules ?? [],
@@ -663,5 +665,4 @@ function TextField({
     </label>
   )
 }
-
 

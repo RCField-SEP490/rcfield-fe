@@ -185,6 +185,7 @@ export function CreateBookingPage() {
   const [date, setDate] = useState(
     searchParams.get("date") ?? getVietnamToday(),
   )
+  const [bookingCalendarStart] = useState(getVietnamToday)
   const [time, setTime] = useState(
     searchParams.get("slot") ?? bookingCatalog.timeOptions[0],
   )
@@ -232,7 +233,11 @@ export function CreateBookingPage() {
         : null
     }
     const configuredOpenHour = parseHour(hours?.open)
-    const configuredCloseHour = parseHour(hours?.close)
+    let configuredCloseHour = parseHour(hours?.close)
+    // midnight (00:00) or any close ≤ open means next-day close → add 24
+    if (configuredOpenHour !== null && configuredCloseHour !== null && configuredCloseHour <= configuredOpenHour) {
+      configuredCloseHour = configuredCloseHour + 24
+    }
     return {
       openHour: configuredOpenHour ?? 0,
       closeHour: configuredCloseHour ?? 0,
@@ -787,6 +792,8 @@ export function CreateBookingPage() {
               onSelectTrack={setSelectedTrackConfig}
               slotDurationMinutes={slotDurationMinutes}
               minBookingNoticeMinutes={cafe.minBookingNoticeMinutes ?? 0}
+              minBookingDate={bookingCalendarStart}
+              maxAdvanceBookingDays={isMockId ? 30 : (realCafe?.maxAdvanceBookingDays ?? 0)}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
               onPlayModeChange={handlePlayModeChange}
               effectivePricePerHour={

@@ -187,8 +187,8 @@ type VehicleCatalogLike = {
   > | null
   hourlyRate?: number | string
   securityDeposit?: number | string
-  total_units?: number | null
   available_units?: number | null
+  total_units?: number | null
   _count?: { units?: number | null } | null
   coverImageUrl?: string | null
 }

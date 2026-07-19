@@ -185,6 +185,8 @@ export const staffQueryKeys = {
   all: ["staff"] as const,
   list: (cafeId?: string) => [...staffQueryKeys.all, "list", cafeId ?? "all"] as const,
   todayBookings: () => [...staffQueryKeys.all, "today-bookings"] as const,
+  bookingLists: () => [...staffQueryKeys.all, "bookings"] as const,
+  bookings: (date: string) => [...staffQueryKeys.bookingLists(), date] as const,
   fnbOrders: () => [...staffQueryKeys.all, "fnb-orders"] as const,
   staffDetail: (staffId: string) => [...staffQueryKeys.all, "detail", staffId] as const,
   staffKpi: (staffId: string, period: string) => [...staffQueryKeys.all, "kpi", staffId, period] as const,
@@ -230,6 +232,13 @@ export const staffApi = {
 
   getTodayBookings: async (): Promise<TodayBookingItem[]> => {
     const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/today-bookings")
+    return res.data.data
+  },
+
+  getBookings: async (date: string): Promise<TodayBookingItem[]> => {
+    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/bookings", {
+      params: { date },
+    })
     return res.data.data
   },
 

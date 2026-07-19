@@ -10,11 +10,15 @@ import {
   CheckCircle2,
   Plus,
   Trash2,
+  ImagePlus,
+  Loader2,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { staffApi, type DamageLineItemInput } from "@/features/staff/api/staff.api"
+import { uploadImage } from "@/features/uploads/api/upload.api"
 import { toast } from "sonner"
 import { cn } from "@/shared/lib/utils"
+import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import {
   StaffCard,
   StaffButton,
@@ -33,13 +37,10 @@ export default function StaffInspectionPage() {
   const booking = session ? bookings.find((b) => b.bookingId === session.bookingId) : null
   const isByoc = booking?.playMode === "BYOC"
 
-  // ── RENTAL: 4-angle photo states ─────────────────────────────────────────────
-  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({
-    FRONT: "", BACK: "", LEFT: "", RIGHT: "",
-  })
-  const [photoNotes, setPhotoNotes] = useState<Record<string, string>>({
-    FRONT: "", BACK: "", LEFT: "", RIGHT: "",
-  })
+  // Rental evidence is flexible: staff can add the useful angles for this car.
+  type RentalPhoto = { id: string; url: string; notes: string }
+  const [rentalPhotos, setRentalPhotos] = useState<RentalPhoto[]>([])
+  const [isUploadingRentalPhotos, setIsUploadingRentalPhotos] = useState(false)
 
   // ── BYOC: per-participant photo state ────────────────────────────────────────
   type ByocPhoto = { participantName: string; url: string; notes: string }
@@ -68,6 +69,7 @@ export default function StaffInspectionPage() {
   const [damageLineItems, setDamageLineItems] = useState<DamageLineItemInput[]>([])
   const [showCheckInBaselines, setShowCheckInBaselines] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (isByoc) {
@@ -93,10 +95,10 @@ export default function StaffInspectionPage() {
     } else if (type === "CHECK_OUT") {
       queueMicrotask(() => {
         setChecklist([
-          { id: "ck-o1", label: "Khung gầm xe nguyên vẹn, không nứt nẻ gãy vỡ", checked: true },
-          { id: "ck-o2", label: "Cánh gió vững chãi, không móp méo rơi rụng", checked: true },
-          { id: "ck-o3", label: "Động cơ điện (motor) hoạt động bình thường, không tỏa khét", checked: true },
-          { id: "ck-o4", label: "Vỏ nhựa (Shell) không có vết xước sâu hoặc móp rách mới", checked: true },
+          { id: "ck-o1", label: "Đã kiểm tra khung gầm xe (nứt, gãy, biến dạng)", checked: true },
+          { id: "ck-o2", label: "Đã kiểm tra cánh gió (móp méo, rơi rụng)", checked: true },
+          { id: "ck-o3", label: "Đã kiểm tra động cơ điện / motor (hoạt động, mùi khét)", checked: true },
+          { id: "ck-o4", label: "Đã kiểm tra vỏ nhựa / shell (xước sâu, móp rách)", checked: true },
         ])
       })
     }
@@ -163,23 +165,43 @@ export default function StaffInspectionPage() {
     )
   }
 
-  const handlePhotoFileChange = (
-    angle: "FRONT" | "BACK" | "LEFT" | "RIGHT",
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    if (!file.type.startsWith("image/")) { toast.error("Vui lòng chọn đúng định dạng ảnh."); return }
-    if (file.size > 5 * 1024 * 1024) { toast.error("Ảnh kiểm xe không nên vượt quá 5MB."); return }
+  const handleRentalPhotoFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ""
+    if (files.length === 0) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      const url = String(reader.result)
-      setPhotoUrls((prev) => ({ ...prev, [angle]: url }))
-      setPhotoNotes((prev) => ({ ...prev, [angle]: prev[angle] || `Ảnh kiểm xe góc ${angle}` }))
-      toast.success(`Đã thêm ảnh kiểm xe góc ${angle}.`)
+    const remaining = 6 - rentalPhotos.length
+    if (remaining <= 0) {
+      toast.error("Mỗi biên bản chỉ nhận tối đa 6 ảnh.")
+      return
     }
-    reader.readAsDataURL(file)
+
+    const limitedFiles = files.slice(0, remaining)
+    const validFiles = limitedFiles.filter(
+      (file) => file.type.startsWith("image/") && file.size <= 5 * 1024 * 1024,
+    )
+    if (validFiles.length !== limitedFiles.length) {
+      toast.error("Chỉ nhận ảnh tối đa 5MB mỗi tệp. Các tệp không hợp lệ đã được bỏ qua.")
+    }
+    if (files.length > remaining) {
+      toast.info(`Chỉ thêm ${remaining} ảnh để đủ giới hạn 6 ảnh.`)
+    }
+    if (validFiles.length === 0) return
+
+    setIsUploadingRentalPhotos(true)
+    try {
+      const uploaded = await Promise.all(validFiles.map((file) => uploadImage(file, "inspections")))
+      setRentalPhotos((previous) => [
+        ...previous,
+        ...uploaded.map((item) => ({ id: item.publicId, url: item.url, notes: "" })),
+      ])
+      toast.success(`Đã tải lên ${uploaded.length} ảnh bàn giao.`)
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(message ?? "Không thể tải ảnh. Vui lòng thử lại.")
+    } finally {
+      setIsUploadingRentalPhotos(false)
+    }
   }
 
   const handleByocPhotoChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,65 +252,74 @@ export default function StaffInspectionPage() {
   const updateDamageItem = (index: number, field: keyof DamageLineItemInput, value: string | number) =>
     setDamageLineItems((prev) => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmitting) return
+    setIsSubmitting(true)
 
-    if (isByoc) {
-      const missing = byocPhotos.filter((p) => !p.url)
-      if (missing.length > 0) {
-        toast.error(`Vui lòng chụp ảnh xác nhận xe cho: ${missing.map((p) => p.participantName).join(", ")}`)
-        return
-      }
-      const directions = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
-      submitInspection(
-        session.sessionId,
-        type,
-        byocPhotos.map((p, i) => ({
-          direction: directions[i % directions.length],
-          url: p.url,
-          notes: p.notes || `Xe của ${p.participantName}`,
-        })),
-        checklist,
-        staffNotes,
-        false,
-        undefined,
-      )
-    } else {
-      const missingPhotos = Object.entries(photoUrls).filter(([, url]) => !url)
-      if (missingPhotos.length > 0) {
-        toast.error("Vui lòng chụp đủ 4 góc FRONT, BACK, LEFT, RIGHT để lập biên bản!")
-        return
-      }
-      if (damageFlagged && damageLineItems.length === 0) {
-        toast.error("Vui lòng thêm ít nhất một hạng mục hư hỏng.")
-        return
-      }
-      if (damageFlagged && damageLineItems.some((item) => item.partType === "OTHER" && !item.customPartName?.trim())) {
-        toast.error('Vui lòng nhập tên hư hỏng cho mục "Khác".')
-        return
+    try {
+      let submitted: boolean
+
+      if (isByoc) {
+        const missing = byocPhotos.filter((p) => !p.url)
+        if (missing.length > 0) {
+          toast.error(`Vui lòng chụp ảnh xác nhận xe cho: ${missing.map((p) => p.participantName).join(", ")}`)
+          return
+        }
+        const directions = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
+        submitted = await submitInspection(
+          session.sessionId,
+          type,
+          byocPhotos.map((p, i) => ({
+            direction: directions[i % directions.length],
+            url: p.url,
+            notes: p.notes || `Xe của ${p.participantName}`,
+          })),
+          checklist,
+          staffNotes,
+          false,
+          undefined,
+        )
+      } else {
+        if (rentalPhotos.length === 0) {
+          toast.error("Vui lòng thêm ít nhất một ảnh thực tế của xe để lập biên bản.")
+          return
+        }
+        if (damageFlagged && damageLineItems.length === 0) {
+          toast.error("Vui lòng thêm ít nhất một hạng mục hư hỏng.")
+          return
+        }
+        if (damageFlagged && damageLineItems.some((item) => item.partType === "OTHER" && !item.customPartName?.trim())) {
+          toast.error('Vui lòng nhập tên hư hỏng cho mục "Khác".')
+          return
+        }
+
+        const photosArray = rentalPhotos.map((photo) => ({
+          direction: "OTHER" as const,
+          url: photo.url,
+          notes: photo.notes || undefined,
+        }))
+
+        submitted = await submitInspection(
+          session.sessionId,
+          type,
+          photosArray,
+          checklist,
+          staffNotes,
+          damageFlagged,
+          damageFlagged ? damageLineItems : undefined,
+        )
       }
 
-      const photosArray = Object.entries(photoUrls).map(([direction, url]) => ({
-        direction: direction as "FRONT" | "BACK" | "LEFT" | "RIGHT",
-        url,
-        notes: photoNotes[direction],
-      }))
+      if (!submitted) return
 
-      submitInspection(
-        session.sessionId,
-        type,
-        photosArray,
-        checklist,
-        staffNotes,
-        damageFlagged,
-        damageFlagged ? damageLineItems : undefined,
-      )
-    }
-
-    if (type === "CHECK_OUT") {
-      navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
-    } else {
-      navigate(`/staff/sessions/${session.sessionId}`)
+      if (type === "CHECK_OUT") {
+        navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
+      } else {
+        navigate(`/staff/sessions/${session.sessionId}`)
+      }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -330,7 +361,7 @@ export default function StaffInspectionPage() {
               <Camera className="size-4.5 text-[#ea580c]" />
               {isByoc
                 ? `Chụp ảnh xác nhận xe khách (${byocPhotos.length} người — bắt buộc mỗi xe 1 ảnh)`
-                : "Chụp ảnh thực tế phương tiện (Bắt buộc 4 hướng)"}
+                : `Ảnh bàn giao xe (${rentalPhotos.length}/6)`}
             </h3>
             {!isByoc && type === "CHECK_OUT" && checkInInspection && (
               <StaffButton
@@ -372,27 +403,45 @@ export default function StaffInspectionPage() {
                   </div>
 
                   {/* Photo upload zone */}
-                  <label
-                    htmlFor={`byoc-photo-${index}`}
+                  <div
                     className={cn(
-                      "aspect-video rounded-xl border-2 border-dashed border-[#e5e2e1] bg-[#fcf8f8] flex flex-col items-center justify-center cursor-pointer hover:border-[#ea580c] hover:bg-[#fff3eb]/30 overflow-hidden relative group transition-all",
+                      "aspect-video rounded-xl border-2 border-dashed border-[#e5e2e1] bg-[#fcf8f8] overflow-hidden relative group transition-all",
                       slot.url && "border-solid border-[#e5e2e1]",
                       !slot.url && "border-rose-200"
                     )}
                   >
                     {slot.url ? (
                       <>
-                        <img src={slot.url} alt={slot.participantName} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Camera className="size-5 text-white" />
+                        <div
+                          className="h-full w-full"
+                          onClickCapture={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                          }}
+                        >
+                          <ZoomableInspectionImage
+                            src={slot.url}
+                            alt={`Xe tự mang của ${slot.participantName}`}
+                            className="h-full w-full object-cover"
+                            buttonClassName="h-full w-full"
+                          />
                         </div>
+                        <label
+                          htmlFor={`byoc-photo-${index}`}
+                          className="absolute bottom-2 right-2 cursor-pointer rounded-lg bg-black/70 px-2 py-1 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          Đổi ảnh
+                        </label>
                       </>
                     ) : (
-                      <>
+                      <label
+                        htmlFor={`byoc-photo-${index}`}
+                        className="flex h-full w-full cursor-pointer flex-col items-center justify-center hover:bg-[#fff3eb]/30"
+                      >
                         <Camera className="size-6 text-[#6b7280] mb-1.5" />
                         <span className="text-xs font-bold text-[#ea580c]">+ Chụp ảnh xe</span>
                         <span className="text-[10px] text-[#a09e9d] mt-0.5 font-semibold px-2 text-center">Toàn cảnh xe để xác nhận</span>
-                      </>
+                      </label>
                     )}
                     <input
                       id={`byoc-photo-${index}`}
@@ -402,7 +451,7 @@ export default function StaffInspectionPage() {
                       className="sr-only"
                       onChange={(e) => handleByocPhotoChange(index, e)}
                     />
-                  </label>
+                  </div>
 
                   {/* Notes field */}
                   {slot.url && (
@@ -420,62 +469,89 @@ export default function StaffInspectionPage() {
               ))}
             </div>
           ) : (
-            /* RENTAL: 4-angle grid */
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {(["FRONT", "BACK", "LEFT", "RIGHT"] as const).map((direction) => {
-                const url = photoUrls[direction]
-                const checkInPhoto = checkInInspection?.photos.find((p) => p.direction === direction)?.url
-                return (
-                  <div key={direction} className="space-y-2">
-                    <span className="block text-[11px] font-bold text-[#4c4a49] uppercase tracking-wider text-center">
-                      {direction === "FRONT" ? "Trước" : direction === "BACK" ? "Sau" : direction === "LEFT" ? "Trái" : "Phải"}
-                    </span>
-                    <label
-                      htmlFor={`inspection-photo-${direction}`}
-                      className={cn(
-                        "aspect-video rounded-xl border border-dashed border-[#e5e2e1] bg-[#fcf8f8] flex flex-col items-center justify-center cursor-pointer hover:border-[#ea580c] hover:bg-[#fff3eb]/30 overflow-hidden relative group transition-all duration-200",
-                        url && "border-solid border-[#e5e2e1]"
-                      )}
-                    >
-                      {url ? (
-                        <>
-                          <img src={url} alt={direction} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <Camera className="size-5 text-white" />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="size-5 text-[#6b7280] mb-1" />
-                          <span className="text-[10px] font-bold text-[#ea580c]">+ Thêm ảnh</span>
-                        </>
-                      )}
-                      <input
-                        id={`inspection-photo-${direction}`}
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={(event) => handlePhotoFileChange(direction, event)}
-                      />
-                    </label>
-                    {url && (
-                      <input
-                        type="text"
-                        placeholder="Ghi chú trầy xước góc..."
-                        value={photoNotes[direction]}
-                        onChange={(e) => setPhotoNotes({ ...photoNotes, [direction]: e.target.value })}
-                        className="w-full rounded-lg border border-[#e5e2e1] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:border-[#ea580c]"
-                      />
-                    )}
-                    {showCheckInBaselines && checkInPhoto && (
-                      <div className="rounded-lg border border-blue-200 bg-blue-50/50 overflow-hidden">
-                        <span className="block text-[9px] text-blue-800 font-extrabold p-1 text-center bg-blue-100">ẢNH GỐC NHẬN XE</span>
-                        <img src={checkInPhoto} alt={`Check-In ${direction}`} className="w-full h-16 object-cover" />
+            <div className="space-y-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-900">
+                Chụp rõ tổng thể xe, phía trước, phía sau, hai bên và cận cảnh mọi vết xước hoặc hư hỏng hiện có nếu cần. Không bắt buộc thứ tự hoặc đủ 4 góc; chỉ cần ảnh phản ánh đúng tình trạng xe.
+              </div>
+
+              {rentalPhotos.length < 6 && (
+                <label
+                  htmlFor="rental-inspection-photos"
+                  className={cn(
+                    "flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#f4b08c] bg-[#fff7f2] px-4 text-center transition-colors hover:border-[#ea580c] hover:bg-[#fff1e8]",
+                    isUploadingRentalPhotos && "pointer-events-none opacity-60",
+                  )}
+                >
+                  {isUploadingRentalPhotos ? (
+                    <Loader2 className="mb-2 size-6 animate-spin text-[#ea580c]" />
+                  ) : (
+                    <ImagePlus className="mb-2 size-6 text-[#ea580c]" />
+                  )}
+                  <span className="text-sm font-extrabold text-[#1c1b1b]">
+                    {isUploadingRentalPhotos ? "Đang tải ảnh..." : "Chọn nhiều ảnh cùng lúc"}
+                  </span>
+                  <span className="mt-1 text-xs font-medium text-[#6b7280]">Tối đa 6 ảnh, JPG/PNG/WEBP, mỗi ảnh không quá 5MB</span>
+                  <input
+                    id="rental-inspection-photos"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="sr-only"
+                    onChange={handleRentalPhotoFiles}
+                  />
+                </label>
+              )}
+
+              {rentalPhotos.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {rentalPhotos.map((photo, index) => (
+                    <div key={photo.id} className="overflow-hidden rounded-xl border border-[#e5e2e1] bg-white">
+                      <div className="relative aspect-video bg-[#f5f3f2]">
+                        <ZoomableInspectionImage
+                          src={photo.url}
+                          alt={`Ảnh bàn giao xe ${index + 1}`}
+                          className="h-full w-full object-cover"
+                          buttonClassName="h-full w-full"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setRentalPhotos((previous) => previous.filter((item) => item.id !== photo.id))}
+                          className="absolute right-2 top-2 rounded-lg bg-white/95 p-1.5 text-rose-600 shadow-sm transition-colors hover:bg-rose-50"
+                          aria-label={`Xóa ảnh ${index + 1}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
                       </div>
-                    )}
+                      <div className="space-y-1.5 p-2.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6b7280]">Ảnh {index + 1}</span>
+                        <input
+                          type="text"
+                          placeholder="Ghi chú tùy chọn, ví dụ: vết xước cản trước"
+                          value={photo.notes}
+                          onChange={(event) => setRentalPhotos((previous) => previous.map((item) => item.id === photo.id ? { ...item, notes: event.target.value } : item))}
+                          className="w-full rounded-lg border border-[#e5e2e1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:border-[#ea580c] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showCheckInBaselines && checkInInspection && (
+                <div className="border-t border-[#e5e2e1] pt-4">
+                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-blue-800">Ảnh bàn giao lúc nhận xe</p>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {checkInInspection.photos.map((photo, index) => (
+                      <ZoomableInspectionImage
+                        key={`${photo.url}-${index}`}
+                        src={photo.url}
+                        alt={`Ảnh nhận xe ${index + 1}`}
+                        className="aspect-video w-full rounded-lg border border-blue-200 object-cover"
+                      />
+                    ))}
                   </div>
-                )
-              })}
+                </div>
+              )}
             </div>
           )}
         </StaffCard>
@@ -485,7 +561,7 @@ export default function StaffInspectionPage() {
           <StaffCard className="space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-2">
               <ClipboardList className="size-4.5 text-[#ea580c]" />
-              {isByoc ? "Xác nhận điều kiện tham gia" : "Danh mục kiểm tra an toàn linh kiện"}
+              {isByoc ? "Xác nhận điều kiện tham gia" : type === "CHECK_OUT" ? "Xác nhận đã kiểm tra linh kiện" : "Danh mục kiểm tra an toàn linh kiện"}
             </h3>
             <div className="space-y-3.5">
               {checklist.map((item) => (
@@ -664,9 +740,14 @@ export default function StaffInspectionPage() {
             type="submit"
             variant="primary"
             className="flex-1 uppercase tracking-wider gap-1.5 font-bold"
+            disabled={isSubmitting}
           >
             <FileCheck className="size-4.5" />
-            {isByoc ? "Xác nhận xe khách" : "Lưu biên bản kiểm định"}
+            {isSubmitting
+              ? "Đang lưu..."
+              : isByoc
+                ? "Xác nhận xe khách"
+                : "Lưu biên bản kiểm định"}
           </StaffButton>
         </div>
       </form>

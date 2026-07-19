@@ -47,6 +47,7 @@ export type BackendCafe = {
   slotFeeRate: number | string
   maxConcurrentBookings: number
   minBookingNoticeMinutes: number
+  maxAdvanceBookingDays: number
   byocCapacity: number
   rating?: number
   reviewsCount?: number
@@ -102,6 +103,7 @@ export type CafeUpsertBody = {
   slot_fee_rate: number
   max_concurrent_bookings: number
   min_booking_notice_minutes: number
+  max_advance_booking_days: number
   byoc_capacity: number
   amenity_ids?: string[]
   rules?: string[]
