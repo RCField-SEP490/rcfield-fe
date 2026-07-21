@@ -120,6 +120,13 @@ export function NotificationBell() {
     } else if (n.type === "BOOKING_REVIEW_REQUEST") {
       navigate("/customer/bookings")
     } else if (
+      n.type === "VEHICLE_MAINTENANCE_CREATED" ||
+      n.type === "MAINTENANCE_LOG_UPDATED" ||
+      n.type === "DAMAGE_REPORTED" ||
+      n.data?.route === "/staff/maintenance"
+    ) {
+      navigate("/staff/maintenance")
+    } else if (
       n.type === "CUSTOMER_CHECKIN_CONFIRMED" ||
       n.type === "CUSTOMER_CHECKOUT_CONFIRMED" ||
       n.type === "CUSTOMER_INSPECTION_DISPUTED" ||
