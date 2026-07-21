@@ -249,18 +249,28 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
           logId?: string
         } | undefined
 
-        toast.warning("🚨 Cảnh báo Xe cần Bảo trì!", {
-          description: payload?.vehicleName
-            ? `Xe ${payload.vehicleName} (${payload.vehicleId || ""}) vừa ghi nhận hư hỏng cần bảo trì.`
-            : "Có cập nhật phiếu bảo trì xe hỏng mới từ hệ thống.",
-          action: {
-            label: "Đi tới trang Bảo trì",
-            onClick: () => navigate("/staff/maintenance"),
-          },
-          duration: 8000,
-        })
-
+        // Real-time invalidate queries so maintenance list updates silently
         void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
+
+        // Only show toast popup if user is NOT on maintenance page AND it's a new maintenance log
+        const isMaintenancePage = window.location.pathname.includes("/staff/maintenance")
+        if (
+          !isMaintenancePage &&
+          (msg.event === "VEHICLE_MAINTENANCE_CREATED" ||
+            msg.event === "NEW_MAINTENANCE_LOG" ||
+            msg.event === "DAMAGE_REPORTED")
+        ) {
+          toast.warning("🚨 Cảnh báo Xe cần Bảo trì!", {
+            description: payload?.vehicleName
+              ? `Xe ${payload.vehicleName} (${payload.vehicleId || ""}) vừa ghi nhận hư hỏng cần bảo trì.`
+              : "Có cập nhật phiếu bảo trì xe hỏng mới từ hệ thống.",
+            action: {
+              label: "Đi tới trang Bảo trì",
+              onClick: () => navigate("/staff/maintenance"),
+            },
+            duration: 8000,
+          })
+        }
         return
       }
     },
