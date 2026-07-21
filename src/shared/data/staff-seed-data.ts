@@ -25,6 +25,12 @@ export interface StaffMaintenanceLog {
   status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED"
   createdAt: string
   completedAt?: string
+  // Context metadata (Cơ sở, Category, Bằng chứng ảnh & Checklist)
+  cafeName?: string
+  categoryName?: string
+  categoryTier?: string
+  inspectionPhotos?: { angle: string; url: string; notes?: string }[]
+  damagedChecklist?: { itemKey: string; itemLabel: string; status: string; note?: string }[]
 }
 
 export interface StaffByocVehicle {
@@ -111,6 +117,9 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     logId: "MNT-8812",
     vehicleId: "V-MAZDA-RX7",
     vehicleName: "Mazda RX-7 FD3S Drift Special",
+    cafeName: "RC Field Quận 4",
+    categoryName: "Drift Special Nitro",
+    categoryTier: "PREMIUM",
     issueDescription:
       "Thay vỏ bánh xe nhựa cứng drift bị mòn vẹt sau 40 ca chạy.",
     staffNotes:
@@ -120,11 +129,30 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     status: "COMPLETED",
     createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
     completedAt: new Date(Date.now() - 3600000 * 47).toISOString(),
+    inspectionPhotos: [
+      {
+        angle: "FRONT",
+        url: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=400",
+        notes: "Ảnh Check-out: Bánh nhựa sờn mòn 80%"
+      },
+      {
+        angle: "LEFT",
+        url: "https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&q=80&w=400",
+        notes: "Mòn lệch góc sườn trái"
+      }
+    ],
+    damagedChecklist: [
+      { itemKey: "TIRES", itemLabel: "Vỏ bánh xe Drift", status: "SCRATCHED", note: "Mòn vẹt lớp nhựa ma sát" },
+      { itemKey: "VIS_SAI", itemLabel: "Bộ Vis-sai cầu sau", status: "NEEDS_REVIEW", note: "Kêu rơ nhẹ khi ôm cua" }
+    ]
   },
   {
     logId: "MNT-8813",
     vehicleId: "V-NISSAN-GTR",
     vehicleName: "Nissan GT-R R35 Drift Spec",
+    cafeName: "RC Field Quận 4",
+    categoryName: "Circuit GT Pro",
+    categoryTier: "PREMIUM",
     issueDescription: "Kiểm tra Servo bẻ lái phản hồi chậm, lệch góc lái 5 độ.",
     staffNotes:
       "Đã bôi trơn lại khớp nhông lái, điều chỉnh trimmer trên mạch thu sóng.",
@@ -133,11 +161,24 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     status: "COMPLETED",
     createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
     completedAt: new Date(Date.now() - 3600000 * 23.5).toISOString(),
+    inspectionPhotos: [
+      {
+        angle: "FRONT",
+        url: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?auto=format&fit=crop&q=80&w=400",
+        notes: "Thân xe không móp xước"
+      }
+    ],
+    damagedChecklist: [
+      { itemKey: "SERVO", itemLabel: "Servo bẻ lái", status: "BROKEN", note: "Nhông servo rơ 5 độ" }
+    ]
   },
   {
     logId: "MNT-8814",
     vehicleId: "V-SUBARU-BRZ",
     vehicleName: "Subaru BRZ Custom Drift",
+    cafeName: "RC Field Quận 4",
+    categoryName: "Drift Starter",
+    categoryTier: "STANDARD",
     issueDescription:
       "Động cơ chổi than Brushless quá nhiệt đột ngột, pin hao nhanh bất thường.",
     staffNotes:
@@ -146,6 +187,22 @@ export const initialMockMaintenanceLogs: StaffMaintenanceLog[] = [
     performedBy: "Lê Văn Tùng (Staff)",
     status: "IN_PROGRESS",
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    inspectionPhotos: [
+      {
+        angle: "DETAIL",
+        url: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400",
+        notes: "Mô-tơ bốc khói nhẹ sau ca chạy"
+      },
+      {
+        angle: "BACK",
+        url: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=400",
+        notes: "Bụi nhựa bám khoang động cơ"
+      }
+    ],
+    damagedChecklist: [
+      { itemKey: "MOTOR", itemLabel: "Động cơ Brushless", status: "BROKEN", note: "Quá nhiệt 85°C" },
+      { itemKey: "GEARBOX", itemLabel: "Hộp số & Bánh răng truyền động", status: "SCRATCHED", note: "Bột nhựa bám khe nhông" }
+    ]
   },
 ]
 

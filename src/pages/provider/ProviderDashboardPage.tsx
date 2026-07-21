@@ -841,7 +841,7 @@ function RealDashboard({
                         fill={PIE_COLORS[i % PIE_COLORS.length]}
                         opacity={
                           hoveredPieType === null ||
-                          hoveredPieType === item.type
+                            hoveredPieType === item.type
                             ? 1
                             : 0.15
                         }
@@ -1028,7 +1028,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>🍔 Món ăn được mua nhiều</span>
+              <span>Món ăn được mua nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 món F&B bán chạy nhất trong kỳ
@@ -1095,7 +1095,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>🏁 Sân được book nhiều</span>
+              <span>Sân được book nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 loại đường đua được yêu thích nhất
@@ -1162,7 +1162,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>👤 Khách hàng thường xuyên nhất</span>
+              <span>Khách hàng thường xuyên nhất</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 khách hàng đặt sân tích cực nhất
@@ -1227,7 +1227,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>🏎️ Loại xe được book nhiều</span>
+              <span>Loại xe được book nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 dòng xe mẫu được thuê nhiều nhất
@@ -1279,13 +1279,12 @@ function RealDashboard({
                       </td>
                       <td className="py-2.5">
                         <span
-                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${
-                            item.catalogTier === "RESTRICTED"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : item.catalogTier === "PREMIUM"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-slate-100 text-slate-700 border-slate-200"
-                          }`}
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${item.catalogTier === "RESTRICTED"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : item.catalogTier === "PREMIUM"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
+                            }`}
                         >
                           {item.catalogTier}
                         </span>
@@ -1607,7 +1606,7 @@ function OnboardingChecklist({
                   className={cn(
                     "text-base font-extrabold text-[#1c1b1b]",
                     steps.operationalHoursSet &&
-                      "line-through text-slate-500/60",
+                    "line-through text-slate-500/60",
                   )}
                 >
                   Cài đặt giờ hoạt động

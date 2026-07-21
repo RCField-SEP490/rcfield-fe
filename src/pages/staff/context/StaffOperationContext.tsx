@@ -267,7 +267,26 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
 
     if (storedMaintenance) {
-      setMaintenanceLogs(JSON.parse(storedMaintenance))
+      const parsed: StaffMaintenanceLog[] = JSON.parse(storedMaintenance)
+      const enriched = parsed.map((item) => {
+        const defaultMock = initialMockMaintenanceLogs.find((m) => m.logId === item.logId)
+        return {
+          ...item,
+          cafeName: item.cafeName || defaultMock?.cafeName || "RC Field Quận 4",
+          categoryName: item.categoryName || defaultMock?.categoryName || "Drift Special Nitro",
+          categoryTier: item.categoryTier || defaultMock?.categoryTier || "PREMIUM",
+          inspectionPhotos:
+            item.inspectionPhotos && item.inspectionPhotos.length > 0
+              ? item.inspectionPhotos
+              : defaultMock?.inspectionPhotos,
+          damagedChecklist:
+            item.damagedChecklist && item.damagedChecklist.length > 0
+              ? item.damagedChecklist
+              : defaultMock?.damagedChecklist,
+        }
+      })
+      setMaintenanceLogs(enriched)
+      localStorage.setItem(maintenanceKey, JSON.stringify(enriched))
     } else {
       setMaintenanceLogs(initialMockMaintenanceLogs)
       localStorage.setItem(maintenanceKey, JSON.stringify(initialMockMaintenanceLogs))
