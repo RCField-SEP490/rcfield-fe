@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect */
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
@@ -124,6 +125,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
   }, [user, role])
 
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState<CustomerBookingDetail[]>([])
   const [fnbOrders, setFnbOrders] = useState<FnbOrder[]>([])
   const [fleetStates, setFleetStates] = useState<Record<string, keyof typeof VehicleStatus>>({})
@@ -233,8 +235,46 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         void queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() })
         return
       }
+
+      if (
+        msg.event === "VEHICLE_MAINTENANCE_CREATED" ||
+        msg.event === "NEW_MAINTENANCE_LOG" ||
+        msg.event === "DAMAGE_REPORTED" ||
+        msg.event === "MAINTENANCE_LOG_UPDATED"
+      ) {
+        const payload = msg.data as {
+          vehicleName?: string
+          vehicleId?: string
+          issueDescription?: string
+          logId?: string
+        } | undefined
+
+        // Real-time invalidate queries so maintenance list updates silently
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
+
+        // Only show toast popup if user is NOT on maintenance page AND it's a new maintenance log
+        const isMaintenancePage = window.location.pathname.includes("/staff/maintenance")
+        if (
+          !isMaintenancePage &&
+          (msg.event === "VEHICLE_MAINTENANCE_CREATED" ||
+            msg.event === "NEW_MAINTENANCE_LOG" ||
+            msg.event === "DAMAGE_REPORTED")
+        ) {
+          toast.warning("🚨 Cảnh báo Xe cần Bảo trì!", {
+            description: payload?.vehicleName
+              ? `Xe ${payload.vehicleName} (${payload.vehicleId || ""}) vừa ghi nhận hư hỏng cần bảo trì.`
+              : "Có cập nhật phiếu bảo trì xe hỏng mới từ hệ thống.",
+            action: {
+              label: "Đi tới trang Bảo trì",
+              onClick: () => navigate("/staff/maintenance"),
+            },
+            duration: 8000,
+          })
+        }
+        return
+      }
     },
-    [fetchData, queryClient],
+    [fetchData, queryClient, navigate],
   )
 
   useWebSocket(handleRealtimeMessage)
@@ -267,7 +307,26 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
 
     if (storedMaintenance) {
-      setMaintenanceLogs(JSON.parse(storedMaintenance))
+      const parsed: StaffMaintenanceLog[] = JSON.parse(storedMaintenance)
+      const enriched = parsed.map((item) => {
+        const defaultMock = initialMockMaintenanceLogs.find((m) => m.logId === item.logId)
+        return {
+          ...item,
+          cafeName: item.cafeName || defaultMock?.cafeName || "RC Field Quận 4",
+          categoryName: item.categoryName || defaultMock?.categoryName || "Drift Special Nitro",
+          categoryTier: item.categoryTier || defaultMock?.categoryTier || "PREMIUM",
+          inspectionPhotos:
+            item.inspectionPhotos && item.inspectionPhotos.length > 0
+              ? item.inspectionPhotos
+              : defaultMock?.inspectionPhotos,
+          damagedChecklist:
+            item.damagedChecklist && item.damagedChecklist.length > 0
+              ? item.damagedChecklist
+              : defaultMock?.damagedChecklist,
+        }
+      })
+      setMaintenanceLogs(enriched)
+      localStorage.setItem(maintenanceKey, JSON.stringify(enriched))
     } else {
       setMaintenanceLogs(initialMockMaintenanceLogs)
       localStorage.setItem(maintenanceKey, JSON.stringify(initialMockMaintenanceLogs))

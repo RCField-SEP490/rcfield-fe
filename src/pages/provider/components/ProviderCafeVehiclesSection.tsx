@@ -20,7 +20,6 @@ import { routePaths } from "@/app/router/route-paths"
 import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { useVehicleCatalogs } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import { useDeleteVehicleCatalog } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
-import { useUpdateVehicleUnit } from "@/features/vehicles/hooks/useVehicleUnitMutations"
 import { VehicleStatus, VehicleTier } from "@/features/vehicles/types"
 import type { VehicleCatalog, VehicleUnit } from "@/features/vehicles/types"
 import { cn, sanitizeImageUrl, getCatalogImageUrl } from "@/shared/lib/utils"
@@ -38,7 +37,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 
@@ -71,6 +69,7 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
 
   const totalCount = units.length
   const availableCount = units.filter((u) => u.status === VehicleStatus.AVAILABLE).length
+  const inUseCount = units.filter((u) => u.status === VehicleStatus.IN_USE).length
   const maintenanceCount = units.filter((u) => u.status === VehicleStatus.MAINTENANCE).length
   const retiredCount = units.filter((u) => u.status === VehicleStatus.RETIRED).length
 
@@ -118,6 +117,8 @@ export function ProviderCafeVehiclesSection({ cafeId }: ProviderCafeVehiclesSect
         <StatPill icon={Car} label="Tổng" value={totalCount} colorClass="text-zinc-700" />
         <div className="h-4 w-px bg-zinc-200 shrink-0" />
         <StatPill icon={Activity} label="Sẵn sàng" value={availableCount} colorClass="text-emerald-600" />
+        <div className="h-4 w-px bg-zinc-200 shrink-0" />
+        <StatPill icon={Car} label="Đang thuê" value={inUseCount} colorClass="text-blue-600" />
         <div className="h-4 w-px bg-zinc-200 shrink-0" />
         <StatPill
           icon={Wrench}
@@ -416,6 +417,13 @@ const STATUS_OPTIONS = [
     description: "Cho phép đặt lịch",
   },
   {
+    value: VehicleStatus.IN_USE,
+    label: "Đang thuê",
+    dot: "bg-blue-500",
+    badge: "text-blue-700 bg-blue-50 border-blue-200",
+    description: "Khách đang chơi trong ca",
+  },
+  {
     value: VehicleStatus.MAINTENANCE,
     label: "Bảo trì",
     dot: "bg-amber-500",
@@ -443,11 +451,7 @@ function UnitRow({
   const navigate = useNavigate()
   const catalogId = unit.catalogId || unit.catalog?.id || catalog.id
 
-  const updateMutation = useUpdateVehicleUnit(cafeId, catalogId, unit.id)
-
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === unit.status)
-  const isInUse = unit.status === VehicleStatus.IN_USE
-  const isChanging = updateMutation.isPending
 
   const statusDisplay = currentStatus ?? {
     label: unit.status === VehicleStatus.IN_USE ? "Đang thuê" : "Không rõ",
@@ -484,60 +488,16 @@ function UnitRow({
           </p>
         )}
       </div>
-
-      {/* Status — clickable dropdown if not IN_USE */}
-      {isInUse ? (
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold shrink-0",
-            statusDisplay.badge
-          )}
-        >
-          <span className={cn("size-1.5 rounded-full", statusDisplay.dot)} />
-          {statusDisplay.label}
-        </span>
-      ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              disabled={isChanging}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-extrabold shrink-0 transition-opacity hover:opacity-80",
-                statusDisplay.badge,
-                isChanging && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <span className={cn("size-1.5 rounded-full", statusDisplay.dot)} />
-              {isChanging ? "Đang lưu..." : statusDisplay.label}
-              <ChevronDown className="size-2.5 ml-0.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-lg bg-white border-[#c4c7c8]">
-            <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-              Đổi trạng thái
-            </p>
-            <DropdownMenuSeparator />
-            {STATUS_OPTIONS.map((opt) => (
-              <DropdownMenuItem
-                key={opt.value}
-                disabled={opt.value === unit.status}
-                onClick={() => updateMutation.mutate({ status: opt.value })}
-                className={cn(
-                  "cursor-pointer gap-2 py-2",
-                  opt.value === unit.status && "opacity-50 cursor-default"
-                )}
-              >
-                <span className={cn("size-2 rounded-full shrink-0", opt.dot)} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold">{opt.label}</span>
-                  <span className="text-[10px] text-zinc-400">{opt.description}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      {/* Read-only status badge */}
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold shrink-0 shadow-2xs",
+          statusDisplay.badge
+        )}
+      >
+        <span className={cn("size-1.5 rounded-full", statusDisplay.dot)} />
+        {statusDisplay.label}
+      </span>
 
       <Button
         variant="outline"
