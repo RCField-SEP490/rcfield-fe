@@ -20,7 +20,6 @@ import { routePaths } from "@/app/router/route-paths"
 import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { useVehicleCatalogs } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import { useDeleteVehicleCatalog } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
-import { useUpdateVehicleUnit } from "@/features/vehicles/hooks/useVehicleUnitMutations"
 import { VehicleStatus, VehicleTier } from "@/features/vehicles/types"
 import type { VehicleCatalog, VehicleUnit } from "@/features/vehicles/types"
 import { cn, sanitizeImageUrl, getCatalogImageUrl } from "@/shared/lib/utils"
@@ -38,7 +37,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 

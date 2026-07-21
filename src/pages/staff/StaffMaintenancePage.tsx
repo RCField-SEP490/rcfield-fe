@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
 import {
   Plus,
-  ClipboardList,
   User,
   DollarSign,
   Filter,
@@ -67,7 +66,6 @@ export default function StaffMaintenancePage() {
 
   // Form input fields
   const [vehicleId, setVehicleId] = useState("")
-  const [vehicleName, setVehicleName] = useState("")
   const [issueDescription, setIssueDescription] = useState("")
   const [staffNotes, setStaffNotes] = useState("")
   const [cost, setCost] = useState<number>(0)
@@ -103,7 +101,7 @@ export default function StaffMaintenancePage() {
 
   // REAL API MUTATION for updating maintenance status
   const updateStatusApiMutation = useMutation({
-    mutationFn: ({ logId, status, cost }: { logId: string; status: "IN_PROGRESS" | "COMPLETED"; cost?: number }) =>
+    mutationFn: ({ logId, status, cost }: { logId: string; status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"; cost?: number }) =>
       staffApi.updateMaintenanceStatus(logId, { status, cost }),
     onSuccess: () => {
       toast.success("Cập nhật trạng thái phiếu bảo trì trên Server thành công!")
@@ -118,14 +116,11 @@ export default function StaffMaintenancePage() {
   const vehicleOptions = useMemo(() => {
     const logs = apiLogs || []
     const namesById = new Map(logs.map((log) => [log.vehicleId, log.vehicleName]))
-    const vehicleIds = new Set(logs.map((log) => log.vehicleId))
-
-    return Array.from(vehicleIds)
-      .sort()
-      .map((id) => ({
+    return Array.from(namesById.entries())
+      .map(([id, rawName]) => ({
         id,
         name:
-          namesById.get(id) ||
+          rawName ||
           id
             .replace(/^V-/, "")
             .split("-")
@@ -136,8 +131,6 @@ export default function StaffMaintenancePage() {
 
   const handleVehicleSelect = (id: string) => {
     setVehicleId(id)
-    const match = vehicleOptions.find((v) => v.id === id)
-    setVehicleName(match ? match.name : "")
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -162,7 +155,6 @@ export default function StaffMaintenancePage() {
 
     // Reset Form
     setVehicleId("")
-    setVehicleName("")
     setIssueDescription("")
     setStaffNotes("")
     setCost(0)
