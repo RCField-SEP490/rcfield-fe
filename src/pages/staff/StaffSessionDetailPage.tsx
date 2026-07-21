@@ -14,8 +14,7 @@ import {
   HelpCircle,
   Banknote,
   CheckCircle2,
-  ShieldCheck,
-  Package,
+  X,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { staffApi } from "@/features/staff/api/staff.api"
@@ -71,6 +70,7 @@ export default function StaffSessionDetailPage() {
     fleetStates,
     proposeExtension,
     addFnbOrder,
+    updateFnbOrderStatus,
     swapSessionVehicle,
     refreshData,
   } = useStaffOperations()
@@ -283,6 +283,16 @@ export default function StaffSessionDetailPage() {
     setSelectedQty(1)
   }
 
+  const handleCancelFnbOrder = async (orderId: string) => {
+    try {
+      await staffApi.updateFnbOrder(orderId, "CANCELLED")
+      updateFnbOrderStatus(orderId, "CANCELLED")
+      toast.success("Đã huỷ món")
+    } catch {
+      toast.error("Không thể huỷ món — vui lòng thử lại")
+    }
+  }
+
   const handleSettlePayment = async () => {
     if (!booking) return
     try {
@@ -433,10 +443,7 @@ export default function StaffSessionDetailPage() {
         >
           <ChevronLeft className="size-5 text-[#6b7280]" />
         </StaffButton>
-        <div>
-          <span className="text-xs text-[#6b7280] font-bold font-mono uppercase">Mã phiên: {session.sessionId}</span>
-          <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">Chi Tiết Ca Chạy Xe</h2>
-        </div>
+        <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">Chi Tiết Ca Chạy Xe</h2>
       </div>
 
       {/* 2. SESSION INFO CARD */}
@@ -455,7 +462,6 @@ export default function StaffSessionDetailPage() {
             </StaffBadge>
             <div>
               <h3 className="text-xl font-black text-[#1c1b1b] tracking-tight leading-tight">{booking.trackName}</h3>
-              <p className="text-[11px] text-[#6b7280] font-semibold">{booking.trackType} · {booking.shortCode}</p>
             </div>
           </div>
 
@@ -511,61 +517,77 @@ export default function StaffSessionDetailPage() {
 
       {/* 3. PRE-SESSION INFO STRIP — show before session goes ACTIVE */}
       {(session.status === "CHECKED_IN") && (
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Play mode */}
-          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#fff3eb] shrink-0 mt-0.5">
-              <ShieldCheck className="size-4 text-[#ea580c]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">Chế độ chơi</p>
-              <p className="text-sm font-extrabold text-[#1c1b1b]">
-                {booking.playMode === "RENTAL" ? "Thuê xe tại quán" : booking.playMode === "BYOC" ? "Mang xe cá nhân" : booking.playMode}
-              </p>
-              {booking.playMode === "RENTAL" && (
-                <p className="text-[11px] text-[#ea580c] font-semibold mt-0.5">Cần bàn giao xe cho khách</p>
-              )}
-              {booking.playMode === "BYOC" && (
-                <p className="text-[11px] text-[#6b7280] font-semibold mt-0.5">Khách tự mang xe</p>
-              )}
-            </div>
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Chế độ chơi</p>
+            <p className="text-sm font-extrabold text-[#1c1b1b]">
+              {booking.playMode === "RENTAL" ? "Thuê xe tại quán" : booking.playMode === "BYOC" ? "Mang xe cá nhân" : booking.playMode}
+            </p>
+            {booking.playMode === "RENTAL" && (
+              <p className="text-[11px] text-[#ea580c] font-semibold mt-1">Cần bàn giao xe cho khách</p>
+            )}
+            {booking.playMode === "BYOC" && (
+              <p className="text-[11px] text-[#6b7280] font-semibold mt-1">Khách tự mang xe</p>
+            )}
           </div>
 
-          {/* Planned vehicles */}
-          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#fff3eb] shrink-0 mt-0.5">
-              <Car className="size-4 text-[#ea580c]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">Xe đã đặt ({booking.plannedVehicles.length})</p>
-              {booking.plannedVehicles.length > 0 ? (
-                <div className="space-y-0.5">
-                  {booking.plannedVehicles.map((v, i) => (
-                    <p key={i} className="text-xs font-bold text-[#1c1b1b] truncate">{v}</p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[#6b7280] font-semibold">Chưa chỉ định xe</p>
-              )}
-            </div>
+          {/* Track type */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Loại đường đua</p>
+            <p className="text-sm font-extrabold text-[#1c1b1b] truncate">{booking.trackName}</p>
+          </div>
+
+          {/* Vehicles with image */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-2">
+              Xe bàn giao ({session.vehicles.length || booking.plannedVehicles.length})
+            </p>
+            {session.vehicles.length > 0 ? (
+              <div className="space-y-2">
+                {session.vehicles.map((v) => (
+                  <div key={v.vehicleId} className="flex items-center gap-2">
+                    {v.imageUrl ? (
+                      <ZoomableInspectionImage
+                        src={v.imageUrl}
+                        alt={v.name}
+                        className="size-10 rounded-lg border border-[#e5e2e1] object-cover shrink-0"
+                        buttonClassName="size-10 shrink-0 rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex size-10 items-center justify-center rounded-lg bg-[#f5f3f2] border border-[#e5e2e1] shrink-0">
+                        <Car className="size-4 text-[#9b8fa8]" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#1c1b1b] truncate">{v.name}</p>
+                      <p className="text-[10px] text-[#9b8fa8] font-semibold truncate">#{v.vehicleId.slice(0, 8).toUpperCase()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : booking.plannedVehicles.length > 0 ? (
+              <div className="space-y-0.5">
+                {booking.plannedVehicles.map((v, i) => (
+                  <p key={i} className="text-xs font-bold text-[#1c1b1b] truncate">{v}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[#9b8fa8] font-semibold">Chưa chỉ định xe</p>
+            )}
           </div>
 
           {/* Pre-ordered F&B */}
-          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
-            <div className={`flex size-8 items-center justify-center rounded-lg shrink-0 mt-0.5 ${booking.fnbPreorderFee > 0 ? "bg-amber-50" : "bg-[#f5f3f2]"}`}>
-              <Package className={`size-4 ${booking.fnbPreorderFee > 0 ? "text-amber-600" : "text-[#6b7280]"}`} />
-            </div>
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">F&B đặt trước</p>
-              {booking.fnbPreorderFee > 0 ? (
-                <>
-                  <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
-                  <p className="text-[11px] text-amber-600 font-semibold mt-0.5">Chuẩn bị trước khi bắt đầu</p>
-                </>
-              ) : (
-                <p className="text-xs text-[#6b7280] font-semibold">Không có đặt trước</p>
-              )}
-            </div>
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Đồ ăn & thức uống đặt App</p>
+            {booking.fnbPreorderFee > 0 ? (
+              <>
+                <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
+                <p className="text-[11px] text-amber-600 font-semibold mt-1">Chuẩn bị trước khi bắt đầu ca</p>
+              </>
+            ) : (
+              <p className="text-xs text-[#9b8fa8] font-semibold">Khách không đặt món trước</p>
+            )}
           </div>
         </div>
       )}
@@ -923,16 +945,28 @@ export default function StaffSessionDetailPage() {
             {onsiteFnbOrders.map((order) => (
               <div
                 key={order.orderId}
-                className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start font-semibold"
+                className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start gap-2 font-semibold"
               >
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 flex-1 min-w-0">
                   {order.items.map((i, idx) => (
                     <span key={idx} className="block text-[#1c1b1b]">
                       {i.name} <span className="text-[#6b7280] font-normal">×{i.qty}</span>
                     </span>
                   ))}
                 </div>
-                <span className="font-extrabold text-[#ea580c] shrink-0 ml-3">{order.total.toLocaleString("vi-VN")} đ</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-extrabold text-[#ea580c]">{order.total.toLocaleString("vi-VN")} đ</span>
+                  {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCancelFnbOrder(order.orderId)}
+                      title="Huỷ món này"
+                      className="flex size-5 items-center justify-center rounded-full bg-[#f5f3f2] hover:bg-rose-100 hover:text-rose-600 text-[#9b8fa8] transition-colors"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
 

@@ -86,10 +86,10 @@ export default function StaffInspectionPage() {
     if (type === "CHECK_IN") {
       queueMicrotask(() => {
         setChecklist([
-          { id: "ck-1", label: "Pin đã được sạc đầy 100% trước ca chạy", checked: true },
-          { id: "ck-2", label: "Hệ thống lái Servo nhạy bén, kiểm tra bẻ cua mượt mà", checked: true },
-          { id: "ck-3", label: "Bộ lốp drift/onroad lắp ráp chắc chắn, không bị rơ", checked: true },
-          { id: "ck-4", label: "Điều khiển từ xa (Remote) đã bật kết nối sóng ổn định", checked: true },
+          { id: "ck-1", label: "Pin đủ điện, đã sạc trước ca", checked: true },
+          { id: "ck-2", label: "Tay lái servo phản hồi tốt, bẻ cua bình thường", checked: true },
+          { id: "ck-3", label: "Lốp gắn chắc, không lung lay", checked: true },
+          { id: "ck-4", label: "Remote bắt sóng, xe phản hồi lệnh ổn định", checked: true },
         ])
       })
     } else if (type === "CHECK_OUT") {
@@ -326,7 +326,7 @@ export default function StaffInspectionPage() {
   const checkInInspection = session.inspections.find((i) => i.type === "CHECK_IN")
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <StaffButton

@@ -21,6 +21,27 @@ export function useSessionNotifications(enabled = true): void {
       const data = msg.data as (SessionNotificationData & { bookingId?: string }) | undefined
       const sessionId = data?.sessionId
       const bookingId = data?.bookingId
+
+      // Payment confirmation events — handled before the sessionId/bookingId guard
+      if (msg.event === "PAYMENT_REQUEST_CONFIRMED") {
+        void qc.invalidateQueries({ queryKey: ["notifications"] })
+        void qc.invalidateQueries({ queryKey: ["bookings"] })
+        toast.success("Đặt lịch thành công!", {
+          description: "Booking của bạn đã được xác nhận. Hẹn gặp bạn tại sân!",
+        })
+        if (bookingId) navigate(`/customer/bookings/${bookingId}`)
+        return
+      }
+
+      if (msg.event === "PAYMENT_REQUEST_REJECTED") {
+        void qc.invalidateQueries({ queryKey: ["notifications"] })
+        void qc.invalidateQueries({ queryKey: ["bookings"] })
+        toast.error("Thanh toán thất bại", {
+          description: "Booking không được xác nhận. Vui lòng thử lại.",
+        })
+        return
+      }
+
       if (!sessionId && !bookingId) return
 
       // Invalidate notifications and bookings queries immediately
@@ -29,7 +50,6 @@ export function useSessionNotifications(enabled = true): void {
 
       // Dispatch global event for active pages to refetch
       window.dispatchEvent(new CustomEvent("refresh-session-detail"))
-
 
       if (msg.event === "SESSION_EXTENSION_PROPOSED") {
         toast.info("Staff vừa gửi đề xuất gia hạn", {
@@ -42,6 +62,41 @@ export function useSessionNotifications(enabled = true): void {
       if (msg.event === "SESSION_FNB_ORDER_ADDED") {
         toast.info("Dịch vụ ăn uống được thêm", {
           description: "Nhân viên vừa thêm món mới vào phiên chơi của bạn.",
+        })
+        return
+      }
+
+      if (msg.event === "SESSION_CHECKOUT_INSPECTION") {
+        toast.info("Nhân viên vừa lập biên bản trả xe", {
+          description: "Vui lòng kiểm tra biên bản và xác nhận tình trạng xe.",
+        })
+        return
+      }
+
+      if (msg.event === "CUSTOMER_CHECKIN_CONFIRMED") {
+        toast.success("Check-in thành công!", {
+          description: "Nhân viên đã xác nhận check-in. Phiên chơi của bạn đã bắt đầu.",
+        })
+        return
+      }
+
+      if (msg.event === "CUSTOMER_CHECKOUT_CONFIRMED") {
+        toast.success("Checkout hoàn tất!", {
+          description: "Phiên chơi của bạn đã kết thúc. Cảm ơn bạn đã sử dụng dịch vụ.",
+        })
+        return
+      }
+
+      if (msg.event === "CUSTOMER_EXTENSION_APPROVED") {
+        toast.success("Gia hạn được chấp nhận!", {
+          description: data?.extraMinutes ? `Thêm ${data.extraMinutes} phút vào phiên chơi.` : undefined,
+        })
+        return
+      }
+
+      if (msg.event === "CUSTOMER_EXTENSION_REJECTED") {
+        toast.error("Gia hạn bị từ chối", {
+          description: "Nhân viên đã từ chối yêu cầu gia hạn.",
         })
         return
       }

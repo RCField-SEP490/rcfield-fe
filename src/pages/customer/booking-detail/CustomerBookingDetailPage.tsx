@@ -143,6 +143,13 @@ export function CustomerBookingDetailPage() {
     queryKey: bookingQueryKeys.detail(bookingId),
     queryFn: () => bookingApi.getBooking(bookingId!),
     enabled: !!bookingId,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      if (!data) return false
+      const liveBookingStatuses = ["CONFIRMED", "CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"]
+      if (liveBookingStatuses.includes(data.status)) return 10_000
+      return false
+    },
   })
 
   const sessionId = booking?.session?.id
@@ -150,6 +157,12 @@ export function CustomerBookingDetailPage() {
     queryKey: ["sessions", sessionId],
     queryFn: () => customerSessionApi.getSessionDetail(sessionId!),
     enabled: !!sessionId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (!status) return false
+      const liveSessionStatuses = ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"]
+      return liveSessionStatuses.includes(status) ? 10_000 : false
+    },
   })
 
   if (isLoading) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { env } from "@/shared/lib/env"
 import {
-  AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, Clock3, Gamepad2,
+  AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, ChevronDown, Clock3, Gamepad2,
   Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
@@ -187,7 +187,12 @@ export function BookingDetailPage() {
     queryKey: ["session-detail", sessionId],
     queryFn: () => customerSessionApi.getSessionDetail(sessionId!),
     enabled: !!sessionId,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (!status) return false
+      return ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(status) ? 10_000 : false
+    },
   })
   const checkInPhotos = sessionDetail?.inspections
     ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
@@ -201,35 +206,33 @@ export function BookingDetailPage() {
   const [totalDuration, setTotalDuration] = useState(1)
 
   useEffect(() => {
-    if (sessionDetail && (sessionDetail.status === "ACTIVE" || sessionDetail.status === "EXTENDING")) {
-      const plannedTime = new Date(sessionDetail.plannedEnd).getTime()
-      const actualStart = sessionDetail.actualStart ? new Date(sessionDetail.actualStart).getTime() : Date.now()
-      const now = Date.now()
-      queueMicrotask(() => {
-        setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
-        setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
-      })
-    } else {
-      queueMicrotask(() => {
-        setSecondsLeft(0)
-        setTotalDuration(1)
-      })
-    }
-  }, [sessionDetail])
+    const liveStatus = booking?.session?.status
+    const isLive = liveStatus === "ACTIVE" || liveStatus === "EXTENDING"
 
-  useEffect(() => {
-    if (secondsLeft <= 0) return
-    const interval = setInterval(() => {
-      setSecondsLeft(prev => {
-        if (prev <= 1) { clearInterval(interval); return 0 }
-        return prev - 1
-      })
-    }, 1000)
+    const plannedEndStr = sessionDetail?.plannedEnd ?? booking?.session?.plannedEndAt
+    const actualStartStr = sessionDetail?.actualStart ?? booking?.session?.actualStartAt
+
+    if (!isLive || !plannedEndStr) {
+      setSecondsLeft(0)
+      setTotalDuration(1)
+      return
+    }
+
+    const plannedTime = new Date(plannedEndStr).getTime()
+    const actualStart = actualStartStr ? new Date(actualStartStr).getTime() : Date.now()
+    const duration = Math.max(1, Math.floor((plannedTime - actualStart) / 1000))
+    setTotalDuration(duration)
+
+    const tick = () => setSecondsLeft(Math.max(0, Math.floor((plannedTime - Date.now()) / 1000)))
+    tick()
+    const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
-  }, [secondsLeft])
+  }, [sessionDetail, booking?.session?.status, booking?.session?.plannedEndAt, booking?.session?.actualStartAt])
 
   const [payingAdditional, setPayingAdditional] = useState(false)
   const [settlingCash, setSettlingCash] = useState(false)
+  const [checkInPhotosOpen, setCheckInPhotosOpen] = useState(false)
+  const [checkOutPhotosOpen, setCheckOutPhotosOpen] = useState(false)
 
   const handlePayAdditionalFees = async () => {
     if (!bookingId) return
@@ -350,7 +353,7 @@ export function BookingDetailPage() {
 
   // F&B on-site orders from session (paid at counter, not a payment_component)
   const onsiteFnbTotal = (sessionDetail?.fnbOrders ?? [])
-    .filter(o => o.orderType === "ON_SITE")
+    .filter(o => o.orderType === "ON_SITE" && o.status !== "CANCELLED")
     .reduce((sum, o) => sum + Number(o.total ?? 0), 0)
 
   // Total estimated counter bill = payment_component-tracked fees + on-site F&B
@@ -791,73 +794,91 @@ export function BookingDetailPage() {
 
             {/* Check-in handover photos */}
             {checkInPhotos.length > 0 && (
-              <Card className="rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Ảnh bàn giao xe (Check-in)
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Tình trạng xe tại thời điểm bàn giao — nhân viên chụp trước khi phiên chơi bắt đầu.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    {checkInPhotos.map((photo, idx) => (
-                      <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <ZoomableInspectionImage
-                          src={photo.url}
-                          alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="aspect-video w-full object-cover"
-                        />
-                        <div className="bg-muted/50 px-2.5 py-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                            {DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          </p>
-                          {photo.notes && (
-                            <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              <Card className="rounded-xl shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCheckInPhotosOpen((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Ảnh bàn giao xe (Check-in)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {checkInPhotos.length} ảnh · nhân viên chụp trước khi phiên bắt đầu
+                      </p>
+                    </div>
                   </div>
-                </CardContent>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${checkInPhotosOpen ? "rotate-180" : ""}`} />
+                </button>
+                {checkInPhotosOpen && (
+                  <CardContent className="pt-0 pb-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      {checkInPhotos.map((photo, idx) => (
+                        <div key={idx} className="overflow-hidden rounded-xl border border-border">
+                          <ZoomableInspectionImage
+                            src={photo.url}
+                            alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            className="aspect-video w-full object-cover"
+                          />
+                          <div className="bg-muted/50 px-2.5 py-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              {DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            </p>
+                            {photo.notes && (
+                              <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             )}
 
             {/* Check-out return photos */}
             {checkOutPhotos.length > 0 && (
-              <Card className="rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Ảnh trả xe (Check-out)
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Tình trạng xe sau khi phiên chơi kết thúc — làm căn cứ đối chiếu hư hỏng (nếu có).
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    {checkOutPhotos.map((photo, idx) => (
-                      <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <ZoomableInspectionImage
-                          src={photo.url}
-                          alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="aspect-video w-full object-cover"
-                        />
-                        <div className="bg-muted/50 px-2.5 py-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                            {DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          </p>
-                          {photo.notes && (
-                            <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              <Card className="rounded-xl shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCheckOutPhotosOpen((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Ảnh trả xe (Check-out)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {checkOutPhotos.length} ảnh · căn cứ đối chiếu hư hỏng (nếu có)
+                      </p>
+                    </div>
                   </div>
-                </CardContent>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${checkOutPhotosOpen ? "rotate-180" : ""}`} />
+                </button>
+                {checkOutPhotosOpen && (
+                  <CardContent className="pt-0 pb-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      {checkOutPhotos.map((photo, idx) => (
+                        <div key={idx} className="overflow-hidden rounded-xl border border-border">
+                          <ZoomableInspectionImage
+                            src={photo.url}
+                            alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            className="aspect-video w-full object-cover"
+                          />
+                          <div className="bg-muted/50 px-2.5 py-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              {DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            </p>
+                            {photo.notes && (
+                              <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             )}
           </main>
@@ -1162,19 +1183,14 @@ export function BookingDetailPage() {
               </Card>
             )}
 
-            {["PENDING", "CONFIRMED"].includes(booking.status) && !checkInWindowExpired && (
-              <>
-                <Button variant="outline" className="w-full" disabled>
-                  <RotateCcw className="h-4 w-4" /> Thay đổi lịch
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={() => setShowCancelDialog(true)}
-                >
-                  <XCircle className="h-4 w-4" /> Hủy đơn
-                </Button>
-              </>
+            {booking.status === "PENDING" && !checkInWindowExpired && (
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setShowCancelDialog(true)}
+              >
+                <XCircle className="h-4 w-4" /> Hủy đơn
+              </Button>
             )}
           </aside>
         </div>
