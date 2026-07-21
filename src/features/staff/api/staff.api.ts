@@ -43,7 +43,7 @@ export interface StaffMaintenanceLogItem {
   staffNotes: string | null
   cost: number
   performedBy: string | null
-  status: "SENT_TO_PROVIDER" | "RECEIVED" | "IN_PROGRESS" | "COMPLETED"
+  status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"
   createdAt: string
   completedAt: string | null
   inspectionPhotos?: { angle: string; url: string }[]
@@ -430,7 +430,7 @@ export const staffApi = {
 
   updateMaintenanceStatus: async (
     logId: string,
-    body: { status: "SENT_TO_PROVIDER" | "RECEIVED" | "IN_PROGRESS" | "COMPLETED"; cost?: number; staffNotes?: string }
+    body: { status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"; cost?: number; staffNotes?: string }
   ): Promise<{ success: boolean; logId: string; status: string }> => {
     const res = await api.patch<{ success: boolean; data: { success: boolean; logId: string; status: string } }>(
       `/v1/staff/maintenance-logs/${logId}/status`,

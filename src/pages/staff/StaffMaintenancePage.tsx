@@ -27,6 +27,17 @@ import {
   StaffButton,
 } from "./components/StaffUI"
 
+export const PART_TYPE_LABELS: Record<string, string> = {
+  TIRE_WHEEL: "Bánh xe / Lốp",
+  SPOILER: "Cánh gió",
+  CHASSIS: "Khung gầm",
+  MOTOR: "Motor / Động cơ",
+  SHELL: "Vỏ nhựa (Shell)",
+  SERVO: "Servo / Tay lái",
+  REMOTE: "Remote / Điều khiển",
+  OTHER: "Khác",
+}
+
 export default function StaffMaintenancePage() {
   const queryClient = useQueryClient()
   const {
@@ -63,7 +74,7 @@ export default function StaffMaintenancePage() {
   const [performedBy, setPerformedBy] = useState("")
 
   // Filter states
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "SENT_TO_PROVIDER" | "RECEIVED" | "IN_PROGRESS" | "COMPLETED">("ALL")
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED">("ALL")
   const [searchQuery, setSearchQuery] = useState("")
 
   // REAL API QUERY for Maintenance Logs
@@ -332,8 +343,8 @@ export default function StaffMaintenancePage() {
                 {([
                   { code: "ALL", label: "Tất cả" },
                   { code: "SENT_TO_PROVIDER", label: "Gửi sửa chữa" },
+                  { code: "PENDING_REPAIR", label: "Đang chờ sửa" },
                   { code: "RECEIVED", label: "Đã nhận xe" },
-                  { code: "IN_PROGRESS", label: "Đang sửa" },
                   { code: "COMPLETED", label: "Đã xong" },
                 ] as const).map((item) => (
                   <button
@@ -366,10 +377,10 @@ export default function StaffMaintenancePage() {
                 const logBadgeVariant =
                   log.status === "SENT_TO_PROVIDER"
                     ? "warning"
+                    : log.status === "PENDING_REPAIR"
+                    ? "orange"
                     : log.status === "RECEIVED"
                     ? "info"
-                    : log.status === "IN_PROGRESS"
-                    ? "orange"
                     : "success"
 
                 return (
@@ -389,8 +400,8 @@ export default function StaffMaintenancePage() {
 
                       <StaffBadge variant={logBadgeVariant}>
                         {log.status === "SENT_TO_PROVIDER" && "GỬI CHO ĐỘI SỬA CHỮA"}
+                        {log.status === "PENDING_REPAIR" && "ĐANG CHỜ SỬA"}
                         {log.status === "RECEIVED" && "ĐÃ NHẬN XE"}
-                        {log.status === "IN_PROGRESS" && "ĐANG SỬA CHỮA"}
                         {log.status === "COMPLETED" && "ĐÃ SỬA XONG"}
                       </StaffBadge>
                     </div>
@@ -429,23 +440,25 @@ export default function StaffMaintenancePage() {
                       </div>
                     </div>
 
-                    {/* EVIDENCE PHOTOS GALLERY (Zoomable Lightbox) */}
+                    {/* EVIDENCE PHOTOS GALLERY (Full Customer Style Layout) */}
                     {log.inspectionPhotos && log.inspectionPhotos.length > 0 && (
-                      <div className="space-y-2 rounded-xl bg-[#fffcfb] border border-orange-100 p-3">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#ea580c] flex items-center gap-1">
-                          <Sparkles className="size-3" />
-                          Ảnh chụp bằng chứng hư hỏng (Check-out Inspection):
+                      <div className="space-y-2.5 rounded-xl bg-zinc-50 border border-zinc-200 p-3.5">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-800 flex items-center gap-1.5">
+                          <Sparkles className="size-4 text-[#ea580c]" />
+                          Ảnh tình trạng xe:
                         </span>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           {log.inspectionPhotos.map((photo, idx) => (
-                            <div key={idx} className="space-y-1">
+                            <div key={idx} className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 shadow-2xs">
                               <ZoomableInspectionImage
                                 src={photo.url}
-                                alt={`Ảnh ${photo.angle} xe ${log.vehicleName}`}
-                                className="h-20 w-full rounded-lg object-cover border border-[#e5e2e1]"
+                                alt={`Ảnh góc ${photo.angle}`}
+                                className="h-32 w-full object-cover transition-transform duration-300 group-hover:scale-105"
                               />
-                              <div className="text-[10px] font-bold text-[#6b7280] text-center truncate">
-                                Góc {photo.angle}
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2 text-center pointer-events-none">
+                                <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+                                  Góc {photo.angle}
+                                </span>
                               </div>
                             </div>
                           ))}
@@ -471,17 +484,25 @@ export default function StaffMaintenancePage() {
                             Chi tiết các linh kiện & vị trí xe bị hư hỏng:
                           </span>
                           <div className="grid sm:grid-cols-2 gap-2">
-                            {log.damagedChecklist.map((item, i) => (
-                              <div key={i} className="flex items-start justify-between gap-2 bg-white rounded-lg p-2.5 border border-red-200 text-xs shadow-2xs">
-                                <div className="space-y-0.5">
-                                  <span className="font-bold text-[#1c1b1b] block">• {item.itemLabel}</span>
-                                  {item.note && <span className="text-[11px] text-[#6b7280] block">Ghi chú: {item.note}</span>}
+                            {log.damagedChecklist.map((item, i) => {
+                              const translatedLabel =
+                                PART_TYPE_LABELS[item.itemLabel] ||
+                                PART_TYPE_LABELS[item.itemKey] ||
+                                item.itemLabel ||
+                                item.itemKey
+
+                              return (
+                                <div key={i} className="flex items-start justify-between gap-2 bg-white rounded-lg p-2.5 border border-red-200 text-xs shadow-2xs">
+                                  <div className="space-y-0.5">
+                                    <span className="font-bold text-[#1c1b1b] block">• {translatedLabel}</span>
+                                    {item.note && <span className="text-[11px] text-[#6b7280] block">Ghi chú: {item.note}</span>}
+                                  </div>
+                                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-red-100 text-red-700 shrink-0">
+                                    {item.status === "BROKEN" ? "HỎNG NẶNG" : item.status === "SCRATCHED" ? "TRẦY XƯỚC" : item.status}
+                                  </span>
                                 </div>
-                                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-red-100 text-red-700 shrink-0">
-                                  {item.status === "BROKEN" ? "HỎNG NẶNG" : item.status === "SCRATCHED" ? "TRẦY XƯỚC" : item.status}
-                                </span>
-                              </div>
-                            ))}
+                              )
+                            })}
                           </div>
                         </div>
                       ) : (
@@ -523,9 +544,20 @@ export default function StaffMaintenancePage() {
                           {log.status === "SENT_TO_PROVIDER" && (
                             <button
                               onClick={() => {
+                                updateStatusApiMutation.mutate({ logId: log.logId, status: "PENDING_REPAIR" })
+                              }}
+                              className="px-4 py-2 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5"
+                            >
+                              <Wrench className="size-3.5" />
+                              Gửi cho đội sửa chữa
+                            </button>
+                          )}
+                          {log.status === "PENDING_REPAIR" && (
+                            <button
+                              onClick={() => {
                                 updateStatusApiMutation.mutate({ logId: log.logId, status: "RECEIVED" })
                               }}
-                              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5"
+                              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5"
                             >
                               <CheckCircle2 className="size-3.5" />
                               Đã nhận xe
@@ -534,22 +566,10 @@ export default function StaffMaintenancePage() {
                           {log.status === "RECEIVED" && (
                             <button
                               onClick={() => {
-                                updateStatusApiMutation.mutate({ logId: log.logId, status: "IN_PROGRESS" })
-                                updateFleetVehicleStatus(log.vehicleId, "MAINTENANCE")
-                              }}
-                              className="px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5"
-                            >
-                              <Wrench className="size-3.5" />
-                              Tiến hành sửa
-                            </button>
-                          )}
-                          {log.status === "IN_PROGRESS" && (
-                            <button
-                              onClick={() => {
                                 updateStatusApiMutation.mutate({ logId: log.logId, status: "COMPLETED" })
                                 updateFleetVehicleStatus(log.vehicleId, "AVAILABLE")
                               }}
-                              className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5"
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition-all shadow-2xs flex items-center gap-1.5"
                             >
                               <CheckCircle2 className="size-3.5" />
                               Đã sửa xong (Bàn giao Sẵn sàng)
