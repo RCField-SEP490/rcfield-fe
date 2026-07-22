@@ -166,8 +166,13 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
           duration: 8000,
         })
         void queryClient.invalidateQueries({ queryKey: ["notifications"] })
-        void queryClient.invalidateQueries({ queryKey: ["cafe-vehicles"] })
+        // Invalidate vehicles để cập nhật trạng thái ngay lập tức
+        void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
         void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      } else if (msg.event === "VEHICLE_STATUS_CHANGED") {
+        // Cập nhật realtime trạng thái xe (IN_USE / AVAILABLE / MAINTENANCE)
+        // khi customer bắt đầu chơi, trả xe, hoặc staff thực hiện bảo trì
+        void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
       }
     },
     [queryClient],
