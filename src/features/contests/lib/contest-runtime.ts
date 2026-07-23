@@ -93,3 +93,92 @@ export function getErrorMessage(error: unknown) {
     code: maybe.response?.data?.code,
   }
 }
+
+export type ContestMatchPhase = "QUALIFYING" | "FINAL"
+
+export function getContestRuntimeFormat(
+  contest?: Pick<ContestItem, "config" | "contest_format"> | null,
+) {
+  return String(
+    contest?.config?.runtime_format ??
+      contest?.config?.format ??
+      contest?.contest_format?.code ??
+      "",
+  )
+}
+
+export function isQualifyingFinalFormat(format?: string | null) {
+  return format === "QUALIFYING_FINAL"
+}
+
+export function getMatchPhase(match: ContestMatch): ContestMatchPhase {
+  return match.metadata?.phase === "FINAL" ? "FINAL" : "QUALIFYING"
+}
+
+export function splitMatchesByPhase(matches: ContestMatch[]) {
+  const qualifying: ContestMatch[] = []
+  const final: ContestMatch[] = []
+  for (const match of matches) {
+    if (getMatchPhase(match) === "FINAL") {
+      final.push(match)
+    } else {
+      qualifying.push(match)
+    }
+  }
+  return { qualifying, final }
+}
+
+export function areAllMatchesCompleted(matches: ContestMatch[]) {
+  return (
+    matches.length > 0 &&
+    matches.every((match) => match.status === "COMPLETED")
+  )
+}
+
+export type QualifyingStanding = {
+  registrationId: string
+  participant: ContestMatchParticipant
+  bestLapSeconds: number | null
+  totalTimeSeconds: number | null
+  matchId: string
+}
+
+export function getQualifyingStandings(
+  matches: ContestMatch[],
+): QualifyingStanding[] {
+  const bestByRegistration = new Map<string, QualifyingStanding>()
+  for (const match of matches) {
+    for (const participant of match.participants) {
+      const current = bestByRegistration.get(participant.registration_id)
+      const bestLap = participant.best_lap_seconds
+      if (!current) {
+        bestByRegistration.set(participant.registration_id, {
+          registrationId: participant.registration_id,
+          participant,
+          bestLapSeconds: bestLap,
+          totalTimeSeconds: participant.total_time_seconds,
+          matchId: match.id,
+        })
+        continue
+      }
+      const isBetter =
+        bestLap !== null &&
+        (current.bestLapSeconds === null || bestLap < current.bestLapSeconds)
+      if (isBetter) {
+        bestByRegistration.set(participant.registration_id, {
+          registrationId: participant.registration_id,
+          participant,
+          bestLapSeconds: bestLap,
+          totalTimeSeconds: participant.total_time_seconds,
+          matchId: match.id,
+        })
+      }
+    }
+  }
+  return [...bestByRegistration.values()].sort((a, b) => {
+    if (a.bestLapSeconds === null && b.bestLapSeconds === null) return 0
+    if (a.bestLapSeconds === null) return 1
+    if (b.bestLapSeconds === null) return -1
+    return a.bestLapSeconds - b.bestLapSeconds
+  })
+}

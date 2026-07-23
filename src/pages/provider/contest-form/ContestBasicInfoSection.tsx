@@ -110,7 +110,9 @@ export function ContestBasicInfoSection({
             <option value="">Chọn hình thức thi đấu</option>
             {contestFormats?.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name}
+                {item.code === "QUALIFYING_FINAL"
+                  ? "Vòng loại + Chung kết (Grand Prix)"
+                  : item.name}
               </option>
             ))}
           </select>

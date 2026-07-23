@@ -126,6 +126,7 @@ export function useContestForm() {
           (contest.vehicle_rule
             ?.assignment_policy as ContestFormState["assignment_policy"]) ??
           "AT_CHECK_IN",
+        finalists: String(contest.config?.finalists ?? 4),
       })
       setExtraConfig(stripManagedContestConfig(contest.config))
 
@@ -281,6 +282,10 @@ export function useContestForm() {
       string,
       unknown
     >
+    const finalists = Math.min(
+      16,
+      Math.max(2, Number.parseInt(form.finalists, 10) || 4),
+    )
     const derivedConfig = {
       ...templateDefaults,
       ...extraConfig,
@@ -294,6 +299,7 @@ export function useContestForm() {
         runtimeFormat === "KNOCKOUT"
           ? Number(templateDefaults.drivers_per_match ?? 2)
           : Number(templateDefaults.drivers_per_match ?? 1),
+      ...(runtimeFormat === "QUALIFYING_FINAL" ? { finalists } : {}),
       resource_locks: derivedLocks,
     }
 

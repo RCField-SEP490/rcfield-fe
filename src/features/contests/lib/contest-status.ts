@@ -92,6 +92,19 @@ export function getContestCtaLabel(
   return "Xem chi tiết"
 }
 
+export function getContestFormatLabel(format?: string | null): string {
+  switch (format) {
+    case "TIME_TRIAL":
+      return "Đua tính giờ"
+    case "KNOCKOUT":
+      return "Đấu loại trực tiếp"
+    case "QUALIFYING_FINAL":
+      return "Vòng loại + Chung kết (Grand Prix)"
+    default:
+      return format || "--"
+  }
+}
+
 export function getContestStatusClass(status: ContestItem["status"]) {
   switch (status) {
     case "OPEN":

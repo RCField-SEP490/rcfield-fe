@@ -76,6 +76,28 @@ export function ContestRulesSection({
           </select>
         </ContestFormField>
 
+        {selectedFormat?.code === "QUALIFYING_FINAL" ? (
+          <ContestFormField
+            label="Số VĐV vào chung kết (2-16)"
+            error={validationErrors["finalists"]}
+          >
+            <input
+              type="number"
+              min={2}
+              max={16}
+              className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+              value={form.finalists}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, finalists: e.target.value }))
+              }
+            />
+            <p className="mt-2 text-xs font-semibold text-[#747878]">
+              Sau vòng loại tính giờ, hệ thống xếp hạng theo lap tốt nhất và
+              sinh nhánh chung kết knockout cho số VĐV này.
+            </p>
+          </ContestFormField>
+        ) : null}
+
         <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
           <p className="text-sm font-bold text-[#1c1b1b]">
             Tóm tắt vận hành

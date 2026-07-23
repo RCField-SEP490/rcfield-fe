@@ -14,7 +14,7 @@ import {
   contestApi,
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
-import { groupMatchesByRound } from "@/features/contests/lib/contest-runtime"
+import { groupMatchesByRound, getContestRuntimeFormat } from "@/features/contests/lib/contest-runtime"
 import {
   getContestStatusLabel,
   getContestRegistrationAvailability,
@@ -315,6 +315,7 @@ export function PublicContestDetailPage() {
                     groupedMatches={groupedMatches}
                     existingRegistration={existingRegistration}
                     loading={matchesQuery.isLoading}
+                    format={getContestRuntimeFormat(contest)}
                   />
                 </TabsContent>
 

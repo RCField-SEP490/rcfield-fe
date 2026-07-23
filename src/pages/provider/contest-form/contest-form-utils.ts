@@ -14,10 +14,14 @@ export function getErrorMessage(error: unknown) {
   return maybe.response?.data?.message ?? "Vui lòng kiểm tra lại dữ liệu."
 }
 
+export type ContestRuntimeFormat = "TIME_TRIAL" | "KNOCKOUT" | "QUALIFYING_FINAL"
+
 export function getRuntimeFormatFromCode(
   code?: string | null,
-): "TIME_TRIAL" | "KNOCKOUT" {
-  return code === "TIME_TRIAL" ? "TIME_TRIAL" : "KNOCKOUT"
+): ContestRuntimeFormat {
+  if (code === "TIME_TRIAL") return "TIME_TRIAL"
+  if (code === "QUALIFYING_FINAL") return "QUALIFYING_FINAL"
+  return "KNOCKOUT"
 }
 
 export function stripManagedContestConfig(
@@ -27,6 +31,7 @@ export function stripManagedContestConfig(
   delete nextConfig.format
   delete nextConfig.runtime_format
   delete nextConfig.resource_locks
+  delete nextConfig.finalists
   return nextConfig
 }
 

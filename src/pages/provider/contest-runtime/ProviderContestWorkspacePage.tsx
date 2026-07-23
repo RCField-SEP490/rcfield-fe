@@ -6,9 +6,12 @@ import { routePaths } from "@/app/router/route-paths"
 import { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import {
   getErrorMessage,
+  getMatchPhase,
   getPublishedLeaderboard,
+  splitMatchesByPhase,
 } from "@/features/contests/lib/contest-runtime"
 import {
+  getContestFormatLabel,
   getContestStatusClass,
   getContestStatusLabel,
 } from "@/features/contests/lib/contest-status"
@@ -155,6 +158,16 @@ export function ProviderContestWorkspacePage({
       "KNOCKOUT",
   )
   const isKnockoutRuntime = runtimeFormat === "KNOCKOUT"
+  const isQualifyingFinalRuntime = runtimeFormat === "QUALIFYING_FINAL"
+  const { final: finalPhaseMatches } = useMemo(
+    () => splitMatchesByPhase(matches),
+    [matches],
+  )
+  const selectedMatchIsKnockout =
+    isKnockoutRuntime ||
+    (isQualifyingFinalRuntime &&
+      selectedMatch !== null &&
+      getMatchPhase(selectedMatch) === "FINAL")
   const hasStagedBracketChanges =
     Object.keys(stagedParticipantsByMatch).length > 0
 
@@ -353,7 +366,7 @@ export function ProviderContestWorkspacePage({
               variant="outline"
               className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
             >
-              Format: {contest.contest_format?.name ?? runtimeFormat}
+              Format: {getContestFormatLabel(runtimeFormat)}
             </Badge>
             <Badge
               variant="outline"
@@ -580,6 +593,28 @@ export function ProviderContestWorkspacePage({
                 onStageAdvance={stageParticipantAdvance}
               />
             </div>
+          ) : isQualifyingFinalRuntime ? (
+            <div className="space-y-4">
+              <ContestMatchBoard
+                contest={contest}
+                registrations={registrations}
+                matches={matches}
+                selectedMatchId={selectedMatchId}
+                onSelectMatch={setSelectedMatchId}
+                runtime={workspace.runtime}
+                showGenerate
+              />
+              <ContestKnockoutBracket
+                matches={finalPhaseMatches}
+                selectedMatchId={selectedMatchId}
+                onSelectMatch={setSelectedMatchId}
+                canUndo={stagedHistory.length > 0}
+                hasChanges={hasStagedBracketChanges}
+                onUndo={undoStagedBracket}
+                onCommit={commitStagedBracket}
+                onStageAdvance={stageParticipantAdvance}
+              />
+            </div>
           ) : (
             <ContestMatchBoard
               contest={contest}
@@ -594,7 +629,7 @@ export function ProviderContestWorkspacePage({
           <ContestMatchDetailPanel
             match={selectedMatch}
             runtime={workspace.runtime}
-            isKnockoutRuntime={isKnockoutRuntime}
+            isKnockoutRuntime={selectedMatchIsKnockout}
             hasPendingBracketChanges={hasStagedBracketChanges}
           />
         </div>

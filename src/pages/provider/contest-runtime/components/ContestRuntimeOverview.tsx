@@ -1,5 +1,6 @@
 import type { ContestItem, ContestMatch, ContestMetrics, ContestRegistration } from "@/features/contests/types"
-import { formatContestDateTime, getEligibleRuntimeRegistrations } from "@/features/contests/lib/contest-runtime"
+import { formatContestDateTime, getContestRuntimeFormat, getEligibleRuntimeRegistrations } from "@/features/contests/lib/contest-runtime"
+import { getContestFormatLabel } from "@/features/contests/lib/contest-status"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Badge } from "@/shared/ui/badge"
 
@@ -15,6 +16,8 @@ export function ContestRuntimeOverview({
   metrics: ContestMetrics | undefined
 }) {
   const eligibleRegistrations = getEligibleRuntimeRegistrations(registrations)
+  const runtimeFormat = getContestRuntimeFormat(contest)
+  const finalists = contest.config?.finalists
 
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -22,8 +25,11 @@ export function ContestRuntimeOverview({
         <PanelTitle title="Contest summary" subtitle="Thông tin contest và các tham số vận hành đang áp dụng." />
         <div className="grid gap-4 md:grid-cols-2">
           <Info label="Loại giải" value={contest.contest_type?.name ?? "--"} />
-          <Info label="Hình thức thi đấu" value={contest.contest_format?.name ?? "--"} />
+          <Info label="Hình thức thi đấu" value={getContestFormatLabel(runtimeFormat || contest.contest_format?.code)} />
           <Info label="Mẫu vận hành" value={contest.contest_template?.name ?? "--"} />
+          {runtimeFormat === "QUALIFYING_FINAL" ? (
+            <Info label="Số VĐV vào chung kết" value={String(finalists ?? 4)} />
+          ) : null}
           <Info label="Chi nhánh tổ chức" value={contest.host_branch?.cafe?.name ?? "--"} />
           <Info label="Bắt đầu" value={formatContestDateTime(contest.starts_at)} />
           <Info label="Kết thúc" value={formatContestDateTime(contest.ends_at)} />
@@ -40,7 +46,7 @@ export function ContestRuntimeOverview({
           <div className="space-y-3 text-sm font-semibold text-[#5d5f5f]">
             <StatusRow label="Người chơi đã check-in" value={`${eligibleRegistrations.length}/${registrations.length}`} good={eligibleRegistrations.length > 0} />
             <StatusRow label="Nhánh đấu đã tạo" value={matches.length > 0 ? `${matches.length} lượt/trận` : "Chưa tạo"} good={matches.length > 0} />
-            <StatusRow label="Runtime thực tế" value={String(contest.config?.runtime_format ?? contest.config?.format ?? contest.contest_format?.code ?? "--")} good />
+            <StatusRow label="Runtime thực tế" value={getContestFormatLabel(runtimeFormat || contest.contest_format?.code)} good />
             <StatusRow label="Bảng xếp hạng" value={metrics?.leaderboard.published ? "Đã công bố" : "Chưa công bố"} good={Boolean(metrics?.leaderboard.published)} />
           </div>
         </Panel>

@@ -15,6 +15,7 @@ export type ContestFormState = {
   banner_image_url: string
   vehicle_policy: "RENTAL_ONLY" | "BYOC_ONLY" | "MIXED"
   assignment_policy: "AT_CHECK_IN" | "PRE_ASSIGNED"
+  finalists: string
 }
 
 export type ResourceLockScope = "FULL_BRANCH" | "SELECTED_TRACKS"
@@ -44,4 +45,5 @@ export const defaultForm: ContestFormState = {
   banner_image_url: "",
   vehicle_policy: "RENTAL_ONLY",
   assignment_policy: "AT_CHECK_IN",
+  finalists: "4",
 }
