@@ -141,6 +141,10 @@ export function PublicContestDetailPage() {
     mutationFn: async (registrationId: string) =>
       contestApi.createEntryFeePayment(registrationId),
   })
+  const bookingCheckoutMutation = useMutation({
+    mutationFn: async (bookingId: string) =>
+      bookingApi.createCheckout(bookingId),
+  })
 
   const contest = contestQuery.data
   const bookingOptions = myBookingsQuery.data?.data ?? []
@@ -204,6 +208,18 @@ export function PublicContestDetailPage() {
     try {
       const registration = await registerMutation.mutateAsync()
       toast.success("Đăng ký tham gia giải đấu thành công!")
+      // WF-B: registration can carry an inline rental booking that still needs
+      // payment — check it out first, entry fee is paid separately afterwards.
+      const linkedBooking = registration.booking
+      if (linkedBooking && linkedBooking.status === "PENDING") {
+        const checkout = await bookingCheckoutMutation.mutateAsync(
+          linkedBooking.id,
+        )
+        if (checkout.payment_url) {
+          window.location.assign(checkout.payment_url)
+          return
+        }
+      }
       if (
         (registration.entryFeeAmount ?? 0) > 0 &&
         registration.paymentStatus === "PENDING_PAYMENT"
@@ -371,7 +387,11 @@ export function PublicContestDetailPage() {
                   selectedVehicle={selectedVehicle}
                   bookingHelperMessage={bookingHelperMessage}
                   registrationClosed={registrationClosed}
-                  registerPending={registerMutation.isPending}
+                  registerPending={
+                    registerMutation.isPending ||
+                    entryFeePaymentMutation.isPending ||
+                    bookingCheckoutMutation.isPending
+                  }
                   onRegister={() => void handleRegister()}
                   rentalMode={rentalMode}
                   setRentalMode={setRentalMode}

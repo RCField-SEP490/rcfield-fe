@@ -1,4 +1,5 @@
-import { Swords } from "lucide-react"
+import { KeyRound, Swords } from "lucide-react"
+import { Link } from "react-router"
 
 import { MatchStatusBadge } from "@/features/contests/components"
 import {
@@ -6,11 +7,17 @@ import {
   formatMatchLabel,
   getMatchParticipantName,
 } from "@/features/contests/lib/contest-runtime"
-import type { ContestMatch, ContestRegistration } from "@/features/contests/types"
+import type {
+  ContestMatch,
+  ContestRegistration,
+  ContestRegistrationBooking,
+} from "@/features/contests/types"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Card } from "@/shared/ui/card"
 import { EmptyState } from "@/shared/ui/empty-state"
 import { CardListSkeleton } from "@/shared/ui/loading-state"
+
+import { formatCurrency } from "../utils"
 
 export function MyRegistrationMatches({
   registration,
@@ -30,6 +37,10 @@ export function MyRegistrationMatches({
       <p className="mt-2 text-sm text-slate-500">
         Tập trung vào các trận bạn tham gia và đối thủ trực tiếp của bạn.
       </p>
+
+      {registration.booking ? (
+        <LinkedBookingCard booking={registration.booking} />
+      ) : null}
 
       <div className="mt-5 space-y-4">
         {loading ? (
@@ -112,6 +123,95 @@ export function MyRegistrationMatches({
       </div>
     </Card>
   )
+}
+
+function LinkedBookingCard({
+  booking,
+}: {
+  booking: ContestRegistrationBooking
+}) {
+  const statusMeta = getBookingStatusMeta(booking.status)
+
+  return (
+    <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <KeyRound className="size-4 text-orange-500" />
+          <p className="text-sm font-extrabold text-slate-900">
+            Booking thuê xe kèm theo
+          </p>
+        </div>
+        <span
+          className={`rounded-full border px-2.5 py-0.5 text-[11px] font-black ${statusMeta.className}`}
+        >
+          {statusMeta.label}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+        <p>
+          Tổng tiền:{" "}
+          <span className="font-bold text-slate-900">
+            {formatCurrency(booking.totalAmount)}
+          </span>
+        </p>
+        {booking.status === "PENDING" && booking.paymentExpiresAt ? (
+          <p>
+            Hạn thanh toán:{" "}
+            <span className="font-bold text-amber-700">
+              {formatContestDateTime(booking.paymentExpiresAt)}
+            </span>
+          </p>
+        ) : null}
+      </div>
+      {booking.status === "PENDING" ? (
+        <p className="mt-2 text-xs text-amber-700">
+          Booking đang chờ thanh toán — vui lòng hoàn tất trước hạn để giữ chỗ
+          thi đấu.
+        </p>
+      ) : null}
+      <Link
+        to={`/customer/bookings/${booking.id}`}
+        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange-600 transition hover:text-orange-700"
+      >
+        Xem chi tiết booking →
+      </Link>
+    </div>
+  )
+}
+
+function getBookingStatusMeta(status: string) {
+  switch (status) {
+    case "PENDING":
+      return {
+        label: "Chờ thanh toán",
+        className: "border-amber-200 bg-amber-50 text-amber-800",
+      }
+    case "CONFIRMED":
+      return {
+        label: "Đã xác nhận",
+        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      }
+    case "COMPLETED":
+      return {
+        label: "Hoàn thành",
+        className: "border-slate-200 bg-slate-100 text-slate-700",
+      }
+    case "CANCELLED":
+      return {
+        label: "Đã hủy",
+        className: "border-red-200 bg-red-50 text-red-700",
+      }
+    case "NO_SHOW":
+      return {
+        label: "Vắng mặt",
+        className: "border-red-200 bg-red-50 text-red-700",
+      }
+    default:
+      return {
+        label: status,
+        className: "border-slate-200 bg-slate-100 text-slate-700",
+      }
+  }
 }
 
 function BracketCard({
