@@ -154,10 +154,19 @@ function mapContestRegistration(raw: any): ContestRegistration {
       : null,
     customerJourneyStatus:
       raw.customer_journey_status ?? raw.customerJourneyStatus ?? null,
+    booking: raw.booking
+      ? {
+          id: raw.booking.id,
+          status: raw.booking.status,
+          paymentExpiresAt:
+            raw.booking.payment_expires_at ?? raw.booking.paymentExpiresAt ?? null,
+          totalAmount: raw.booking.total_amount ?? raw.booking.totalAmount ?? 0,
+        }
+      : null,
   }
 }
 
-function mapContestMatch(raw: any): ContestMatch {
+export function mapContestMatch(raw: any): ContestMatch {
   return {
     ...raw,
     participants: (raw.participants ?? []).map((participant: any) => ({

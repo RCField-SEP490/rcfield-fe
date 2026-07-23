@@ -292,6 +292,14 @@ export type ContestRegistration = {
   contest?: ContestItem | null
   latestMatch: ContestRegistrationLatestMatch | null
   customerJourneyStatus: CustomerJourneyStatus | null
+  booking?: ContestRegistrationBooking | null
+}
+
+export type ContestRegistrationBooking = {
+  id: string
+  status: string
+  paymentExpiresAt: string | null
+  totalAmount: number
 }
 
 export type ContestEntryPaymentResponse = {
@@ -608,3 +616,47 @@ export type ContestAvailableRentalCatalogGroup = {
   available_units: ContestAvailableRentalVehicleUnit[]}
 
 export type ContestAvailableRentalVehiclesResponse = ContestAvailableRentalCatalogGroup[]
+
+export type ContestRentalBookingCreateBody = {
+  contest_id: string
+  cafe_id: string
+  slot_start: string
+  slot_end: string
+  track_config_id?: string | null
+  vehicle_catalog_id?: string | null
+}
+
+export type ContestRentalBookingResult = {
+  bookingId: string
+  vehicleId: string | null
+  contestId: string
+  status: string
+  paymentExpiresAt: string | null
+  totalAmount: number
+  breakdown: Record<string, unknown>
+}
+
+export type ContestBookingCustomer = {
+  id: string
+  fullName: string | null
+  email: string | null
+  avatarUrl: string | null
+  phone: string | null
+}
+
+export type ContestBookingRegistrationSummary = {
+  id: string
+  status: ContestRegistrationStatus
+  vehicleSource: string | null
+  checkInCode: string | null
+}
+
+export type ContestBookingItem = {
+  id: string
+  status: string
+  source: string
+  slotStart: string
+  slotEnd: string
+  customer: ContestBookingCustomer | null
+  registration: ContestBookingRegistrationSummary | null
+}
