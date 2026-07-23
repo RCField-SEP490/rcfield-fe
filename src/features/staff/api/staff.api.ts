@@ -91,7 +91,8 @@ export interface TodayBookingItem {
   trackType: string
   bookingMode: "SINGLE" | "PACKAGE" | "SUBSCRIPTION"
   playMode: "RENTAL" | "BYOC" | "MIXED"
-  source: "APP" | "STAFF_MANUAL"
+  source: "APP" | "STAFF_MANUAL" | "CONTEST"
+  contestId?: string | null
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "AWAITING_PAYMENT" | "COMPLETED"
   slotStart: string
   slotEnd: string
@@ -123,6 +124,18 @@ export interface TodayBookingItem {
   participantCount?: number
   vehicleCount?: number
 }
+
+export interface ContestCheckinInfo {
+  registrationId: string | null
+  synced: boolean
+  previousStatus: string | null
+}
+
+export type StaffCheckInResponse = {
+  id?: string
+  sessionId?: string
+  contest_checkin?: ContestCheckinInfo | null
+} & Record<string, any>
 
 export interface FnbOrderItemDetail {
   name: string
@@ -282,8 +295,8 @@ export const staffApi = {
     return res.data.data
   },
 
-  checkIn: async (bookingId: string): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/check-in`)
+  checkIn: async (bookingId: string): Promise<StaffCheckInResponse> => {
+    const res = await api.post<{ success: boolean; data: StaffCheckInResponse }>(`/v1/staff/bookings/${bookingId}/check-in`)
     return res.data.data
   },
 

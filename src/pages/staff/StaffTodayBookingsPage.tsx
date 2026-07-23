@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Trophy,
 } from "lucide-react"
 import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
@@ -199,6 +200,10 @@ function getSlotEnd(booking: any): string {
 
 function getPlayMode(booking: any): string {
   return booking.mode ?? booking.playMode
+}
+
+function isContestBooking(booking: any): boolean {
+  return booking.source === "CONTEST" || Boolean(booking.contestId)
 }
 
 function getTrackLabel(booking: any): string | null {
@@ -1109,6 +1114,12 @@ export default function StaffTodayBookingsPage() {
                         <StaffBadge variant={badgeVariant}>
                           {displayLabel}
                         </StaffBadge>
+                        {isContestBooking(b) && (
+                          <span className="flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[10px] font-bold text-violet-700">
+                            <Trophy className="size-3" />
+                            Contest
+                          </span>
+                        )}
                         {remainingMinutes !== null && remainingMinutes > 0 && (
                           <span
                             className={cn(

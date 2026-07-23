@@ -411,6 +411,14 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     try {
       const data = await staffApi.checkIn(bookingId)
       toast.success(`Đã khởi tạo quy trình Check-In cho session ${data.id || data.sessionId}. Cần làm kiểm xe.`)
+      const contestCheckin = data.contest_checkin
+      if (contestCheckin?.synced === true) {
+        toast.success("Đã đồng bộ check-in giải đấu")
+      } else if (contestCheckin && contestCheckin.previousStatus != null) {
+        toast.warning(
+          "Booking thuộc giải đấu nhưng đăng ký chưa ở trạng thái xác nhận",
+        )
+      }
       await fetchData()
       return data
     } catch (err: any) {

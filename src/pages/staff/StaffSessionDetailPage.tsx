@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react"
-import { useParams, useNavigate } from "react-router"
+import { useParams, useNavigate, Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
   Clock,
@@ -16,7 +16,9 @@ import {
   CheckCircle2,
   ShieldCheck,
   Package,
+  Trophy,
 } from "lucide-react"
+import { routePaths } from "@/app/router/route-paths"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { staffApi } from "@/features/staff/api/staff.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
@@ -141,6 +143,17 @@ export default function StaffSessionDetailPage() {
 
   const isWalkInBooking = booking?.source === "STAFF_MANUAL"
   const canDirectExtend = isWalkInBooking
+
+  // Contest linkage — booking source CONTEST (WF-A/WF-B), contestId exposed by staff API
+  const contestId =
+    (contextBooking as { contestId?: string | null } | null)?.contestId ??
+    (apiData as { contestId?: string | null } | undefined)?.contestId ??
+    null
+  const isContestBooking =
+    booking?.source === "CONTEST" ||
+    (apiData as { bookingSource?: string } | undefined)?.bookingSource ===
+      "CONTEST" ||
+    Boolean(contestId)
 
   // Local state controls
   const [timeLeft, setTimeLeft] = useState("")
@@ -453,6 +466,24 @@ export default function StaffSessionDetailPage() {
               {session.status === "CHECKING_OUT" && "ĐANG TRẢ XE"}
               {session.status === "COMPLETED" && "ĐÃ ĐÓNG"}
             </StaffBadge>
+            {isContestBooking &&
+              (contestId ? (
+                <Link
+                  to={routePaths.staffContestCheckIn.replace(
+                    ":contestId",
+                    contestId,
+                  )}
+                  className="flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[10px] font-bold text-violet-700 transition-colors hover:bg-violet-100"
+                >
+                  <Trophy className="size-3" />
+                  Giải đấu
+                </Link>
+              ) : (
+                <span className="flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[10px] font-bold text-violet-700">
+                  <Trophy className="size-3" />
+                  Giải đấu
+                </span>
+              ))}
             <div>
               <h3 className="text-xl font-black text-[#1c1b1b] tracking-tight leading-tight">{booking.trackName}</h3>
               <p className="text-[11px] text-[#6b7280] font-semibold">{booking.trackType} · {booking.shortCode}</p>
