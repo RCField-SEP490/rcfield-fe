@@ -313,11 +313,7 @@ export default function StaffInspectionPage() {
 
       if (!submitted) return
 
-      if (type === "CHECK_OUT") {
-        navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
-      } else {
-        navigate(`/staff/sessions/${session.sessionId}`)
-      }
+      navigate(`/staff/sessions/${session.sessionId}`)
     } finally {
       setIsSubmitting(false)
     }
