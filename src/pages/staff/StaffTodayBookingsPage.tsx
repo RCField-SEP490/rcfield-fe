@@ -36,6 +36,7 @@ import { cn, getCatalogImageUrl } from "@/shared/lib/utils"
 import { VehicleImage } from "@/shared/ui/vehicle-image"
 import { routePaths } from "@/app/router/route-paths"
 import { isCheckInDeadlineExpired } from "@/features/booking/lib/check-in-window"
+import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
 import { toast } from "sonner"
 import {
   StaffHeader,
@@ -153,19 +154,29 @@ type WalkInFieldErrors = Partial<
 
 function getSlotCountdown(
   startTime: string,
+  now = Date.now(),
 ): { label: string; urgent: boolean } | null {
-  const diffMs = new Date(startTime).getTime() - Date.now()
+  const startAt = new Date(startTime).getTime()
+  if (!Number.isFinite(startAt)) return null
+
+  const diffMs = startAt - now
   if (diffMs <= 0) return null // already started or past
 
-  const totalMinutes = Math.floor(diffMs / 60000)
+  const totalMinutes = Math.ceil(diffMs / 60000)
   if (totalMinutes >= 24 * 60) return null // more than 24h away, skip
 
   if (totalMinutes < 60) {
-    return { label: `còn ${totalMinutes} phút`, urgent: totalMinutes <= 30 }
+    return {
+      label: `Bắt đầu sau ${totalMinutes} phút`,
+      urgent: totalMinutes <= 30,
+    }
   }
   const hours = Math.floor(totalMinutes / 60)
   const mins = totalMinutes % 60
-  const label = mins > 0 ? `còn ${hours}g ${mins}p` : `còn ${hours} tiếng`
+  const label =
+    mins > 0
+      ? `Bắt đầu sau ${hours} giờ ${mins} phút`
+      : `Bắt đầu sau ${hours} giờ`
   return { label, urgent: false }
 }
 
@@ -221,6 +232,17 @@ function getFnbOnsiteAmount(booking: any): number {
   return Number(booking.fnbOnsiteFee ?? 0)
 }
 
+function getBookingStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    PENDING: "Chờ thanh toán",
+    CONFIRMED: "Đã xác nhận",
+    NO_SHOW: "Không đến",
+    COMPLETED: "Hoàn thành",
+    CANCELLED: "Đã hủy",
+  }
+  return labels[status] ?? "Không xác định"
+}
+
 function VehicleThumbnail({ unit }: { unit: VehicleUnit }) {
   const imageUrl = unit.distinctive_image_url ?? getCatalogImageUrl(unit.catalog)
 
@@ -242,7 +264,13 @@ export default function StaffTodayBookingsPage() {
   const navigate = useNavigate()
   const { assignedCafeId, createWalkInBooking, startCheckIn } =
     useStaffOperations()
-  const [nowTime] = useState(() => Date.now())
+  const [nowTime, setNowTime] = useState(() => Date.now())
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNowTime(Date.now()), 30_000)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
 
   // Primary navigation tab
   const [activeTab, setActiveTab] = useState<TabType>("LIST")
@@ -632,7 +660,7 @@ export default function StaffTodayBookingsPage() {
 
   const handleStartCheckIn = async (booking: CustomerBookingDetail | any) => {
     if (isCheckInDeadlineExpired(getSlotStart(booking))) {
-      toast.error("Đơn đã quá thời hạn check-in 30 phút kể từ giờ bắt đầu")
+      toast.error("Đơn đã quá thời hạn nhận xe 30 phút kể từ giờ bắt đầu")
       return
     }
 
@@ -839,7 +867,7 @@ export default function StaffTodayBookingsPage() {
             >
               <span className="flex items-center gap-2">
                 <QrCode className="size-4 text-[#ea580c]" />
-                Quét mã QR check-in
+                Quét mã QR nhận xe
               </span>
               {showQrPanel ? (
                 <ChevronUp className="size-4 text-[#a09e9d]" />
@@ -868,7 +896,7 @@ export default function StaffTodayBookingsPage() {
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Nhập booking ID thủ công..."
+                    placeholder="Nhập mã đơn đặt lịch..."
                     value={qrInputValue}
                     onChange={(e) => setQrInputValue(e.target.value)}
                     className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
@@ -898,12 +926,12 @@ export default function StaffTodayBookingsPage() {
                     {qrBookingLoading && (
                       <div className="flex items-center justify-center py-6 gap-2 text-sm text-[#6b7280]">
                         <Loader2 className="size-4 animate-spin" />
-                        Đang tải thông tin booking...
+                        Đang tải thông tin đơn đặt lịch...
                       </div>
                     )}
                     {qrBookingError && (
                       <div className="py-4 px-4 text-sm text-red-600 font-semibold">
-                        Không tìm thấy booking. Kiểm tra lại mã QR hoặc ID.
+                        Không tìm thấy đơn đặt lịch. Kiểm tra lại mã QR hoặc mã đơn.
                       </div>
                     )}
                     {qrBookingData && (
@@ -921,7 +949,7 @@ export default function StaffTodayBookingsPage() {
                                   : "neutral"
                             }
                           >
-                            {qrBookingData.status}
+                            {getBookingStatusLabel(qrBookingData.status)}
                           </StaffBadge>
                         </div>
                         <div className="text-xs space-y-1 text-[#4c4a49] font-semibold">
@@ -954,27 +982,27 @@ export default function StaffTodayBookingsPage() {
                         {qrBookingData.status === "CONFIRMED" &&
                           isCheckInDeadlineExpired(qrBookingData.slotStart) && (
                             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
-                              Đơn đã quá thời hạn check-in 30 phút kể từ giờ bắt đầu.
+                              Đơn đã quá thời hạn nhận xe 30 phút kể từ giờ bắt đầu.
                             </div>
                           )}
                         {qrBookingData.status !== "CONFIRMED" && (
                           <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
                             {qrBookingData.status === "COMPLETED"
-                              ? "Booking này đã hoàn thành."
+                              ? "Đơn đặt lịch này đã hoàn thành."
                               : qrBookingData.status === "CANCELLED"
-                                ? "Booking này đã bị hủy."
+                                ? "Đơn đặt lịch này đã bị hủy."
                                 : qrBookingData.status === "NO_SHOW"
-                                  ? "Booking này đã quá hạn (No Show)."
+                                  ? "Đơn đặt lịch này đã quá hạn nhận xe."
                                   : qrBookingData.status === "PENDING"
-                                    ? "Booking chưa thanh toán, không thể check-in."
-                                    : "Không thể check-in với trạng thái hiện tại."}
+                                    ? "Đơn đặt lịch chưa thanh toán, không thể nhận xe."
+                                    : "Không thể nhận xe với trạng thái hiện tại."}
                           </div>
                         )}
                         {qrBookingData.status === "CONFIRMED" &&
                           !isCheckInDeadlineExpired(qrBookingData.slotStart) &&
                           qrBookingData.session && (
                             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
-                              Đã check-in lúc{" "}
+                              Đã nhận xe lúc{" "}
                               {qrBookingData.session.actualStartAt
                                 ? new Date(
                                     qrBookingData.session.actualStartAt,
@@ -991,7 +1019,7 @@ export default function StaffTodayBookingsPage() {
                               variant="primary"
                               className="w-full"
                             >
-                              Xác nhận check-in
+                              Xác nhận nhận xe
                               <ArrowRight className="size-3.5" />
                             </StaffButton>
                           )}
@@ -1047,10 +1075,10 @@ export default function StaffTodayBookingsPage() {
                       )
                     : undefined
                 const sessionStatusLabel: Record<string, string> = {
-                  CHECKED_IN: "ĐANG CHECK-IN",
+                  CHECKED_IN: "ĐANG NHẬN XE",
                   ACTIVE: "ĐANG CHƠI",
                   EXTENDING: "GIA HẠN",
-                  CHECKING_OUT: "ĐANG CHECKOUT",
+                  CHECKING_OUT: "ĐANG TRẢ XE",
                 }
                 const hasPendingSettlement =
                   b.status === "COMPLETED" &&
@@ -1067,7 +1095,7 @@ export default function StaffTodayBookingsPage() {
                   CANCELLED: "ĐÃ HỦY",
                 }
                 const displayLabel = checkInWindowExpired
-                  ? "QUÁ GIỜ CHECK-IN"
+                  ? "QUÁ GIỜ NHẬN XE"
                   : activeSession
                   ? (sessionStatusLabel[activeSession.status] ??
                     activeSession.status)
@@ -1091,12 +1119,21 @@ export default function StaffTodayBookingsPage() {
                 const hasOnsiteFnb = fnbOnsiteAmount > 0
                 const countdown = activeSession
                   ? null
-                  : getSlotCountdown(slotStart)
-                const remainingMs = activeSession
-                  ? new Date(slotEnd).getTime() - nowTime
+                  : getSlotCountdown(slotStart, nowTime)
+                const operationalTiming = activeSession
+                  ? getSessionOperationalTiming(
+                      activeSession.plannedEnd ?? slotEnd,
+                      activeSession.status,
+                      nowTime,
+                    )
                   : null
-                const remainingMinutes =
-                  remainingMs !== null ? Math.ceil(remainingMs / 60000) : null
+                const sessionActionLabel =
+                  activeSession?.status === "CHECKING_OUT"
+                    ? "Tiếp tục trả xe"
+                    : operationalTiming?.state === "DUE_FOR_CHECKOUT" ||
+                        operationalTiming?.state === "OVERDUE"
+                      ? "Xử lý trả xe"
+                      : "Mở phiên"
 
                 return (
                   <StaffCard key={bookingId} className="space-y-3">
@@ -1109,23 +1146,29 @@ export default function StaffTodayBookingsPage() {
                         <StaffBadge variant={badgeVariant}>
                           {displayLabel}
                         </StaffBadge>
-                        {remainingMinutes !== null && remainingMinutes > 0 && (
+                        {operationalTiming?.state === "ON_TIME" && (
                           <span
                             className={cn(
                               "rounded-full px-2.5 py-0.5 text-[10px] font-bold border",
-                              remainingMinutes <= 10
+                              operationalTiming.minutesUntilPlannedEnd <= 10
                                 ? "bg-red-50 text-red-600 border-red-200"
-                                : remainingMinutes <= 20
+                                : operationalTiming.minutesUntilPlannedEnd <= 20
                                   ? "bg-amber-50 text-amber-700 border-amber-200"
                                   : "bg-emerald-50 text-emerald-700 border-emerald-200",
                             )}
                           >
-                            còn {remainingMinutes} phút
+                            Kết thúc sau {operationalTiming.minutesUntilPlannedEnd} phút
                           </span>
                         )}
-                        {remainingMinutes !== null && remainingMinutes <= 0 && (
+                        {operationalTiming?.state === "DUE_FOR_CHECKOUT" && (
+                          <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold border bg-amber-50 text-amber-800 border-amber-300">
+                            Đến giờ trả xe
+                          </span>
+                        )}
+                        {operationalTiming?.state === "OVERDUE" && (
                           <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold border bg-red-100 text-red-700 border-red-300">
-                            hết giờ
+                            Quá giờ {operationalTiming.minutesPastPlannedEnd} phút
+                            {operationalTiming.shouldAlert ? " · Cần xử lý" : ""}
                           </span>
                         )}
                       </div>
@@ -1172,6 +1215,8 @@ export default function StaffTodayBookingsPage() {
                         </span>
                         {countdown && (
                           <span
+                            title="Thời gian còn lại trước giờ bắt đầu lượt đặt"
+                            aria-live="polite"
                             className={cn(
                               "rounded-full px-2 py-0.5 text-[10px] font-bold",
                               countdown.urgent
@@ -1210,19 +1255,19 @@ export default function StaffTodayBookingsPage() {
                       {hasFnb && (
                         <span className="flex items-center gap-1 rounded-md bg-orange-50 border border-orange-200 px-2 py-1 text-[11px] font-bold text-orange-700">
                           <UtensilsCrossed className="size-3" />
-                          F&B đặt trước · {formatCurrency(fnbAmount)}
+                          Đồ ăn & thức uống đặt trước · {formatCurrency(fnbAmount)}
                         </span>
                       )}
                       {hasOnsiteFnb && (
                         <span className="flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-bold text-amber-700">
                           <UtensilsCrossed className="size-3" />
-                          F&B gọi tại ca · {formatCurrency(fnbOnsiteAmount)}
+                          Đồ ăn & thức uống gọi tại ca · {formatCurrency(fnbOnsiteAmount)}
                         </span>
                       )}
                       <div className="ml-auto">
                         {checkInWindowExpired ? (
                           <StaffButton disabled variant="outline" size="sm">
-                            Quá giờ check-in
+                            Quá giờ nhận xe
                           </StaffButton>
                         ) : activeSession ? (
                           <StaffButton
@@ -1234,7 +1279,7 @@ export default function StaffTodayBookingsPage() {
                             variant="outline"
                             size="sm"
                           >
-                            Mở phiên
+                            {sessionActionLabel}
                             <ArrowRight className="size-3.5" />
                           </StaffButton>
                         ) : b.status === "CONFIRMED" ? (
@@ -1243,7 +1288,7 @@ export default function StaffTodayBookingsPage() {
                             variant="primary"
                             size="sm"
                           >
-                            Check-In bàn giao
+                            Nhận xe & bàn giao
                             <ArrowRight className="size-3.5" />
                           </StaffButton>
                         ) : completedSession ? (

@@ -41,8 +41,8 @@ const staffNavGroups: NavGroup[] = [
     items: [
       { label: "Tổng quan", icon: LayoutDashboard, path: routePaths.staffDashboard },
       { label: "Đặt lịch ngày", icon: CalendarDays, path: routePaths.staffTodayBookings },
-      { label: "Contest check-in", icon: Flag, path: routePaths.staffContests },
-      { label: "Gọi món F&B", icon: Coffee, path: routePaths.staffFnbOrders },
+      { label: "Danh sách contest", icon: Flag, path: routePaths.staffContests },
+      { label: "Gọi món", icon: Coffee, path: routePaths.staffFnbOrders },
       { label: "Đăng ký xe tự mang", icon: ShieldCheck, path: routePaths.staffByoc },
       { label: "Tra cứu gói chơi", icon: Search, path: routePaths.staffPackages },
     ],
@@ -145,40 +145,6 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
     navigate(routePaths.login, { replace: true })
   }
 
-  const renderContestSubMenu = (isMobile: boolean) => {
-    const contestId = location.pathname.startsWith("/staff/contests/") ? location.pathname.split("/")[3] ?? "" : ""
-    const links = [
-      { label: "Danh sách contest", path: routePaths.staffContests },
-      ...(contestId ? [
-        { label: "Check-in", path: routePaths.staffContestCheckIn.replace(":contestId", contestId) },
-        { label: "Match runtime", path: routePaths.staffContestRuntime.replace(":contestId", contestId) },
-      ] : []),
-    ]
-
-    return (
-      <div className="mt-1.5 ml-6 space-y-1 border-l border-[#e5e2e1] pl-3">
-        {links.map((link) => {
-          const active = location.pathname === link.path
-          return (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={() => {
-                if (isMobile) setMobileMenuOpen(false)
-              }}
-              className={cn(
-                "flex rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
-                active ? "bg-orange-100/50 text-orange-700" : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700",
-              )}
-            >
-              {link.label}
-            </Link>
-          )
-        })}
-      </div>
-    )
-  }
-
   const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!scanCode.trim()) return
@@ -193,7 +159,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
     }
 
     if (matchedBooking.status !== "CONFIRMED") {
-      toast.error(`Đơn đặt lịch ${matchedBooking.shortCode} đang có trạng thái "${matchedBooking.status}", không thể check-in!`)
+      toast.error(`Đơn đặt lịch ${matchedBooking.shortCode} chưa ở trạng thái có thể nhận xe.`)
       return
     }
 
@@ -302,7 +268,6 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                     </Link>
                   )
                 })}
-                {group.items.some((item) => item.path === routePaths.staffContests) ? renderContestSubMenu(false) : null}
               </div> : null}
             </div>
           ))}
@@ -402,7 +367,6 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                         </Link>
                       )
                     })}
-                    {group.items.some((item) => item.path === routePaths.staffContests) ? renderContestSubMenu(true) : null}
                   </div> : null}
                 </div>
               ))}
@@ -509,7 +473,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2 text-orange-600">
                 <QrCode className="size-5" />
-                <h3 className="font-bold text-[#1c1b1b]">Quét mã QR check-in</h3>
+                <h3 className="font-bold text-[#1c1b1b]">Quét mã QR nhận xe</h3>
               </div>
               <button
                 onClick={() => setScannerOpen(false)}
@@ -522,7 +486,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
             <form onSubmit={handleScanSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-[#747878] mb-1">
-                  Nhập mã đặt lịch (Shortcode hoặc Booking ID)
+                  Nhập mã đơn đặt lịch
                 </label>
                 <input
                   type="text"
@@ -538,7 +502,7 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                 <AlertTriangle className="size-5 shrink-0 text-yellow-600" />
                 <div>
                   <span className="font-semibold block mb-0.5">Lưu ý vận hành:</span>
-                  Nhập shortcode hoặc mã đặt lịch của khách trong ngày. Sau khi check-in, hệ thống sẽ mở phiên để staff lập biên bản bàn giao xe.
+                  Nhập mã đơn đặt lịch của khách trong ngày. Sau khi nhận xe, hệ thống sẽ mở phiên để nhân viên lập biên bản bàn giao xe.
                 </div>
               </div>
 
