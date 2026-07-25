@@ -6,7 +6,7 @@ const ALL_STEP_DEFS: Array<{ id: CheckoutStep; label: string; icon: typeof Calen
   { id: "track", label: "Chọn sân", icon: Layers },
   { id: "schedule", label: "Lịch chơi", icon: CalendarClock },
   { id: "participants", label: "Người & xe", icon: Users },
-  { id: "fnb", label: "F&B", icon: ShoppingBag },
+  { id: "fnb", label: "Đồ ăn & Thức uống", icon: ShoppingBag },
   { id: "payment", label: "Thanh toán", icon: CreditCard },
 ]
 
@@ -46,10 +46,16 @@ export function CheckoutStepper({
                 >
                   {isDone ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                 </div>
-                <div className="text-center w-20">
+                <div
+                  className={cn(
+                    "text-center w-20",
+                    step.id === "fnb" && "w-28",
+                  )}
+                >
                   <p
                     className={cn(
                       "text-xs font-semibold leading-tight",
+                      step.id === "fnb" && "whitespace-nowrap text-[11px]",
                       isActive && "text-slate-900",
                       isDone && "text-orange-600",
                       !isDone && !isActive && "text-slate-400",

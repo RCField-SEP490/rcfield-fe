@@ -59,7 +59,7 @@ const rotatingTaglines = [
   },
   {
     title: "Quản Trị Doanh Thu",
-    desc: "Tự động phân tách phí dịch vụ, thuê xe và F&B qua hệ thống Ledger chi tiết.",
+    desc: "Tự động phân tách phí dịch vụ, thuê xe và đồ ăn thức uống qua hệ thống sổ cái chi tiết.",
     icon: Zap,
     color: "from-indigo-500 to-blue-500"
   }

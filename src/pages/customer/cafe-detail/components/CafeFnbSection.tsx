@@ -1,5 +1,5 @@
 import { Coffee, Plus, Minus } from "lucide-react"
-import type { MenuItem } from "@/features/menu/types"
+import { FNB_CATEGORY_LABEL, type MenuItem } from "@/features/menu/types"
 import { formatCurrency } from "@/shared/lib/format"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -43,11 +43,11 @@ export function CafeFnbSection({ menuItems, isLoading = false, isError = false, 
         <div>
           <h2 className="text-lg font-bold text-slate-950">Đặt trước đồ ăn & thức uống</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Chọn trước nước uống và thức ăn để được phục vụ ngay khi check-in tại sân.
+            Chọn trước nước uống và thức ăn để được phục vụ ngay khi đến sân.
           </p>
         </div>
         <Badge variant="outline" className="hidden rounded-full px-3 py-1 text-xs sm:inline-flex border-orange-200 text-orange-600 bg-orange-50/20 font-medium">
-          PRE_ORDER
+          Đặt trước
         </Badge>
       </div>
 
@@ -70,7 +70,7 @@ export function CafeFnbSection({ menuItems, isLoading = false, isError = false, 
         {menuItems.map((item) => {
           const quantity = fnbQuantities[item.id] ?? 0
           const hasSelected = quantity > 0
-          const categoryLabel = item.category ?? "Menu"
+          const categoryLabel = FNB_CATEGORY_LABEL[item.category ?? ""] ?? "Khác"
 
           return (
             <Card 

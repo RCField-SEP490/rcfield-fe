@@ -16,7 +16,6 @@ type CheckoutSummaryCardProps = {
   date: string
   time: string
   selectedVehicles?: Vehicle[]
-  fnbTotal: number
   components: PaymentComponentLine[]
   currentStep: CheckoutStep
   onNext: () => void
@@ -38,7 +37,6 @@ export function CheckoutSummaryCard({
   date,
   time,
   selectedVehicles,
-  fnbTotal,
   components,
   currentStep,
   onNext,
@@ -107,7 +105,6 @@ export function CheckoutSummaryCard({
                 : `${selectedVehicles.length} xe`
             }
           />
-          {fnbTotal > 0 && <Line label="Đặt trước F&B" value={formatCurrency(fnbTotal)} />}
         </div>
 
         <Separator />

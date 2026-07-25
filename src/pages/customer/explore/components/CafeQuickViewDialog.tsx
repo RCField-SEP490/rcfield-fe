@@ -9,7 +9,11 @@ import {
   Users,
   X,
 } from "lucide-react"
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  cafeApi,
+  cafeQueryKeys,
+  CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
+} from "@/features/cafes/api/cafe.api"
 import {
   mapCafeToExploreCafe,
   mapCatalogToExploreVehicle,
@@ -26,6 +30,7 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog"
 import { VehicleMiniList } from "./VehicleMiniList"
+import { useCafeConfigurationRefresh } from "@/features/cafes/hooks/useCafeConfigurationRefresh"
 
 export function CafeQuickViewDialog({
   cafe,
@@ -36,11 +41,18 @@ export function CafeQuickViewDialog({
   onClose: () => void
   onBookNow: (cafeId: string, vehicleId?: string) => void
 }) {
-  const { data: cafeDetail, isFetching: loadingDetail } = useQuery({
+  const {
+    data: cafeDetail,
+    isFetching: loadingDetail,
+    refetch: refetchCafe,
+  } = useQuery({
     queryKey: cafeQueryKeys.detail(cafe?.id),
     queryFn: () => cafeApi.getCafe(cafe!.id),
     enabled: !!cafe?.id,
+    refetchInterval: CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   })
+  useCafeConfigurationRefresh(cafe?.id, refetchCafe)
   const { data: cafeImages = [] } = useQuery({
     queryKey: cafeQueryKeys.images(cafe?.id),
     queryFn: () => cafeApi.listCafeImages(cafe!.id),

@@ -23,7 +23,7 @@ export const PRICE_RANGE_OPTIONS: FilterOption[] = [
 export const FEATURE_OPTIONS: FilterOption[] = [
   { value: "all", label: "Tất cả tiện ích" },
   { value: "Serious Inspection", label: "Kiểm xe Serious Inspection" },
-  { value: "Đồ ăn & Nước uống", label: "Dịch vụ F&B ăn uống" },
+  { value: "Đồ ăn & Nước uống", label: "Dịch vụ đồ ăn & thức uống" },
   { value: "Hệ thống Đèn đêm", label: "Đèn chiếu sáng đêm" },
   { value: "Pit Lane chuyên nghiệp", label: "Khu kỹ thuật Pit Stop" },
   { value: "Mát lạnh Điều hòa", label: "Mát lạnh Điều hòa trong nhà" },

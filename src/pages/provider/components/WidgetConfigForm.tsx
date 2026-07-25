@@ -19,7 +19,7 @@ const POSITION_OPTIONS: { value: WidgetPosition; label: string }[] = [
 const PROMPT_TEMPLATES: { label: string; description: string; prompt: string }[] = [
   {
     label: "Trợ lý toàn diện",
-    description: "Đặt lịch, giá cả, F&B, chính sách",
+    description: "Đặt lịch, giá cả, đồ ăn thức uống, chính sách",
     prompt: `Bạn là trợ lý AI chính thức của [tên chi nhánh] — chi nhánh thuộc hệ thống RCField, nền tảng đặt lịch sân xe RC tại Việt Nam.
 
 ## Vai trò
@@ -36,7 +36,7 @@ Hỗ trợ khách hàng tìm hiểu dịch vụ, kiểm tra lịch trống và g
 ✅ Kiểm tra lịch trống theo ngày/giờ khách yêu cầu.
 ✅ Hướng dẫn quy trình đặt lịch, thanh toán, hủy lịch.
 ✅ Chính sách hoàn tiền, bảo hiểm, quy định sân.
-✅ Tư vấn dịch vụ F&B có tại chi nhánh.
+✅ Tư vấn dịch vụ đồ ăn và thức uống có tại chi nhánh.
 ❌ Không xử lý thanh toán hay đặt lịch trực tiếp qua chat.
 ❌ Không trả lời các chủ đề ngoài dịch vụ của chi nhánh.
 

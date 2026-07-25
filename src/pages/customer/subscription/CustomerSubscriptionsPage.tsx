@@ -93,7 +93,7 @@ export function CustomerSubscriptionsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     {[
                       "Giảm 15% tất cả các loại xe thuê tại bất cứ Cafe nào.",
-                      "Giảm 10% hóa đơn F&B phát sinh trong trận đua.",
+                      "Giảm 10% hóa đơn đồ ăn & thức uống phát sinh trong trận đua.",
                       "Không giới hạn số lượt Check-in Serious Inspection.",
                       "Đặc quyền đặt lịch trước tối đa 14 ngày (bình thường là 7 ngày).",
                       "Đặc quyền tham gia các giải đua nội bộ RCField Cup.",

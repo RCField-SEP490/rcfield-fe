@@ -37,6 +37,7 @@ interface TrackSelectionStepProps {
   maxAdvanceBookingDays: number
   openHour: number
   closeHour: number
+  isClosedDate: boolean
   isScheduleConfigured: boolean
   playMode: PlayMode
   onPlayModeChange: (mode: PlayMode) => void
@@ -62,6 +63,7 @@ export function TrackSelectionStep({
   maxAdvanceBookingDays,
   openHour,
   closeHour,
+  isClosedDate,
   isScheduleConfigured,
   playMode,
   onPlayModeChange,
@@ -69,6 +71,13 @@ export function TrackSelectionStep({
   pricingLabel,
 }: TrackSelectionStepProps) {
   const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
+  const maxBookingDate = addCalendarDays(minBookingDate, maxAdvanceBookingDays)
+
+  const handleDateChange = (nextDate: string) => {
+    setDate(nextDate)
+    setSelectedSlot("")
+    setSelectedSlotEnd(null)
+  }
 
   if (isLoading) {
     return (
@@ -127,8 +136,25 @@ export function TrackSelectionStep({
       {/* Slot picker — shown after track is selected */}
       {selectedTrackConfig && !isScheduleConfigured && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ cho ngày
-          này. Vui lòng chọn ngày khác hoặc liên hệ cơ sở.
+          <p>
+            {isClosedDate
+              ? "Cơ sở nghỉ vào ngày đã chọn. Vui lòng chọn ngày khác."
+              : "Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ cho ngày này. Vui lòng chọn ngày khác hoặc liên hệ cơ sở."}
+          </p>
+          {isClosedDate && (
+            <label className="mt-3 flex items-center gap-2 text-xs font-semibold">
+              <CalendarDays className="size-4" />
+              <span>Chọn ngày khác</span>
+              <Input
+                type="date"
+                value={date}
+                min={minBookingDate}
+                max={maxBookingDate}
+                onChange={(event) => handleDateChange(event.target.value)}
+                className="h-8 w-auto bg-white text-xs"
+              />
+            </label>
+          )}
         </div>
       )}
 
@@ -281,8 +307,8 @@ function SlotPicker({
           value={date}
           min={minBookingDate}
           max={maxBookingDate}
-          onChange={(e) => {
-            setDate(e.target.value)
+          onChange={(event) => {
+            setDate(event.target.value)
             setSelectedSlot("")
             setSelectedSlotEnd(null)
           }}

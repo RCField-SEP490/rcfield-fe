@@ -513,7 +513,7 @@ function ProfileContent() {
           )}
           {role === "provider" && (
             <>
-              <SettingRow title="Lịch đặt mới" description="Thông báo khi khách hàng đặt lịch hoặc đặt món F&B tại các chi nhánh." toggle enabled />
+              <SettingRow title="Lịch đặt mới" description="Thông báo khi khách hàng đặt lịch hoặc gọi món tại các chi nhánh." toggle enabled />
               <SettingRow title="Thông báo thanh toán" description="Xác nhận thanh toán thành công và cảnh báo gia hạn gói dịch vụ." toggle enabled />
               <SettingRow title="Yêu cầu rút tiền" description="Cập nhật trạng thái xử lý khi bạn thực hiện rút doanh thu (payout)." toggle enabled />
             </>
