@@ -45,12 +45,12 @@ export function ContestRegistrationTable({
 
               <p className="mt-1 text-xs font-semibold text-[#747878]">
                 {getRegistrationSubtitle(registration) ??
-                  `Registration ${registration.id.slice(0, 8)}`}
+                  `Mã đăng ký ${registration.id.slice(0, 8)}`}
               </p>
 
               <div className="mt-3 grid gap-2 text-xs font-semibold text-[#5d5f5f] md:grid-cols-2 xl:grid-cols-4">
                 <MetaRow
-                  label="Mã check-in"
+                  label="Mã điểm danh"
                   value={registration.checkInCode ?? "--"}
                 />
                 <MetaRow
@@ -62,7 +62,7 @@ export function ContestRegistrationTable({
                   }
                 />
                 <MetaRow
-                  label="Check-in"
+                  label="Điểm danh"
                   value={formatContestDateTime(registration.checkedInAt)}
                 />
                 <MetaRow
@@ -70,7 +70,7 @@ export function ContestRegistrationTable({
                   value={
                     registration.latestMatch?.name ??
                     (registration.latestMatch
-                      ? `R${registration.latestMatch.roundNo} · M${registration.latestMatch.matchNo}`
+                      ? `Vòng ${registration.latestMatch.roundNo} · Lượt ${registration.latestMatch.matchNo}`
                       : "--")
                   }
                 />

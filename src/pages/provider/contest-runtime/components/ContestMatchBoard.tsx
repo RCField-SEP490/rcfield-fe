@@ -15,7 +15,12 @@ import {
   getRegistrationDisplayName,
   groupMatchesByRound,
 } from "@/features/contests/lib/contest-runtime"
-import { getMatchStatusClass } from "@/features/contests/lib/contest-status"
+import {
+  getMatchStatusClass,
+  getMatchStatusLabel,
+  getMatchTypeLabel,
+  getRegistrationStatusLabel,
+} from "@/features/contests/lib/contest-status"
 import {
   Panel,
   PanelTitle,
@@ -93,9 +98,9 @@ export function ContestMatchBoard({
 
     try {
       await runtime.generateMatchesMutation.mutateAsync(result.data)
-      toast.success("Đã generate contest runtime")
+      toast.success("Đã tạo các lượt đấu")
     } catch (error) {
-      toast.error("Không thể generate matches", {
+      toast.error("Không thể tạo lượt đấu", {
         description: getErrorMessage(error).message,
       })
     }
@@ -109,7 +114,7 @@ export function ContestMatchBoard({
         <Panel>
           <PanelTitle
             title="Tạo nhánh thi đấu"
-            subtitle="Chỉ người chơi đã check-in mới được đưa vào thi đấu."
+            subtitle="Chỉ người chơi đã điểm danh mới được đưa vào thi đấu."
           />
           <div className="space-y-4">
             <Field label="Chi nhánh vận hành">
@@ -147,7 +152,7 @@ export function ContestMatchBoard({
                     setSeedingMode(event.target.value as typeof seedingMode)
                   }
                 >
-                  <option value="CHECK_IN_ORDER">Theo thứ tự check-in</option>
+                  <option value="CHECK_IN_ORDER">Theo thứ tự điểm danh</option>
                   <option value="MANUAL">Theo danh sách đã chọn</option>
                 </select>
               </Field>
@@ -198,7 +203,7 @@ export function ContestMatchBoard({
                         </span>
                       </span>
                       <span className="text-xs font-semibold text-[#747878]">
-                        {registration.status} ·{" "}
+                        {getRegistrationStatusLabel(registration.status)} ·{" "}
                         {registration.checkInCode ?? "--"}
                       </span>
                     </label>
@@ -206,7 +211,7 @@ export function ContestMatchBoard({
                 })}
                 {eligibleRegistrations.length === 0 ? (
                   <p className="text-sm font-semibold text-[#747878]">
-                    Chưa có registration đủ điều kiện runtime.
+                    Chưa có người đăng ký đủ điều kiện thi đấu.
                   </p>
                 ) : null}
               </div>
@@ -232,7 +237,7 @@ export function ContestMatchBoard({
           <div className="rounded-lg border border-dashed border-[#c4c7c8] p-10 text-center">
             <Flag className="mx-auto size-8 text-[#c4c7c8]" />
             <p className="mt-3 text-sm font-semibold text-[#747878]">
-              Chưa có runtime match nào.
+              Chưa có lượt đấu nào.
             </p>
           </div>
         ) : (
@@ -240,7 +245,7 @@ export function ContestMatchBoard({
             {matchGroups.map((group) => (
               <div key={group.roundNo}>
                 <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
-                  Round {group.roundNo}
+                  Vòng {group.roundNo}
                 </h4>
                 <div className="grid gap-3 lg:grid-cols-2">
                   {group.matches.map((match) => (
@@ -266,11 +271,11 @@ export function ContestMatchBoard({
                         <Badge
                           className={`border ${getMatchStatusClass(match.status)}`}
                         >
-                          {match.status}
+                          {getMatchStatusLabel(match.status)}
                         </Badge>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#5d5f5f]">
-                        <span>{match.match_type}</span>
+                        <span>{getMatchTypeLabel(match.match_type)}</span>
                         <span>{match.participants.length} người thi đấu</span>
                         <span>Trận #{match.match_no}</span>
                       </div>

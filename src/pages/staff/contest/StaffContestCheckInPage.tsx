@@ -31,7 +31,7 @@ export default function StaffContestCheckInPage() {
     try {
       await eventDay.lookupMutation.mutateAsync(code.trim())
     } catch (error) {
-      toast.error("Không thể tra cứu registration", { description: getErrorMessage(error).message })
+      toast.error("Không thể tra cứu người đăng ký", { description: getErrorMessage(error).message })
     }
   }
 
@@ -43,17 +43,17 @@ export default function StaffContestCheckInPage() {
         registrationId: registration.id,
         checkedInCafeId: assignedCafeId,
       })
-      toast.success("Đã check-in registration")
+      toast.success("Đã điểm danh người đăng ký")
     } catch (error) {
-      toast.error("Không thể check-in", { description: getErrorMessage(error).message })
+      toast.error("Không thể điểm danh", { description: getErrorMessage(error).message })
     }
   }
 
   return (
     <div className="space-y-6">
       <StaffHeader
-        title={contestQuery.data?.name ?? "Contest check-in"}
-        subtitle="Tra cứu registration theo check-in code và xác nhận check-in đúng branch được phân công."
+        title={contestQuery.data?.name ?? "Điểm danh giải đấu"}
+        subtitle="Tra cứu người đăng ký theo mã điểm danh và xác nhận điểm danh đúng cơ sở được phân công."
       />
 
       <ContestCheckInLookupCard
