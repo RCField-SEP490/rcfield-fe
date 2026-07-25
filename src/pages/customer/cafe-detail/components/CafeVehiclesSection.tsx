@@ -18,7 +18,7 @@ export function CafeVehiclesSection({ cafe, selectedVehicleId, onSelectVehicle }
       <div>
         <h2 className="text-lg font-bold text-slate-950">Chọn xe thuê</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Click trực tiếp vào xe bên dưới để chọn thuê nhanh. Xe đã chọn sẽ được cộng vào hóa đơn checkout tự động.
+          Bấm trực tiếp vào xe bên dưới để chọn thuê nhanh. Xe đã chọn sẽ được cộng vào hóa đơn tự động.
         </p>
       </div>
 

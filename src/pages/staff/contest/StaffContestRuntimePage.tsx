@@ -7,6 +7,7 @@ import {
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
 import { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
+import { getMatchStatusLabel } from "@/features/contests/lib/contest-status"
 import type { ContestMatchStatus } from "@/features/contests/types"
 import { ContestMatchBoard } from "@/pages/provider/contest-runtime/components/ContestMatchBoard"
 import { ContestMatchDetailPanel } from "@/pages/provider/contest-runtime/components/match-detail/ContestMatchDetailPanel"
@@ -15,11 +16,11 @@ import { StaffSelect } from "../components/StaffSelect"
 import { StaffCard, StaffHeader } from "../components/StaffUI"
 
 const matchStatusOptions = [
-  { value: "DRAFT", label: "DRAFT" },
-  { value: "READY", label: "READY" },
-  { value: "RUNNING", label: "RUNNING" },
-  { value: "COMPLETED", label: "COMPLETED" },
-  { value: "CANCELLED", label: "CANCELLED" },
+  { value: "DRAFT", label: getMatchStatusLabel("DRAFT") },
+  { value: "READY", label: getMatchStatusLabel("READY") },
+  { value: "RUNNING", label: getMatchStatusLabel("RUNNING") },
+  { value: "COMPLETED", label: getMatchStatusLabel("COMPLETED") },
+  { value: "CANCELLED", label: getMatchStatusLabel("CANCELLED") },
 ]
 
 export default function StaffContestRuntimePage() {
@@ -58,8 +59,8 @@ export default function StaffContestRuntimePage() {
     return (
       <div className="space-y-6">
         <StaffHeader
-          title="Match runtime"
-          subtitle="Không tìm thấy contest để vận hành match."
+          title="Vận hành lượt đấu"
+          subtitle="Không tìm thấy giải đấu để vận hành lượt đấu."
         />
       </div>
     )
@@ -68,8 +69,8 @@ export default function StaffContestRuntimePage() {
   return (
     <div className="space-y-6">
       <StaffHeader
-        title={`${contest.name} · Match runtime`}
-        subtitle="Nhân viên được phân công có thể xem match, đổi thứ tự participant, nhập kết quả và advance match."
+        title={`${contest.name} · Vận hành lượt đấu`}
+        subtitle="Nhân viên được phân công có thể xem lượt đấu, đổi thứ tự người chơi, nhập kết quả và chuyển sang lượt tiếp theo."
       />
 
       <StaffCard className="grid gap-3 lg:grid-cols-3">
@@ -80,7 +81,7 @@ export default function StaffContestRuntimePage() {
               participantQuery: value,
             })
           }
-          placeholder="Tìm participant theo tên"
+          placeholder="Tìm người chơi theo tên"
         />
         <StaffSelect
           value={matchStatus}
@@ -90,7 +91,7 @@ export default function StaffContestRuntimePage() {
             })
           }
           options={matchStatusOptions}
-          placeholder="Tất cả match status"
+          placeholder="Tất cả trạng thái lượt đấu"
         />
         <StaffSearchInput
           value={roundNo}
@@ -99,7 +100,7 @@ export default function StaffContestRuntimePage() {
               roundNo: value.replace(/[^\d]/g, ""),
             })
           }
-          placeholder="Lọc theo round"
+          placeholder="Lọc theo vòng"
         />
       </StaffCard>
 

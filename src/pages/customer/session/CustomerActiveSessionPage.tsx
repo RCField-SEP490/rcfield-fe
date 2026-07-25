@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/shared/ui/card"
 import { Badge } from "@/shared/ui/badge"
+import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
 
 const PART_TYPE_LABELS: Record<string, string> = {
   TIRE_WHEEL: "Bánh xe / Lốp",
@@ -43,6 +44,7 @@ export function CustomerActiveSessionPage() {
   const [totalDuration, setTotalDuration] = useState<number>(1) // For percentage calculation
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [loadError, setLoadError] = useState<string>("")
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
 
   const loadSession = useCallback(
     async (silent = false) => {
@@ -118,6 +120,12 @@ export function CustomerActiveSessionPage() {
     return () => clearInterval(interval)
   }, [secondsLeft])
 
+  useEffect(() => {
+    if (!session || !["ACTIVE", "EXTENDING"].includes(session.status)) return
+    const interval = window.setInterval(() => setCurrentTime(Date.now()), 30_000)
+    return () => window.clearInterval(interval)
+  }, [session])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -175,6 +183,11 @@ export function CustomerActiveSessionPage() {
     Math.max(0, (secondsLeft / totalDuration) * 100),
   )
   const strokeDashoffset = 283 - (283 * percentage) / 100 // 283 is circle circumference (r=45, 2 * pi * r)
+  const operationalTiming = getSessionOperationalTiming(
+    session.plannedEnd,
+    session.status,
+    currentTime,
+  )
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -207,7 +220,7 @@ export function CustomerActiveSessionPage() {
         </div>
 
         {/* DYNAMIC FLASH ALERT NOTIFICATIONS */}
-        {session.status === "EXTENDING" && session.extensionProposal && (
+        {session.status === "EXTENDING" && session.extensionProposal && operationalTiming.state !== "OVERDUE" && (
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 border border-orange-400 text-white rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-bounce">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -236,6 +249,20 @@ export function CustomerActiveSessionPage() {
               Xem & Phản hồi ngay
               <ArrowRight className="h-4 w-4 text-orange-500" />
             </Link>
+          </div>
+        )}
+
+        {session.status === "EXTENDING" && session.extensionProposal && operationalTiming.state === "OVERDUE" && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900 shadow-sm">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+              <div>
+                <p className="text-sm font-black">Yêu cầu gia hạn không còn được xử lý</p>
+                <p className="mt-1 text-xs leading-relaxed text-red-800">
+                  Phiên đã quá giờ và cần được nhân viên kiểm tra, trả xe. Hệ thống không tự tính phí quá giờ theo thời điểm checkout.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -307,6 +334,28 @@ export function CustomerActiveSessionPage() {
           </div>
         )}
 
+        {(operationalTiming.state === "DUE_FOR_CHECKOUT" || operationalTiming.state === "OVERDUE") && (
+          <div className={`rounded-2xl border p-5 shadow-sm ${
+            operationalTiming.state === "OVERDUE"
+              ? "border-red-200 bg-red-50 text-red-950"
+              : "border-amber-200 bg-amber-50 text-amber-950"
+          }`}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle className={`mt-0.5 h-5 w-5 shrink-0 ${operationalTiming.state === "OVERDUE" ? "text-red-600" : "text-amber-600"}`} />
+              <div>
+                <p className="text-sm font-black">
+                  {operationalTiming.state === "OVERDUE"
+                    ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
+                    : "Đã đến giờ trả xe"}
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed opacity-80">
+                  Vui lòng trả xe tại quầy để nhân viên kiểm tra và hoàn tất phiên. Xe vẫn được giữ trong phiên cho đến khi checkout hoàn thành.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Live Dashboard Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {/* Circular Countdown Card (Col-span 1) */}
@@ -351,14 +400,18 @@ export function CustomerActiveSessionPage() {
               {/* Inner details */}
               <div className="absolute flex flex-col items-center justify-center space-y-1">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                  CÒN LẠI
+                  {operationalTiming.state === "ON_TIME" ? "CÒN LẠI" : operationalTiming.state === "OVERDUE" ? "QUÁ GIỜ" : "ĐẾN GIỜ TRẢ XE"}
                 </span>
                 <span className="text-3xl font-black text-slate-950 tracking-tight leading-none">
-                  {secondsLeft > 0 ? formatCountdown(secondsLeft) : "00:00"}
+                  {operationalTiming.state === "ON_TIME"
+                    ? formatCountdown(secondsLeft)
+                    : operationalTiming.state === "OVERDUE"
+                      ? `+${operationalTiming.minutesPastPlannedEnd}p`
+                      : "Trả xe"}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-500 leading-none">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  ACTIVE
+                <span className={`inline-flex items-center gap-1 text-[9px] font-black leading-none ${operationalTiming.state === "OVERDUE" ? "text-red-600" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "text-amber-600" : "text-emerald-500"}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${operationalTiming.state === "OVERDUE" ? "bg-red-500" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "bg-amber-500" : "bg-emerald-500 animate-ping"}`} />
+                  {operationalTiming.state === "ON_TIME" ? "ĐANG CHƠI" : "CHỜ TRẢ XE"}
                 </span>
               </div>
             </div>
@@ -454,7 +507,7 @@ export function CustomerActiveSessionPage() {
               <CardHeader className="pb-3 border-b border-slate-100">
                 <CardTitle className="text-sm font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
                   <Coffee className="h-4.5 w-4.5 text-orange-500" />
-                  Đồ Ăn & Nước Uống Tại Quầy (F&B)
+                  Đồ ăn & thức uống tại quầy
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Danh sách món ăn đặt trực tiếp trong phiên chơi của bạn.
@@ -536,7 +589,7 @@ export function CustomerActiveSessionPage() {
                   <div className="text-center py-6 border border-dashed border-slate-200 rounded-xl space-y-1 text-xs">
                     <Coffee className="h-8 w-8 text-slate-300 mx-auto" />
                     <p className="font-extrabold text-slate-900">
-                      Chưa có đơn F&B
+                      Chưa có đơn đồ ăn & thức uống
                     </p>
                     <p className="text-[10px] text-slate-400 font-medium">
                       Bạn có thể đặt món trực tiếp tại sân chơi bằng cách liên

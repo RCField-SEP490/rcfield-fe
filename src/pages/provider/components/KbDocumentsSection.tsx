@@ -80,7 +80,7 @@ Q: Trẻ em có chơi được không?
 A: [VD: Trẻ từ 8 tuổi trở lên có thể chơi khi có người lớn đi kèm.]
 
 Q: Có thể mua đồ ăn uống tại cơ sở không?
-A: [Có — cơ sở phục vụ cà phê, trà, nước ngọt và snack nhẹ. / Không có F&B tại chỗ.]
+A: [Có — cơ sở phục vụ cà phê, trà, nước ngọt và đồ ăn nhẹ. / Không có đồ ăn, thức uống tại chỗ.]
 `,
   },
   POLICY: {

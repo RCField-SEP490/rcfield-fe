@@ -4,7 +4,10 @@ import { Flag, QrCode } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
-import { getContestStatusClass } from "@/features/contests/lib/contest-status"
+import {
+  getContestStatusClass,
+  getContestStatusLabel,
+} from "@/features/contests/lib/contest-status"
 import type { ContestStatus } from "@/features/contests/types"
 import { useStaffOperations } from "../context/StaffOperationContext"
 import { StaffSearchInput } from "../components/StaffSearchInput"
@@ -12,9 +15,9 @@ import { StaffSelect } from "../components/StaffSelect"
 import { StaffBadge, StaffCard, StaffHeader } from "../components/StaffUI"
 
 const statusOptions = [
-  { value: "OPEN", label: "OPEN" },
-  { value: "CLOSED", label: "CLOSED" },
-  { value: "RUNNING", label: "RUNNING" },
+  { value: "OPEN", label: "Đang mở đăng ký" },
+  { value: "CLOSED", label: "Đã đóng đăng ký" },
+  { value: "RUNNING", label: "Đang diễn ra" },
 ]
 
 export default function StaffContestsPage() {
@@ -67,8 +70,8 @@ export default function StaffContestsPage() {
   return (
     <div className="space-y-6">
       <StaffHeader
-        title="Contest event-day"
-        subtitle="Chọn contest thuộc branch hiện tại để tra cứu registration và thực hiện check-in."
+        title="Danh sách giải đấu"
+        subtitle="Chọn giải đấu thuộc cơ sở hiện tại để tra cứu người đăng ký và thực hiện điểm danh."
       />
 
       <div className="grid gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4 lg:grid-cols-3">
@@ -77,7 +80,7 @@ export default function StaffContestsPage() {
           onChange={(value) =>
             updateContestFilters(searchParams, setSearchParams, { query: value })
           }
-          placeholder="Tìm theo tên contest"
+          placeholder="Tìm theo tên giải đấu"
         />
         <StaffSelect
           value={status}
@@ -97,7 +100,7 @@ export default function StaffContestsPage() {
             })
           }
           options={formatOptions}
-          placeholder="Tất cả format"
+          placeholder="Tất cả thể thức"
         />
       </div>
 
@@ -114,7 +117,7 @@ export default function StaffContestsPage() {
         <StaffCard className="py-10 text-center">
           <Flag className="mx-auto size-8 text-[#c4c7c8]" />
           <p className="mt-3 text-sm font-bold text-[#4c4a49]">
-            Không có contest phù hợp cho event-day.
+            Không có giải đấu phù hợp.
           </p>
         </StaffCard>
       ) : (
@@ -148,15 +151,15 @@ function StaffContestCard({
         <span
           className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${getContestStatusClass(contest.status)}`}
         >
-          {contest.status}
+          {getContestStatusLabel(contest.status)}
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
         <StaffBadge variant="neutral">
-          Branches: {contest.participating_branches.length}
+          Chi nhánh tham gia: {contest.participating_branches.length}
         </StaffBadge>
         <StaffBadge variant="orange">
-          Entry fee: {contest.entry_fee.toLocaleString("vi-VN")}đ
+          Lệ phí tham gia: {contest.entry_fee.toLocaleString("vi-VN")}đ
         </StaffBadge>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -168,7 +171,7 @@ function StaffContestCard({
           className="inline-flex items-center gap-2 rounded-lg bg-[#ea580c] px-4 py-2 text-sm font-bold text-white hover:bg-[#d94e0b]"
         >
           <QrCode className="size-4" />
-          Mở check-in
+          Mở điểm danh
         </Link>
         <Link
           to={routePaths.staffContestRuntime.replace(
@@ -178,7 +181,7 @@ function StaffContestCard({
           className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100"
         >
           <Flag className="size-4" />
-          Match runtime
+          Vận hành lượt đấu
         </Link>
       </div>
     </StaffCard>

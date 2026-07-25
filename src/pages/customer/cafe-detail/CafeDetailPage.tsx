@@ -2,7 +2,11 @@ import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  cafeApi,
+  cafeQueryKeys,
+  CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
+} from "@/features/cafes/api/cafe.api"
 import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
@@ -15,6 +19,7 @@ import { CafeFnbSection } from "./components/CafeFnbSection"
 import { CafePackagesSection } from "./components/CafePackagesSection"
 import { CafePromoBanner } from "./components/CafePromoBanner"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
+import { useCafeConfigurationRefresh } from "@/features/cafes/hooks/useCafeConfigurationRefresh"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 
 export function CafeDetailPage() {
@@ -39,7 +44,10 @@ export function CafeDetailPage() {
     queryKey: cafeQueryKeys.detail(resolvedCafe?.id),
     queryFn: () => cafeApi.getCafe(resolvedCafe!.id),
     enabled: !!resolvedCafe?.id,
+    refetchInterval: CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   })
+  useCafeConfigurationRefresh(resolvedCafe?.id, refetchDetail)
   const { data: cafeImages = [] } = useQuery({
     queryKey: cafeQueryKeys.images(resolvedCafe?.id),
     queryFn: () => cafeApi.listCafeImages(resolvedCafe!.id),

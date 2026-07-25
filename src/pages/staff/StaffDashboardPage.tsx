@@ -103,7 +103,7 @@ export default function StaffDashboardPage() {
 
     if (match.sessions && match.sessions.length > 0) {
       const activeSession = match.sessions[0]
-      toast.info(`Đơn đặt lịch này đã Check-In. Đang chuyển hướng đến phiên chạy ${activeSession.sessionId}...`)
+      toast.info(`Đơn đặt lịch này đã nhận xe. Đang chuyển đến phiên chạy ${activeSession.sessionId}...`)
       navigate(`/staff/sessions/${activeSession.sessionId}`)
       return
     }
@@ -169,7 +169,7 @@ export default function StaffDashboardPage() {
       {/* 1. Header Area */}
       <StaffHeader
         title="Trực Ca Chi Nhánh"
-        subtitle="Quản lý phiên chạy xe, F&B và an toàn đường đua thời gian thực"
+        subtitle="Quản lý phiên chạy xe, đồ ăn thức uống và an toàn đường đua theo thời gian thực"
       />
 
       {/* 3. Metric Stat Cards */}
@@ -189,11 +189,11 @@ export default function StaffDashboardPage() {
         <StaffStatCard
           title="Đợi kiểm xe"
           value={pendingInspections.length}
-          description="Check-in / Check-out"
+          description="Nhận xe / trả xe"
           icon={Car}
         />
         <StaffStatCard
-          title="Đơn F&B chờ"
+          title="Đơn đồ ăn, thức uống chờ"
           value={activeFnbCount}
           description="Đang chế biến & phục vụ"
           icon={Coffee}
@@ -206,23 +206,23 @@ export default function StaffDashboardPage() {
         <StaffCard className="md:col-span-2 space-y-4" glow>
           <div className="flex items-center gap-2 text-[#ea580c]">
             <QrCode className="size-5" />
-            <h3 className="font-bold text-[#1c1b1b] text-base">Quét mã QR Check-In</h3>
+            <h3 className="font-bold text-[#1c1b1b] text-base">Quét mã QR nhận xe</h3>
           </div>
 
           <form onSubmit={handleQRSubmit} className="flex gap-2">
             <input
               type="text"
-              placeholder="Nhập mã đặt lịch hoặc Shortcode (Ví dụ: RCF-8829)"
+              placeholder="Nhập mã đơn đặt lịch (ví dụ: RCF-8829)"
               value={scanCode}
               onChange={(e) => setScanCode(e.target.value)}
               className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c] placeholder-[#a09e9d] transition-all"
             />
             <StaffButton type="submit" variant="primary">
-              Check-In
+              Nhận xe
             </StaffButton>
           </form>
           <p className="text-xs text-[#6b7280] leading-relaxed">
-            Nhập nhanh mã code hoặc quét QR của khách hàng để mở nhanh giao diện kiểm xe bàn giao cho lượt chạy mới.
+            Nhập mã đơn hoặc quét QR của khách hàng để mở nhanh giao diện kiểm tra và bàn giao xe cho lượt chạy mới.
           </p>
         </StaffCard>
 
@@ -246,11 +246,11 @@ export default function StaffDashboardPage() {
 
       {/* 4.5 Thống kê Hoạt động & Biểu đồ */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Biểu đồ Booking */}
+        {/* Biểu đồ đơn đặt lịch */}
         <StaffCard className="p-5 flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-[#1c1b1b] text-base mb-1">Trạng thái đặt lịch hôm nay</h3>
-            <p className="text-xs text-[#6b7280] mb-4">Biểu đồ phân bổ trạng thái booking</p>
+            <p className="text-xs text-[#6b7280] mb-4">Biểu đồ phân bổ trạng thái đơn đặt lịch</p>
           </div>
           {bookingChartData.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-xs text-[#6b7280] italic">
@@ -283,12 +283,12 @@ export default function StaffDashboardPage() {
         {/* Biểu đồ F&B Donut */}
         <StaffCard className="p-5 flex flex-col justify-between">
           <div>
-            <h3 className="font-bold text-[#1c1b1b] text-base mb-1">Chuẩn bị món F&B hôm nay</h3>
+            <h3 className="font-bold text-[#1c1b1b] text-base mb-1">Chuẩn bị món hôm nay</h3>
             <p className="text-xs text-[#6b7280] mb-4">Biểu đồ phân bổ trạng thái chuẩn bị món ăn & nước uống</p>
           </div>
           {fnbChartData.length === 0 ? (
             <div className="h-48 flex items-center justify-center text-xs text-[#6b7280] italic">
-              Chưa có đơn F&B nào hôm nay
+              Chưa có đơn đồ ăn, thức uống nào hôm nay
             </div>
           ) : (
             <div className="h-48 w-full flex items-center">

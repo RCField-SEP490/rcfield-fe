@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/shared/ui/badge"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
+import { ExtensionAuditCard } from "@/features/customer-session/components/ExtensionAuditCard"
 import type { BookingResponse, PaymentComponentType } from "@/features/booking/types/booking.types"
 import type { MockInspection } from "@/shared/data/customer-operational-mock-data"
 import { VehicleImage } from "@/shared/ui/vehicle-image"
@@ -48,6 +49,11 @@ const STATUS_CONFIG = {
     color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
     desc: "Lịch đặt đã duyệt thành công. Hãy đến quán đúng giờ để check-in.",
   },
+  AWAITING_PAYMENT: {
+    label: "Chờ thanh toán phí phát sinh",
+    color: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+    desc: "Phiên chơi đã kết thúc. Vui lòng thanh toán khoản phí phát sinh để hoàn tất đơn.",
+  },
   COMPLETED: {
     label: "Đã hoàn thành",
     color: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -64,6 +70,19 @@ const STATUS_CONFIG = {
     desc: "Bạn đã quá hạn check-in và không có mặt.",
   },
 } as const
+
+const PLAY_MODE_LABELS: Record<string, string> = {
+  RENTAL: "Thuê xe của cơ sở",
+  BYOC: "Mang xe cá nhân",
+}
+
+const SESSION_STATUS_LABELS: Record<string, string> = {
+  CHECKED_IN: "Đã nhận xe",
+  ACTIVE: "Đang chơi",
+  EXTENDING: "Đang gia hạn",
+  CHECKING_OUT: "Đang trả xe",
+  COMPLETED: "Đã hoàn tất",
+}
 
 const DIRECTION_LABEL: Record<string, string> = {
   FRONT: "Trước",
@@ -221,13 +240,14 @@ export function CustomerBookingDetailPage() {
   )
   const checkInInspection = inspectionsWithPhotos.find((i) => i.type === "CHECK_IN")
   const checkOutInspection = inspectionsWithPhotos.find((i) => i.type === "CHECK_OUT")
+  const approvedExtensions = sessionDetail?.approvedExtensions ?? []
 
   const isLiveSession =
     !checkInWindowExpired &&
     sessionDetail && ["ACTIVE", "EXTENDING", "CHECKED_IN", "CHECKING_OUT"].includes(sessionDetail.status)
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 p-4 md:p-8 font-sans relative overflow-x-clip">
 
       <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-orange-500/5 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-slate-500/5 blur-[120px] pointer-events-none" />
@@ -244,7 +264,7 @@ export function CustomerBookingDetailPage() {
             Quay lại Lịch đặt sân
           </button>
           <span className="text-xs font-bold text-slate-400">
-            Booking ID: <strong className="text-slate-800">{booking.id}</strong>
+            Mã đơn: <strong className="text-slate-800">{booking.id}</strong>
           </span>
         </div>
 
@@ -274,7 +294,7 @@ export function CustomerBookingDetailPage() {
               onClick={() => navigate(`/customer/sessions/${sessionDetail.sessionId}`)}
               className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-md shadow-orange-500/20 transition-all"
             >
-              Bạn đang chơi! Xem Live Session
+              Bạn đang chơi! Xem phiên chơi
               <ExternalLink className="h-3 w-3" />
             </button>
           )}
@@ -333,7 +353,7 @@ export function CustomerBookingDetailPage() {
                       {booking.track_type_name ?? "—"}
                     </span>
                     <Badge className="bg-slate-200 text-slate-800 border-none font-bold text-[9px] mt-2 uppercase">
-                      {booking.playMode}
+                      {PLAY_MODE_LABELS[booking.playMode] ?? booking.playMode}
                     </Badge>
                   </div>
                 </div>
@@ -441,7 +461,7 @@ export function CustomerBookingDetailPage() {
                           booking.session.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" :
                           "bg-slate-200 text-slate-800"
                         }`}>
-                          {booking.session.status}
+                          {SESSION_STATUS_LABELS[booking.session.status] ?? booking.session.status}
                         </Badge>
                       </div>
                       <p className="text-xs font-semibold text-slate-600">
@@ -465,6 +485,12 @@ export function CustomerBookingDetailPage() {
                 </CardContent>
               </Card>
             )}
+
+            <ExtensionAuditCard
+              extensions={approvedExtensions}
+              initialPlannedEnd={booking.slotEnd}
+              currentProposal={sessionDetail?.extensionProposal}
+            />
 
             {(!booking.session || checkInWindowExpired) && (
               <Card className="border-slate-200/80 shadow-sm bg-white">
@@ -534,7 +560,8 @@ export function CustomerBookingDetailPage() {
           </div>
 
           {/* Right col (1/3) */}
-          <div className="space-y-6">
+          <aside className="lg:sticky lg:top-20 lg:self-start">
+            <div className="space-y-6 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
 
             {/* QR check-in */}
             {booking.status === "CONFIRMED" && new Date() < new Date(booking.slotEnd) && (
@@ -590,7 +617,7 @@ export function CustomerBookingDetailPage() {
                   )}
                   {fnbPreorderFee > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-slate-400">F&B đặt trước</span>
+                      <span className="text-slate-400">Đồ ăn & thức uống đặt trước</span>
                       <span className="text-slate-800">{fmt(fnbPreorderFee)}</span>
                     </div>
                   )}
@@ -616,7 +643,7 @@ export function CustomerBookingDetailPage() {
                       <span>{fmt(depositAmount)}</span>
                     </div>
                     <p className="text-[9px] text-orange-600 font-semibold leading-normal">
-                      Khoản cọc sẽ được hoàn trả hoặc cấn trừ vào hóa đơn thực tế sau checkout.
+                      Khoản cọc sẽ được hoàn trả hoặc cấn trừ vào hóa đơn thực tế sau khi trả xe.
                     </p>
                   </div>
                 )}
@@ -629,7 +656,8 @@ export function CustomerBookingDetailPage() {
               </CardFooter>
             </Card>
 
-          </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

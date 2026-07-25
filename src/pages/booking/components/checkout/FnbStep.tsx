@@ -1,5 +1,5 @@
 import { Minus, Plus, ShoppingBag, UtensilsCrossed } from "lucide-react"
-import type { MenuItem } from "@/features/menu/types"
+import { FNB_CATEGORY_LABEL, type MenuItem } from "@/features/menu/types"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -14,11 +14,19 @@ type FnbStepProps = {
 
 export function FnbStep({ menuItems, isLoading, quantities, onQuantityChange }: FnbStepProps) {
   const availableItems = menuItems.filter((item) => item.isAvailable)
+  const selectedItems = availableItems
+    .map((item) => ({ item, quantity: quantities[item.id] ?? 0 }))
+    .filter(({ quantity }) => quantity > 0)
+  const selectedItemCount = selectedItems.reduce((total, { quantity }) => total + quantity, 0)
+  const selectedTotal = selectedItems.reduce(
+    (total, { item, quantity }) => total + getMenuItemPrice(item) * quantity,
+    0,
+  )
 
   return (
     <Card className="rounded-xl shadow-sm">
       <CardHeader>
-        <CardTitle>Đặt trước F&B</CardTitle>
+        <CardTitle>Đặt trước đồ ăn & thức uống</CardTitle>
         <p className="text-sm text-muted-foreground">Đặt nước/đồ ăn nhẹ trước để quán chuẩn bị khi bạn đến sân.</p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -26,7 +34,7 @@ export function FnbStep({ menuItems, isLoading, quantities, onQuantityChange }: 
           <div className="flex items-start gap-3">
             <ShoppingBag className="mt-0.5 h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">F&B là tùy chọn</p>
+              <p className="font-medium">Đồ ăn & thức uống là tùy chọn</p>
               <p className="mt-1 text-sm text-muted-foreground">Bạn có thể bỏ qua bước này và gọi thêm trực tiếp tại quán.</p>
             </div>
           </div>
@@ -41,20 +49,62 @@ export function FnbStep({ menuItems, isLoading, quantities, onQuantityChange }: 
         ) : availableItems.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center">
             <UtensilsCrossed className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm font-medium text-muted-foreground">Cơ sở chưa có menu F&B</p>
+            <p className="text-sm font-medium text-muted-foreground">Cơ sở chưa có thực đơn đồ ăn & thức uống</p>
             <p className="text-xs text-muted-foreground">Bạn có thể gọi trực tiếp tại quán khi đến.</p>
           </div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {availableItems.map((item) => (
-              <FnbCard
-                key={item.id}
-                item={item}
-                quantity={quantities[item.id] ?? 0}
-                onQuantityChange={(quantity) => onQuantityChange(item.id, quantity)}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid gap-3 md:grid-cols-2">
+              {availableItems.map((item) => (
+                <FnbCard
+                  key={item.id}
+                  item={item}
+                  quantity={quantities[item.id] ?? 0}
+                  onQuantityChange={(quantity) => onQuantityChange(item.id, quantity)}
+                />
+              ))}
+            </div>
+
+            {selectedItems.length > 0 && (
+              <section
+                aria-label="Món đã chọn"
+                className="rounded-xl border border-orange-200 bg-orange-50/60 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+                      <ShoppingBag className="size-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900">Món đã chọn</h3>
+                      <p className="text-sm text-slate-600">{selectedItemCount} món</p>
+                    </div>
+                  </div>
+                  <p className="text-lg font-bold text-orange-600">{formatCurrency(selectedTotal)}</p>
+                </div>
+
+                <div className="mt-3 divide-y divide-orange-100 rounded-lg border border-orange-100 bg-white px-3">
+                  {selectedItems.map(({ item, quantity }) => {
+                    const price = getMenuItemPrice(item)
+
+                    return (
+                      <div key={item.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-900">{item.name}</p>
+                          <p className="text-slate-500">
+                            {quantity} × {formatCurrency(price)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 font-semibold text-slate-900">
+                          {formatCurrency(price * quantity)}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
@@ -70,7 +120,7 @@ function FnbCard({
   quantity: number
   onQuantityChange: (quantity: number) => void
 }) {
-  const price = typeof item.price === "string" ? parseFloat(item.price) : item.price
+  const price = getMenuItemPrice(item)
 
   return (
     <div className="grid grid-cols-[96px_1fr] overflow-hidden rounded-xl border bg-background">
@@ -88,7 +138,9 @@ function FnbCard({
             {item.isCombo ? (
               <Badge className="shrink-0 bg-orange-100 text-orange-700 hover:bg-orange-100">Combo</Badge>
             ) : item.category ? (
-              <Badge variant="secondary" className="capitalize shrink-0">{item.category}</Badge>
+              <Badge variant="secondary" className="shrink-0">
+                {FNB_CATEGORY_LABEL[item.category] ?? "Khác"}
+              </Badge>
             ) : null}
           </div>
           {item.isCombo && item.components && item.components.length > 0 && (
@@ -118,4 +170,8 @@ function FnbCard({
       </div>
     </div>
   )
+}
+
+function getMenuItemPrice(item: MenuItem) {
+  return typeof item.price === "string" ? parseFloat(item.price) : item.price
 }

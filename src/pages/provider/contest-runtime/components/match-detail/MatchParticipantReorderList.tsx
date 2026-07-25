@@ -3,6 +3,7 @@ import {
   getMatchParticipantName,
   getMatchParticipantSubtitle,
 } from "@/features/contests/lib/contest-runtime"
+import { getParticipantStatusLabel } from "@/features/contests/lib/contest-status"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -55,12 +56,14 @@ export function MatchParticipantReorderList({
                   {snapshot ? (
                     <p className="text-xs font-medium text-[#747878]">
                       {getMatchParticipantSubtitle(snapshot) ??
-                        "Chưa có email / check-in code"}
+                        "Chưa có email hoặc mã điểm danh"}
                     </p>
                   ) : null}
                 </div>
                 <p className="text-xs font-semibold text-[#747878]">
-                  {snapshot?.registration?.status ?? "--"}
+                  {snapshot
+                    ? getParticipantStatusLabel(snapshot.status)
+                    : "--"}
                 </p>
               </div>
               <div className="grid gap-3 md:grid-cols-4">

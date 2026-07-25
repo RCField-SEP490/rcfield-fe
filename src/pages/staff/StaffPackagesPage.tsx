@@ -132,7 +132,7 @@ export default function StaffPackagesPage() {
               <span className="text-xl font-extrabold text-[#ea580c] block">
                 {searchedCustomer.balanceAmount.toLocaleString("vi-VN")} đ
               </span>
-              <p className="text-[9px] text-[#6b7280]">Khách hàng dùng thanh toán tại quầy gọi F&B nhanh</p>
+              <p className="text-[9px] text-[#6b7280]">Khách hàng dùng thanh toán tại quầy để gọi món nhanh</p>
             </div>
           </StaffCard>
 

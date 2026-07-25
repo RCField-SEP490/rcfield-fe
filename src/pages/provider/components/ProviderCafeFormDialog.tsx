@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { ImagePlus, Trash2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  closingTimeInputPattern,
+  isValidClosingTime,
+  isValidOpeningTime,
+  normalizeOperatingTime,
+  openingTimeInputPattern,
+} from "@/features/cafes/lib/operating-hours"
 import type { BackendCafe, CafeImage, CafeOperatingHours, CafeUpsertBody } from "@/features/cafes/types"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
@@ -95,7 +102,7 @@ export function ProviderCafeFormDialog({
         city: cafe.city,
         latitude: cafe.latitude === null ? null : Number(cafe.latitude),
         longitude: cafe.longitude === null ? null : Number(cafe.longitude),
-        operating_hours: buildOperatingHours(nextOpen, nextClose),
+        operating_hours: buildOperatingHours(nextOpen, nextClose, cafe.operatingHours),
         track_types: cafe.trackTypes.map((t) => t.id),
         slot_duration_minutes: cafe.slotDurationMinutes,
         slot_fee_rate: Number(cafe.slotFeeRate),
@@ -125,7 +132,7 @@ export function ProviderCafeFormDialog({
       Number.isFinite(values.longitude) &&
       values.latitude !== 0 &&
       values.longitude !== 0
-    if (!hasValidCoordinates) return
+    if (!hasValidCoordinates || !isValidOpeningTime(openTime) || !isValidClosingTime(closeTime)) return
     const body = {
       ...values,
       description: values.description?.trim() ? values.description.trim() : null,
@@ -133,7 +140,7 @@ export function ProviderCafeFormDialog({
       cover_image_url: values.cover_image_url?.trim() ? values.cover_image_url.trim() : null,
       latitude: values.latitude === null || Number.isNaN(values.latitude) ? null : Number(values.latitude),
       longitude: values.longitude === null || Number.isNaN(values.longitude) ? null : Number(values.longitude),
-      operating_hours: buildOperatingHours(openTime, closeTime),
+      operating_hours: buildOperatingHours(openTime, closeTime, values.operating_hours),
     }
     await onSubmit(body, files)
   }
@@ -195,9 +202,12 @@ export function ProviderCafeFormDialog({
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <TextField label="Giờ mở cửa" value={openTime} onChange={setOpenTime} type="time" required />
-                <TextField label="Giờ đóng cửa" value={closeTime} onChange={setCloseTime} type="time" required />
+                <TextField label="Giờ mở cửa" value={openTime} onChange={setOpenTime} onBlur={() => setOpenTime(normalizeOperatingTime(openTime))} type="text" inputMode="numeric" pattern={openingTimeInputPattern} placeholder="HH:mm" required />
+                <TextField label="Giờ đóng cửa" value={closeTime} onChange={setCloseTime} onBlur={() => setCloseTime(normalizeOperatingTime(closeTime))} type="text" inputMode="numeric" pattern={closingTimeInputPattern} placeholder="HH:mm (hoặc 24:00)" required />
               </div>
+              {(!isValidOpeningTime(openTime) || !isValidClosingTime(closeTime)) && (
+                <p role="alert" className="text-xs font-semibold text-red-600">Giờ mở cửa phải từ 00:00 đến 23:59; giờ đóng có thể là 24:00.</p>
+              )}
 
               <div className="rounded-lg border border-[#e5e2e1] p-3">
                 <div className="mb-3 text-sm font-bold text-[#1c1b1b]">Loại track</div>
@@ -306,12 +316,20 @@ function TextField({
   onChange,
   type = "text",
   required = false,
+  inputMode,
+  pattern,
+  placeholder,
+  onBlur,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   type?: string
   required?: boolean
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
+  pattern?: string
+  placeholder?: string
+  onBlur?: () => void
 }) {
   return (
     <label className="block space-y-2">
@@ -320,7 +338,11 @@ function TextField({
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
         required={required}
+        inputMode={inputMode}
+        pattern={pattern}
+        placeholder={placeholder}
         className="rounded-lg border-[#c4c7c8]"
       />
     </label>
@@ -358,6 +380,15 @@ function NumberField({
   )
 }
 
-function buildOperatingHours(open: string, close: string): CafeOperatingHours {
-  return Object.fromEntries(dayKeys.map((day) => [day, { open, close }]))
+function buildOperatingHours(
+  open: string,
+  close: string,
+  existingHours?: CafeOperatingHours,
+): CafeOperatingHours {
+  return Object.fromEntries(
+    dayKeys.map((day) => [
+      day,
+      { open, close, is_closed: existingHours?.[day]?.is_closed ?? false },
+    ]),
+  )
 }

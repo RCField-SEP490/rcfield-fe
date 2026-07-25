@@ -27,6 +27,7 @@ type PlayModeFilter = "all" | "RENTAL" | "BYOC"
 const STATUS_LABELS: Record<BookingStatus, { label: string; badge: string }> = {
   PENDING: { label: "Chờ thanh toán", badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" },
   CONFIRMED: { label: "Đã xác nhận", badge: "bg-emerald-100 text-emerald-800 border-none font-bold text-xs" },
+  AWAITING_PAYMENT: { label: "Chờ thanh toán phí phát sinh", badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" },
   NO_SHOW: { label: "Không đến", badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" },
   COMPLETED: { label: "Hoàn thành", badge: "bg-indigo-100 text-indigo-800 border-none font-bold text-xs" },
   CANCELLED: { label: "Đã hủy", badge: "bg-red-100 text-red-800 border-none font-bold text-xs" },
@@ -35,6 +36,7 @@ const STATUS_LABELS: Record<BookingStatus, { label: string; badge: string }> = {
 const ACCENT: Record<BookingStatus, string> = {
   PENDING: "bg-amber-400",
   CONFIRMED: "bg-emerald-500",
+  AWAITING_PAYMENT: "bg-amber-500",
   NO_SHOW: "bg-orange-400",
   COMPLETED: "bg-indigo-500",
   CANCELLED: "bg-slate-300",
@@ -43,6 +45,7 @@ const ACCENT: Record<BookingStatus, string> = {
 const FILTERS: Array<{ key: FilterKey; label: string }> = [
   { key: "all", label: "Tất cả" },
   { key: "PENDING", label: "Chờ thanh toán" },
+  { key: "AWAITING_PAYMENT", label: "Chờ thanh toán phí phát sinh" },
   { key: "CONFIRMED", label: "Đã xác nhận" },
   { key: "NO_SHOW", label: "Không đến" },
   { key: "COMPLETED", label: "Hoàn thành" },

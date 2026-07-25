@@ -3,6 +3,7 @@ export type BookingPlayMode = 'RENTAL' | 'BYOC'
 export type BookingStatus =
   | 'PENDING'
   | 'CONFIRMED'
+  | 'AWAITING_PAYMENT'
   | 'NO_SHOW'
   | 'COMPLETED'
   | 'CANCELLED'
@@ -13,6 +14,7 @@ export type PaymentComponentType =
   | 'SECURITY_DEPOSIT'
   | 'FNB_PREORDER'
   | 'FB_PREORDER'
+  | 'FNB_ON_SITE'
   | 'EXTENSION_FEE'
   | 'DAMAGE_CHARGE'
   | 'PLATFORM_FEE'
@@ -43,11 +45,54 @@ export type PaymentTransactionStatus = 'SUCCESS' | 'PENDING' | 'FAILED'
 
 export interface PaymentTransactionResponse {
   id: string
+  txnRef?: string
   type: PaymentTransactionType
   gateway: PaymentGateway
   amount: number
   status: PaymentTransactionStatus
   createdAt: string
+}
+
+export interface BookingFinancialLine {
+  componentId: string
+  type: PaymentComponentType
+  label: string
+  amount: number
+  status: PaymentComponentStatus
+  group: 'PREPAID' | 'ON_SITE'
+  payment?: {
+    transactionId: string
+    txnRef: string
+    gateway: string
+    paidAt: string
+  }
+}
+
+export interface BookingFinancialSummary {
+  prepaidLines: BookingFinancialLine[]
+  additionalLines: BookingFinancialLine[]
+  prepaidServiceTotal: number
+  prepaidDiscountAmount: number
+  prepaidPaidAmount: number
+  additionalTotal: number
+  additionalPaidAmount: number
+  additionalOutstandingAmount: number
+  totalPaidAmount: number
+  totalRefundedAmount: number
+  outstandingAmount: number
+  isSettled: boolean
+}
+
+export interface PaymentResultTransaction {
+  bookingId: string
+  amount: number
+  status: PaymentTransactionStatus
+  gateway: PaymentGateway
+  type: PaymentTransactionType
+  additionalPayment: boolean
+  components: { type: string; amount: number }[]
+  createdAt: string
+  paidAt: string
 }
 
 export interface AvailableVehicle {
@@ -104,6 +149,8 @@ export interface FnbOrder {
   id: string
   bookingId: string
   orderType: string
+  status?: string
+  totalAmount?: number
   items: FnbOrderItem[]
 }
 
@@ -126,6 +173,10 @@ export interface BookingResponse {
   vehicles: BookingVehicleItem[]
   payment_components: PaymentComponentResponse[]
   payment_transactions: PaymentTransactionResponse[]
+  financial_summary?: BookingFinancialSummary
+  /** Orders are intentionally preserved by origin (pre-order vs in-session). */
+  fnb_orders?: FnbOrder[]
+  /** @deprecated Use fnb_orders when available. Kept for older API payloads. */
   fnb_order: FnbOrder | null
   cafe: { name: string; address: string; city: string } | null
   track_type_name: string | null

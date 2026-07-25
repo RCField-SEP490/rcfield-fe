@@ -1,4 +1,5 @@
 import { MatchStatusBadge } from "@/features/contests/components"
+import { getMatchTypeLabel } from "@/features/contests/lib/contest-status"
 import type { ContestMatch } from "@/features/contests/types"
 import {
   Panel,
@@ -48,7 +49,7 @@ export function ContestMatchDetailPanel({
           subtitle="Chọn một trận hoặc lượt thi đấu để xem chi tiết."
         />
         <p className="text-sm font-semibold text-[#747878]">
-          Chưa có match nào được chọn.
+          Chưa có lượt đấu nào được chọn.
         </p>
       </Panel>
     )
@@ -68,7 +69,7 @@ export function ContestMatchDetailPanel({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <MatchStatusBadge status={match.status} />
         <Badge className="border border-[#c4c7c8] bg-[#f6f3f2] text-[#444748]">
-          {match.match_type}
+          {getMatchTypeLabel(match.match_type)}
         </Badge>
       </div>
 

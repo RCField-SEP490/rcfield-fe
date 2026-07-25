@@ -95,7 +95,7 @@ export default function StaffMaintenancePage() {
       toast.success("Đã lưu phiếu bảo trì thành công trên Server Backend!")
       void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       console.warn("Backend API not connected or offline, falling back to local state:", err)
     },
   })
@@ -108,7 +108,7 @@ export default function StaffMaintenancePage() {
       toast.success("Cập nhật trạng thái phiếu bảo trì trên Server thành công!")
       void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
     },
-    onError: (err: any) => {
+    onError: (err: unknown) => {
       console.warn("Backend API status update warning:", err)
     },
   })
@@ -192,7 +192,7 @@ export default function StaffMaintenancePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <StaffHeader
           title="Bảo trì & Kỹ thuật Đội xe"
-          subtitle="Quản lý lịch sửa chữa xe bị hỏng từ Check-out, thay thế linh kiện hao mòn và bàn giao đội xe"
+          subtitle="Quản lý lịch sửa chữa xe sau khi trả, thay thế linh kiện hao mòn và bàn giao đội xe"
         />
 
         <StaffButton
@@ -217,7 +217,7 @@ export default function StaffMaintenancePage() {
                     Biên bản Bảo trì Định kỳ & Sửa chữa Xe kho
                   </h3>
                   <p className="text-[11px] text-[#6b7280] mt-0.5 font-medium">
-                    Khai báo lịch bảo trì định kỳ, thay pin/linh kiện hao mòn hoặc sự cố phát sinh ngoài lượt Check-out.
+                    Khai báo lịch bảo trì định kỳ, thay pin/linh kiện hao mòn hoặc sự cố phát sinh sau khi trả xe.
                   </p>
                 </div>
                 <span className="text-[10px] font-bold text-[#ea580c] uppercase bg-orange-50 px-2 py-0.5 rounded border border-orange-200 shrink-0">
@@ -342,7 +342,7 @@ export default function StaffMaintenancePage() {
               ] as const).map((item) => (
                 <button
                   key={item.code}
-                  onClick={() => setStatusFilter(item.code as any)}
+                  onClick={() => setStatusFilter(item.code)}
                   className={cn(
                     "rounded-full px-3 py-1 text-xs font-bold transition-all border shrink-0",
                     statusFilter === item.code
@@ -372,7 +372,7 @@ export default function StaffMaintenancePage() {
                   ? "info"
                   : log.status === "COMPLETED"
                     ? "success"
-                    : (log.status as any) === "SENT_TO_PROVIDER"
+                    : log.status === "SENT_TO_PROVIDER"
                       ? "neutral"
                       : "orange"
 
@@ -393,7 +393,7 @@ export default function StaffMaintenancePage() {
 
                     <StaffBadge variant={logBadgeVariant}>
                       {log.status === "PENDING_REPAIR" && "CHỜ GỬI"}
-                      {(log.status as any) === "SENT_TO_PROVIDER" && "ĐÃ GỬI ĐỘI BẢO TRÌ"}
+                      {log.status === "SENT_TO_PROVIDER" && "ĐÃ GỬI ĐỘI BẢO TRÌ"}
                       {log.status === "RECEIVED" && "ĐÃ NHẬN XE"}
                       {log.status === "COMPLETED" && "ĐÃ SỬA XONG"}
                     </StaffBadge>
@@ -464,7 +464,7 @@ export default function StaffMaintenancePage() {
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-extrabold bg-red-600 text-white uppercase tracking-wide shadow-2xs">
                         <AlertTriangle className="size-3.5" />
-                        Nguồn: Ghi nhận hư hỏng từ Check-out Nhân viên
+                        Nguồn: Hư hỏng được ghi nhận khi nhân viên trả xe
                       </span>
                       <span className="text-[11px] font-extrabold text-red-700">
                         Biên bản kiểm tra lúc trả xe
@@ -500,7 +500,7 @@ export default function StaffMaintenancePage() {
                       </div>
                     ) : (
                       <div className="bg-white rounded-lg p-2.5 border border-red-100 text-xs shadow-2xs">
-                        <span className="font-bold text-red-900 block mb-0.5">Mô tả hư hỏng ghi nhận từ Check-out:</span>
+                        <span className="font-bold text-red-900 block mb-0.5">Mô tả hư hỏng ghi nhận khi trả xe:</span>
                         <p className="text-[#1c1b1b] font-medium leading-relaxed">{log.issueDescription}</p>
                       </div>
                     )}
@@ -511,10 +511,10 @@ export default function StaffMaintenancePage() {
                     <div className="flex items-center justify-between flex-wrap gap-2 border-b border-amber-200/60 pb-2">
                       <div className="flex items-center gap-1.5 text-xs font-extrabold text-amber-900">
                         <MessageSquareText className="size-4 text-[#ea580c]" />
-                        <span>Ghi chú từ Nhân viên lúc Check-out:</span>
+                        <span>Ghi chú của nhân viên khi trả xe:</span>
                       </div>
                       <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-                        Nhận xét Check-out
+                        Nhận xét khi trả xe
                       </span>
                     </div>
                     {log.staffNotes ? (
@@ -556,7 +556,7 @@ export default function StaffMaintenancePage() {
                           </button>
                         )}
                         {/* Bước 2: SENT_TO_PROVIDER → RECEIVED */}
-                        {(log.status === "SENT_TO_PROVIDER" as any) && (
+                        {log.status === "SENT_TO_PROVIDER" && (
                           <button
                             onClick={() => {
                               updateStatusApiMutation.mutate({ logId: log.logId, status: "RECEIVED" })
@@ -604,7 +604,7 @@ export default function StaffMaintenancePage() {
                 <div className="space-y-1">
                   <p className="text-base font-extrabold text-[#1c1b1b]">Hiện tại chưa có xe cần bảo trì</p>
                   <p className="text-xs text-[#6b7280] font-medium max-w-sm mx-auto">
-                    Tất cả xe thuộc chi nhánh đang ở trạng thái sẵn sàng cho thuê hoặc chưa ghi nhận hư hỏng mới từ Check-out.
+                    Tất cả xe thuộc chi nhánh đang sẵn sàng cho thuê hoặc chưa ghi nhận hư hỏng mới khi trả xe.
                   </p>
                 </div>
               </StaffCard>

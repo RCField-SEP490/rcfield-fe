@@ -2,6 +2,8 @@ import type {
   CustomerJourneyStatus,
   ContestEntryFeePaymentStatus,
   ContestItem,
+  ContestMatchType,
+  ContestParticipantStatus,
   ContestMatchStatus,
   ContestRegistrationStatus,
 } from "../types"
@@ -219,6 +221,42 @@ export function getMatchStatusLabel(status: ContestMatchStatus): string {
   }
 }
 
+export function getMatchTypeLabel(type: ContestMatchType): string {
+  switch (type) {
+    case "HEAD_TO_HEAD":
+      return "Đối kháng"
+    case "MULTI_DRIVER":
+      return "Nhiều người chơi"
+    case "TIME_ATTACK":
+      return "Tính giờ"
+    case "FINAL":
+      return "Chung kết"
+    default:
+      return type
+  }
+}
+
+export function getParticipantStatusLabel(
+  status: ContestParticipantStatus,
+): string {
+  switch (status) {
+    case "READY":
+      return "Sẵn sàng"
+    case "STARTED":
+      return "Đã bắt đầu"
+    case "FINISHED":
+      return "Đã hoàn thành"
+    case "DNS":
+      return "Không xuất phát"
+    case "DNF":
+      return "Không hoàn thành"
+    case "DQ":
+      return "Bị loại"
+    default:
+      return status
+  }
+}
+
 export function getJourneyStatusClass(status: CustomerJourneyStatus | null) {
   switch (status) {
     case "CHECKED_IN_WAITING_BRACKET":
@@ -244,9 +282,9 @@ export function getJourneyStatusLabel(status: CustomerJourneyStatus | null) {
     case "PENDING_APPROVAL":
       return "Chờ duyệt"
     case "APPROVED_WAITING_CHECKIN":
-      return "Đã duyệt, chờ check-in"
+      return "Đã duyệt, chờ điểm danh"
     case "CHECKED_IN_WAITING_BRACKET":
-      return "Đã check-in, chờ xếp nhánh"
+      return "Đã điểm danh, chờ xếp nhánh"
     case "IN_BRACKET":
       return "Đang thi đấu"
     case "ADVANCED":
