@@ -634,7 +634,7 @@ function RealDashboard({
               Xu hướng doanh thu
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
-              Phân tích theo loại — phí sân, thuê xe, F&B
+              Phân tích theo loại — phí sân, thuê xe, đồ ăn & thức uống
             </p>
           </div>
           {trend.length === 0 && !isLoading ? (
@@ -751,7 +751,7 @@ function RealDashboard({
                   <Area
                     type="monotone"
                     dataKey="fnbPreorder"
-                    name="F&B"
+                    name="Đồ ăn & thức uống"
                     stroke={CHART_COLORS.fnbPreorder}
                     fill="url(#db-grad-fnbPreorder)"
                     strokeWidth={hoveredSeries === "fnbPreorder" ? 3.5 : 2}
@@ -1052,7 +1052,7 @@ function RealDashboard({
               <span>Món ăn được mua nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
-              Top 5 món F&B bán chạy nhất trong kỳ
+              Top 5 món bán chạy nhất trong kỳ
             </p>
           </div>
           {isLoading ? (
@@ -1066,7 +1066,7 @@ function RealDashboard({
             </div>
           ) : !topStats?.topFnb || topStats.topFnb.length === 0 ? (
             <div className="py-10 text-center text-xs text-[#747878]">
-              Chưa có dữ liệu F&B
+              Chưa có dữ liệu đồ ăn & thức uống
             </div>
           ) : (
             <div className="overflow-x-auto">

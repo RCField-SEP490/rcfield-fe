@@ -167,7 +167,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard label="Tổng món" value={`${menuItems.length}`} helper={selectedCafe?.name ?? "Chọn cơ sở"} icon={<Utensils />} tone="neutral" />
         <MetricCard label="Đang bán" value={`${availableCount}`} helper={`${menuItems.length - availableCount} món tạm ẩn`} icon={<Coffee />} tone="success" />
-        <MetricCard label="Category" value={`${categoryCount}`} helper="Theo dữ liệu backend" icon={<Layers3 />} tone="info" />
+        <MetricCard label="Danh mục" value={`${categoryCount}`} helper="Theo dữ liệu hệ thống" icon={<Layers3 />} tone="info" />
       </section>
 
       <Panel className="mt-4">
@@ -218,7 +218,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tất cả category</SelectItem>
+              <SelectItem value="all">Tất cả danh mục</SelectItem>
               {categoryOptions.map((cat) => (
                 <SelectItem key={cat.value} value={cat.value}>
                   {cat.label}
@@ -252,7 +252,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
         ) : (
           <div className="space-y-6">
             <ProviderTable
-              columns={["Món", "Category", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
+              columns={["Món", "Danh mục", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
               rows={paginatedMenuItems.map((item) => [
                 <MenuNameCell key={`${item.id}-name`} item={item} />,
                 item.isCombo ? "Combo" : (FNB_CATEGORY_LABEL[item.category ?? ""] ?? item.category ?? "--"),
