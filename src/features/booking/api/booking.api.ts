@@ -11,6 +11,7 @@ import type {
   CreateBookingResult,
   ListCafeBookingsParams,
   ListMyBookingsParams,
+  PaymentResultTransaction,
 } from '../types/booking.types'
 
 interface ApiEnvelope<T> {
@@ -66,6 +67,13 @@ export const bookingApi = {
         coverImageUrl: sanitizeImageUrl(vehicle.coverImageUrl),
       })),
     }
+  },
+
+  getPaymentTransaction: async (txnRef: string): Promise<PaymentResultTransaction> => {
+    const res = await api.get<ApiEnvelope<PaymentResultTransaction>>(
+      `/v1/bookings/payment-transactions/${encodeURIComponent(txnRef)}`,
+    )
+    return res.data.data
   },
 
   listMyBookings: async (params: ListMyBookingsParams = {}): Promise<BookingListResponse> => {
