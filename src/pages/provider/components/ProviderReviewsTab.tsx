@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Eye, EyeOff } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/shared/ui/button"
 import { StarRating } from "@/features/booking-review/components/StarRating"
 import { getProviderReviews, updateReviewVisibility } from "@/features/booking-review/api/review.api"
@@ -15,7 +16,7 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
   const [status, setStatus] = useState<"" | "VISIBLE" | "HIDDEN">("")
   const [page, setPage] = useState(1)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["provider-reviews", cafeId, status, page],
     queryFn: () =>
       getProviderReviews({ cafe_id: cafeId, status: status || undefined, page, limit: 20 }),
@@ -24,8 +25,12 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
   const toggleMutation = useMutation({
     mutationFn: ({ id, next }: { id: string; next: "VISIBLE" | "HIDDEN" }) =>
       updateReviewVisibility(id, next),
-    onSuccess: () => {
+    onSuccess: (_, { next }) => {
+      toast.success(next === "HIDDEN" ? "Đã ẩn đánh giá" : "Đã hiển thị đánh giá")
       qc.invalidateQueries({ queryKey: ["provider-reviews", cafeId] })
+    },
+    onError: () => {
+      toast.error("Không thể cập nhật trạng thái đánh giá. Vui lòng thử lại.")
     },
   })
 
@@ -58,6 +63,10 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
 
       {isLoading ? (
         <div className="py-10 text-center text-sm text-[#747878]">Đang tải...</div>
+      ) : isError ? (
+        <div className="py-10 text-center text-sm text-red-600">
+          Không thể tải đánh giá. Vui lòng thử lại.
+        </div>
       ) : reviews.length === 0 ? (
         <div className="py-10 text-center text-sm text-[#747878]">Chưa có đánh giá nào</div>
       ) : (
@@ -91,7 +100,7 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
                     next: r.status === "VISIBLE" ? "HIDDEN" : "VISIBLE",
                   })
                 }
-                disabled={toggleMutation.isPending}
+                disabled={toggleMutation.isPending && toggleMutation.variables?.id === r.id}
               >
                 {r.status === "VISIBLE" ? (
                   <><EyeOff className="mr-1 h-3.5 w-3.5" /> Ẩn</>

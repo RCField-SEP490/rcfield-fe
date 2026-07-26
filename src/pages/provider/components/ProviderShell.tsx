@@ -4,7 +4,6 @@ import type { ElementType, ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
-  BarChart3,
   Building2,
   CircleHelp,
   ClipboardList,
@@ -56,7 +55,6 @@ const providerNavGroups: NavGroup[] = [
     heading: "Tổng quan",
     items: [
       { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.providerDashboard },
-      { label: "Doanh thu", icon: BarChart3, to: routePaths.providerRevenue },
     ],
   },
   {

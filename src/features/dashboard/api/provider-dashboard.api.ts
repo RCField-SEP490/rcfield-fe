@@ -5,6 +5,7 @@ import type {
   RevenueBreakdownItem,
   BookingChannelItem,
   BranchPerformanceItem,
+  BranchOperationsItem,
   RecentBookingItem,
   RevenuePeriod,
   ProviderTopStats,
@@ -75,6 +76,16 @@ export const providerDashboardApi = {
 
   getBranchPerformance: async (params: { from?: string; to?: string }): Promise<BranchPerformanceItem[]> => {
     const res = await api.get<{ success: boolean; data: BranchPerformanceItem[] }>("/v1/provider/dashboard/branch-performance", {
+      params: {
+        from: params.from || undefined,
+        to: params.to || undefined,
+      },
+    })
+    return res.data.data
+  },
+
+  getBranchOperations: async (params: { from?: string; to?: string } = {}): Promise<BranchOperationsItem[]> => {
+    const res = await api.get<{ success: boolean; data: BranchOperationsItem[] }>("/v1/provider/dashboard/branch-operations", {
       params: {
         from: params.from || undefined,
         to: params.to || undefined,

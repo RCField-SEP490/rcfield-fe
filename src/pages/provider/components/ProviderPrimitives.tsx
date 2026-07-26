@@ -6,6 +6,7 @@ import { routePaths } from "@/app/router/route-paths"
 import { logoutSession } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import type { BackendCafe } from "@/features/cafes/types"
+import type { BranchOperationsItem } from "@/features/dashboard/types/dashboard.types"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import type { ProviderTone } from "@/pages/provider/data"
 import { storageKeys } from "@/shared/lib/storage"
@@ -291,9 +292,11 @@ export function RevenueBars() {
 export function BranchList({
   compact = false,
   cafes = [],
+  operationsByCafe,
 }: {
   compact?: boolean
   cafes?: BackendCafe[]
+  operationsByCafe?: Map<string, BranchOperationsItem>
 }) {
   if (cafes.length === 0) {
     return (
@@ -318,7 +321,7 @@ export function BranchList({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <InlineMetric label="Phí slot" value={formatSlotFee(cafe.slotFeeRate)} />
-              <InlineMetric label="Lấp đầy" value="--" align="right" />
+              <InlineMetric label="Lấp đầy" value={formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)} align="right" />
             </div>
           </div>
         ))}
@@ -347,18 +350,23 @@ export function BranchList({
             </div>
 
             {/* Metrics */}
-            <div className="flex shrink-0 items-center divide-x divide-[#e5e2e1]">
-              <div className="pr-5">
+            <div className="grid w-full shrink-0 grid-cols-3 items-center divide-x divide-[#e5e2e1] sm:w-auto sm:grid-cols-[140px_190px_120px]">
+              <div className="min-w-0 pr-3 sm:pr-5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Phí slot</p>
                 <p className="mt-0.5 text-sm font-bold tabular-nums text-[#1c1b1b]">{formatSlotFee(cafe.slotFeeRate)}</p>
               </div>
-              <div className="px-5">
+              <div className="min-w-0 px-3 sm:px-5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Lấp đầy</p>
-                <p className="mt-0.5 text-sm font-bold text-[#c4c7c8]">--</p>
+                <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)}</p>
+                {operationsByCafe?.get(cafe.id) ? (
+                  <p className="mt-0.5 text-[10px] font-medium text-[#747878]">
+                    {formatOccupancyUsage(operationsByCafe.get(cafe.id)!)}
+                  </p>
+                ) : null}
               </div>
-              <div className="pl-5">
+              <div className="min-w-0 pl-3 sm:pl-5" title={formatFleetDetail(operationsByCafe?.get(cafe.id))}>
                 <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Đội xe</p>
-                <p className="mt-0.5 text-sm font-bold text-[#c4c7c8]">--</p>
+                <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatFleetCount(operationsByCafe?.get(cafe.id))}</p>
               </div>
             </div>
 
@@ -388,6 +396,32 @@ function formatSlotFee(value: BackendCafe["slotFeeRate"]) {
   const numberValue = Number(value)
   if (!Number.isFinite(numberValue) || numberValue <= 0) return "--"
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(numberValue)
+}
+
+export function formatOccupancyRate(rate: number | null | undefined) {
+  if (rate === null || rate === undefined) return "--"
+  const percentage = rate * 100
+  const fractionDigits = percentage > 0 && percentage < 0.1 ? 2 : percentage > 0 && percentage < 1 ? 1 : 0
+  return `${new Intl.NumberFormat("vi-VN", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(percentage)}%`
+}
+
+function formatOccupancyUsage(operation: BranchOperationsItem) {
+  const hours = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(
+    operation.occupiedSlotMinutes / 60,
+  )
+  return `${operation.bookingCount} lượt · ${hours} giờ`
+}
+
+function formatFleetCount(operation: BranchOperationsItem | undefined) {
+  return operation ? `${operation.totalVehicles} xe` : "--"
+}
+
+function formatFleetDetail(operation: BranchOperationsItem | undefined) {
+  if (!operation) return undefined
+  return `${operation.totalVehicles} xe · ${operation.availableVehicles} sẵn sàng · ${operation.inUseVehicles} đang dùng · ${operation.maintenanceVehicles} bảo trì`
 }
 
 export function ProviderTable({ columns, rows }: { columns: string[]; rows: Array<Array<ReactNode>> }) {

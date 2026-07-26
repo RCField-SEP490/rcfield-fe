@@ -12,7 +12,7 @@ export interface Review {
   note: string | null;
   status: 'VISIBLE' | 'HIDDEN';
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface ReviewAggregate {
