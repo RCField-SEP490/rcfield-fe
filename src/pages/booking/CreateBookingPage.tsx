@@ -9,7 +9,7 @@ import type {
   CustomerPlayMode,
   PaymentComponentLine,
 } from "@/features/customer-booking/data/customer-booking-demo"
-import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
+import { menuApi, menuQueryKeys, popularMenuQueryKeys } from "@/features/menu/api/menu.api"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
 import { useQuery } from "@tanstack/react-query"
@@ -150,6 +150,17 @@ export function CreateBookingPage() {
     enabled: !isMockId && !!cafeId,
   })
   const menuItems = useMemo(() => menuData?.data ?? [], [menuData?.data])
+
+  // Món khách hay gọi — số liệu thật từ đơn F&B đã phát sinh.
+  // Lỗi ở đây không được chặn luồng đặt lịch: thiếu dữ liệu thì chỉ đơn giản
+  // là không hiện phần "Khách ở đây hay gọi".
+  const { data: popularItems } = useQuery({
+    queryKey: popularMenuQueryKeys.list(isMockId ? undefined : cafeId),
+    queryFn: () => menuApi.listPopularItems(cafeId),
+    enabled: !isMockId && !!cafeId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
 
   const cafe = useMemo(() => {
     if (!isMockId && realCafe) {
@@ -793,6 +804,7 @@ export function CreateBookingPage() {
           {currentStep !== "track" && !isMockId && (
             <BookingPackageSelector
               cafeId={cafeId}
+              cafeSlug={cafe.slug}
               playMode={playMode === "RENTAL" ? "RENTAL" : "BYOC"}
               slotsNeeded={numSlots}
               slotFeeRate={cafe.slotFeeRate ?? 0}
@@ -863,6 +875,7 @@ export function CreateBookingPage() {
           {currentStep === "fnb" && (
             <FnbStep
               menuItems={menuItems}
+              popularItems={popularItems}
               isLoading={menuLoading}
               quantities={fnbQuantities}
               onQuantityChange={(itemId, quantity) =>
