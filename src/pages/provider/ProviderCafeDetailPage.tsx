@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
@@ -24,7 +25,7 @@ import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
 import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
 import { TrackConfigManager } from "@/pages/provider/components/TrackConfigManager"
 import { ProviderCafeVehiclesSection } from "@/pages/provider/components/ProviderCafeVehiclesSection"
-import { MetricCard, ProviderPageHeader, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
+import { formatOccupancyRate, MetricCard, ProviderPageHeader, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
 import { ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
@@ -68,11 +69,16 @@ export function ProviderCafeDetailPage() {
     enabled: !!cafeId,
   })
 
-  const { data: kpi } = useQuery({
-    queryKey: ["provider-dashboard-kpi", cafeId],
-    queryFn: () => providerDashboardApi.getKpi({ cafeId }),
+  const { data: branchOperations, isError: isBranchOperationsError } = useQuery({
+    queryKey: ["provider-dashboard", "branch-operations", "current-month"],
+    queryFn: () => providerDashboardApi.getBranchOperations(),
     enabled: !!cafeId,
+    staleTime: 15_000,
   })
+  const branchOperation = useMemo(
+    () => branchOperations?.find((operation) => operation.cafeId === cafeId),
+    [branchOperations, cafeId],
+  )
 
   const saveMutation = useMutation({
     mutationFn: async ({ values, files, coverFile }: { values: CafeUpsertBody; files: File[]; coverFile: File | null }) => {
@@ -213,22 +219,46 @@ export function ProviderCafeDetailPage() {
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
               <MetricCard
                 label="Doanh thu tháng"
-                value={kpi ? formatCurrency(kpi.totalRevenue) : "--"}
-                helper={kpi ? `${kpi.totalBookings} lượt đặt lịch` : "Đang tải..."}
+                value={branchOperation ? formatCurrency(branchOperation.totalRevenue) : "--"}
+                helper={
+                  isBranchOperationsError
+                    ? "Không thể tải dữ liệu vận hành"
+                    : branchOperation
+                      ? `${branchOperation.bookingCount} lượt đặt lịch`
+                      : "Đang tải..."
+                }
                 icon={<BarChart3 />}
                 tone="neutral"
               />
               <MetricCard
-                label="Tỷ lệ hoàn thành đơn"
-                value={kpi ? `${kpi.totalBookings > 0 ? ((kpi.completedBookings / kpi.totalBookings) * 100).toFixed(0) : 0}%` : "--"}
-                helper={kpi ? `${kpi.completedBookings}/${kpi.totalBookings} lượt hoàn tất` : "Đang tải..."}
+                label="Tỷ lệ lấp đầy"
+                value={
+                  branchOperation?.occupancyRate !== null && branchOperation?.occupancyRate !== undefined
+                    ? formatOccupancyRate(branchOperation.occupancyRate)
+                    : "--"
+                }
+                helper={
+                  isBranchOperationsError
+                    ? "Không thể tải dữ liệu vận hành"
+                    : branchOperation?.occupancyRate === null
+                      ? "Chưa có sức chứa slot khả dụng"
+                      : branchOperation
+                        ? "Theo sức chứa slot tháng này"
+                      : "Đang tải..."
+                }
                 icon={<TrendingUp />}
                 tone="neutral"
               />
               <MetricCard
                 label="Đội xe"
-                value={kpi ? `${kpi.totalVehicles} xe` : "--"}
-                helper={kpi ? `${kpi.availableVehicles} sẵn sàng · ${kpi.maintenanceVehicles} bảo trì` : "Đang tải..."}
+                value={branchOperation ? `${branchOperation.totalVehicles} xe` : "--"}
+                helper={
+                  isBranchOperationsError
+                    ? "Không thể tải dữ liệu vận hành"
+                    : branchOperation
+                      ? `${branchOperation.availableVehicles} sẵn sàng · ${branchOperation.maintenanceVehicles} bảo trì`
+                      : "Đang tải..."
+                }
                 icon={<Car />}
                 tone="neutral"
               />

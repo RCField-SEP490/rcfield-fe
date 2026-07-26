@@ -87,6 +87,7 @@ export function BookingPackageSelector({
 
   const [dismissedIds, setDismissedIds] = useState<string[]>(() => readDismissedIds())
   const [awaitingPurchase, setAwaitingPurchase] = useState(false)
+  const [now] = useState(() => Date.now())
 
   // Query client đặt refetchOnWindowFocus: false toàn cục, nên sau khi khách mua
   // gói ở tab khác quay lại thì dữ liệu vẫn cũ. Chỉ bật lắng nghe focus sau khi
@@ -125,7 +126,6 @@ export function BookingPackageSelector({
   // ── Điều kiện hiện gợi ý mua lại ────────────────────────────────────────────
   // Tính từ allPackages chứ không phải visiblePackages: gói hết hạn mà dùng hết
   // sạch lượt đã bị ẩn ở trên, nhưng đó lại đúng là khách dễ mua lại nhất.
-  const now = Date.now()
   const owned = allPackages.filter((p) => p.status !== "PENDING_PAYMENT")
   const hasUsablePackage = owned.some(
     (p) => new Date(p.expires_at).getTime() >= now && p.slots_remaining > 0,

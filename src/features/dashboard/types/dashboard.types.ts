@@ -47,6 +47,23 @@ export interface BranchPerformanceItem {
   bookingCount: number;
 }
 
+export interface BranchOperationsItem {
+  cafeId: string;
+  cafeName: string;
+  cafeStatus: "PENDING" | "ACTIVE" | "SUSPENDED";
+  totalRevenue: number;
+  bookingCount: number;
+  occupiedSlotMinutes: number;
+  bookableSlotMinutes: number;
+  occupancyRate: number | null;
+  totalVehicles: number;
+  inUseVehicles: number;
+  availableVehicles: number;
+  maintenanceVehicles: number;
+  overdueSessionCount: number;
+  operationalAlertCount: number;
+}
+
 export interface RecentBookingItem {
   bookingId: string;
   cafeName: string;

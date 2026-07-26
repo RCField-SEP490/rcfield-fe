@@ -573,9 +573,9 @@ function RealDashboard({
       </div>
 
       {/* KPI Cards */}
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)
         ) : (
           <>
             <KpiCard
@@ -601,6 +601,19 @@ function RealDashboard({
                   ? `${(kpi.cancellationRate * 100).toFixed(1)}% tỷ lệ hủy`
                   : ""
               }
+            />
+            <KpiCard
+              label="Tỷ lệ hoàn thành đơn"
+              value={
+                kpi
+                  ? `${kpi.totalBookings > 0 ? ((kpi.completedBookings / kpi.totalBookings) * 100).toFixed(0) : 0}%`
+                  : "—"
+              }
+              sub={kpi ? `${kpi.completedBookings}/${kpi.totalBookings} lượt hoàn tất` : ""}
+              icon={<CheckCircle2 />}
+              accentColor="green"
+              trend={kpi && kpi.totalBookings > 0 && kpi.completedBookings / kpi.totalBookings >= 0.8 ? "up" : "neutral"}
+              trendText=""
             />
             <KpiCard
               label="Tỷ lệ xe hoạt động"
