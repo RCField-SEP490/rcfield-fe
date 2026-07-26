@@ -83,7 +83,7 @@ export function ProviderCafesPage() {
     queryFn: () => providerDashboardApi.getBranchOperations(operationQueryParams),
     staleTime: 15_000,
   })
-  const cafes = data?.data ?? []
+  const cafes = useMemo(() => data?.data ?? [], [data?.data])
 
   const activeCount = cafes.filter((c) => c.status === "ACTIVE").length
   const pendingCount = cafes.filter((c) => c.status === "PENDING").length
