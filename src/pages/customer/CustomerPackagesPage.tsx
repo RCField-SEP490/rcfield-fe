@@ -100,10 +100,11 @@ function OwnedPackageCard({
   const pct = pkg.slots_total > 0 ? (usedSlots / pkg.slots_total) * 100 : 0
   const expiryDate = new Date(pkg.expires_at)
   const expiresAt = expiryDate.toLocaleDateString("vi-VN")
+  const [now] = useState(() => Date.now())
 
   // Backend đã suy ra trạng thái hiệu lực khi đọc. Kiểm tra thêm mốc thời gian ở
   // đây để thẻ vẫn đúng nếu tab mở xuyên qua thời điểm hết hạn hoặc cache bị cũ.
-  const isExpired = pkg.status === "EXPIRED" || expiryDate.getTime() < Date.now()
+  const isExpired = pkg.status === "EXPIRED" || expiryDate.getTime() < now
   const isExhausted = pkg.status === "EXHAUSTED"
   const isUsable = !isExpired && !isExhausted
   const effectiveStatus: MyPackageItem["status"] = isExpired ? "EXPIRED" : pkg.status
