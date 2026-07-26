@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { env } from "@/shared/lib/env"
 import {
-  AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, Clock3, Gamepad2,
+  AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, ChevronDown, Clock3, Gamepad2,
   Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
 import { Link, useParams } from "react-router"
@@ -12,16 +12,18 @@ import { Separator } from "@/shared/ui/separator"
 import { formatCurrency } from "@/shared/lib/format"
 import { useBooking, useCancelBooking } from "@/features/booking/hooks/use-booking"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
-import { useQuery } from "@tanstack/react-query"
-import type { BookingResponse, BookingStatus, PaymentComponentType, PaymentTransactionResponse } from "@/features/booking/types/booking.types"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import type { BookingResponse, BookingStatus } from "@/features/booking/types/booking.types"
 import { toast } from "sonner"
-import { useQueryClient } from "@tanstack/react-query"
 import { bookingApi, bookingQueryKeys } from "@/features/booking/api/booking.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { staffApi } from "@/features/staff/api/staff.api"
 import { VehicleImage } from "@/shared/ui/vehicle-image"
 import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
+import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
+import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
+import { ExtensionAuditCard } from "@/features/customer-session/components/ExtensionAuditCard"
 
 const DIRECTION_LABELS: Record<string, string> = {
   FRONT: "Trước",
@@ -34,17 +36,6 @@ const DIRECTION_LABELS: Record<string, string> = {
   OTHER: "Ảnh tình trạng xe",
 }
 
-const PART_TYPE_LABELS: Record<string, string> = {
-  TIRE_WHEEL: "Bánh xe / Lốp",
-  SPOILER: "Cánh gió",
-  CHASSIS: "Khung gầm",
-  MOTOR: "Motor / Động cơ",
-  SHELL: "Vỏ nhựa (Shell)",
-  SERVO: "Servo / Tay lái",
-  REMOTE: "Remote / Điều khiển",
-  OTHER: "Khác",
-}
-
 const TIER_LABELS: Record<string, string> = {
   STANDARD: "Tiêu chuẩn",
   PREMIUM: "Cao cấp",
@@ -54,6 +45,7 @@ const TIER_LABELS: Record<string, string> = {
 const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }> = {
   PENDING: { label: "Chờ thanh toán", className: "bg-amber-100 text-amber-700" },
   CONFIRMED: { label: "Đã xác nhận", className: "bg-emerald-100 text-emerald-700" },
+  AWAITING_PAYMENT: { label: "Chờ thanh toán phí phát sinh", className: "bg-amber-100 text-amber-700" },
   NO_SHOW: { label: "Không đến", className: "bg-orange-100 text-orange-700" },
   COMPLETED: { label: "Hoàn thành", className: "bg-indigo-100 text-indigo-700" },
   CANCELLED: { label: "Đã hủy", className: "bg-red-100 text-red-700" },
@@ -107,7 +99,7 @@ function CancelDialog({
             <span className="font-mono font-semibold">{formatCurrency(refund.slotFee)}</span>
           </div>
           <div className="flex justify-between text-slate-600">
-            <span>Hoàn phí khác (thuê xe, F&B)</span>
+            <span>Hoàn phí khác (thuê xe, đồ ăn & thức uống)</span>
             <span className="font-mono font-semibold">{formatCurrency(refund.rest)}</span>
           </div>
           <div className="border-t border-dashed border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
@@ -136,7 +128,7 @@ function CancelDialog({
 export function BookingDetailPage() {
   const params = useParams()
   const bookingId = params.bookingId ?? params.id
-  const { data: booking, isLoading, error, isError } = useBooking(bookingId)
+  const { data: booking, isLoading, error, isError, refetch: refetchBooking } = useBooking(bookingId)
   const cancelMutation = useCancelBooking()
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const queryClient = useQueryClient()
@@ -183,12 +175,63 @@ export function BookingDetailPage() {
   }
 
   const sessionId = booking?.session?.id
-  const { data: sessionDetail } = useQuery({
+  const { data: sessionDetail, refetch: refetchSessionDetail } = useQuery({
     queryKey: ["session-detail", sessionId],
     queryFn: () => customerSessionApi.getSessionDetail(sessionId!),
     enabled: !!sessionId,
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (!status) return false
+      return ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(status) ? 10_000 : false
+    },
   })
+
+  const refreshBookingState = useCallback(() => {
+    void refetchBooking()
+    if (sessionId) void refetchSessionDetail()
+  }, [refetchBooking, refetchSessionDetail, sessionId])
+
+  const handleRealtimeUpdate = useCallback((message: WsMessage) => {
+    const data = message.data as { bookingId?: string; sessionId?: string } | undefined
+    if (data?.bookingId && data.bookingId !== bookingId) return
+    if (data?.sessionId && sessionId && data.sessionId !== sessionId) return
+
+    if (
+      [
+        "CUSTOMER_CHECKOUT_CONFIRMED",
+        "SESSION_CHECKOUT_COMPLETED",
+        "CUSTOMER_PAYMENT_CONFIRMED",
+        "SESSION_CHECKOUT_INSPECTION",
+        "SESSION_FNB_ORDER_ADDED",
+        "SESSION_FNB_ORDER_UPDATED",
+        "SESSION_EXTENSION_PROPOSED",
+        "SESSION_EXTENSION_UPDATED",
+        "CUSTOMER_EXTENSION_APPROVED",
+        "CUSTOMER_EXTENSION_REJECTED",
+      ].includes(message.event)
+    ) {
+      refreshBookingState()
+    }
+  }, [bookingId, refreshBookingState, sessionId])
+
+  useWebSocket(handleRealtimeUpdate, !!bookingId)
+
+  useEffect(() => {
+    const handleSessionDetailRefresh = () => refreshBookingState()
+    window.addEventListener("refresh-session-detail", handleSessionDetailRefresh)
+    return () => window.removeEventListener("refresh-session-detail", handleSessionDetailRefresh)
+  }, [refreshBookingState])
+
+  useEffect(() => {
+    const needsLiveRefresh =
+      booking?.status === "AWAITING_PAYMENT" ||
+      ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(booking?.session?.status ?? "")
+    if (!needsLiveRefresh) return
+
+    const interval = window.setInterval(refreshBookingState, 10_000)
+    return () => window.clearInterval(interval)
+  }, [booking?.session?.status, booking?.status, refreshBookingState])
   const checkInPhotos = sessionDetail?.inspections
     ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
     .flatMap((ins) => ins.photos) ?? []
@@ -196,40 +239,53 @@ export function BookingDetailPage() {
   const checkOutPhotos = sessionDetail?.inspections
     ?.filter((ins) => ins.type === "CHECK_OUT" && ins.photos.length > 0)
     .flatMap((ins) => ins.photos) ?? []
+  const approvedExtensions = sessionDetail?.approvedExtensions ?? []
 
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [totalDuration, setTotalDuration] = useState(1)
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
+  // Staff may not have access to the customer-session endpoint. The booking
+  // response still carries the authoritative actual start time in that case.
+  const actualStartAt = sessionDetail?.actualStart ?? booking?.session?.actualStartAt
 
   useEffect(() => {
-    if (sessionDetail && (sessionDetail.status === "ACTIVE" || sessionDetail.status === "EXTENDING")) {
-      const plannedTime = new Date(sessionDetail.plannedEnd).getTime()
-      const actualStart = sessionDetail.actualStart ? new Date(sessionDetail.actualStart).getTime() : Date.now()
-      const now = Date.now()
-      queueMicrotask(() => {
-        setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
-        setTotalDuration(Math.max(1, Math.floor((plannedTime - actualStart) / 1000)))
-      })
-    } else {
+    const liveStatus = booking?.session?.status
+    const isLive = liveStatus === "ACTIVE" || liveStatus === "EXTENDING"
+
+    const plannedEndStr = sessionDetail?.plannedEnd ?? booking?.session?.plannedEndAt
+    const actualStartStr = actualStartAt
+
+    if (!isLive || !plannedEndStr) {
       queueMicrotask(() => {
         setSecondsLeft(0)
         setTotalDuration(1)
       })
+      return
     }
-  }, [sessionDetail])
 
-  useEffect(() => {
-    if (secondsLeft <= 0) return
-    const interval = setInterval(() => {
-      setSecondsLeft(prev => {
-        if (prev <= 1) { clearInterval(interval); return 0 }
-        return prev - 1
-      })
-    }, 1000)
+    const plannedTime = new Date(plannedEndStr).getTime()
+    const actualStart = actualStartStr ? new Date(actualStartStr).getTime() : Date.now()
+    const duration = Math.max(1, Math.floor((plannedTime - actualStart) / 1000))
+    const tick = () => {
+      const now = Date.now()
+      setCurrentTime(now)
+      setTotalDuration(duration)
+      setSecondsLeft(Math.max(0, Math.floor((plannedTime - now) / 1000)))
+    }
+    tick()
+    const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
-  }, [secondsLeft])
+  }, [actualStartAt, sessionDetail, booking?.session?.status, booking?.session?.plannedEndAt])
 
   const [payingAdditional, setPayingAdditional] = useState(false)
   const [settlingCash, setSettlingCash] = useState(false)
+  const [checkInPhotosOpen, setCheckInPhotosOpen] = useState(false)
+  const [checkOutPhotosOpen, setCheckOutPhotosOpen] = useState(false)
+  const operationalTiming = getSessionOperationalTiming(
+    sessionDetail?.plannedEnd ?? booking?.session?.plannedEndAt,
+    sessionDetail?.status ?? booking?.session?.status,
+    currentTime,
+  )
 
   const handlePayAdditionalFees = async () => {
     if (!bookingId) return
@@ -260,71 +316,105 @@ export function BookingDetailPage() {
   )
   const snapshotFnbPreorder = Number(snapshot?.fnb_total ?? snapshot?.fnb_preorder_fee ?? 0)
 
-  const slotFee = Number(booking?.payment_components?.find((c) => c.type === "SLOT_FEE")?.amount ?? snapshotSlotFee)
-  const rentalFee = Number(booking?.payment_components?.find((c) => c.type === "RENTAL_FEE")?.amount ?? snapshotRentalFee)
-  const discountAmount = Number(booking?.discountAmount ?? 0)
-  const depositAmount = 0
-  const fnbPreorderFee = Number(
-    booking?.payment_components?.find(
-      (c) =>
-        (c.type === "FB_PREORDER" || c.type === "FNB_PREORDER") &&
-        (c.status === "HELD" || c.status === "REFUNDED")
-    )?.amount ?? snapshotFnbPreorder
+  // Financial totals come from the backend's shared summary. Operational F&B
+  // orders and inspection data must not recalculate what the customer owes.
+  const financialSummary = booking?.financial_summary
+  const fallbackPrepaidLines = [
+    { componentId: "slot-fee", label: "Phí lịch chơi", amount: Number(snapshotSlotFee) },
+    { componentId: "rental-fee", label: "Phí thuê xe", amount: Number(snapshotRentalFee) },
+    { componentId: "fnb-preorder", label: "Đồ ăn & thức uống đặt trước", amount: Number(snapshotFnbPreorder) },
+  ].filter((line) => line.amount > 0)
+  const fallbackAdditionalLines = (booking?.payment_components ?? [])
+    .filter((component) =>
+      !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(component.type) &&
+      !((component.type === "FNB_PREORDER" || component.type === "FB_PREORDER") && component.status === "HELD"),
+    )
+    .map((component) => ({
+      componentId: component.id,
+      label:
+        component.type === "FNB_ON_SITE" || component.type === "FNB_PREORDER" || component.type === "FB_PREORDER"
+          ? "Đồ ăn & thức uống gọi tại quầy"
+          : component.type === "EXTENSION_FEE"
+            ? "Phí gia hạn ca chơi"
+            : component.type === "DAMAGE_CHARGE"
+              ? "Phí bồi thường hư hỏng"
+              : "Khoản phát sinh khác",
+      amount: Number(component.amount),
+      status: component.status,
+      payment: undefined,
+    }))
+  const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
+  const additionalLines = financialSummary?.additionalLines ?? fallbackAdditionalLines
+  const prepaidDiscountAmount = financialSummary?.prepaidDiscountAmount ?? Number(booking?.discountAmount ?? 0)
+  const prepaidPaidAmount = financialSummary?.prepaidPaidAmount ?? Math.max(
+    0,
+    fallbackPrepaidLines.reduce((sum, line) => sum + line.amount, 0) - prepaidDiscountAmount,
   )
-
-  // On-site incurred service components (F&B/extension/damage that are NOT prepaid HELD)
-  // Exclude: SLOT_FEE, RENTAL_FEE, SECURITY_DEPOSIT, and any FNB_PREORDER with status HELD/REFUNDED (prepaid)
-  const onsiteComponents = booking?.payment_components?.filter((c) =>
-    !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(c.type) &&
-    !((c.type === "FNB_PREORDER" || c.type === "FB_PREORDER") && (c.status === "HELD" || c.status === "REFUNDED"))
-  ) || []
-
-
-  // Damage charge component specifically (for deposit reconciliation)
-  const damageComponent = onsiteComponents.find((c) => c.type === "DAMAGE_CHARGE")
-  const damageCharge = Number(damageComponent?.amount ?? 0)
-
-  // Fallback: when no DAMAGE_CHARGE component exists yet (e.g. session is CHECKING_OUT and
-  // backend hasn't billed it yet), read damage from booking.damage_breakdown or sessionDetail.damageClaim
-  const breakdownDamageCharge = Number(booking?.damage_breakdown?.totalDamageCharge ?? 0)
-  const sessionClaimCharge = Number(sessionDetail?.damageClaim?.totalDamageCharge ?? 0)
-  const effectiveDamageCharge =
-    damageCharge > 0
-      ? damageCharge
-      : booking?.session?.status === "CHECKING_OUT"
-        ? (breakdownDamageCharge || sessionClaimCharge)
-        : 0
-
-  // ── Best Practice: Deposit ONLY offsets vehicle damage ──
-  const depositConsumedByDamage = Math.min(depositAmount, effectiveDamageCharge)
-  const depositRefundAmount = depositAmount - depositConsumedByDamage
-  const damageExceedingDeposit = Math.max(0, effectiveDamageCharge - depositAmount)
-
-  // Counter bill = F&B onsite + Extension + damage exceeding deposit
-  const counterComponents = onsiteComponents.filter((c) => c.type !== "DAMAGE_CHARGE")
-  const totalCounterServiceBill = counterComponents.reduce((sum, c) => sum + Number(c.amount), 0)
-  const totalCounterBill = totalCounterServiceBill + damageExceedingDeposit
-
-  // settleSessionCheckoutBilling already created a FB_PREORDER PENDING component for on-site F&B
-  // — hide the raw onsiteFnbTotal row to avoid double-counting
-  const hasSettledFnbComponent = counterComponents.some(
-    (c) => c.type === "FB_PREORDER" || c.type === "FNB_PREORDER"
+  const additionalTotal = financialSummary?.additionalTotal ?? additionalLines.reduce(
+    (sum, line) => sum + Number(line.amount),
+    0,
   )
+  const additionalOutstandingAmount = financialSummary?.additionalOutstandingAmount ?? additionalLines
+    .filter((line) => line.status === "PENDING")
+    .reduce((sum, line) => sum + Number(line.amount), 0)
+  const totalPaidAmount = financialSummary?.totalPaidAmount ?? prepaidPaidAmount
+  const isPaid = financialSummary?.isSettled ?? additionalOutstandingAmount === 0
+  const customerFnbOrders = (booking?.fnb_orders?.length
+    ? booking.fnb_orders
+    : booking?.fnb_order
+      ? [booking.fnb_order]
+      : []).filter((order) => order.items.length > 0)
+  const preorderFnbOrders = customerFnbOrders.filter((order) => order.orderType === "PRE_ORDER")
+  const onsiteFnbOrders = customerFnbOrders.filter((order) => order.orderType === "ON_SITE")
+  // This supports the merged payload returned by an older server during a
+  // rolling deployment. New responses always include one of the two groups above.
+  const legacyFnbOrders = customerFnbOrders.filter(
+    (order) => order.orderType !== "PRE_ORDER" && order.orderType !== "ON_SITE",
+  )
+  const getFnbGroupTotal = (orders: typeof customerFnbOrders) => orders.reduce(
+    (sum, order) => sum + (order.totalAmount ?? order.items.reduce((itemSum, item) => itemSum + Number(item.subtotal), 0)),
+    0,
+  )
+  const onsiteFnbComponent = booking?.payment_components?.find((component) => component.type === "FNB_ON_SITE")
+  const onsiteFnbPaid = onsiteFnbComponent?.status === "DISBURSED" || onsiteFnbComponent?.status === "HELD"
+  const renderFnbGroup = (
+    orders: typeof customerFnbOrders,
+    options: { title: string; description: string; paymentLabel: string; className: string; badgeClassName: string },
+  ) => {
+    if (orders.length === 0) return null
 
-  // Mark unpaid when there's a PENDING component OR when damage exists that isn't billed yet
-  const hasUnbilledDamage = effectiveDamageCharge > 0 && !damageComponent
-  const isPaid = !booking?.payment_components?.some((c) => c.status === "PENDING") && !hasUnbilledDamage
-
-  const transactions: PaymentTransactionResponse[] = booking?.payment_transactions ?? []
-  const gatewayLabel = (gateway: string) =>
-    gateway === "DIRECT" ? "Tiền mặt" : gateway === "MOCK" ? "DEV Mock" : "VNPay Online"
-  const prepaidTx = transactions.find((t) => t.type === "PAYMENT" && t.gateway !== "DIRECT" && t.status === "SUCCESS")
-  const counterTx = transactions.find((t) => t.type === "PAYMENT" && t.gateway === "DIRECT" && t.status === "SUCCESS")
-  const additionalVnpayTx = transactions.filter(
-    (t) => t.type === "PAYMENT" && t.gateway !== "DIRECT" && t.status === "SUCCESS"
-  ).length > 1
-    ? transactions.filter((t) => t.type === "PAYMENT" && t.gateway !== "DIRECT" && t.status === "SUCCESS").at(-1)
-    : undefined
+    return (
+      <section className={`rounded-xl border p-4 space-y-3 ${options.className}`}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">{options.title}</h3>
+            <p className="mt-0.5 text-xs text-slate-500">{options.description}</p>
+          </div>
+          <Badge className={`border-0 ${options.badgeClassName}`}>{options.paymentLabel}</Badge>
+        </div>
+        <div className="space-y-2">
+          {orders.flatMap((order) => order.items.map((item) => ({ orderId: order.id, item }))).map(({ orderId, item }) => (
+            <div key={`${orderId}-${item.id}`} className="flex items-start justify-between gap-4 text-sm">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-slate-900">{item.itemName ?? "Sản phẩm"}</p>
+                {item.notes && <p className="mt-0.5 text-xs text-slate-500">{item.notes}</p>}
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-xs text-slate-500">×{item.quantity} · {formatCurrency(Number(item.unitPrice))}</p>
+                <p className="font-semibold text-slate-900">{formatCurrency(Number(item.subtotal))}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-between border-t border-current/10 pt-3 text-sm font-semibold text-slate-800">
+          <span>Tổng cộng</span>
+          <span>{formatCurrency(getFnbGroupTotal(orders))}</span>
+        </div>
+      </section>
+    )
+  }
+  const gatewayLabel = (gateway?: string) =>
+    gateway === "DIRECT" ? "tiền mặt" : gateway === "MOCK" ? "DEV Mock" : "VNPAY"
 
   const refundComponents = booking?.payment_components?.filter(
     (c) => c.status === "PENDING_REFUND" || c.status === "REFUNDED"
@@ -347,14 +437,6 @@ export function BookingDetailPage() {
     ["ACTIVE", "EXTENDING", "CHECKED_IN", "CHECKING_OUT"].includes(booking.session!.status) &&
     !checkInWindowExpired &&
     !["COMPLETED", "CANCELLED", "NO_SHOW"].includes(booking!.status)
-
-  // F&B on-site orders from session (paid at counter, not a payment_component)
-  const onsiteFnbTotal = (sessionDetail?.fnbOrders ?? [])
-    .filter(o => o.orderType === "ON_SITE")
-    .reduce((sum, o) => sum + Number(o.total ?? 0), 0)
-
-  // Total estimated counter bill = payment_component-tracked fees + on-site F&B
-  const totalEstimatedCounterBill = totalCounterBill + onsiteFnbTotal
 
   const statusInfo = effectiveBookingStatus
     ? (STATUS_LABELS[effectiveBookingStatus] ?? STATUS_LABELS.PENDING)
@@ -450,13 +532,19 @@ export function BookingDetailPage() {
                           />
                         </svg>
                         <div className="absolute flex flex-col items-center justify-center space-y-0.5">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CÒN LẠI</span>
-                          <span className="text-2xl font-black text-slate-950 tracking-tight tabular-nums">
-                            {secondsLeft > 0 ? formatCountdown(secondsLeft) : "00:00"}
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                            {operationalTiming.state === "ON_TIME" ? "CÒN LẠI" : operationalTiming.state === "OVERDUE" ? "QUÁ GIỜ" : "ĐẾN GIỜ TRẢ XE"}
                           </span>
-                          <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-500">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                            ĐANG CHƠI
+                          <span className="text-2xl font-black text-slate-950 tracking-tight tabular-nums">
+                            {operationalTiming.state === "ON_TIME"
+                              ? formatCountdown(secondsLeft)
+                              : operationalTiming.state === "OVERDUE"
+                                ? `+${operationalTiming.minutesPastPlannedEnd}p`
+                                : "Trả xe"}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-black ${operationalTiming.state === "OVERDUE" ? "text-red-600" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "text-amber-600" : "text-emerald-500"}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${operationalTiming.state === "OVERDUE" ? "bg-red-500" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "bg-amber-500" : "bg-emerald-500 animate-ping"}`} />
+                            {operationalTiming.state === "ON_TIME" ? "ĐANG CHƠI" : "CHỜ TRẢ XE"}
                           </span>
                         </div>
                       </div>
@@ -464,17 +552,27 @@ export function BookingDetailPage() {
                       {/* Session info */}
                       <div className="flex-1 space-y-3 text-center sm:text-left">
                         <div>
-                          <h4 className="font-black text-slate-950 text-base">Phiên chơi đang diễn ra</h4>
+                          <h4 className="font-black text-slate-950 text-base">
+                            {operationalTiming.state === "OVERDUE"
+                              ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
+                              : operationalTiming.state === "DUE_FOR_CHECKOUT"
+                                ? "Đã đến giờ trả xe"
+                                : "Phiên chơi đang diễn ra"}
+                          </h4>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            {booking.session.status === "EXTENDING" ? "Phiên đang được gia hạn thêm" : "Phiên chơi đang hoạt động bình thường"}
+                            {operationalTiming.state === "OVERDUE"
+                              ? "Vui lòng trả xe tại quầy để nhân viên kiểm tra và hoàn tất checkout."
+                              : booking.session.status === "EXTENDING"
+                                ? "Phiên đang được gia hạn thêm"
+                                : "Phiên chơi đang hoạt động bình thường"}
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="bg-slate-50 rounded-lg p-2.5 text-left">
                             <p className="text-slate-400 uppercase text-[9px] font-black tracking-wide">Giờ bắt đầu</p>
                             <p className="font-bold text-slate-900 mt-0.5">
-                              {sessionDetail?.actualStart
-                                ? new Date(sessionDetail.actualStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
+                              {actualStartAt
+                                ? new Date(actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
                                 : "--:--"}
                             </p>
                           </div>
@@ -565,7 +663,8 @@ export function BookingDetailPage() {
 
                   // Playing step
                   const showPlayStep = !!sess && sessStatus !== "CHECKED_IN"
-                  const playDone = sessStatus === "CHECKING_OUT" || timelineStatus === "COMPLETED"
+                  const isAwaitingAdditionalPayment = timelineStatus === "AWAITING_PAYMENT"
+                  const playDone = sessStatus === "CHECKING_OUT" || sessStatus === "COMPLETED" || timelineStatus === "COMPLETED"
                   const playActive = sessStatus === "ACTIVE" || sessStatus === "EXTENDING"
                   const playTitle = sessStatus === "EXTENDING" ? "Đang gia hạn"
                     : sessStatus === "CHECKING_OUT" ? "Đang hoàn tất checkout"
@@ -582,6 +681,8 @@ export function BookingDetailPage() {
                   // Completion step
                   const completedDesc = timelineStatus === "NO_SHOW"
                     ? "Khách không đến check-in đúng hạn"
+                    : isAwaitingAdditionalPayment
+                    ? "Phiên chơi đã kết thúc. Vui lòng thanh toán phí phát sinh để hoàn tất đơn."
                     : timelineStatus === "COMPLETED" && sess?.actualEndAt
                     ? formatDateTime(new Date(sess.actualEndAt))
                     : "Sau khi check-out hoàn tất"
@@ -620,15 +721,24 @@ export function BookingDetailPage() {
                       )}
                       <TimelineItem
                         icon={CalendarClock}
-                        title={timelineStatus === "NO_SHOW" ? "Không đến" : "Hoàn thành"}
+                        title={timelineStatus === "NO_SHOW" ? "Không đến" : isAwaitingAdditionalPayment ? "Chờ thanh toán phí phát sinh" : "Hoàn thành"}
                         description={completedDesc}
                         done={timelineStatus === "COMPLETED"}
+                        active={isAwaitingAdditionalPayment}
                       />
                     </div>
                   )
                 })()}
               </CardContent>
             </Card>
+
+            {role === "customer" && (
+              <ExtensionAuditCard
+                extensions={approvedExtensions}
+                initialPlannedEnd={booking.slotEnd}
+                currentProposal={sessionDetail?.extensionProposal}
+              />
+            )}
 
             {/* Booking details */}
             <Card className="rounded-xl shadow-sm">
@@ -756,8 +866,8 @@ export function BookingDetailPage() {
               </Card>
             )}
 
-            {/* F&B order */}
-            {booking.fnb_order && booking.fnb_order.items.length > 0 && (
+            {/* Food and drink orders stay separated by when they were placed. */}
+            {customerFnbOrders.length > 0 && (
               <Card className="rounded-xl shadow-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -766,103 +876,124 @@ export function BookingDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {booking.fnb_order.items.map((item) => (
-                    <div key={item.id} className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{item.itemName ?? "Sản phẩm"}</p>
-                        {item.notes && (
-                          <p className="text-xs text-muted-foreground">{item.notes}</p>
-                        )}
-                      </div>
-                      <div className="text-right text-sm">
-                        <p className="text-muted-foreground">×{item.quantity} · {formatCurrency(Number(item.unitPrice))}</p>
-                        <p className="font-semibold">{formatCurrency(Number(item.subtotal))}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <Separator />
-                  <div className="flex justify-between text-sm font-semibold">
-                    <span>Tổng F&B</span>
-                    <span>{formatCurrency(booking.fnb_order.items.reduce((s, i) => s + Number(i.subtotal), 0))}</span>
-                  </div>
+                  {renderFnbGroup(preorderFnbOrders, {
+                    title: "Đặt trước khi đến sân",
+                    description: "Các món này đã được thanh toán cùng đơn đặt lịch.",
+                    paymentLabel: "Đã thanh toán",
+                    className: "border-emerald-200 bg-emerald-50/40",
+                    badgeClassName: "bg-emerald-100 text-emerald-700",
+                  })}
+                  {renderFnbGroup(onsiteFnbOrders, {
+                    title: "Gọi trong phiên chơi",
+                    description: "Các món phát sinh trong lúc chơi và được quyết toán riêng.",
+                    paymentLabel: onsiteFnbPaid ? "Đã thanh toán" : "Chờ thanh toán",
+                    className: "border-orange-200 bg-orange-50/40",
+                    badgeClassName: onsiteFnbPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
+                  })}
+                  {renderFnbGroup(legacyFnbOrders, {
+                    title: "Đồ ăn & thức uống",
+                    description: "Chi tiết thời điểm gọi món chưa có trong dữ liệu cũ.",
+                    paymentLabel: "Danh sách món",
+                    className: "border-slate-200 bg-slate-50",
+                    badgeClassName: "bg-slate-200 text-slate-700",
+                  })}
                 </CardContent>
               </Card>
             )}
 
             {/* Check-in handover photos */}
             {checkInPhotos.length > 0 && (
-              <Card className="rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Ảnh bàn giao xe (Check-in)
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Tình trạng xe tại thời điểm bàn giao — nhân viên chụp trước khi phiên chơi bắt đầu.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    {checkInPhotos.map((photo, idx) => (
-                      <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <ZoomableInspectionImage
-                          src={photo.url}
-                          alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="aspect-video w-full object-cover"
-                        />
-                        <div className="bg-muted/50 px-2.5 py-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                            {DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          </p>
-                          {photo.notes && (
-                            <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              <Card className="rounded-xl shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCheckInPhotosOpen((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Ảnh bàn giao xe (Check-in)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {checkInPhotos.length} ảnh · nhân viên chụp trước khi phiên bắt đầu
+                      </p>
+                    </div>
                   </div>
-                </CardContent>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${checkInPhotosOpen ? "rotate-180" : ""}`} />
+                </button>
+                {checkInPhotosOpen && (
+                  <CardContent className="pt-0 pb-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      {checkInPhotos.map((photo, idx) => (
+                        <div key={idx} className="overflow-hidden rounded-xl border border-border">
+                          <ZoomableInspectionImage
+                            src={photo.url}
+                            alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            className="aspect-video w-full object-cover"
+                          />
+                          <div className="bg-muted/50 px-2.5 py-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              {DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            </p>
+                            {photo.notes && (
+                              <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             )}
 
             {/* Check-out return photos */}
             {checkOutPhotos.length > 0 && (
-              <Card className="rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Ảnh trả xe (Check-out)
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Tình trạng xe sau khi phiên chơi kết thúc — làm căn cứ đối chiếu hư hỏng (nếu có).
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    {checkOutPhotos.map((photo, idx) => (
-                      <div key={idx} className="overflow-hidden rounded-xl border border-border">
-                        <ZoomableInspectionImage
-                          src={photo.url}
-                          alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          className="aspect-video w-full object-cover"
-                        />
-                        <div className="bg-muted/50 px-2.5 py-1.5">
-                          <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                            {DIRECTION_LABELS[photo.direction] ?? photo.direction}
-                          </p>
-                          {photo.notes && (
-                            <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+              <Card className="rounded-xl shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setCheckOutPhotosOpen((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Camera className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="font-semibold text-sm text-foreground">Ảnh trả xe (Check-out)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {checkOutPhotos.length} ảnh · căn cứ đối chiếu hư hỏng (nếu có)
+                      </p>
+                    </div>
                   </div>
-                </CardContent>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${checkOutPhotosOpen ? "rotate-180" : ""}`} />
+                </button>
+                {checkOutPhotosOpen && (
+                  <CardContent className="pt-0 pb-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      {checkOutPhotos.map((photo, idx) => (
+                        <div key={idx} className="overflow-hidden rounded-xl border border-border">
+                          <ZoomableInspectionImage
+                            src={photo.url}
+                            alt={DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            className="aspect-video w-full object-cover"
+                          />
+                          <div className="bg-muted/50 px-2.5 py-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                              {DIRECTION_LABELS[photo.direction] ?? photo.direction}
+                            </p>
+                            {photo.notes && (
+                              <p className="mt-0.5 text-[11px] leading-tight text-foreground">{photo.notes}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             )}
           </main>
 
-          <aside className="space-y-4">
+          <aside className="lg:sticky lg:top-20 lg:self-start">
+            <div className="space-y-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
             {booking.status === "CONFIRMED" && !checkInWindowExpired && new Date() < new Date(booking.slotEnd) && (
               <Card className="rounded-xl text-center shadow-sm">
                 <CardHeader>
@@ -894,154 +1025,84 @@ export function BookingDetailPage() {
                 <CardTitle className="text-base">Thanh toán</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Block 1: VNPAY prepayment */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
                     <span className="text-xs font-bold text-emerald-700">
                       {booking.status === "PENDING"
                         ? "Sẽ thanh toán qua VNPAY"
-                        : prepaidTx
-                          ? `Đã trả qua ${gatewayLabel(prepaidTx.gateway)}`
-                          : "Đã trả qua VNPAY"}
+                        : "Đã thanh toán khi đặt lịch"}
                     </span>
                   </div>
                   <div className="pl-5 space-y-1.5">
-                    {slotFee > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Phí lịch sân</span>
-                        <span className="font-semibold tabular-nums">{formatCurrency(slotFee)}</span>
+                    {prepaidLines.map((line) => (
+                      <div key={line.componentId} className="flex justify-between text-sm">
+                        <span className="text-slate-500">{line.label}</span>
+                        <span className="font-semibold tabular-nums">{formatCurrency(Number(line.amount))}</span>
                       </div>
-                    )}
-                    {rentalFee > 0 && (
+                    ))}
+                    {prepaidDiscountAmount > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Phí thuê xe</span>
-                        <span className="font-semibold tabular-nums">{formatCurrency(rentalFee)}</span>
-                      </div>
-                    )}
-                    {fnbPreorderFee > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">F&B đặt trước</span>
-                        <span className="font-semibold tabular-nums">{formatCurrency(fnbPreorderFee)}</span>
-                      </div>
-                    )}
-                    {depositAmount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Tiền cọc xe</span>
-                        <span className="font-semibold tabular-nums">{formatCurrency(depositAmount)}</span>
-                      </div>
-                    )}
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Mã giảm giá</span>
-                        <span className="font-semibold text-emerald-600 tabular-nums">−{formatCurrency(discountAmount)}</span>
+                        <span className="text-slate-500">Ưu đãi áp dụng</span>
+                        <span className="font-semibold text-emerald-600 tabular-nums">−{formatCurrency(prepaidDiscountAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm font-bold border-t border-slate-100 pt-1.5">
-                      <span className="text-slate-800">Tổng đã trả</span>
-                      <span className="text-slate-900 tabular-nums">{formatCurrency(slotFee + rentalFee + fnbPreorderFee + depositAmount - discountAmount)}</span>
+                      <span className="text-slate-800">Đã thanh toán trước</span>
+                      <span className="text-slate-900 tabular-nums">{formatCurrency(prepaidPaidAmount)}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Block 2: End-of-session settlement (active or completed) */}
-                {(isActiveSession || booking.status === "COMPLETED") && (depositAmount > 0 || totalEstimatedCounterBill > 0) && (
+                {(isActiveSession || booking.status === "COMPLETED" || booking.status === "AWAITING_PAYMENT") && (
                   <>
                     <Separator />
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5">
                         <Clock3 className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         <span className="text-xs font-bold text-slate-600">
-                          {isActiveSession ? "Khi kết thúc phiên" : "Quyết toán"}
+                          Chi tiết phí phát sinh
                         </span>
-                        {isActiveSession && <span className="text-[9px] text-slate-400">(ước tính)</span>}
                       </div>
                       <div className="pl-5 space-y-1.5">
-                        {depositRefundAmount > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Hoàn cọc xe</span>
-                            <span className="font-semibold text-emerald-600 tabular-nums">+{formatCurrency(depositRefundAmount)}</span>
-                          </div>
-                        )}
-                        {depositConsumedByDamage > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-500">Khấu trừ hư hỏng</span>
-                            <span className="font-semibold text-rose-600 tabular-nums">−{formatCurrency(depositConsumedByDamage)}</span>
-                          </div>
-                        )}
-                        {counterComponents.map((c) => (
-                          <div key={c.id} className="flex justify-between text-sm">
-                            <span className="text-slate-500">{formatComponentType(c.type)}</span>
-                            <span className="font-semibold text-orange-600 tabular-nums">+{formatCurrency(Number(c.amount))}</span>
-                          </div>
-                        ))}
-                        {onsiteFnbTotal > 0 && !hasSettledFnbComponent && (
-                          <div className="flex justify-between text-sm items-start">
-                            <div>
-                              <span className="text-slate-500">F&B gọi tại quầy</span>
-                              <p className="text-[10px] text-slate-400 leading-tight">thanh toán tiền mặt</p>
+                        {additionalLines.length > 0 ? additionalLines.map((line) => {
+                          const paid = line.status === "DISBURSED" || line.status === "CAPTURED"
+                          return (
+                            <div key={line.componentId} className="flex items-start justify-between gap-3 text-sm">
+                              <div>
+                                <span className="text-slate-500">{line.label}</span>
+                                <p className={`mt-0.5 text-[10px] font-medium ${paid ? "text-emerald-600" : "text-amber-700"}`}>
+                                  {paid ? `Đã thanh toán${line.payment?.gateway ? ` · ${gatewayLabel(line.payment.gateway)}` : ""}` : "Chờ thanh toán"}
+                                </p>
+                              </div>
+                              <span className="font-semibold text-orange-600 tabular-nums shrink-0">+{formatCurrency(Number(line.amount))}</span>
                             </div>
-                            <span className="font-semibold text-orange-600 tabular-nums">+{formatCurrency(onsiteFnbTotal)}</span>
-                          </div>
+                          )
+                        }) : (
+                          <p className="text-sm text-slate-400">Không phát sinh phí tại quầy.</p>
                         )}
-                        {damageExceedingDeposit > 0 && (
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-slate-500">{depositAmount > 0 ? "Hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
-                              <span className="font-semibold text-rose-600 tabular-nums">+{formatCurrency(damageExceedingDeposit)}</span>
-                            </div>
-                            {(() => {
-                              const lineItems = booking?.damage_breakdown?.lineItems?.length
-                                ? booking.damage_breakdown.lineItems.map((item) => ({
-                                    id: item.id,
-                                    partType: item.partType,
-                                    customPartName: item.customPartName,
-                                    partsPrice: item.partsPrice,
-                                    laborPrice: item.laborPrice,
-                                    subtotal: item.subtotal,
-                                  }))
-                                : (sessionDetail?.damageClaim?.damageLineItems ?? []).map((item) => ({
-                                    id: item.id,
-                                    partType: item.partType,
-                                    customPartName: item.customPartName,
-                                    partsPrice: item.partsPrice,
-                                    laborPrice: item.laborPrice,
-                                    subtotal: item.lineTotal,
-                                  }))
-                              return lineItems.length > 0 ? (
-                                <div className="ml-2 space-y-1 rounded-lg bg-rose-50 border border-rose-100 p-2.5">
-                                  {lineItems.map((item) => (
-                                    <div key={item.id} className="flex items-start justify-between text-[11px]">
-                                      <div className="space-y-0.5">
-                                        <p className="font-bold text-rose-900">
-                                          {PART_TYPE_LABELS[item.partType] ?? item.partType}
-                                          {item.customPartName && <span className="font-normal text-rose-700"> — {item.customPartName}</span>}
-                                        </p>
-                                        <div className="flex gap-2 text-[10px] text-rose-600">
-                                          <span>Linh kiện: {formatCurrency(item.partsPrice)}</span>
-                                          {item.laborPrice > 0 && <span>Công: {formatCurrency(item.laborPrice)}</span>}
-                                        </div>
-                                      </div>
-                                      <span className="font-bold text-rose-700 tabular-nums shrink-0 pl-2">{formatCurrency(item.subtotal)}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null
-                            })()}
-                          </div>
-                        )}
+                        <div className="flex justify-between text-sm font-bold border-t border-slate-100 pt-1.5">
+                          <span className="text-slate-800">Tổng phí phát sinh</span>
+                          <span className="text-orange-600 tabular-nums">{formatCurrency(additionalTotal)}</span>
+                        </div>
                       </div>
                     </div>
                   </>
                 )}
 
+                <div className="flex justify-between rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
+                  <span className="font-bold text-slate-700">Tổng đã thanh toán</span>
+                  <span className="font-extrabold text-slate-950 tabular-nums">{formatCurrency(totalPaidAmount)}</span>
+                </div>
+
                 <PackageUsedBadge snapshot={booking.snapshot} />
 
                 {/* Status footer */}
-                {!isPaid && totalCounterBill > 0 ? (
+                {!isPaid && additionalOutstandingAmount > 0 ? (
                   <div className="space-y-3">
                     <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 font-medium leading-relaxed">
-                      Còn <strong>{formatCurrency(totalCounterBill)}</strong> phí phát sinh chưa thanh toán
+                      <p>Còn <strong>{formatCurrency(additionalOutstandingAmount)}</strong> phí phát sinh chưa thanh toán.</p>
+                      <p className="mt-1 text-amber-700">Chi tiết từng khoản được hiển thị ngay phía trên.</p>
                     </div>
                     {role === "customer" && (
                       <Button
@@ -1062,15 +1123,10 @@ export function BookingDetailPage() {
                       </Button>
                     )}
                   </div>
-                ) : totalCounterBill > 0 && isPaid ? (
+                ) : additionalTotal > 0 && isPaid ? (
                   <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-700 font-bold flex items-center gap-1.5 justify-center">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Đã thanh toán đầy đủ
-                    {(counterTx || additionalVnpayTx) && (
-                      <span className="ml-1 font-normal text-emerald-600">
-                        · {gatewayLabel((counterTx ?? additionalVnpayTx)!.gateway)}
-                      </span>
-                    )}
                   </div>
                 ) : booking.status === "PENDING" ? (
                   <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-700 font-medium text-center">
@@ -1092,25 +1148,25 @@ export function BookingDetailPage() {
                   <div className="space-y-1.5 text-xs">
                     {refundSlotFee > 0 && (
                       <div className="flex justify-between text-slate-600">
-                        <span>Hoàn phí lịch sân (Slot Fee):</span>
+                        <span>Hoàn phí lịch sân:</span>
                         <span className="font-semibold">{formatCurrency(refundSlotFee)}</span>
                       </div>
                     )}
                     {refundRentalFee > 0 && (
                       <div className="flex justify-between text-slate-600">
-                        <span>Hoàn phí thuê xe (Rental Fee):</span>
+                        <span>Hoàn phí thuê xe:</span>
                         <span className="font-semibold">{formatCurrency(refundRentalFee)}</span>
                       </div>
                     )}
                     {refundDeposit > 0 && (
                       <div className="flex justify-between text-slate-600">
-                        <span>Hoàn tiền cọc xe (Deposit):</span>
+                        <span>Hoàn tiền cọc xe:</span>
                         <span className="font-semibold">{formatCurrency(refundDeposit)}</span>
                       </div>
                     )}
                     {refundFnb > 0 && (
                       <div className="flex justify-between text-slate-600">
-                        <span>Hoàn F&B đặt trước:</span>
+                        <span>Hoàn đồ ăn & thức uống đặt trước:</span>
                         <span className="font-semibold">{formatCurrency(refundFnb)}</span>
                       </div>
                     )}
@@ -1162,20 +1218,16 @@ export function BookingDetailPage() {
               </Card>
             )}
 
-            {["PENDING", "CONFIRMED"].includes(booking.status) && !checkInWindowExpired && (
-              <>
-                <Button variant="outline" className="w-full" disabled>
-                  <RotateCcw className="h-4 w-4" /> Thay đổi lịch
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={() => setShowCancelDialog(true)}
-                >
-                  <XCircle className="h-4 w-4" /> Hủy đơn
-                </Button>
-              </>
+            {booking.status === "PENDING" && !checkInWindowExpired && (
+              <Button
+                variant="destructive"
+                className="w-full"
+                onClick={() => setShowCancelDialog(true)}
+              >
+                <XCircle className="h-4 w-4" /> Hủy đơn
+              </Button>
             )}
+            </div>
           </aside>
         </div>
       </div>
@@ -1238,20 +1290,6 @@ function DetailLine({ icon: Icon, label, value }: { icon: typeof Car; label: str
       </div>
     </div>
   )
-}
-
-function formatComponentType(type: PaymentComponentType): string {
-  const map: Partial<Record<PaymentComponentType, string>> = {
-    SLOT_FEE: "Phí lịch chơi",
-    RENTAL_FEE: "Phí thuê xe",
-    SECURITY_DEPOSIT: "Cọc xe dự phòng",
-    FNB_PREORDER: "Đồ ăn & nước uống",
-    FB_PREORDER: "Đồ ăn & nước uống",
-    EXTENSION_FEE: "Phí gia hạn",
-    DAMAGE_CHARGE: "Phí thiệt hại",
-    PLATFORM_FEE: "Phí nền tảng",
-  }
-  return map[type] ?? type
 }
 
 function formatCountdown(totalSecs: number) {

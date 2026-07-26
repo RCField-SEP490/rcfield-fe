@@ -20,6 +20,7 @@ export interface RevenueTrendItem {
   fnbPreorder: number;
   extensionFee: number;
   damageCharge: number;
+  packageFee?: number;
   total: number;
 }
 
@@ -79,11 +80,20 @@ export interface TopVehicleItem {
   rentalRevenue: number;
 }
 
+export interface TopPackageItem {
+  packageId: string;
+  packageName: string;
+  cafeName: string;
+  purchaseCount: number;
+  totalRevenue: number;
+}
+
 export interface ProviderTopStats {
   topFnb: TopFnbItem[];
   topTracks: TopTrackItem[];
   topCustomers: TopCustomerItem[];
   topVehicles: TopVehicleItem[];
+  topPackages?: TopPackageItem[];
 }
 
 // ── AI Revenue Analytics ────────────────────────────────────────────────────

@@ -18,6 +18,34 @@ export const cafeQueryKeys = {
   trackConfigs: (cafeId?: string) => [...cafeQueryKeys.all, "track-configs", cafeId] as const,
 }
 
+// Customer booking screens need to reflect schedule changes made by providers
+// without requiring the customer to reload the page.
+export const CAFE_CONFIGURATION_REFETCH_INTERVAL_MS = 15_000
+export const CAFE_CONFIGURATION_UPDATED_EVENT = "rcfield:cafe-configuration-updated"
+export const CAFE_CONFIGURATION_BROADCAST_CHANNEL = "rcfield:cafe-configuration"
+
+export type CafeConfigurationUpdatedDetail = {
+  cafeId: string
+}
+
+function notifyCafeConfigurationUpdated(cafeId: string) {
+  if (typeof window === "undefined") return
+
+  const detail: CafeConfigurationUpdatedDetail = { cafeId }
+  window.dispatchEvent(
+    new CustomEvent<CafeConfigurationUpdatedDetail>(
+      CAFE_CONFIGURATION_UPDATED_EVENT,
+      { detail },
+    ),
+  )
+
+  if (typeof BroadcastChannel === "undefined") return
+
+  const channel = new BroadcastChannel(CAFE_CONFIGURATION_BROADCAST_CHANNEL)
+  channel.postMessage(detail)
+  channel.close()
+}
+
 export const cafeApi = {
   listCafes: async (params: CafeListParams = {}): Promise<CafeListResponse> => {
     debugCafeApi("GET /v1/cafes", params)
@@ -43,6 +71,7 @@ export const cafeApi = {
     debugCafeApi("PATCH /v1/cafes/:id", { cafeId, fields: Object.keys(body) })
     const res = await api.patch<ApiEnvelope<BackendCafe>>(`/v1/cafes/${cafeId}`, body)
     debugCafeApi("PATCH /v1/cafes/:id response", { cafeId: res.data.data.id, status: res.data.data.status })
+    notifyCafeConfigurationUpdated(res.data.data.id)
     return res.data.data
   },
 
@@ -253,4 +282,3 @@ export const trackConfigApi = {
     return res.data.data.images
   },
 }
-

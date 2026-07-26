@@ -1,5 +1,5 @@
 import { ChevronLeft } from "lucide-react"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { Link, useSearchParams } from "react-router"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import { bookingCatalog } from "@/features/booking/data/booking-options"
@@ -13,13 +13,19 @@ import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
 import { useQuery } from "@tanstack/react-query"
-import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  cafeApi,
+  cafeQueryKeys,
+  CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
+} from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { vehicleKeys } from "@/features/vehicles/constants/queryKeys"
 import {
   mapCafeToExploreCafe,
   mapCatalogToExploreVehicle,
 } from "@/features/cafes/lib/cafe.mappers"
+import { getOperatingHoursForCalendarDate } from "@/features/cafes/lib/operating-hours"
+import { useCafeConfigurationRefresh } from "@/features/cafes/hooks/useCafeConfigurationRefresh"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import {
   pricingApi,
@@ -61,7 +67,6 @@ import { ContestRentalEntry } from "./components/ContestRentalEntry"
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 const EMPTY_BOOKING_CAFE: Cafe = {
   id: "",
   name: "",
@@ -104,11 +109,15 @@ export function CreateBookingPage() {
     data: realCafe,
     isLoading: isLoadingRealCafe,
     isError: isRealCafeError,
+    refetch: refetchCafe,
   } = useQuery({
     queryKey: cafeQueryKeys.detail(isMockId ? undefined : cafeId),
     queryFn: () => cafeApi.getCafe(cafeId),
     enabled: !isMockId && !!cafeId,
+    refetchInterval: CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
+    refetchOnWindowFocus: "always",
   })
+  useCafeConfigurationRefresh(isMockId ? undefined : cafeId, refetchCafe)
 
   // Fetch cafe images if real cafe is loaded
   const { data: cafeImages = [] } = useQuery({
@@ -219,13 +228,9 @@ export function CreateBookingPage() {
       ? configuredSlotDuration
       : 0
 
-  const { openHour, closeHour, isScheduleConfigured } = useMemo(() => {
-    const dayKey = DAY_KEYS[new Date(date).getDay()]
-    const hours = (
-      cafe.operatingHours as
-        | Record<string, { open?: string; close?: string }>
-        | undefined
-    )?.[dayKey]
+  const { openHour, closeHour, isClosedDate, isScheduleConfigured } = useMemo(() => {
+    const hours = getOperatingHoursForCalendarDate(cafe.operatingHours, date)
+    const isClosedDate = hours?.is_closed === true
     const parseHour = (t?: string) => {
       if (!t) return null
       const parsed = parseInt(t.split(":")[0], 10)
@@ -242,13 +247,45 @@ export function CreateBookingPage() {
     return {
       openHour: configuredOpenHour ?? 0,
       closeHour: configuredCloseHour ?? 0,
+      isClosedDate,
       isScheduleConfigured:
+        !isClosedDate &&
         configuredOpenHour !== null &&
         configuredCloseHour !== null &&
         configuredCloseHour > configuredOpenHour &&
         slotDurationMinutes > 0,
     }
   }, [date, cafe.operatingHours, slotDurationMinutes])
+
+  const scheduleUnavailableMessage = isClosedDate
+    ? "Cơ sở nghỉ vào ngày đã chọn. Vui lòng chọn ngày khác."
+    : "Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ."
+
+  const scheduleFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        operatingHours: cafe.operatingHours,
+        slotDurationMinutes,
+      }),
+    [cafe.operatingHours, slotDurationMinutes],
+  )
+  const previousScheduleFingerprintRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const previousFingerprint = previousScheduleFingerprintRef.current
+    previousScheduleFingerprintRef.current = scheduleFingerprint
+
+    // Keep a URL-preselected slot on the initial load, but clear a selection
+    // made under an older schedule as soon as the provider changes it.
+    if (!previousFingerprint || previousFingerprint === scheduleFingerprint) {
+      return
+    }
+
+    queueMicrotask(() => {
+      setTime("")
+      setPreselectedSlotEnd(null)
+    })
+  }, [scheduleFingerprint])
 
   // Deselect incompatible vehicles when track config changes
   useEffect(() => {
@@ -463,9 +500,7 @@ export function CreateBookingPage() {
 
   const handleNext = () => {
     if (currentStep === "track" && !isScheduleConfigured) {
-      toast.error(
-        "Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ.",
-      )
+      toast.error(scheduleUnavailableMessage)
       return
     }
     if (currentStep === "track" && !hasValidSelectedSlot) {
@@ -503,9 +538,7 @@ export function CreateBookingPage() {
       return
     }
     if (!isScheduleConfigured) {
-      toast.error(
-        "Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ.",
-      )
+      toast.error(scheduleUnavailableMessage)
       return
     }
     if (!hasValidSelectedSlot) {
@@ -646,9 +679,7 @@ export function CreateBookingPage() {
       return
     }
     if (!isScheduleConfigured) {
-      toast.error(
-        "Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot hợp lệ.",
-      )
+      toast.error(scheduleUnavailableMessage)
       return
     }
     if (!hasValidSelectedSlot) {
@@ -743,7 +774,7 @@ export function CreateBookingPage() {
           </Button>
           <div className="mb-4">
             <p className="text-sm font-medium text-muted-foreground">
-              RCField Checkout
+              Đặt lịch RCField
             </p>
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
               Hoàn tất đặt lịch chạy RC
@@ -804,6 +835,7 @@ export function CreateBookingPage() {
               pricingLabel={isMockId ? undefined : pricingLabel}
               openHour={openHour}
               closeHour={closeHour}
+              isClosedDate={isClosedDate}
               isScheduleConfigured={isScheduleConfigured}
             />
           )}
@@ -866,7 +898,6 @@ export function CreateBookingPage() {
           date={date}
           time={preselectedSlotEnd ? `${time} – ${preselectedSlotEnd}` : time}
           selectedVehicles={selectedVehicles}
-          fnbTotal={fnbTotal}
           components={paymentComponents}
           currentStep={currentStep}
           onNext={handleNext}
@@ -952,7 +983,7 @@ function PreSelectionBanner({
 }) {
   const parts: string[] = []
   if (vehicleCount > 0) parts.push(vehicleName ?? `${vehicleCount} xe`)
-  if (fnbCount > 0) parts.push(`${fnbCount} món F&B`)
+  if (fnbCount > 0) parts.push(`${fnbCount} món đồ ăn & thức uống`)
   return (
     <div className="mb-4 flex items-center gap-2 rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-2.5 text-sm text-orange-800">
       <span>
@@ -1070,7 +1101,7 @@ function buildPaymentComponents({
     lines.push({
       id: "fnb",
       type: "FNB_PREORDER",
-      label: "F&B preorder",
+      label: "Đồ ăn & thức uống đặt trước",
       amount: fnbTotal,
       status: "PENDING",
     })

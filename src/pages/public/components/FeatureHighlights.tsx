@@ -112,7 +112,7 @@ const features = [
     icon: Clock,
     color: "from-sky-500 to-indigo-500",
     title: "Theo dõi phiên live",
-    desc: "Nhận thông báo đếm ngược thời gian thực. Gia hạn phiên chơi hoặc order F&B ngay tại chỗ.",
+    desc: "Nhận thông báo đếm ngược theo thời gian thực. Gia hạn phiên chơi hoặc gọi món ngay tại chỗ.",
     mockup: (
       <div className="h-44 w-full rounded-2xl bg-slate-950 p-4 border border-white/10 flex flex-col justify-between items-center">
         <div className="flex justify-between items-center w-full border-b border-white/5 pb-2">
@@ -135,7 +135,7 @@ const features = [
         {/* CTA options */}
         <div className="flex gap-2 w-full justify-center">
           <button className="text-3xs font-extrabold px-3 py-1.5 rounded-lg bg-orange-600 text-white hover:bg-orange-500 transition">Gia hạn</button>
-          <button className="text-3xs font-extrabold px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition">Order F&B</button>
+          <button className="text-3xs font-extrabold px-3 py-1.5 rounded-lg bg-white/5 text-slate-300 hover:bg-white/10 transition">Gọi món</button>
         </div>
       </div>
     )

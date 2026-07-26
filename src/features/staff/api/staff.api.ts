@@ -27,6 +27,29 @@ export interface DamageLineItemDetail {
   lineTotal: number
 }
 
+export interface StaffMaintenanceLogItem {
+  logId: string
+  logCode: string
+  vehicleId: string
+  vehicleIdentifier: string
+  vehicleName: string
+  vehicleImageUrl?: string
+  cafeId: string
+  cafeName: string
+  categoryId: string
+  categoryName: string
+  categoryTier: string
+  issueDescription: string
+  staffNotes: string | null
+  cost: number
+  performedBy: string | null
+  status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"
+  createdAt: string
+  completedAt: string | null
+  inspectionPhotos?: { angle: string; url: string }[]
+  damagedChecklist?: { itemKey: string; itemLabel: string; status: string; note?: string }[]
+}
+
 export interface StaffListItem {
   id: string
   email: string
@@ -204,6 +227,8 @@ export const staffQueryKeys = {
   staffDetail: (staffId: string) => [...staffQueryKeys.all, "detail", staffId] as const,
   staffKpi: (staffId: string, period: string) => [...staffQueryKeys.all, "kpi", staffId, period] as const,
   staffActivity: (staffId: string) => [...staffQueryKeys.all, "activity", staffId] as const,
+  maintenanceLogs: (cafeId?: string, status?: string, search?: string) =>
+    [...staffQueryKeys.all, "maintenance-logs", cafeId ?? "all", status ?? "all", search ?? "none"] as const,
 }
 
 export const staffApi = {
@@ -393,6 +418,37 @@ export const staffApi = {
 
   createWalkInBooking: async (body: CreateWalkInBookingInput): Promise<CreateWalkInBookingResponse> => {
     const res = await api.post<{ success: boolean; data: CreateWalkInBookingResponse }>("/v1/staff/bookings", body)
+    return res.data.data
+  },
+
+  getMaintenanceLogs: async (
+    params?: { cafe_id?: string; status?: string; search?: string }
+  ): Promise<StaffMaintenanceLogItem[]> => {
+    const res = await api.get<{ success: boolean; data: StaffMaintenanceLogItem[] }>("/v1/staff/maintenance-logs", {
+      params,
+    })
+    return res.data.data
+  },
+
+  createMaintenanceLog: async (body: {
+    vehicleId: string
+    issueDescription: string
+    cost?: number
+    performedBy?: string
+    staffNotes?: string
+  }): Promise<StaffMaintenanceLogItem> => {
+    const res = await api.post<{ success: boolean; data: StaffMaintenanceLogItem }>("/v1/staff/maintenance-logs", body)
+    return res.data.data
+  },
+
+  updateMaintenanceStatus: async (
+    logId: string,
+    body: { status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"; cost?: number; staffNotes?: string }
+  ): Promise<{ success: boolean; logId: string; status: string }> => {
+    const res = await api.patch<{ success: boolean; data: { success: boolean; logId: string; status: string } }>(
+      `/v1/staff/maintenance-logs/${logId}/status`,
+      body
+    )
     return res.data.data
   },
 }

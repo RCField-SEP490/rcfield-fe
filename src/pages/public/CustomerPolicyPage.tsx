@@ -81,12 +81,12 @@ export function CustomerPolicyPage() {
               <h4>Quy trình thanh toán</h4>
               <p>
                 Sau khi xác nhận đặt lịch, bạn thanh toán toàn bộ phí qua cổng thanh toán gồm phí slot,
-                phí thuê xe và F&B đặt trước (nếu có). Không yêu cầu tiền cọc.
+                phí thuê xe và đồ ăn & thức uống đặt trước (nếu có). Không yêu cầu tiền cọc.
               </p>
               <ul>
                 <li><strong>Phí slot</strong> — Phí sử dụng sân, tính theo số người và khung giờ.</li>
                 <li><strong>Phí thuê xe</strong> — Tính theo giờ thực tế của phiên chơi (chỉ áp dụng chế độ RENTAL).</li>
-                <li><strong>F&B đặt trước</strong> — Gộp vào thanh toán ban đầu, xử lý khi check-out.</li>
+                <li><strong>Đồ ăn & thức uống đặt trước</strong> — Gộp vào thanh toán ban đầu, xử lý khi trả xe.</li>
               </ul>
 
               <h4>Thời hạn thanh toán</h4>
@@ -116,7 +116,7 @@ export function CustomerPolicyPage() {
                   <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-black uppercase tracking-wider text-slate-500">
                     <th className="px-4 py-3">Thời điểm hủy</th>
                     <th className="px-4 py-3">Phí slot</th>
-                    <th className="px-4 py-3">Phí thuê xe & F&B</th>
+                    <th className="px-4 py-3">Phí thuê xe & đồ ăn, thức uống</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -229,7 +229,7 @@ export function CustomerPolicyPage() {
                 Nếu không phản hồi, đề nghị sẽ tự động bị từ chối.
               </p>
               <ul>
-                <li>Phí gia hạn được tính và thanh toán cùng lúc với checkout.</li>
+                <li>Phí gia hạn được tính và thanh toán cùng lúc khi trả xe.</li>
               </ul>
 
               <h4>Check-out</h4>
@@ -287,7 +287,7 @@ export function CustomerPolicyPage() {
               <ul>
                 <li><strong>Phí slot</strong>: Thu 100% — áp dụng như phí phạt no-show và được chuyển cho RC Cafe.</li>
                 <li><strong>Phí thuê xe</strong>: Không thu.</li>
-                <li><strong>F&B đặt trước</strong>: Không thu, đơn hàng bị hủy.</li>
+                <li><strong>Đồ ăn & thức uống đặt trước</strong>: Không thu, đơn hàng bị hủy.</li>
               </ul>
 
               <p>

@@ -44,8 +44,8 @@ export default function StaffFnbOrdersPage() {
   return (
     <div className="space-y-6">
       <StaffHeader
-        title="Gọi món & Chuẩn bị F&B"
-        subtitle="Quản lý và điều phối các đơn pre-order F&B từ booking hôm nay"
+        title="Gọi món & chuẩn bị đồ ăn, thức uống"
+        subtitle="Quản lý và điều phối các đơn đặt trước từ lịch hôm nay"
       />
 
       <div className="flex border-b border-[#e5e2e1] gap-2">
@@ -98,8 +98,8 @@ export default function StaffFnbOrdersPage() {
           {sortedOrders.length === 0 && (
             <StaffCard className="col-span-full py-16 text-center text-[#6b7280] space-y-2 border-dashed">
               <ClipboardList className="size-10 text-[#6b7280] mx-auto" />
-              <p className="text-sm font-bold">Không có đơn F&B nào</p>
-              <p className="text-xs">Đơn pre-order từ booking hôm nay sẽ hiển thị ở đây.</p>
+              <p className="text-sm font-bold">Không có đơn đồ ăn & thức uống nào</p>
+              <p className="text-xs">Đơn đặt trước từ lịch hôm nay sẽ hiển thị ở đây.</p>
             </StaffCard>
           )}
         </div>

@@ -22,7 +22,7 @@ export function ContestRuntimeOverview({
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <Panel>
-        <PanelTitle title="Contest summary" subtitle="Thông tin contest và các tham số vận hành đang áp dụng." />
+        <PanelTitle title="Tóm tắt giải đấu" subtitle="Thông tin giải đấu và các tham số vận hành đang áp dụng." />
         <div className="grid gap-4 md:grid-cols-2">
           <Info label="Loại giải" value={contest.contest_type?.name ?? "--"} />
           <Info label="Hình thức thi đấu" value={getContestFormatLabel(runtimeFormat || contest.contest_format?.code)} />
@@ -44,9 +44,9 @@ export function ContestRuntimeOverview({
         <Panel>
           <PanelTitle title="Mức sẵn sàng vận hành" subtitle="Xác nhận giải đấu đã đủ dữ liệu để chuyển sang thi đấu thật." />
           <div className="space-y-3 text-sm font-semibold text-[#5d5f5f]">
-            <StatusRow label="Người chơi đã check-in" value={`${eligibleRegistrations.length}/${registrations.length}`} good={eligibleRegistrations.length > 0} />
+            <StatusRow label="Người chơi đã điểm danh" value={`${eligibleRegistrations.length}/${registrations.length}`} good={eligibleRegistrations.length > 0} />
             <StatusRow label="Nhánh đấu đã tạo" value={matches.length > 0 ? `${matches.length} lượt/trận` : "Chưa tạo"} good={matches.length > 0} />
-            <StatusRow label="Runtime thực tế" value={getContestFormatLabel(runtimeFormat || contest.contest_format?.code)} good />
+            <StatusRow label="Thể thức vận hành" value={getContestFormatLabel(runtimeFormat || contest.contest_format?.code)} good />
             <StatusRow label="Bảng xếp hạng" value={metrics?.leaderboard.published ? "Đã công bố" : "Chưa công bố"} good={Boolean(metrics?.leaderboard.published)} />
           </div>
         </Panel>

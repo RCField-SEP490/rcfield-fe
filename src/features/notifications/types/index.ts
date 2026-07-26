@@ -1,4 +1,8 @@
 export type NotificationType =
+  | 'SYSTEM'
+  | 'VEHICLE_MAINTENANCE_CREATED'
+  | 'MAINTENANCE_LOG_UPDATED'
+  | 'DAMAGE_REPORTED'
   | 'ACCOUNT_APPROVED'
   | 'ACCOUNT_REJECTED'
   | 'ACCOUNT_SUSPENDED'
@@ -25,6 +29,7 @@ export type NotificationType =
   | 'CONTEST_REGISTRATION_CANCELLED'
   | 'CONTEST_CHECKIN_CONFIRMED'
   | 'CONTEST_REMINDER'
+  | (string & {})
 
 export interface Notification {
   id: string

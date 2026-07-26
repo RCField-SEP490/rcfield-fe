@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useParams, useNavigate, Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import {
@@ -14,9 +14,8 @@ import {
   HelpCircle,
   Banknote,
   CheckCircle2,
-  ShieldCheck,
-  Package,
   Trophy,
+  X,
 } from "lucide-react"
 import { routePaths } from "@/app/router/route-paths"
 import { useStaffOperations } from "./context/StaffOperationContext"
@@ -25,8 +24,12 @@ import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { menuApi } from "@/features/menu/api/menu.api"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import type { MenuItem } from "@/features/menu/types"
+import type { BookingFinancialSummary } from "@/features/booking/types/booking.types"
 import { getApiErrorInfo } from "@/shared/lib/utils"
+import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
+import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
 import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
+import { ExtensionAuditCard } from "@/features/customer-session/components/ExtensionAuditCard"
 import { toast } from "sonner"
 import {
   StaffCard,
@@ -52,6 +55,7 @@ type ApiBooking = Partial<CustomerBookingDetail> & {
   track?: { name?: string; type?: string }
   mode?: CustomerBookingDetail["playMode"]
   paymentComponents?: CustomerBookingDetail["payment_components"]
+  financial_summary?: BookingFinancialSummary
 }
 
 type SessionApiData = Partial<SessionView> & {
@@ -62,6 +66,7 @@ type SessionApiData = Partial<SessionView> & {
   actualEndAt?: string
   slotEnd?: string
   booking?: ApiBooking
+  financialSummary?: BookingFinancialSummary
 }
 
 export default function StaffSessionDetailPage() {
@@ -73,6 +78,7 @@ export default function StaffSessionDetailPage() {
     fleetStates,
     proposeExtension,
     addFnbOrder,
+    updateFnbOrderStatus,
     swapSessionVehicle,
     refreshData,
   } = useStaffOperations()
@@ -81,17 +87,19 @@ export default function StaffSessionDetailPage() {
   const contextSession = sessions.find((s) => s.sessionId === sessionId)
   const contextBooking = contextSession ? bookings.find((b) => b.bookingId === contextSession.bookingId) : null
 
-  // API fallback: completed and historical sessions are not necessarily in the
-  // operations context, so fetch their full detail directly.
-  const { data: apiData, isLoading: apiLoading } = useQuery<SessionApiData>({
+  // The API is authoritative for this screen. Context only renders the first
+  // frame while the detail request is in flight; it can otherwise be stale
+  // after an inspection, checkout, or counter-payment operation.
+  const { data: apiData, isLoading: apiLoading, refetch: refetchSessionDetail } = useQuery<SessionApiData>({
     queryKey: ["staff", "session-detail", sessionId],
     queryFn: () => staffApi.getSessionDetail(sessionId!) as Promise<SessionApiData>,
-    enabled: Boolean(sessionId && !contextSession),
+    enabled: Boolean(sessionId),
     retry: false,
+    refetchInterval: 15_000,
   })
 
-  // Merge: prefer context data, fall back to normalized API data
-  const session = useMemo<SessionView | null>(() => contextSession ?? (apiData ? {
+  // Merge: always prefer the live API response once available.
+  const session = useMemo<SessionView | null>(() => apiData ? {
     sessionId: apiData.sessionId ?? apiData.id ?? sessionId ?? "",
     bookingId: apiData.bookingId ?? apiData.booking?.bookingId ?? "",
     status: apiData.status ?? "COMPLETED",
@@ -109,10 +117,10 @@ export default function StaffSessionDetailPage() {
     extensionPricingOptions: apiData.extensionPricingOptions ?? [],
     damageClaim: apiData.damageClaim,
     fnbOrders: apiData.fnbOrders ?? [],
-  } : null), [apiData, contextSession, sessionId])
+  } : contextSession ?? null, [apiData, contextSession, sessionId])
 
   const apiBooking = apiData?.booking
-  const booking = useMemo<CustomerBookingDetail | null>(() => contextBooking ?? (apiBooking ? {
+  const booking = useMemo<CustomerBookingDetail | null>(() => apiBooking ? {
     bookingId: apiBooking.bookingId ?? apiBooking.id ?? "",
     shortCode: apiBooking.shortCode ?? "",
     cafeId: apiBooking.cafeId ?? apiBooking.cafe?.id ?? "",
@@ -139,7 +147,35 @@ export default function StaffSessionDetailPage() {
     plannedParticipants: apiBooking.plannedParticipants ?? [],
     plannedVehicles: apiBooking.plannedVehicles ?? [],
     sessions: [],
-  } : null), [apiBooking, contextBooking])
+  } : contextBooking ?? null, [apiBooking, contextBooking])
+
+  // Keep the extension card responsive while the authoritative session query
+  // is being refreshed. The broader "today bookings" refresh is much slower.
+  const [submittedExtension, setSubmittedExtension] = useState<{ extraMinutes: number } | null>(null)
+  const [submittingExtension, setSubmittingExtension] = useState(false)
+
+  const handleSessionRealtime = useCallback((message: WsMessage) => {
+    const payload = message.data as { sessionId?: string; bookingId?: string } | undefined
+    if (payload?.sessionId && payload.sessionId !== sessionId) return
+
+    if (
+      [
+        "CUSTOMER_CHECKOUT_CONFIRMED",
+        "SESSION_CHECKOUT_COMPLETED",
+        "CUSTOMER_PAYMENT_CONFIRMED",
+        "SESSION_FNB_ORDER_ADDED",
+        "CUSTOMER_EXTENSION_APPROVED",
+        "CUSTOMER_EXTENSION_REJECTED",
+      ].includes(message.event)
+    ) {
+      if (["CUSTOMER_EXTENSION_APPROVED", "CUSTOMER_EXTENSION_REJECTED"].includes(message.event)) {
+        setSubmittedExtension(null)
+      }
+      void refetchSessionDetail()
+    }
+  }, [refetchSessionDetail, sessionId])
+
+  useWebSocket(handleSessionRealtime, Boolean(sessionId))
 
   const isWalkInBooking = booking?.source === "STAFF_MANUAL"
   const canDirectExtend = isWalkInBooking
@@ -157,17 +193,13 @@ export default function StaffSessionDetailPage() {
 
   // Local state controls
   const [timeLeft, setTimeLeft] = useState("")
+  const [currentTime, setCurrentTime] = useState(() => Date.now())
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [loadingMenu, setLoadingMenu] = useState(false)
   const [availableFleet, setAvailableFleet] = useState<VehicleUnit[]>([])
   const [settlingPayment, setSettlingPayment] = useState(false)
   const [confirmSettleOpen, setConfirmSettleOpen] = useState(false)
-  const [counterSettled, setCounterSettled] = useState(false)
-  const [liveCheckoutInspection, setLiveCheckoutInspection] = useState<{
-    totalDamageCharge: number
-    damageFlagged: boolean
-    damageLineItems: { partType: string; customPartName?: string | null; partsPrice: number; laborPrice: number; lineTotal: number }[]
-  } | null>(null)
+  const [settledBookingId, setSettledBookingId] = useState<string | null>(null)
 
   // F&B local form state
   const [selectedItemName, setSelectedItemName] = useState("")
@@ -192,10 +224,11 @@ export default function StaffSessionDetailPage() {
     }
 
     const updateTimer = () => {
+      setCurrentTime(Date.now())
       const planned = new Date(session.plannedEnd).getTime()
       const diff = planned - Date.now()
       if (diff <= 0) {
-        setTimeLeft("Hết giờ!")
+        setTimeLeft("")
       } else {
         const minutes = Math.floor(diff / 60000)
         const seconds = Math.floor((diff % 60000) / 1000)
@@ -214,19 +247,6 @@ export default function StaffSessionDetailPage() {
       setPendingDirectExtension(null)
     })
   }, [isWalkInBooking])
-
-  // Fetch live checkout inspection data for COMPLETED/CHECKING_OUT sessions
-  useEffect(() => {
-    const sessionStatus = session?.status
-    if (!sessionId || (sessionStatus !== "COMPLETED" && sessionStatus !== "CHECKING_OUT")) return
-    staffApi.getSessionDetail(sessionId)
-      .then((data) => {
-        if (data.checkoutInspection) {
-          setLiveCheckoutInspection(data.checkoutInspection)
-        }
-      })
-      .catch(() => { /* silent — context data used as fallback */ })
-  }, [sessionId, session?.status])
 
   // Fetch branch catalog data (Menu & Fleet)
   useEffect(() => {
@@ -279,21 +299,36 @@ export default function StaffSessionDetailPage() {
   }
 
   // Handle adding custom F&B order
-  const handleAddFnb = (e: React.FormEvent) => {
+  const handleAddFnb = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedItemName) return
 
     const menuItem = menuItems.find((i) => i.name === selectedItemName)
     const price = menuItem ? Number(menuItem.price) || 30000 : 30000
 
-    addFnbOrder(session.sessionId, [
+    const created = await addFnbOrder(session.sessionId, [
       {
         name: selectedItemName,
         qty: selectedQty,
         price,
       },
     ])
-    setSelectedQty(1)
+    if (created) {
+      setSelectedQty(1)
+      void refetchSessionDetail()
+    }
+  }
+
+  const handleCancelFnbOrder = async (orderId: string) => {
+    try {
+      await staffApi.updateFnbOrder(orderId, "CANCELLED")
+      updateFnbOrderStatus(orderId, "CANCELLED")
+      void refreshData()
+      await refetchSessionDetail()
+      toast.success("Đã huỷ món")
+    } catch {
+      toast.error("Không thể huỷ món — vui lòng thử lại")
+    }
   }
 
   const handleSettlePayment = async () => {
@@ -302,8 +337,9 @@ export default function StaffSessionDetailPage() {
       setSettlingPayment(true)
       await staffApi.settlePendingPayments(booking.bookingId)
       toast.success("Xác nhận thanh toán thành công!")
-      setCounterSettled(true)
+      setSettledBookingId(booking.bookingId)
       await refreshData()
+      await refetchSessionDetail()
     } catch (err: unknown) {
       const message = getApiErrorInfo(err).message || (err instanceof Error ? err.message : String(err))
       toast.error("Không thể quyết toán thanh toán: " + message)
@@ -355,7 +391,11 @@ export default function StaffSessionDetailPage() {
 
   const checkInDisputed = Boolean(checkInInspection && !checkInInspection.customerConfirmed && checkInInspection.customerConfirmedAt)
   const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
-  const extensionPending = session.extensionProposal?.status === "PENDING"
+  const extensionPending =
+    session.extensionProposal?.status === "PENDING" ||
+    (Boolean(submittedExtension) &&
+      (!apiData?.extensionProposal || apiData.extensionProposal.status === "PENDING"))
+  const pendingExtensionMinutes = session.extensionProposal?.extraMinutes ?? submittedExtension?.extraMinutes
   const approvedExtensions = session.approvedExtensions ??
     (session.extensionProposal?.status === "APPROVED" ? [session.extensionProposal] : [])
   const approvedExtensionFee = Number(
@@ -364,6 +404,12 @@ export default function StaffSessionDetailPage() {
   )
 
   const currentPlannedEndMs = new Date(session.plannedEnd ?? booking.slotEnd).getTime()
+  const operationalTiming = getSessionOperationalTiming(
+    session.plannedEnd ?? booking.slotEnd,
+    session.status,
+    currentTime,
+  )
+  const extensionWindowClosed = operationalTiming.state === "OVERDUE"
   const approvedExtensionMinutes = Number(
     session.approvedExtensionMinutes ??
     (session.extensionProposal?.status === "APPROVED" ? session.extensionProposal.extraMinutes : 0)
@@ -384,55 +430,70 @@ export default function StaffSessionDetailPage() {
     const blockedReason = quoted?.available === false ? quoted.blockedReason ?? "Không khả dụng" : undefined
     return { mins, fee, newPlannedEnd, blockedReason, blocked: Boolean(blockedReason) || fee > remainingCap }
   })
-  const handleExtension = (mins: number, fee: number, newPlannedEnd: string) => {
+  const handleExtension = async (mins: number, fee: number, newPlannedEnd: string) => {
     if (effectiveDirectExtensionMode) {
       setPendingDirectExtension({ mins, fee, newPlannedEnd })
     } else {
-      proposeExtension(session.sessionId, mins, fee)
+      setSubmittingExtension(true)
+      const created = await proposeExtension(session.sessionId, mins, fee)
+      if (created) {
+        setSubmittedExtension({ extraMinutes: mins })
+        void refetchSessionDetail()
+      }
+      setSubmittingExtension(false)
     }
   }
   const formatPlannedEnd = (value: string | number) =>
     new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
   const onsiteFnbOrders = (session.fnbOrders || [])
     .filter((order) => order.orderType !== "PRE_ORDER" && order.status !== "CANCELLED")
-  const fnbTotal = onsiteFnbOrders
-    .reduce((sum, order) => sum + order.total, 0)
-  const damageCharge = liveCheckoutInspection?.totalDamageCharge ?? session.damageClaim?.finalCharge ?? 0
 
-  // ── Best Practice Billing Separation ──
-  const depositAmount = 0
-
-  // Deposit ONLY offsets vehicle damage charge (asset protection)
-  const depositConsumedByDamage = Math.min(depositAmount, damageCharge)
-  const depositRefundAmount = depositAmount - depositConsumedByDamage    // cash to return to customer
-  const damageExceedingDeposit = Math.max(0, damageCharge - depositAmount) // extra damage to bill at counter
-
-  // Counter service bill = F&B + Extension + damage that exceeds deposit
-  const totalCounterBill = fnbTotal + approvedExtensionFee + damageExceedingDeposit
-  // Net amount customer hands over at the counter (positive = customer pays, negative = staff returns change)
-  const netCounterAmount = totalCounterBill - depositRefundAmount
-
-  // Whether the API has already created counter-bill components (DAMAGE_CHARGE, extension, onsite FnB).
-  // When components exist, trust their status — no need for the inspection-derived fallback.
-  const hasAnyCounterComponent = booking.payment_components?.some(
-    (c) => !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(c.type) &&
-      !((c.type === "FNB_PREORDER" || c.type === "FB_PREORDER") && (c.status === "HELD" || c.status === "REFUNDED"))
-  ) ?? false
-
-  // UI flags
-  // CHECKING_OUT fallback only fires when no counter component exists yet (pre-backend-fix sessions).
-  // Once components exist (even DISBURSED), component status is authoritative.
-  const hasPendingCounterPayment = !counterSettled && !!(
-    booking.payment_components?.some((c) => c.status === "PENDING") ||
-    (!hasAnyCounterComponent && session.status === "CHECKING_OUT" && totalCounterBill > 0) ||
-    (session.status === "COMPLETED" && totalCounterBill > 0 && booking.paymentStatus !== "PAID")
+  // The API summary, not the operational F&B/order lists, is the financial
+  // source of truth. This keeps staff and customer totals identical after a
+  // checkout or payment changes state.
+  const financialSummary = apiData?.financialSummary ?? apiBooking?.financial_summary
+  const fallbackPrepaidLines = [
+    { componentId: "slot-fee", label: "Phí lịch chơi", amount: Number(booking.slotFee ?? 0) },
+    { componentId: "rental-fee", label: "Phí thuê xe", amount: Number(booking.rentalFee ?? 0) },
+    { componentId: "fnb-preorder", label: "Đồ ăn & thức uống đặt trước", amount: Number(booking.fnbPreorderFee ?? 0) },
+  ].filter((line) => line.amount > 0)
+  const fallbackAdditionalLines = (booking.payment_components ?? [])
+    .filter((component) =>
+      !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(component.type) &&
+      !((component.type === "FNB_PREORDER" || component.type === "FB_PREORDER") && component.status === "HELD"),
+    )
+    .map((component) => ({
+      componentId: component.id,
+      label:
+        component.type === "FNB_ON_SITE" || component.type === "FNB_PREORDER" || component.type === "FB_PREORDER"
+          ? "Đồ ăn & thức uống gọi tại quầy"
+          : component.type === "EXTENSION_FEE"
+            ? "Phí gia hạn ca chơi"
+            : component.type === "DAMAGE_CHARGE"
+              ? "Phí bồi thường hư hỏng"
+              : "Khoản phát sinh khác",
+      amount: Number(component.amount),
+      status: component.status,
+      payment: undefined,
+    }))
+  const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
+  const additionalLines = financialSummary?.additionalLines ?? fallbackAdditionalLines
+  const prepaidDiscountAmount = financialSummary?.prepaidDiscountAmount ?? Number(booking.discountAmount ?? 0)
+  const prepaidPaidAmount = financialSummary?.prepaidPaidAmount ?? Math.max(
+    0,
+    fallbackPrepaidLines.reduce((sum, line) => sum + line.amount, 0) - prepaidDiscountAmount,
   )
-  const hasPendingDepositRefund = booking.payment_components?.some(
-    (c) => c.type === "SECURITY_DEPOSIT" && c.status === "PENDING_REFUND"
-  ) ?? false
-  const isFullySettled = session.status === "COMPLETED" &&
-    !hasPendingCounterPayment && !hasPendingDepositRefund &&
-    (booking.payment_components?.some((c) => c.status === "DISBURSED") || booking.paymentStatus === "PAID")
+  const additionalTotal = financialSummary?.additionalTotal ?? additionalLines.reduce(
+    (sum, line) => sum + Number(line.amount),
+    0,
+  )
+  const additionalOutstandingAmount = financialSummary?.additionalOutstandingAmount ?? additionalLines
+    .filter((line) => line.status === "PENDING")
+    .reduce((sum, line) => sum + Number(line.amount), 0)
+  const totalPaidAmount = financialSummary?.totalPaidAmount ?? prepaidPaidAmount
+  const counterSettled = settledBookingId === booking.bookingId
+  const hasPendingCounterPayment = !counterSettled && additionalOutstandingAmount > 0
+  const isFullySettled = session.status === "COMPLETED" && !hasPendingCounterPayment
 
   return (
     <div className="space-y-6">
@@ -446,10 +507,7 @@ export default function StaffSessionDetailPage() {
         >
           <ChevronLeft className="size-5 text-[#6b7280]" />
         </StaffButton>
-        <div>
-          <span className="text-xs text-[#6b7280] font-bold font-mono uppercase">Mã phiên: {session.sessionId}</span>
-          <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">Chi Tiết Ca Chạy Xe</h2>
-        </div>
+        <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">Chi Tiết Ca Chạy Xe</h2>
       </div>
 
       {/* 2. SESSION INFO CARD */}
@@ -461,7 +519,7 @@ export default function StaffSessionDetailPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <StaffBadge variant={sessionBadgeVariant}>
               {session.status === "ACTIVE" && "ĐANG CHƠI"}
-              {session.status === "CHECKED_IN" && "ĐÃ CHECK-IN"}
+              {session.status === "CHECKED_IN" && "ĐANG BÀN GIAO XE"}
               {session.status === "EXTENDING" && "YÊU CẦU GIA HẠN"}
               {session.status === "CHECKING_OUT" && "ĐANG TRẢ XE"}
               {session.status === "COMPLETED" && "ĐÃ ĐÓNG"}
@@ -486,16 +544,27 @@ export default function StaffSessionDetailPage() {
               ))}
             <div>
               <h3 className="text-xl font-black text-[#1c1b1b] tracking-tight leading-tight">{booking.trackName}</h3>
-              <p className="text-[11px] text-[#6b7280] font-semibold">{booking.trackType} · {booking.shortCode}</p>
             </div>
           </div>
 
           {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
             <div className="bg-[#fff3eb] border border-[#ffdbca] rounded-xl px-5 py-2 text-center min-w-32 shrink-0 shadow-sm">
               <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
-                Còn lại
+                {operationalTiming.state === "ON_TIME"
+                  ? "Còn lại"
+                  : operationalTiming.state === "DUE_FOR_CHECKOUT"
+                    ? "Đến giờ trả xe"
+                    : operationalTiming.state === "OVERDUE"
+                      ? "Quá giờ"
+                      : "Phiên chạy"}
               </span>
-              <span className="text-2xl font-mono font-black text-[#ea580c] tracking-tight">{timeLeft}</span>
+              <span className="text-2xl font-mono font-black text-[#ea580c] tracking-tight">
+                {operationalTiming.state === "ON_TIME"
+                  ? timeLeft
+                  : operationalTiming.state === "OVERDUE"
+                    ? `+${operationalTiming.minutesPastPlannedEnd}p`
+                    : "Xử lý trả xe"}
+              </span>
             </div>
           )}
         </div>
@@ -515,7 +584,7 @@ export default function StaffSessionDetailPage() {
                   <span className="text-[#1c1b1b] font-bold">{p.name}</span>
                   {p.isBooker && (
                     <span className="text-[9px] font-extrabold uppercase tracking-wide bg-[#fff3eb] text-[#ea580c] border border-[#ffdbca] rounded px-1 py-0.5 leading-none">
-                      Booker
+                      Người đặt
                     </span>
                   )}
                   {p.phone && (
@@ -542,61 +611,77 @@ export default function StaffSessionDetailPage() {
 
       {/* 3. PRE-SESSION INFO STRIP — show before session goes ACTIVE */}
       {(session.status === "CHECKED_IN") && (
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Play mode */}
-          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#fff3eb] shrink-0 mt-0.5">
-              <ShieldCheck className="size-4 text-[#ea580c]" />
-            </div>
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">Chế độ chơi</p>
-              <p className="text-sm font-extrabold text-[#1c1b1b]">
-                {booking.playMode === "RENTAL" ? "Thuê xe tại quán" : booking.playMode === "BYOC" ? "Mang xe cá nhân" : booking.playMode}
-              </p>
-              {booking.playMode === "RENTAL" && (
-                <p className="text-[11px] text-[#ea580c] font-semibold mt-0.5">Cần bàn giao xe cho khách</p>
-              )}
-              {booking.playMode === "BYOC" && (
-                <p className="text-[11px] text-[#6b7280] font-semibold mt-0.5">Khách tự mang xe</p>
-              )}
-            </div>
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Chế độ chơi</p>
+            <p className="text-sm font-extrabold text-[#1c1b1b]">
+              {booking.playMode === "RENTAL" ? "Thuê xe tại quán" : booking.playMode === "BYOC" ? "Mang xe cá nhân" : booking.playMode}
+            </p>
+            {booking.playMode === "RENTAL" && (
+              <p className="text-[11px] text-[#ea580c] font-semibold mt-1">Cần bàn giao xe cho khách</p>
+            )}
+            {booking.playMode === "BYOC" && (
+              <p className="text-[11px] text-[#6b7280] font-semibold mt-1">Khách tự mang xe</p>
+            )}
           </div>
 
-          {/* Planned vehicles */}
-          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-[#fff3eb] shrink-0 mt-0.5">
-              <Car className="size-4 text-[#ea580c]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">Xe đã đặt ({booking.plannedVehicles.length})</p>
-              {booking.plannedVehicles.length > 0 ? (
-                <div className="space-y-0.5">
-                  {booking.plannedVehicles.map((v, i) => (
-                    <p key={i} className="text-xs font-bold text-[#1c1b1b] truncate">{v}</p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-[#6b7280] font-semibold">Chưa chỉ định xe</p>
-              )}
-            </div>
+          {/* Track type */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Loại đường đua</p>
+            <p className="text-sm font-extrabold text-[#1c1b1b] truncate">{booking.trackName}</p>
+          </div>
+
+          {/* Vehicles with image */}
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-2">
+              Xe bàn giao ({session.vehicles.length || booking.plannedVehicles.length})
+            </p>
+            {session.vehicles.length > 0 ? (
+              <div className="space-y-2">
+                {session.vehicles.map((v) => (
+                  <div key={v.vehicleId} className="flex items-center gap-2">
+                    {v.imageUrl ? (
+                      <ZoomableInspectionImage
+                        src={v.imageUrl}
+                        alt={v.name}
+                        className="size-10 rounded-lg border border-[#e5e2e1] object-cover shrink-0"
+                        buttonClassName="size-10 shrink-0 rounded-lg"
+                      />
+                    ) : (
+                      <div className="flex size-10 items-center justify-center rounded-lg bg-[#f5f3f2] border border-[#e5e2e1] shrink-0">
+                        <Car className="size-4 text-[#9b8fa8]" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#1c1b1b] truncate">{v.name}</p>
+                      <p className="text-[10px] text-[#9b8fa8] font-semibold truncate">#{v.vehicleId.slice(0, 8).toUpperCase()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : booking.plannedVehicles.length > 0 ? (
+              <div className="space-y-0.5">
+                {booking.plannedVehicles.map((v, i) => (
+                  <p key={i} className="text-xs font-bold text-[#1c1b1b] truncate">{v}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-[#9b8fa8] font-semibold">Chưa chỉ định xe</p>
+            )}
           </div>
 
           {/* Pre-ordered F&B */}
-          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 flex items-start gap-3">
-            <div className={`flex size-8 items-center justify-center rounded-lg shrink-0 mt-0.5 ${booking.fnbPreorderFee > 0 ? "bg-amber-50" : "bg-[#f5f3f2]"}`}>
-              <Package className={`size-4 ${booking.fnbPreorderFee > 0 ? "text-amber-600" : "text-[#6b7280]"}`} />
-            </div>
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-0.5">F&B đặt trước</p>
-              {booking.fnbPreorderFee > 0 ? (
-                <>
-                  <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
-                  <p className="text-[11px] text-amber-600 font-semibold mt-0.5">Chuẩn bị trước khi bắt đầu</p>
-                </>
-              ) : (
-                <p className="text-xs text-[#6b7280] font-semibold">Không có đặt trước</p>
-              )}
-            </div>
+          <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Đồ ăn & thức uống đặt trước</p>
+            {booking.fnbPreorderFee > 0 ? (
+              <>
+                <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
+                <p className="text-[11px] text-amber-600 font-semibold mt-1">Chuẩn bị trước khi bắt đầu ca</p>
+              </>
+            ) : (
+              <p className="text-xs text-[#9b8fa8] font-semibold">Khách không đặt món trước</p>
+            )}
           </div>
         </div>
       )}
@@ -657,7 +742,7 @@ export default function StaffSessionDetailPage() {
                             )}
                             <div>
                               <p className="text-xs font-bold text-[#1c1b1b]">{v.name}</p>
-                              <p className="text-[10px] text-[#6b7280] font-semibold">Mã ID: {v.vehicleId}</p>
+                              <p className="text-[10px] text-[#6b7280] font-semibold">Mã xe: {v.vehicleId}</p>
                             </div>
                           </div>
                           {v.type === "RENT" && (
@@ -684,25 +769,53 @@ export default function StaffSessionDetailPage() {
           </StaffCard>
 
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Module 1: Extension Controls */}
-            <StaffCard className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-                  <Clock className="size-4 text-[#ea580c]" />
-                  Gia hạn ca chạy
-                </h4>
-                <span className="text-[11px] font-semibold text-[#6b7280]">
-                  Kết thúc lúc{" "}
-                  <span className="text-[#1c1b1b] font-extrabold">
-                    {formatPlannedEnd(currentPlannedEndMs)}
-                  </span>
-                </span>
-              </div>
+            {/* Module 1: Extension Controls / overdue return handling */}
+            <StaffCard className={extensionWindowClosed ? "space-y-3 md:col-span-2" : "space-y-3"}>
+              {extensionWindowClosed ? (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-bold text-[#991b1b] uppercase tracking-wider flex items-center gap-2">
+                      <AlertTriangle className="size-4 text-red-600" />
+                      Phiên quá giờ
+                    </h4>
+                    <span className="text-[11px] font-semibold text-red-700">
+                      +{operationalTiming.minutesPastPlannedEnd} phút
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-relaxed text-red-900">
+                    <p className="font-bold">Gia hạn đã được khóa để tránh tính phí hồi tố.</p>
+                    <p className="mt-1 text-red-800">
+                      Nếu khách đã trả xe đúng giờ nhưng nhân viên xử lý muộn, khách không bị thu thêm. Hãy kiểm tra và xử lý trả xe; chỉ khoản phụ phí đã được thỏa thuận riêng mới được thu sau đó.
+                    </p>
+                  </div>
+                  <StaffButton
+                    onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_OUT`)}
+                    variant="primary"
+                    className="w-fit px-5 bg-amber-600 hover:bg-amber-700 text-xs uppercase tracking-wider"
+                  >
+                    <ClipboardCheck className="size-4" />
+                    Xử lý trả xe
+                  </StaffButton>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+                      <Clock className="size-4 text-[#ea580c]" />
+                      Gia hạn ca chạy
+                    </h4>
+                    <span className="text-[11px] font-semibold text-[#6b7280]">
+                      Kết thúc lúc{" "}
+                      <span className="text-[#1c1b1b] font-extrabold">
+                        {formatPlannedEnd(currentPlannedEndMs)}
+                      </span>
+                    </span>
+                  </div>
 
               {extensionPending ? (
                 <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-semibold text-orange-800 flex items-center gap-2">
                   <Clock className="size-3.5 shrink-0" />
-                  Đang chờ khách phản hồi đề xuất gia hạn {session.extensionProposal?.extraMinutes} phút…
+                  Đang chờ khách phản hồi đề xuất gia hạn {pendingExtensionMinutes} phút…
                 </div>
               ) : canDirectExtend && pendingDirectExtension ? (
                 <div className="rounded-xl border border-[#ea580c] bg-[#fff3eb] p-3 space-y-2.5">
@@ -710,15 +823,26 @@ export default function StaffSessionDetailPage() {
                     Xác nhận gia hạn trực tiếp: <span className="text-[#ea580c]">+{pendingDirectExtension.mins < 60 ? `${pendingDirectExtension.mins} phút` : "1 giờ"}</span>
                     {" "}({pendingDirectExtension.fee.toLocaleString("vi-VN")} đ) → {formatPlannedEnd(pendingDirectExtension.newPlannedEnd)}
                   </p>
-                  <p className="text-[10px] text-[#6b7280] font-semibold">Khách đã đồng ý tại chỗ — gia hạn ngay, không cần xác nhận qua app.</p>
+                  <p className="text-[10px] text-[#6b7280] font-semibold">Khách đã đồng ý tại chỗ — gia hạn ngay, không cần xác nhận qua ứng dụng.</p>
                   <div className="flex gap-2">
                     <StaffButton
                       variant="primary"
                       size="sm"
                       className="flex-1 text-xs"
-                      onClick={() => {
-                        proposeExtension(session.sessionId, pendingDirectExtension.mins, pendingDirectExtension.fee, canDirectExtend)
-                        setPendingDirectExtension(null)
+                      disabled={submittingExtension}
+                      onClick={async () => {
+                        setSubmittingExtension(true)
+                        const created = await proposeExtension(
+                          session.sessionId,
+                          pendingDirectExtension.mins,
+                          pendingDirectExtension.fee,
+                          canDirectExtend,
+                        )
+                        if (created) {
+                          setPendingDirectExtension(null)
+                          await refetchSessionDetail()
+                        }
+                        setSubmittingExtension(false)
                       }}
                     >
                       Xác nhận gia hạn
@@ -739,26 +863,26 @@ export default function StaffSessionDetailPage() {
                     <button
                       key={mins}
                       type="button"
-                      disabled={blocked}
-                      onClick={() => !blocked && handleExtension(mins, fee, newPlannedEnd)}
+                      disabled={blocked || submittingExtension}
+                      onClick={() => !blocked && !submittingExtension && void handleExtension(mins, fee, newPlannedEnd)}
                       title={
                         blocked
                           ? blockedReason ?? `Vượt giới hạn gia hạn (tối đa ${(maxExtensionFee === Infinity ? "—" : (maxExtensionFee).toLocaleString("vi-VN") + " đ")})`
                           : undefined
                       }
                       className={`rounded-xl border transition-all p-2.5 text-center group ${
-                        blocked
+                        blocked || submittingExtension
                           ? "border-[#e5e2e1] bg-[#f5f3f2] opacity-50 cursor-not-allowed"
                           : "border-[#e5e2e1] bg-white hover:border-[#ea580c] hover:bg-[#fff3eb] cursor-pointer"
                       }`}
                     >
-                      <span className={`block text-sm font-extrabold ${blocked ? "text-[#9b8fa8]" : "text-[#ea580c]"}`}>
+                      <span className={`block text-sm font-extrabold ${blocked || submittingExtension ? "text-[#9b8fa8]" : "text-[#ea580c]"}`}>
                         +{mins < 60 ? `${mins} phút` : "1 giờ"}
                       </span>
                       <span className="block text-[10px] text-[#6b7280] font-semibold mt-0.5">
                         → {formatPlannedEnd(newPlannedEnd)}
                       </span>
-                      <span className={`block text-[10px] font-bold mt-1 ${blocked ? "text-[#9b8fa8]" : "text-[#1c1b1b]"}`}>
+                      <span className={`block text-[10px] font-bold mt-1 ${blocked || submittingExtension ? "text-[#9b8fa8]" : "text-[#1c1b1b]"}`}>
                         {blockedReason ?? `${fee.toLocaleString("vi-VN")} đ`}
                       </span>
                     </button>
@@ -766,18 +890,21 @@ export default function StaffSessionDetailPage() {
                 </div>
               )}
 
-              <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
-                {isWalkInBooking
-                  ? "Đơn tại quầy: nhân viên xác nhận trực tiếp tại quầy."
-                  : "Đơn đặt trước: hệ thống gửi thông báo và chờ khách phản hồi qua app."}
-              </p>
+                  <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
+                    {isWalkInBooking
+                      ? "Đơn tại quầy: nhân viên xác nhận trực tiếp tại quầy."
+                      : "Đơn đặt trước: hệ thống gửi thông báo và chờ khách phản hồi qua ứng dụng."}
+                  </p>
+                </>
+              )}
             </StaffCard>
 
-            {/* Module 2: Menu F&B Console */}
+            {/* Do not add a new service while an overdue session is being reconciled. */}
+            {!extensionWindowClosed && (
             <StaffCard className="space-y-4">
             <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
               <Coffee className="size-4.5 text-[#ea580c]" />
-              Gọi dịch vụ ăn uống (F&B)
+              Gọi đồ ăn & thức uống
             </h4>
 
             {loadingMenu ? (
@@ -825,7 +952,8 @@ export default function StaffSessionDetailPage() {
                 </StaffButton>
               </form>
             )}
-          </StaffCard>
+            </StaffCard>
+            )}
           </div>
         </>
       )}
@@ -839,7 +967,7 @@ export default function StaffSessionDetailPage() {
             </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
               {checkInDisputed
-                ? "Staff cần kiểm tra lại tình trạng xe với khách và lập biên bản check-in mới."
+                ? "Nhân viên cần kiểm tra lại tình trạng xe với khách và lập biên bản bàn giao mới."
                 : "Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi cho khách khởi động lượt chạy."}
             </p>
           </div>
@@ -849,7 +977,7 @@ export default function StaffSessionDetailPage() {
             className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
           >
             <ClipboardCheck className="size-4" />
-            Lập Biên Bản Check-In
+            Lập biên bản bàn giao xe
           </StaffButton>
         </StaffCard>
       )}
@@ -859,19 +987,27 @@ export default function StaffSessionDetailPage() {
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-blue-900">Đã gửi biên bản nhận xe cho khách</h4>
             <p className="text-xs text-blue-800 leading-relaxed">
-              Khách cần mở ứng dụng để xác nhận tình trạng xe. Khi khách đồng ý, phiên sẽ tự chuyển sang ACTIVE qua WebSocket.
+              Khách cần mở ứng dụng để xác nhận tình trạng xe. Khi khách đồng ý, phiên sẽ tự chuyển sang trạng thái đang chơi.
             </p>
           </div>
           <StaffBadge variant="info">CHỜ KHÁCH XÁC NHẬN</StaffBadge>
         </StaffCard>
       )}
 
-      {(session.status === "ACTIVE" || session.status === "EXTENDING") && !checkOutDisputed && (
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") && !checkOutDisputed && !extensionWindowClosed && (
         <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-amber-900">Yêu cầu lập biên bản thu hồi Check-Out</h4>
+            <h4 className="text-sm font-bold text-amber-900">
+              {operationalTiming.state === "OVERDUE"
+                ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
+                : operationalTiming.state === "DUE_FOR_CHECKOUT"
+                  ? "Đã đến giờ trả xe"
+                  : "Yêu cầu lập biên bản trả xe"}
+            </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
-              Thực hiện chụp ảnh đối chiếu tình trạng xe sau khi hoàn thành lượt chạy để phát hiện hư hại (nếu có).
+              {operationalTiming.state === "OVERDUE"
+                ? "Xe vẫn đang được giữ ở phiên này. Hãy lập biên bản trả xe để kiểm tra, chốt phí và đưa xe về trạng thái phù hợp."
+                : "Thực hiện chụp ảnh đối chiếu tình trạng xe sau khi hoàn thành lượt chạy để phát hiện hư hại (nếu có)."}
             </p>
           </div>
           <StaffButton
@@ -880,7 +1016,7 @@ export default function StaffSessionDetailPage() {
             className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
           >
             <ClipboardCheck className="size-4" />
-            Kiểm Xe Thu Hồi (Check-Out)
+            {operationalTiming.state === "ON_TIME" ? "Kiểm tra trả xe" : "Xử lý trả xe"}
           </StaffButton>
         </StaffCard>
       )}
@@ -890,7 +1026,7 @@ export default function StaffSessionDetailPage() {
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-amber-900">Khách phản hồi sai lệch biên bản trả xe</h4>
             <p className="text-xs text-amber-800 leading-relaxed">
-              Cần đối chiếu lại ảnh, tình trạng xe và lập biên bản check-out mới trước khi đóng phiên.
+              Cần đối chiếu lại ảnh, tình trạng xe và lập biên bản trả xe mới trước khi đóng phiên.
             </p>
           </div>
           <StaffButton
@@ -899,7 +1035,7 @@ export default function StaffSessionDetailPage() {
             className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
           >
             <ClipboardCheck className="size-4" />
-            Lập Lại Biên Bản Check-Out
+            Lập lại biên bản trả xe
           </StaffButton>
         </StaffCard>
       )}
@@ -942,28 +1078,49 @@ export default function StaffSessionDetailPage() {
 
       {/* 5. RENDER BILLING AND ORDER HISTORY — only after session starts */}
       {(session.status === "ACTIVE" || session.status === "EXTENDING" || session.status === "CHECKING_OUT" || session.status === "COMPLETED") && (
+      <ExtensionAuditCard
+        extensions={approvedExtensions}
+        initialPlannedEnd={booking.slotEnd}
+        currentProposal={session.extensionProposal}
+        className="border-[#e5e2e1]"
+      />
+      )}
+
+      {(session.status === "ACTIVE" || session.status === "EXTENDING" || session.status === "CHECKING_OUT" || session.status === "COMPLETED") && (
       <div className="grid md:grid-cols-5 gap-4 items-start">
         {/* F&B Ordered Items — narrow column */}
         <StaffCard className="md:col-span-2 space-y-3">
           <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
             <Coffee className="size-4 text-[#ea580c]" />
-            F&B đã gọi
+            Đồ ăn & thức uống gọi trong phiên chơi
           </h4>
 
           <div className="space-y-1.5">
             {onsiteFnbOrders.map((order) => (
               <div
                 key={order.orderId}
-                className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start font-semibold"
+                className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start gap-2 font-semibold"
               >
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 flex-1 min-w-0">
                   {order.items.map((i, idx) => (
                     <span key={idx} className="block text-[#1c1b1b]">
                       {i.name} <span className="text-[#6b7280] font-normal">×{i.qty}</span>
                     </span>
                   ))}
                 </div>
-                <span className="font-extrabold text-[#ea580c] shrink-0 ml-3">{order.total.toLocaleString("vi-VN")} đ</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-extrabold text-[#ea580c]">{order.total.toLocaleString("vi-VN")} đ</span>
+                  {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
+                    <button
+                      type="button"
+                      onClick={() => void handleCancelFnbOrder(order.orderId)}
+                      title="Huỷ món này"
+                      className="flex size-5 items-center justify-center rounded-full bg-[#f5f3f2] hover:bg-rose-100 hover:text-rose-600 text-[#9b8fa8] transition-colors"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
 
@@ -973,157 +1130,100 @@ export default function StaffSessionDetailPage() {
           </div>
         </StaffCard>
 
-        {/* Dynamic Billing Summary Box — wide column */}
+        {/* Financial summary is shared with the customer booking detail. */}
         <StaffCard className="md:col-span-3 space-y-4">
           <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
             <FileText className="size-4.5 text-[#ea580c]" />
-            Bảng Quyết Toán Hóa Đơn
+            Quyết toán phiên chơi
           </h4>
 
-          {(hasPendingCounterPayment || hasPendingDepositRefund) && (
+          {hasPendingCounterPayment && (
             <div className="flex items-start gap-2.5 rounded-xl bg-orange-50 border border-orange-200 px-3.5 py-3">
               <Banknote className="size-4 text-orange-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-extrabold text-orange-900">Chưa quyết toán — cần thu/hoàn tiền</p>
+                <p className="text-xs font-extrabold text-orange-900">Còn khoản phát sinh cần thanh toán</p>
                 <p className="text-[11px] text-orange-700 mt-0.5 leading-relaxed">
-                  Ca đã đóng nhưng chưa hoàn tất giao dịch tài chính. Xem tóm tắt bên dưới rồi xác nhận.
+                  Khách cần thanh toán {additionalOutstandingAmount.toLocaleString("vi-VN")} đ cho các khoản dưới đây.
                 </p>
               </div>
             </div>
           )}
 
-          <div className="space-y-3 text-xs font-semibold">
-            {/* Section 1: Prepaid Online */}
-            <div className="space-y-1.5 pb-2 border-b border-[#e5e2e1]/60">
+          <div className="space-y-4 text-xs font-semibold">
+            <section className="space-y-1.5 pb-3 border-b border-[#e5e2e1]/60">
               <span className="text-[10px] font-extrabold text-[#6b7280] uppercase tracking-wider block">
-                1. Đã thanh toán online (Prepaid)
+                Đã thanh toán khi đặt lịch
               </span>
-              <div className="flex justify-between text-[#4c4a49]">
-                <span>Phí đặt vé đường đua (Slot Fee)</span>
-                <span className="text-[#1c1b1b] font-bold">{booking.slotFee.toLocaleString("vi-VN")} đ</span>
-              </div>
-              <div className="flex justify-between text-[#4c4a49]">
-                <span>Phí thuê xe (Rental Fee)</span>
-                <span className="text-[#1c1b1b] font-bold">{booking.rentalFee.toLocaleString("vi-VN")} đ</span>
-              </div>
-              {booking.fnbPreorderFee > 0 && (
-                <div className="flex justify-between text-[#4c4a49]">
-                  <span>F&B đặt trước (Preordered)</span>
-                  <span className="text-[#1c1b1b] font-bold">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</span>
+              {prepaidLines.map((line) => (
+                <div key={line.componentId} className="flex justify-between gap-4 text-[#4c4a49]">
+                  <span>{line.label}</span>
+                  <span className="text-[#1c1b1b] font-bold shrink-0">{Number(line.amount).toLocaleString("vi-VN")} đ</span>
+                </div>
+              ))}
+              {prepaidDiscountAmount > 0 && (
+                <div className="flex justify-between gap-4 text-emerald-700">
+                  <span>Ưu đãi áp dụng</span>
+                  <span className="font-bold shrink-0">−{prepaidDiscountAmount.toLocaleString("vi-VN")} đ</span>
                 </div>
               )}
-            </div>
-
-            {/* Section 2: Vehicle Deposit Refund (Asset Protection) */}
-            {depositAmount > 0 && (
-              <div className="space-y-1.5 pb-2 border-b border-[#e5e2e1]/60">
-                <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">
-                  2. Tiền cọc xe (Vehicle Deposit Refund)
-                </span>
-                <div className="flex justify-between text-[#4c4a49]">
-                  <span>Cọc xe đã giữ trước</span>
-                  <span className="text-[#1c1b1b] font-bold">{depositAmount.toLocaleString("vi-VN")} đ</span>
-                </div>
-                {damageCharge > 0 && (
-                  <div className="flex justify-between text-rose-700 bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                    <span>Khấu trừ đền bù hư hỏng xe ({session.damageClaim?.damageMultiplier}x)</span>
-                    <span className="font-extrabold">−{depositConsumedByDamage.toLocaleString("vi-VN")} đ</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-[11px] border-t border-[#e5e2e1]/60 pt-1.5 mt-1">
-                  <span className="font-bold text-blue-700">Tiền cọc hoàn lại (Deposit Refund):</span>
-                  <span className="text-emerald-700 font-extrabold">{depositRefundAmount.toLocaleString("vi-VN")} đ</span>
-                </div>
+              <div className="flex justify-between gap-4 border-t border-[#e5e2e1]/60 pt-2 mt-2 text-[#1c1b1b]">
+                <span className="font-bold">Đã thanh toán trước</span>
+                <span className="font-extrabold shrink-0">{prepaidPaidAmount.toLocaleString("vi-VN")} đ</span>
               </div>
-            )}
+            </section>
 
-            {/* Section 3: Counter Service Bill */}
-            <div className="space-y-1.5 pb-2 border-b border-[#e5e2e1]/60">
+            <section className="space-y-2 pb-3 border-b border-[#e5e2e1]/60">
               <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
-                3. Chi phí dịch vụ tại quầy (Counter Bill)
+                Chi phí phát sinh tại quầy
               </span>
-              {fnbTotal > 0 && (
-                <div className="flex justify-between text-[#4c4a49]">
-                  <span>Gọi món F&B tại ca</span>
-                  <span className="text-[#1c1b1b] font-bold">+{fnbTotal.toLocaleString("vi-VN")} đ</span>
-                </div>
-              )}
-              {approvedExtensions.length > 0 ? (
-                approvedExtensions.map((extension, index) => (
-                  <div key={extension.proposalId} className="flex justify-between text-[#4c4a49]">
-                    <span>
-                      Gia hạn lần {index + 1} · +{extension.extraMinutes < 60 ? `${extension.extraMinutes} phút` : `${extension.extraMinutes / 60} giờ`}
-                    </span>
-                    <span className="text-[#1c1b1b] font-bold">+{Number(extension.additionalFee).toLocaleString("vi-VN")} đ</span>
+              {additionalLines.length > 0 ? additionalLines.map((line) => {
+                const paid = line.status === "DISBURSED" || line.status === "CAPTURED"
+                const gateway = line.payment?.gateway === "VNPAY"
+                  ? "VNPAY"
+                  : line.payment?.gateway === "DIRECT"
+                    ? "tiền mặt"
+                    : undefined
+                return (
+                  <div key={line.componentId} className="rounded-lg bg-[#fcf8f8] px-2.5 py-2">
+                    <div className="flex justify-between gap-4 text-[#4c4a49]">
+                      <span>{line.label}</span>
+                      <span className="text-[#ea580c] font-extrabold shrink-0">+{Number(line.amount).toLocaleString("vi-VN")} đ</span>
+                    </div>
+                    <p className={`mt-1 text-[10px] ${paid ? "text-emerald-700" : "text-orange-700"}`}>
+                      {paid ? `Đã thanh toán${gateway ? ` · ${gateway}` : ""}` : "Chờ thanh toán"}
+                    </p>
                   </div>
-                ))
-              ) : approvedExtensionFee > 0 ? (
-                <div className="flex justify-between text-[#4c4a49]">
-                  <span>Phụ thu gia hạn thêm giờ</span>
-                  <span className="text-[#1c1b1b] font-bold">+{approvedExtensionFee.toLocaleString("vi-VN")} đ</span>
-                </div>
-              ) : null}
-              {damageExceedingDeposit > 0 && (
-                <div className="flex justify-between text-rose-700 bg-rose-50 border border-rose-100 p-2 rounded-lg">
-                  <span>{depositAmount > 0 ? "Đền bù hư hỏng vượt cọc" : "Phí đền bù hư hỏng xe"}</span>
-                  <span className="font-extrabold">+{damageExceedingDeposit.toLocaleString("vi-VN")} đ</span>
-                </div>
+                )
+              }) : (
+                <p className="text-[11px] text-[#6b7280] italic">Không phát sinh chi phí tại quầy.</p>
               )}
-              {totalCounterBill === 0 && (
-                <p className="text-[11px] text-[#6b7280] italic">Không phát sinh chi phí dịch vụ tại quầy.</p>
-              )}
-              <div className="flex justify-between text-[11px] border-t border-[#e5e2e1]/60 pt-1.5 mt-1">
-                <span className="font-bold">Tổng dịch vụ tại quầy:</span>
-                <span className="text-[#ea580c] font-extrabold">{totalCounterBill.toLocaleString("vi-VN")} đ</span>
+              <div className="flex justify-between gap-4 border-t border-[#e5e2e1]/60 pt-2 text-[#1c1b1b]">
+                <span className="font-bold">Tổng phí phát sinh</span>
+                <span className="text-[#ea580c] font-extrabold shrink-0">{additionalTotal.toLocaleString("vi-VN")} đ</span>
               </div>
-            </div>
+            </section>
 
-             {/* Settle Action */}
-             {(hasPendingCounterPayment || hasPendingDepositRefund) ? (
-               <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-3">
-                 <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wide">Giao dịch tại quầy</p>
-                 {depositRefundAmount > 0 && (
-                   <div className="flex justify-between items-center text-[11px] font-semibold">
-                     <span className="flex items-center gap-2 text-slate-600">
-                       <span className="size-2 rounded-full bg-emerald-500 inline-block" />
-                       Hoàn trả cọc xe cho khách
-                     </span>
-                     <span className="text-emerald-700 font-extrabold">{depositRefundAmount.toLocaleString("vi-VN")} đ</span>
-                   </div>
-                 )}
-                 {totalCounterBill > 0 && (
-                   <div className="flex justify-between items-center text-[11px] font-semibold">
-                     <span className="flex items-center gap-2 text-slate-600">
-                       <span className="size-2 rounded-full bg-orange-500 inline-block" />
-                       Thu phí dịch vụ từ khách
-                     </span>
-                     <span className="text-orange-700 font-extrabold">{totalCounterBill.toLocaleString("vi-VN")} đ</span>
-                   </div>
-                 )}
-                 <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
-                   <span className="text-slate-800 font-extrabold text-sm">
-                     {netCounterAmount >= 0 ? "Khách trả thêm" : "Staff hoàn lại"}
-                   </span>
-                   <span className={`font-extrabold text-lg ${netCounterAmount >= 0 ? "text-orange-700" : "text-emerald-700"}`}>
-                     {Math.abs(netCounterAmount).toLocaleString("vi-VN")} đ
-                   </span>
-                 </div>
-                 <StaffButton
-                   onClick={() => setConfirmSettleOpen(true)}
-                   disabled={settlingPayment}
-                   variant="primary"
-                   className="w-full py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-md active:scale-[0.98]"
-                 >
-                   <Banknote className="size-4" />
-                   {settlingPayment ? "Đang xử lý..." : "Xác nhận đã thu tiền mặt"}
-                 </StaffButton>
-               </div>
-            ) : isFullySettled ? (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-3 text-xs font-bold text-center mt-2 flex items-center justify-center gap-2">
-                <CheckCircle2 className="size-4" />
-                <span>Đã quyết toán hoàn tất</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Tổng khách đã thanh toán</p>
+                <p className="mt-0.5 text-base font-extrabold text-slate-900">{totalPaidAmount.toLocaleString("vi-VN")} đ</p>
               </div>
-            ) : null}
+              {hasPendingCounterPayment ? (
+                <StaffButton
+                  onClick={() => setConfirmSettleOpen(true)}
+                  disabled={settlingPayment}
+                  variant="primary"
+                  className="w-fit px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                >
+                  <Banknote className="size-4" />
+                  {settlingPayment ? "Đang xử lý..." : "Xác nhận đã thu tiền mặt"}
+                </StaffButton>
+              ) : isFullySettled ? (
+                <span className="inline-flex items-center gap-1.5 text-emerald-700 text-xs font-bold">
+                  <CheckCircle2 className="size-4" /> Đã quyết toán hoàn tất
+                </span>
+              ) : null}
+            </div>
           </div>
         </StaffCard>
       </div>
@@ -1155,30 +1255,16 @@ export default function StaffSessionDetailPage() {
             </div>
 
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2.5 text-xs font-semibold">
-              {depositRefundAmount > 0 && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <span className="size-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />
-                    Hoàn trả tiền cọc cho khách
-                  </div>
-                  <span className="text-emerald-700 font-extrabold">{depositRefundAmount.toLocaleString("vi-VN")} đ</span>
+              {additionalLines.filter((line) => line.status === "PENDING").map((line) => (
+                <div key={line.componentId} className="flex items-center justify-between gap-4">
+                  <span className="text-slate-600">{line.label}</span>
+                  <span className="text-orange-700 font-extrabold shrink-0">{Number(line.amount).toLocaleString("vi-VN")} đ</span>
                 </div>
-              )}
-              {totalCounterBill > 0 && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <span className="size-2.5 rounded-full bg-orange-500 inline-block shrink-0" />
-                    Thu phí dịch vụ từ khách
-                  </div>
-                  <span className="text-orange-700 font-extrabold">{totalCounterBill.toLocaleString("vi-VN")} đ</span>
-                </div>
-              )}
+              ))}
               <div className="border-t border-slate-200 pt-2.5 flex justify-between items-center">
-                <span className="text-slate-800 font-extrabold text-sm">
-                  {netCounterAmount >= 0 ? "Khách trả thêm tại quầy" : "Staff hoàn lại cho khách"}
-                </span>
-                <span className={`font-extrabold text-base ${netCounterAmount >= 0 ? "text-orange-700" : "text-emerald-700"}`}>
-                  {Math.abs(netCounterAmount).toLocaleString("vi-VN")} đ
+                <span className="text-slate-800 font-extrabold text-sm">Khách trả thêm tại quầy</span>
+                <span className="font-extrabold text-base text-orange-700">
+                  {additionalOutstandingAmount.toLocaleString("vi-VN")} đ
                 </span>
               </div>
             </div>

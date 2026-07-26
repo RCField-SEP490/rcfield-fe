@@ -196,8 +196,9 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
 const today = new Date().toISOString().split("T")[0]
 
 const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }> = {
-  PENDING: { label: "Chờ TT", className: "bg-amber-100 text-amber-800" },
+  PENDING: { label: "Chờ thanh toán", className: "bg-amber-100 text-amber-800" },
   CONFIRMED: { label: "Đã xác nhận", className: "bg-emerald-100 text-emerald-800" },
+  AWAITING_PAYMENT: { label: "Chờ thanh toán phí phát sinh", className: "bg-amber-100 text-amber-800" },
   NO_SHOW: { label: "Không đến", className: "bg-orange-100 text-orange-800" },
   COMPLETED: { label: "Hoàn thành", className: "bg-indigo-100 text-indigo-800" },
   CANCELLED: { label: "Đã hủy", className: "bg-red-100 text-red-800" },

@@ -67,7 +67,7 @@ export function PaymentStep({
           <CardTitle>Phương thức thanh toán</CardTitle>
           <p className="text-sm text-muted-foreground">
             {selectedPackageId
-              ? "Thanh toán phần còn lại (thuê xe, F&B) qua VNPay."
+              ? "Thanh toán phần còn lại (thuê xe, đồ ăn & thức uống) qua VNPay."
               : "Xác nhận đơn đặt lịch và thanh toán qua cổng VNPay."}
           </p>
         </CardHeader>

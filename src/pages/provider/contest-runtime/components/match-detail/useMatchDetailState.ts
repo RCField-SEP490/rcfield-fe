@@ -122,7 +122,7 @@ export function useMatchDetailState(
     if (!match) return
     const slotNumbers = participants.map((participant) => participant.slot_no)
     if (new Set(slotNumbers).size !== slotNumbers.length) {
-      toast.error("Mỗi participant phải có slot khác nhau")
+      toast.error("Mỗi người chơi phải có vị trí khác nhau")
       return
     }
 
@@ -133,7 +133,7 @@ export function useMatchDetailState(
       })
       toast.success("Đã cập nhật thứ tự thi đấu")
     } catch (error) {
-      toast.error("Không thể cập nhật participant", {
+      toast.error("Không thể cập nhật người chơi", {
         description: getErrorMessage(error).message,
       })
     }
@@ -148,18 +148,18 @@ export function useMatchDetailState(
       .filter((item): item is number => typeof item === "number")
 
     if (match.match_type !== "TIME_ATTACK" && winners.length !== 1) {
-      toast.error("Match đối kháng cần chọn đúng 1 người thắng")
+      toast.error("Lượt đối kháng cần chọn đúng 1 người thắng")
       return
     }
     if (new Set(finishPositions).size !== finishPositions.length) {
-      toast.error("Finish position không được trùng nhau")
+      toast.error("Vị trí về đích không được trùng nhau")
       return
     }
 
     const result = contestSubmitResultsSchema.safeParse(rawPayload)
     if (!result.success) {
       const firstError = result.error.issues[0]
-      toast.error(`Lỗi validation: ${firstError.message}`)
+      toast.error(`Dữ liệu chưa hợp lệ: ${firstError.message}`)
       return
     }
 
@@ -170,7 +170,7 @@ export function useMatchDetailState(
       })
       toast.success("Đã lưu kết quả")
     } catch (error) {
-      toast.error("Không thể submit result", {
+      toast.error("Không thể lưu kết quả", {
         description: getErrorMessage(error).message,
       })
     }
@@ -186,7 +186,7 @@ export function useMatchDetailState(
     const result = contestCorrectResultsSchema.safeParse(rawPayload)
     if (!result.success) {
       const firstError = result.error.issues[0]
-      toast.error(`Lỗi validation: ${firstError.message}`)
+      toast.error(`Dữ liệu chưa hợp lệ: ${firstError.message}`)
       return
     }
 
@@ -197,7 +197,7 @@ export function useMatchDetailState(
       })
       toast.success("Đã sửa kết quả")
     } catch (error) {
-      toast.error("Không thể correct result", {
+      toast.error("Không thể sửa kết quả", {
         description: getErrorMessage(error).message,
       })
     }
@@ -215,7 +215,7 @@ export function useMatchDetailState(
       await runtime.advanceMatchMutation.mutateAsync(match.id)
       toast.success("Đã đẩy người thắng vào vòng sau")
     } catch (error) {
-      toast.error("Không thể advance match", {
+      toast.error("Không thể chuyển người thắng sang vòng sau", {
         description: getErrorMessage(error).message,
       })
     }

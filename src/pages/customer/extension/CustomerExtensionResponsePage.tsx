@@ -17,6 +17,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardDescription, CardTitle } from "@/shared/ui/card"
 import { Badge } from "@/shared/ui/badge"
 import { toast } from "sonner"
+import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
 
 export function CustomerExtensionResponsePage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -26,6 +27,7 @@ export function CustomerExtensionResponsePage() {
   const [session, setSession] = useState<MockSessionDetail | null>(null)
   const [proposal, setProposal] = useState<MockExtensionProposal | null>(null)
   const [timeLeft, setTimeLeft] = useState<number>(10 * 60) // 10 minutes countdown
+  const [now, setNow] = useState(0)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [loadError, setLoadError] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
@@ -43,6 +45,7 @@ export function CustomerExtensionResponsePage() {
 
       setSession(detail)
       setProposal(pendingProposal)
+      setNow(Date.now())
       if (pendingProposal) {
         const expiry = new Date(pendingProposal.expiresAt).getTime()
         setTimeLeft(Math.max(0, Math.floor((expiry - Date.now()) / 1000)))
@@ -78,6 +81,7 @@ export function CustomerExtensionResponsePage() {
   useEffect(() => {
     if (timeLeft <= 0) return
     const timer = setInterval(() => {
+      setNow(Date.now())
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer)
@@ -117,6 +121,26 @@ export function CustomerExtensionResponsePage() {
   }
 
   // Format time
+  const extensionWindowClosed =
+    getSessionOperationalTiming(session.plannedEnd, session.status, now).state === "OVERDUE"
+
+  if (extensionWindowClosed) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full text-center p-8 space-y-4">
+          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto" />
+          <h2 className="text-xl font-bold text-slate-900">Không thể gia hạn sau khi phiên đã quá giờ</h2>
+          <p className="text-sm text-slate-500">
+            Nhân viên sẽ xử lý trả xe trước. Thời điểm xử lý muộn không tự phát sinh phí cho bạn.
+          </p>
+          <Button onClick={() => navigate(`/customer/bookings/${session.bookingId}`)} className="w-full bg-slate-900 text-white rounded-xl">
+            Xem đơn đặt lịch
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60

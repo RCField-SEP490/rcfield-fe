@@ -66,6 +66,7 @@ export function NotificationBell() {
     setOpen(false)
 
     const contestId = typeof n.data?.contest_id === "string" ? n.data.contest_id : null
+    const sessionId = typeof n.data?.sessionId === "string" ? n.data.sessionId : null
     if (contestId && n.type.startsWith("CONTEST_")) {
       if (user?.role === "customer") {
         navigate(`/contests/${contestId}`)
@@ -73,6 +74,12 @@ export function NotificationBell() {
         navigate(`/provider/contests/${contestId}/overview`)
       } else if (user?.role === "staff") {
         navigate(`/staff/contests/${contestId}/check-in`)
+      }
+    } else if (n.type === "SESSION_OVERDUE_ALERT") {
+      if (user?.role === "staff" && sessionId) {
+        navigate(`/staff/sessions/${sessionId}`)
+      } else if (user?.role === "provider") {
+        navigate("/provider/dashboard")
       }
     } else if (n.type === "SESSION_CHECKOUT_INSPECTION") {
       try {
@@ -119,6 +126,13 @@ export function NotificationBell() {
       }
     } else if (n.type === "BOOKING_REVIEW_REQUEST") {
       navigate("/customer/bookings")
+    } else if (
+      n.type === "VEHICLE_MAINTENANCE_CREATED" ||
+      n.type === "MAINTENANCE_LOG_UPDATED" ||
+      n.type === "DAMAGE_REPORTED" ||
+      n.data?.route === "/staff/maintenance"
+    ) {
+      navigate("/staff/maintenance")
     } else if (
       n.type === "CUSTOMER_CHECKIN_CONFIRMED" ||
       n.type === "CUSTOMER_CHECKOUT_CONFIRMED" ||

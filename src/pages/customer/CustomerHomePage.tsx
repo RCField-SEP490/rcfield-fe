@@ -45,6 +45,7 @@ function getGreeting() {
 const STATUS_META: Record<BookingStatus, { label: string; color: string; dot: string }> = {
   PENDING:   { label: "Chờ thanh toán", color: "bg-amber-50 text-amber-700 border-amber-200",   dot: "bg-amber-400" },
   CONFIRMED: { label: "Đã xác nhận",    color: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  AWAITING_PAYMENT: { label: "Chờ thanh toán phí phát sinh", color: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
   COMPLETED: { label: "Hoàn thành",     color: "bg-slate-100 text-slate-500 border-slate-200",  dot: "bg-slate-400" },
   CANCELLED: { label: "Đã hủy",         color: "bg-red-50 text-red-600 border-red-200",          dot: "bg-red-400" },
   NO_SHOW:   { label: "Không đến",      color: "bg-orange-50 text-orange-600 border-orange-200", dot: "bg-orange-400" },

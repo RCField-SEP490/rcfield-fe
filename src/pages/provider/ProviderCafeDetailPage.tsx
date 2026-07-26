@@ -50,7 +50,7 @@ const TAB_META: Record<string, { label: string; description: string }> = {
   pricing: { label: "Cấu hình giá", description: "Thiết lập giá thuê sân" },
   catalogs: { label: "Đội xe", description: "Quản lý danh mục xe" },
   widget: { label: "Widget Chat & Tài liệu", description: "Cấu hình widget và tài liệu hỗ trợ" },
-  menu: { label: "Menu F&B", description: "Quản lý thực đơn" },
+  menu: { label: "Thực đơn", description: "Quản lý đồ ăn & thức uống" },
   packages: { label: "Gói & Giá", description: "Gói dịch vụ và ưu đãi" },
   promotions: { label: "Ưu đãi", description: "Chương trình khuyến mãi" },
   channel: { label: "Kênh Messenger", description: "Kết nối kênh nhắn tin" },

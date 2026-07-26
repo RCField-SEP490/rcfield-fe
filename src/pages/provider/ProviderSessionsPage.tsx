@@ -8,7 +8,7 @@ import { Button } from "@/shared/ui/button"
 export function ProviderSessionsPage() {
   return (
     <ProviderShell>
-      <ProviderPageHeader title="Theo dõi phiên đang diễn ra" description="Tách biệt booking và session: check-in, active, gia hạn, checkout và đối soát." />
+      <ProviderPageHeader title="Theo dõi phiên đang diễn ra" description="Theo dõi nhận xe, phiên đang chơi, gia hạn, trả xe và đối soát." />
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <MetricCard label="Active" value="12" helper="Đang chạy trên sân" icon={<PlayCircle />} tone="success" />
         <MetricCard label="Extending" value="2" helper="Chờ khách phản hồi" icon={<CalendarClock />} tone="warning" />
@@ -18,7 +18,7 @@ export function ProviderSessionsPage() {
       <Panel className="mt-4">
         <PanelTitle
           title="Live board phiên chạy"
-          subtitle="Check-in, gia hạn, checkout và đối soát theo từng session."
+          subtitle="Nhận xe, gia hạn, trả xe và đối soát theo từng phiên chơi."
           action={
             <Button className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
               <PlayCircle className="size-4" />
@@ -26,7 +26,7 @@ export function ProviderSessionsPage() {
             </Button>
           }
         />
-        <ProviderTable columns={["Session", "Booking", "Xe", "Nhân viên", "Thời lượng", "Trạng thái"]} rows={sessions.map((item) => [item.id, item.booking, item.vehicle, item.staff, item.timer, <StateBadge key={item.id} state={item.state} />])} />
+        <ProviderTable columns={["Phiên chơi", "Đơn đặt", "Xe", "Nhân viên", "Thời lượng", "Trạng thái"]} rows={sessions.map((item) => [item.id, item.booking, item.vehicle, item.staff, item.timer, <StateBadge key={item.id} state={item.state} />])} />
       </Panel>
     </ProviderShell>
   )

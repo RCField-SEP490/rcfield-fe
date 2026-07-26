@@ -202,14 +202,25 @@ function getDefaultDateRange(period: RevenuePeriod): {
 }
 
 const CHART_COLORS = {
-  slotFee: "#ea580c",
+  slotFee: "#ec4899",
   rentalFee: "#3b82f6",
-  fnbPreorder: "#10b981",
-  extensionFee: "#f59e0b",
-  damageCharge: "#ef4444",
+  fnbPreorder: "#ef4444",
+  extensionFee: "#10b981",
+  damageCharge: "#f59e0b",
+  packageFee: "#8b5cf6",
 }
 
-const PIE_COLORS = ["#ea580c", "#3b82f6", "#10b981", "#f59e0b", "#ef4444"]
+// Map màu cố định theo type — dùng cho cả AreaChart lẫn PieChart
+const FEE_COLOR_MAP: Record<string, string> = {
+  SLOT_FEE: "#ec4899",
+  RENTAL_FEE: "#3b82f6",
+  FNB_PREORDER: "#ef4444",
+  EXTENSION_FEE: "#10b981",
+  DAMAGE_CHARGE: "#f59e0b",
+  PACKAGE_PURCHASE: "#8b5cf6",
+}
+
+const PIE_COLORS = ["#ec4899", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
 
 // ── KPI Card ─────────────────────────────────────────────────────────────────
 
@@ -623,7 +634,7 @@ function RealDashboard({
               Xu hướng doanh thu
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
-              Phân tích theo loại — phí sân, thuê xe, F&B
+              Phân tích theo loại — phí sân, thuê xe, đồ ăn & thức uống
             </p>
           </div>
           {trend.length === 0 && !isLoading ? (
@@ -740,7 +751,7 @@ function RealDashboard({
                   <Area
                     type="monotone"
                     dataKey="fnbPreorder"
-                    name="F&B"
+                    name="Đồ ăn & thức uống"
                     stroke={CHART_COLORS.fnbPreorder}
                     fill="url(#db-grad-fnbPreorder)"
                     strokeWidth={hoveredSeries === "fnbPreorder" ? 3.5 : 2}
@@ -798,6 +809,26 @@ function RealDashboard({
                     onMouseEnter={() => setHoveredSeries("damageCharge")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
+                  <Area
+                    type="monotone"
+                    dataKey="packageFee"
+                    name="Phí gói"
+                    stroke={CHART_COLORS.packageFee}
+                    fill="url(#db-grad-packageFee)"
+                    strokeWidth={hoveredSeries === "packageFee" ? 3.5 : 2}
+                    strokeOpacity={
+                      hoveredSeries === null || hoveredSeries === "packageFee"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredSeries === null || hoveredSeries === "packageFee"
+                        ? 1
+                        : 0.15
+                    }
+                    onMouseEnter={() => setHoveredSeries("packageFee")}
+                    onMouseLeave={() => setHoveredSeries(null)}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -814,19 +845,19 @@ function RealDashboard({
             </p>
           </div>
           {breakdown.length === 0 && !isLoading ? (
-            <div className="flex h-40 items-center justify-center text-sm text-[#747878]">
+            <div className="flex h-36 items-center justify-center text-sm text-[#747878]">
               Chưa có dữ liệu
             </div>
           ) : (
-            <div className="h-40 w-full text-xs">
+            <div className="h-36 w-full text-xs">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={breakdown}
                     cx="50%"
                     cy="50%"
-                    innerRadius={40}
-                    outerRadius={60}
+                    innerRadius={42}
+                    outerRadius={62}
                     paddingAngle={3}
                     dataKey="amount"
                     nameKey="label"
@@ -838,10 +869,10 @@ function RealDashboard({
                     {breakdown.map((item, i) => (
                       <Cell
                         key={i}
-                        fill={PIE_COLORS[i % PIE_COLORS.length]}
+                        fill={FEE_COLOR_MAP[item.type] ?? PIE_COLORS[i % PIE_COLORS.length]}
                         opacity={
                           hoveredPieType === null ||
-                          hoveredPieType === item.type
+                            hoveredPieType === item.type
                             ? 1
                             : 0.15
                         }
@@ -861,16 +892,6 @@ function RealDashboard({
                       border: "1px solid #e5e2e1",
                       fontSize: 12,
                     }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: 10 }}
-                    onMouseEnter={(entry: { value?: string | number }) => {
-                      const match = breakdown.find(
-                        (item) => item.label === entry.value,
-                      )
-                      if (match) setHoveredPieType(match.type)
-                    }}
-                    onMouseLeave={() => setHoveredPieType(null)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -892,7 +913,7 @@ function RealDashboard({
                 <div className="flex items-center gap-2">
                   <span
                     className="size-2 rounded-full"
-                    style={{ background: PIE_COLORS[i % PIE_COLORS.length] }}
+                    style={{ background: FEE_COLOR_MAP[item.type] ?? PIE_COLORS[i % PIE_COLORS.length] }}
                   />
                   <span
                     className={cn(
@@ -1028,10 +1049,10 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>🍔 Món ăn được mua nhiều</span>
+              <span>Món ăn được mua nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
-              Top 5 món F&B bán chạy nhất trong kỳ
+              Top 5 món bán chạy nhất trong kỳ
             </p>
           </div>
           {isLoading ? (
@@ -1045,7 +1066,7 @@ function RealDashboard({
             </div>
           ) : !topStats?.topFnb || topStats.topFnb.length === 0 ? (
             <div className="py-10 text-center text-xs text-[#747878]">
-              Chưa có dữ liệu F&B
+              Chưa có dữ liệu đồ ăn & thức uống
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1095,7 +1116,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>🏁 Sân được book nhiều</span>
+              <span>Sân được book nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 loại đường đua được yêu thích nhất
@@ -1162,7 +1183,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>👤 Khách hàng thường xuyên nhất</span>
+              <span>Khách hàng thường xuyên nhất</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 khách hàng đặt sân tích cực nhất
@@ -1227,7 +1248,7 @@ function RealDashboard({
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
-              <span>🏎️ Loại xe được book nhiều</span>
+              <span>Loại xe được book nhiều</span>
             </h3>
             <p className="text-xs text-[#747878] mt-0.5">
               Top 5 dòng xe mẫu được thuê nhiều nhất
@@ -1279,13 +1300,12 @@ function RealDashboard({
                       </td>
                       <td className="py-2.5">
                         <span
-                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${
-                            item.catalogTier === "RESTRICTED"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : item.catalogTier === "PREMIUM"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-slate-100 text-slate-700 border-slate-200"
-                          }`}
+                          className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-bold border ${item.catalogTier === "RESTRICTED"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : item.catalogTier === "PREMIUM"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-slate-100 text-slate-700 border-slate-200"
+                            }`}
                         >
                           {item.catalogTier}
                         </span>
@@ -1295,6 +1315,76 @@ function RealDashboard({
                       </td>
                       <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">
                         {formatCurrency(item.rentalRevenue)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Top Gói dịch vụ — span full width để không để ô trống */}
+        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm lg:col-span-2">
+          <div className="mb-4">
+            <h3 className="text-sm font-extrabold text-[#1c1b1b] flex items-center gap-1.5">
+              <span>Gói dịch vụ bán chạy</span>
+            </h3>
+            <p className="text-xs text-[#747878] mt-0.5">
+              Top 5 gói được mua nhiều nhất trong kỳ
+            </p>
+          </div>
+          {isLoading ? (
+            <div className="space-y-2 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-10 w-full animate-pulse bg-slate-100 rounded-lg"
+                />
+              ))}
+            </div>
+          ) : !topStats?.topPackages || topStats.topPackages.length === 0 ? (
+            <div className="py-10 text-center text-xs text-[#747878]">
+              Chưa có dữ liệu gói dịch vụ
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0ede9] text-[#747878] font-bold text-left">
+                    <th className="pt-3.5 pb-2 leading-relaxed">TÊN GÓI</th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      LƯỢT MUA
+                    </th>
+                    <th className="pt-3.5 pb-2 text-right leading-relaxed">
+                      DOANH THU
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topStats.topPackages.map((item, idx) => (
+                    <tr
+                      key={item.packageId || idx}
+                      className="border-t border-[#f0ede9] hover:bg-[#fcf8f8]/60 transition-colors"
+                    >
+                      <td className="py-2.5">
+                        <div className="font-semibold text-[#1c1b1b]">
+                          {item.packageName}
+                        </div>
+                        {!selectedCafeId && (
+                          <div className="text-[10px] text-slate-400 font-semibold">
+                            {item.cafeName}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-right font-bold text-[#5d5f5f]">
+                        <span className="inline-flex items-center gap-0.5">
+                          <span className="inline-block size-1.5 rounded-full" style={{ background: "#8b5cf6" }} />
+                          {item.purchaseCount}
+                        </span>
+                      </td>
+                      <td className="py-2.5 text-right font-extrabold text-[#1c1b1b]">
+                        {formatCurrency(item.totalRevenue)}
                       </td>
                     </tr>
                   ))}
@@ -1607,7 +1697,7 @@ function OnboardingChecklist({
                   className={cn(
                     "text-base font-extrabold text-[#1c1b1b]",
                     steps.operationalHoursSet &&
-                      "line-through text-slate-500/60",
+                    "line-through text-slate-500/60",
                   )}
                 >
                   Cài đặt giờ hoạt động

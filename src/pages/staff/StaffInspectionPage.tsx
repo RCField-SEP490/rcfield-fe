@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useParams, useSearchParams, useNavigate } from "react-router"
+import { useQuery } from "@tanstack/react-query"
 import {
   Camera,
   ClipboardList,
@@ -24,6 +25,51 @@ import {
   StaffButton,
 } from "./components/StaffUI"
 
+const MIN_RENTAL_INSPECTION_PHOTOS = 4
+const MAX_RENTAL_INSPECTION_PHOTOS = 6
+
+type InspectionPhotoData = {
+  url: string
+  angle?: string
+  direction?: string
+  notes?: string
+}
+
+type InspectionRecord = {
+  type: "CHECK_IN" | "CHECK_OUT"
+  photos: InspectionPhotoData[]
+}
+
+type InspectionSession = {
+  sessionId: string
+  bookingId: string
+  status?: string
+  inspections: InspectionRecord[]
+}
+
+type InspectionBooking = {
+  bookingId: string
+  playMode: "RENTAL" | "BYOC" | "MIXED"
+  participantDetails?: { name: string }[]
+  plannedParticipants?: string[]
+}
+
+type InspectionSessionApiData = {
+  id?: string
+  sessionId?: string
+  bookingId?: string
+  status?: string
+  inspections?: InspectionRecord[]
+  booking?: {
+    id?: string
+    bookingId?: string
+    playMode?: "RENTAL" | "BYOC" | "MIXED"
+    mode?: "RENTAL" | "BYOC" | "MIXED"
+    participantDetails?: { name: string }[]
+    plannedParticipants?: string[]
+  }
+}
+
 export default function StaffInspectionPage() {
   const [searchParams] = useSearchParams()
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>()
@@ -31,10 +77,47 @@ export default function StaffInspectionPage() {
   const { sessions, bookings, submitInspection, refreshData } = useStaffOperations()
 
   const sessionId = routeSessionId ?? searchParams.get("sessionId")
-  const type = searchParams.get("type") as "CHECK_IN" | "CHECK_OUT" | null
+  const requestedType = searchParams.get("type") as "CHECK_IN" | "CHECK_OUT" | null
 
-  const session = sessions.find((s) => s.sessionId === sessionId)
-  const booking = session ? bookings.find((b) => b.bookingId === session.bookingId) : null
+  const contextSession = sessions.find((item) => item.sessionId === sessionId)
+  const contextBooking = contextSession
+    ? bookings.find((item) => item.bookingId === contextSession.bookingId)
+    : null
+  // A session may be opened from history or from a real-time notification,
+  // neither of which is guaranteed to exist in the "today bookings" context.
+  // Fetch the authoritative detail by route ID so a valid action never depends
+  // on that transient list being populated.
+  const { data: apiSession, isLoading: isLoadingSession } = useQuery<InspectionSessionApiData>({
+    queryKey: ["staff", "inspection-session", sessionId],
+    queryFn: () => staffApi.getSessionDetail(sessionId!) as Promise<InspectionSessionApiData>,
+    enabled: Boolean(sessionId),
+    retry: false,
+  })
+  const session = useMemo<InspectionSession | null>(() => {
+    if (apiSession) {
+      return {
+        sessionId: apiSession.sessionId ?? apiSession.id ?? sessionId ?? "",
+        bookingId: apiSession.bookingId ?? apiSession.booking?.bookingId ?? apiSession.booking?.id ?? "",
+        status: apiSession.status,
+        inspections: apiSession.inspections ?? [],
+      }
+    }
+    return contextSession ?? null
+  }, [apiSession, contextSession, sessionId])
+  const booking = useMemo<InspectionBooking | null>(() => {
+    if (apiSession?.booking) {
+      return {
+        bookingId: apiSession.booking.bookingId ?? apiSession.booking.id ?? session?.bookingId ?? "",
+        playMode: apiSession.booking.playMode ?? apiSession.booking.mode ?? contextBooking?.playMode ?? "RENTAL",
+        participantDetails: apiSession.booking.participantDetails,
+        plannedParticipants: apiSession.booking.plannedParticipants,
+      }
+    }
+    return contextBooking ?? null
+  }, [apiSession, contextBooking, session?.bookingId])
+  const type = requestedType ?? (
+    session?.status === "CHECKED_IN" ? "CHECK_IN" : session ? "CHECK_OUT" : null
+  )
   const isByoc = booking?.playMode === "BYOC"
 
   // Rental evidence is flexible: staff can add the useful angles for this car.
@@ -86,10 +169,10 @@ export default function StaffInspectionPage() {
     if (type === "CHECK_IN") {
       queueMicrotask(() => {
         setChecklist([
-          { id: "ck-1", label: "Pin đã được sạc đầy 100% trước ca chạy", checked: true },
-          { id: "ck-2", label: "Hệ thống lái Servo nhạy bén, kiểm tra bẻ cua mượt mà", checked: true },
-          { id: "ck-3", label: "Bộ lốp drift/onroad lắp ráp chắc chắn, không bị rơ", checked: true },
-          { id: "ck-4", label: "Điều khiển từ xa (Remote) đã bật kết nối sóng ổn định", checked: true },
+          { id: "ck-1", label: "Pin đủ điện, đã sạc trước ca", checked: true },
+          { id: "ck-2", label: "Tay lái servo phản hồi tốt, bẻ cua bình thường", checked: true },
+          { id: "ck-3", label: "Lốp gắn chắc, không lung lay", checked: true },
+          { id: "ck-4", label: "Remote bắt sóng, xe phản hồi lệnh ổn định", checked: true },
         ])
       })
     } else if (type === "CHECK_OUT") {
@@ -105,12 +188,31 @@ export default function StaffInspectionPage() {
   }, [type, isByoc])
 
 
-  if (!sessionId || !type || !session || !booking) {
+  if (!sessionId) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center p-4">
         <AlertTriangle className="size-12 text-[#6b7280] mb-3" />
         <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy thông tin ca kiểm xe</h3>
-        <p className="text-xs text-[#6b7280] mt-1 font-semibold">Thiếu tham số sessionId hoặc loại kiểm xe.</p>
+        <p className="text-xs text-[#6b7280] mt-1 font-semibold">Thiếu mã phiên chơi.</p>
+      </div>
+    )
+  }
+
+  if (isLoadingSession && (!session || !booking || !type)) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 p-4 text-[#6b7280]">
+        <Loader2 className="size-7 animate-spin text-[#ea580c]" />
+        <p className="text-sm font-semibold">Đang tải thông tin ca kiểm xe...</p>
+      </div>
+    )
+  }
+
+  if (!session || !booking || !type) {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center p-4">
+        <AlertTriangle className="size-12 text-[#6b7280] mb-3" />
+        <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy ca kiểm xe</h3>
+        <p className="text-xs text-[#6b7280] mt-1 font-semibold">Phiên chơi không tồn tại hoặc bạn không có quyền thao tác.</p>
       </div>
     )
   }
@@ -122,7 +224,7 @@ export default function StaffInspectionPage() {
       try {
         await staffApi.simulateClientCheckOut(session.sessionId)
         toast.success("Đã đóng phiên chơi thành công!", {
-          description: "Booking đã được cập nhật trạng thái hoàn thành.",
+          description: "Đơn đặt lịch đã được cập nhật trạng thái hoàn thành.",
         })
         await refreshData()
         navigate(`/staff/sessions/${session.sessionId}`)
@@ -170,9 +272,9 @@ export default function StaffInspectionPage() {
     event.target.value = ""
     if (files.length === 0) return
 
-    const remaining = 6 - rentalPhotos.length
+    const remaining = MAX_RENTAL_INSPECTION_PHOTOS - rentalPhotos.length
     if (remaining <= 0) {
-      toast.error("Mỗi biên bản chỉ nhận tối đa 6 ảnh.")
+      toast.error(`Mỗi biên bản chỉ nhận tối đa ${MAX_RENTAL_INSPECTION_PHOTOS} ảnh.`)
       return
     }
 
@@ -184,7 +286,7 @@ export default function StaffInspectionPage() {
       toast.error("Chỉ nhận ảnh tối đa 5MB mỗi tệp. Các tệp không hợp lệ đã được bỏ qua.")
     }
     if (files.length > remaining) {
-      toast.info(`Chỉ thêm ${remaining} ảnh để đủ giới hạn 6 ảnh.`)
+      toast.info(`Chỉ thêm ${remaining} ảnh để đủ giới hạn ${MAX_RENTAL_INSPECTION_PHOTOS} ảnh.`)
     }
     if (validFiles.length === 0) return
 
@@ -281,8 +383,8 @@ export default function StaffInspectionPage() {
           undefined,
         )
       } else {
-        if (rentalPhotos.length === 0) {
-          toast.error("Vui lòng thêm ít nhất một ảnh thực tế của xe để lập biên bản.")
+        if (rentalPhotos.length < MIN_RENTAL_INSPECTION_PHOTOS) {
+          toast.error(`Vui lòng thêm tối thiểu ${MIN_RENTAL_INSPECTION_PHOTOS} ảnh thực tế của xe để lập biên bản.`)
           return
         }
         if (damageFlagged && damageLineItems.length === 0) {
@@ -313,20 +415,17 @@ export default function StaffInspectionPage() {
 
       if (!submitted) return
 
-      if (type === "CHECK_OUT") {
-        navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
-      } else {
-        navigate(`/staff/sessions/${session.sessionId}`)
-      }
+      navigate(`/staff/sessions/${session.sessionId}`)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const checkInInspection = session.inspections.find((i) => i.type === "CHECK_IN")
+  const remainingRentalPhotos = Math.max(0, MIN_RENTAL_INSPECTION_PHOTOS - rentalPhotos.length)
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <StaffButton
@@ -343,7 +442,7 @@ export default function StaffInspectionPage() {
           <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">
             {type === "CHECK_IN"
               ? isByoc ? "Xác nhận xe tự mang" : "Lập biên bản bàn giao"
-              : "Lập Biên Bản Bàn Giao Xe Trả (Check-Out)"}
+              : "Lập biên bản trả xe"}
           </h2>
           {isByoc && (
             <span className="inline-block mt-0.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 uppercase tracking-wide">
@@ -361,7 +460,7 @@ export default function StaffInspectionPage() {
               <Camera className="size-4.5 text-[#ea580c]" />
               {isByoc
                 ? `Chụp ảnh xác nhận xe khách (${byocPhotos.length} người — bắt buộc mỗi xe 1 ảnh)`
-                : `Ảnh bàn giao xe (${rentalPhotos.length}/6)`}
+                : `Ảnh bàn giao xe (${rentalPhotos.length}/${MAX_RENTAL_INSPECTION_PHOTOS})`}
             </h3>
             {!isByoc && type === "CHECK_OUT" && checkInInspection && (
               <StaffButton
@@ -370,7 +469,7 @@ export default function StaffInspectionPage() {
                 variant={showCheckInBaselines ? "primary" : "outline"}
                 size="sm"
               >
-                {showCheckInBaselines ? "Ẩn ảnh so sánh Check-In" : "So sánh ảnh Check-In gốc"}
+                {showCheckInBaselines ? "Ẩn ảnh bàn giao gốc" : "So sánh ảnh bàn giao gốc"}
               </StaffButton>
             )}
           </div>
@@ -471,10 +570,10 @@ export default function StaffInspectionPage() {
           ) : (
             <div className="space-y-4">
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold leading-relaxed text-amber-900">
-                Chụp rõ tổng thể xe, phía trước, phía sau, hai bên và cận cảnh mọi vết xước hoặc hư hỏng hiện có nếu cần. Không bắt buộc thứ tự hoặc đủ 4 góc; chỉ cần ảnh phản ánh đúng tình trạng xe.
+                Cần tối thiểu {MIN_RENTAL_INSPECTION_PHOTOS} và tối đa {MAX_RENTAL_INSPECTION_PHOTOS} ảnh. Hãy chụp tổng thể xe, phía trước, phía sau, hai bên và cận cảnh mọi vết xước hoặc hư hỏng hiện có để đối chiếu khi trả xe.
               </div>
 
-              {rentalPhotos.length < 6 && (
+              {rentalPhotos.length < MAX_RENTAL_INSPECTION_PHOTOS && (
                 <label
                   htmlFor="rental-inspection-photos"
                   className={cn(
@@ -490,7 +589,9 @@ export default function StaffInspectionPage() {
                   <span className="text-sm font-extrabold text-[#1c1b1b]">
                     {isUploadingRentalPhotos ? "Đang tải ảnh..." : "Chọn nhiều ảnh cùng lúc"}
                   </span>
-                  <span className="mt-1 text-xs font-medium text-[#6b7280]">Tối đa 6 ảnh, JPG/PNG/WEBP, mỗi ảnh không quá 5MB</span>
+                  <span className="mt-1 text-xs font-medium text-[#6b7280]">
+                    Tối thiểu {MIN_RENTAL_INSPECTION_PHOTOS}, tối đa {MAX_RENTAL_INSPECTION_PHOTOS} ảnh · JPG/PNG/WEBP · mỗi ảnh không quá 5MB
+                  </span>
                   <input
                     id="rental-inspection-photos"
                     type="file"
@@ -503,9 +604,15 @@ export default function StaffInspectionPage() {
               )}
 
               {rentalPhotos.length > 0 && (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {rentalPhotos.map((photo, index) => (
-                    <div key={photo.id} className="overflow-hidden rounded-xl border border-[#e5e2e1] bg-white">
+                <div className="space-y-2">
+                  {remainingRentalPhotos > 0 && (
+                    <p className="text-xs font-bold text-amber-700">
+                      Cần thêm {remainingRentalPhotos} ảnh để đủ điều kiện lưu biên bản.
+                    </p>
+                  )}
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {rentalPhotos.map((photo, index) => (
+                      <div key={photo.id} className="overflow-hidden rounded-xl border border-[#e5e2e1] bg-white">
                       <div className="relative aspect-video bg-[#f5f3f2]">
                         <ZoomableInspectionImage
                           src={photo.url}
@@ -532,8 +639,9 @@ export default function StaffInspectionPage() {
                           className="w-full rounded-lg border border-[#e5e2e1] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:border-[#ea580c] focus:outline-none"
                         />
                       </div>
-                    </div>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -717,7 +825,7 @@ export default function StaffInspectionPage() {
                     </div>
                     <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-[10px] text-amber-800 flex gap-1.5 font-semibold">
                       <Info className="size-4 shrink-0 text-amber-600" />
-                      Khách hàng sẽ xem chi tiết breakdown và xác nhận trước khi thanh toán.
+                      Khách hàng sẽ xem bảng kê chi tiết và xác nhận trước khi thanh toán.
                     </div>
                   </div>
                 )}
@@ -740,14 +848,16 @@ export default function StaffInspectionPage() {
             type="submit"
             variant="primary"
             className="flex-1 uppercase tracking-wider gap-1.5 font-bold"
-            disabled={isSubmitting}
+            disabled={isSubmitting || (!isByoc && remainingRentalPhotos > 0)}
           >
             <FileCheck className="size-4.5" />
             {isSubmitting
               ? "Đang lưu..."
               : isByoc
                 ? "Xác nhận xe khách"
-                : "Lưu biên bản kiểm định"}
+                : remainingRentalPhotos > 0
+                  ? `Cần thêm ${remainingRentalPhotos} ảnh`
+                  : "Lưu biên bản kiểm định"}
           </StaffButton>
         </div>
       </form>

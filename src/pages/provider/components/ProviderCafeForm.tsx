@@ -5,6 +5,14 @@ import { useQuery } from "@tanstack/react-query"
 import { LocationPickerDialog } from "@/shared/components/LocationPickerDialog"
 
 import { amenityApi, amenityQueryKeys, cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  closingTimeInputPattern,
+  getOperatingHoursValidationError,
+  isValidClosingTime,
+  isValidOpeningTime,
+  normalizeOperatingTime,
+  openingTimeInputPattern,
+} from "@/features/cafes/lib/operating-hours"
 import type { BackendCafe, CafeImage, CafeOperatingHour, CafeOperatingHours, CafeUpsertBody } from "@/features/cafes/types"
 import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -217,10 +225,11 @@ export function ProviderCafeForm({
     Number.isFinite(values.longitude) &&
     values.latitude !== 0 &&
     values.longitude !== 0
+  const operatingHoursError = getOperatingHoursValidationError(values.operating_hours)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!hasValidCoordinates) return
+    if (!hasValidCoordinates || operatingHoursError) return
     const body: ProviderCafeFormValues = {
       ...values,
       description: values.description?.trim() ? values.description.trim() : null,
@@ -461,6 +470,7 @@ export function ProviderCafeForm({
             <OperatingHoursField
               value={values.operating_hours}
               onChange={(updated) => setField("operating_hours", updated)}
+              error={operatingHoursError}
             />
           </div>
         </div>
@@ -554,7 +564,7 @@ export function ProviderCafeForm({
             Hủy
           </Button>
         ) : null}
-        <Button type="submit" disabled={isPending || values.track_types.length === 0 || !hasValidCoordinates || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
+        <Button type="submit" disabled={isPending || values.track_types.length === 0 || !hasValidCoordinates || !!operatingHoursError || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
           {isPending ? "Đang lưu..." : submitLabel ?? (cafe ? "Lưu thay đổi" : "Tạo cơ sở")}
         </Button>
       </div>
@@ -565,9 +575,11 @@ export function ProviderCafeForm({
 function OperatingHoursField({
   value,
   onChange,
+  error,
 }: {
   value: CafeOperatingHours
   onChange: (updated: CafeOperatingHours) => void
+  error: string | null
 }) {
   const setDay = (day: string, patch: Partial<CafeOperatingHour>) => {
     onChange({ ...value, [day]: { ...value[day], ...patch } })
@@ -594,17 +606,29 @@ function OperatingHoursField({
           >
             <span className="text-sm font-semibold text-[#1c1b1b]">{dayLabels[day]}</span>
             <Input
-              type="time"
+              type="text"
+              inputMode="numeric"
+              placeholder="HH:mm"
+              pattern={openingTimeInputPattern}
+              maxLength={5}
               value={h.open ?? "09:00"}
               disabled={isClosed}
               onChange={(e) => setDay(day, { open: e.target.value })}
+              onBlur={(e) => setDay(day, { open: normalizeOperatingTime(e.target.value) })}
+              aria-invalid={!isClosed && !isValidOpeningTime(h.open)}
               className="h-8 rounded-lg border-[#c4c7c8] text-sm"
             />
             <Input
-              type="time"
+              type="text"
+              inputMode="numeric"
+              placeholder="HH:mm"
+              pattern={closingTimeInputPattern}
+              maxLength={5}
               value={h.close ?? "22:00"}
               disabled={isClosed}
               onChange={(e) => setDay(day, { close: e.target.value })}
+              onBlur={(e) => setDay(day, { close: normalizeOperatingTime(e.target.value) })}
+              aria-invalid={!isClosed && !isValidClosingTime(h.close)}
               className="h-8 rounded-lg border-[#c4c7c8] text-sm"
             />
             <Checkbox
@@ -615,6 +639,12 @@ function OperatingHoursField({
           </div>
         )
       })}
+      <div className="border-t border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2">
+        <p className="text-xs text-[#5d5f5f]">
+          Nhập theo định dạng HH:mm. Giờ đóng có thể là <strong>24:00</strong> để biểu thị nửa đêm ngày kế tiếp.
+        </p>
+        {error ? <p role="alert" className="mt-1 text-xs font-semibold text-red-600">{error}</p> : null}
+      </div>
     </div>
   )
 }
@@ -665,4 +695,3 @@ function TextField({
     </label>
   )
 }
-

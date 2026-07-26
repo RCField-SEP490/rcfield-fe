@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect */
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
@@ -66,8 +67,8 @@ export interface StaffOperationContextType {
     damageFlagged: boolean,
     damageLineItems?: DamageLineItemInput[]
   ) => Promise<boolean>
-  proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => void
-  addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => void
+  proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => Promise<boolean>
+  addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => Promise<boolean>
   updateFnbOrderStatus: (orderId: string, status: FnbOrder["status"]) => void
   swapSessionVehicle: (
     sessionId: string,
@@ -124,6 +125,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
   }, [user, role])
 
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState<CustomerBookingDetail[]>([])
   const [fnbOrders, setFnbOrders] = useState<FnbOrder[]>([])
   const [fleetStates, setFleetStates] = useState<Record<string, keyof typeof VehicleStatus>>({})
@@ -183,10 +185,12 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         return
       }
 
-      if (msg.event === "CUSTOMER_CHECKOUT_CONFIRMED") {
-        toast.success("Khách đã xác nhận trả xe", {
-          description: data?.sessionId ? `Phiên ${data.sessionId} đã hoàn tất.` : undefined,
-        })
+      if (msg.event === "CUSTOMER_CHECKOUT_CONFIRMED" || msg.event === "SESSION_CHECKOUT_COMPLETED") {
+        if (msg.event === "CUSTOMER_CHECKOUT_CONFIRMED") {
+          toast.success("Khách đã xác nhận trả xe", {
+            description: data?.sessionId ? `Phiên ${data.sessionId} đã hoàn tất.` : undefined,
+          })
+        }
         void fetchData()
         return
       }
@@ -221,6 +225,24 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         return
       }
 
+      if (msg.event === "SESSION_OVERDUE_ALERT") {
+        toast.error("Phiên chạy quá giờ chưa trả xe", {
+          description: data?.sessionId
+            ? `Phiên ${data.sessionId.slice(0, 8).toUpperCase()} cần được xử lý trả xe.`
+            : "Vui lòng kiểm tra và hoàn tất trả xe.",
+        })
+        void fetchData()
+        return
+      }
+
+      if (msg.event === "SESSION_EXTENSION_EXPIRED") {
+        toast.info("Yêu cầu gia hạn đã hết hạn", {
+          description: "Phiên được đưa lại trạng thái đang chơi với giờ kết thúc cũ.",
+        })
+        void fetchData()
+        return
+      }
+
       if (msg.event === "NEW_BOOKING") {
         const bookingData = msg.data as { bookingId?: string; cafeName?: string; slotStart?: string } | undefined
         toast.info("Có đặt lịch mới!", {
@@ -233,8 +255,46 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         void queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() })
         return
       }
+
+      if (
+        msg.event === "VEHICLE_MAINTENANCE_CREATED" ||
+        msg.event === "NEW_MAINTENANCE_LOG" ||
+        msg.event === "DAMAGE_REPORTED" ||
+        msg.event === "MAINTENANCE_LOG_UPDATED"
+      ) {
+        const payload = msg.data as {
+          vehicleName?: string
+          vehicleId?: string
+          issueDescription?: string
+          logId?: string
+        } | undefined
+
+        // Real-time invalidate queries so maintenance list updates silently
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
+
+        // Only show toast popup if user is NOT on maintenance page AND it's a new maintenance log
+        const isMaintenancePage = window.location.pathname.includes("/staff/maintenance")
+        if (
+          !isMaintenancePage &&
+          (msg.event === "VEHICLE_MAINTENANCE_CREATED" ||
+            msg.event === "NEW_MAINTENANCE_LOG" ||
+            msg.event === "DAMAGE_REPORTED")
+        ) {
+          toast.warning("🚨 Cảnh báo Xe cần Bảo trì!", {
+            description: payload?.vehicleName
+              ? `Xe ${payload.vehicleName} (${payload.vehicleId || ""}) vừa ghi nhận hư hỏng cần bảo trì.`
+              : "Có cập nhật phiếu bảo trì xe hỏng mới từ hệ thống.",
+            action: {
+              label: "Đi tới trang Bảo trì",
+              onClick: () => navigate("/staff/maintenance"),
+            },
+            duration: 8000,
+          })
+        }
+        return
+      }
     },
-    [fetchData, queryClient],
+    [fetchData, queryClient, navigate],
   )
 
   useWebSocket(handleRealtimeMessage)
@@ -267,7 +327,26 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
 
     if (storedMaintenance) {
-      setMaintenanceLogs(JSON.parse(storedMaintenance))
+      const parsed: StaffMaintenanceLog[] = JSON.parse(storedMaintenance)
+      const enriched = parsed.map((item) => {
+        const defaultMock = initialMockMaintenanceLogs.find((m) => m.logId === item.logId)
+        return {
+          ...item,
+          cafeName: item.cafeName || defaultMock?.cafeName || "RC Field Quận 4",
+          categoryName: item.categoryName || defaultMock?.categoryName || "Drift Special Nitro",
+          categoryTier: item.categoryTier || defaultMock?.categoryTier || "PREMIUM",
+          inspectionPhotos:
+            item.inspectionPhotos && item.inspectionPhotos.length > 0
+              ? item.inspectionPhotos
+              : defaultMock?.inspectionPhotos,
+          damagedChecklist:
+            item.damagedChecklist && item.damagedChecklist.length > 0
+              ? item.damagedChecklist
+              : defaultMock?.damagedChecklist,
+        }
+      })
+      setMaintenanceLogs(enriched)
+      localStorage.setItem(maintenanceKey, JSON.stringify(enriched))
     } else {
       setMaintenanceLogs(initialMockMaintenanceLogs)
       localStorage.setItem(maintenanceKey, JSON.stringify(initialMockMaintenanceLogs))
@@ -410,7 +489,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
   const startCheckIn = useCallback(async (bookingId: string) => {
     try {
       const data = await staffApi.checkIn(bookingId)
-      toast.success(`Đã khởi tạo quy trình Check-In cho session ${data.id || data.sessionId}. Cần làm kiểm xe.`)
+      toast.success(`Đã khởi tạo quy trình nhận xe cho phiên ${data.id || data.sessionId}. Cần kiểm tra xe.`)
       const contestCheckin = data.contest_checkin
       if (contestCheckin?.synced === true) {
         toast.success("Đã đồng bộ check-in giải đấu")
@@ -422,7 +501,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       await fetchData()
       return data
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể Check-In")
+      toast.error(err.response?.data?.message || "Không thể nhận xe")
       return null
     }
   }, [fetchData])
@@ -458,12 +537,12 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       })
 
       if (type === "CHECK_IN") {
-        toast.success("Check-In thành công")
+        toast.success("Nhận xe thành công")
       } else {
         if (damageFlagged) {
           toast.warning(`Phát hiện hư hỏng xe! Vui lòng xem lại biên bản và xác nhận với khách.`)
         } else {
-          toast.success(`Hoàn tất kiểm xe Check-Out. Vui lòng xem biên bản và xác nhận với khách.`)
+          toast.success(`Hoàn tất kiểm tra trả xe. Vui lòng xem biên bản và xác nhận với khách.`)
         }
       }
       await fetchData()
@@ -482,19 +561,25 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
           ? `Đã gia hạn trực tiếp thêm ${extraMinutes} phút.`
           : `Đã gửi yêu cầu gia hạn thêm ${extraMinutes} phút đến khách hàng.`
       )
-      await fetchData()
+      // The day list loads every booking and can be noticeably slower than the
+      // mutation. Let the detail screen refetch its one session immediately.
+      void fetchData()
+      return true
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Không thể gửi đề xuất gia hạn")
+      return false
     }
   }, [fetchData])
 
   const addFnbOrder = useCallback(async (sessionId: string, items: { name: string; qty: number; price: number }[]) => {
     try {
       await staffApi.addSessionFnbOrder(sessionId, { items })
-      toast.success(`Đã thêm món F&B thành công cho phiên chạy!`)
-      await fetchData()
+      toast.success(`Đã thêm món ăn, thức uống thành công cho phiên chạy!`)
+      void fetchData()
+      return true
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Không thể gọi món F&B")
+      toast.error(err.response?.data?.message || "Không thể gọi món ăn, thức uống")
+      return false
     }
   }, [fetchData])
 

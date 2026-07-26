@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   ChevronLeft,
   AlertTriangle,
@@ -12,10 +13,13 @@ import {
 } from "lucide-react"
 import {
   staffApi,
+  staffQueryKeys,
   type DamageLineItemInput,
 } from "@/features/staff/api/staff.api"
+import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
 import { toast } from "sonner"
 import { StaffCard, StaffButton } from "./components/StaffUI"
+import { useStaffOperations } from "./context/StaffOperationContext"
 
 const PART_TYPE_LABELS: Record<string, string> = {
   TIRE_WHEEL: "Bánh xe / Lốp",
@@ -51,6 +55,8 @@ interface CheckoutInspection {
 export default function StaffCheckoutSummaryPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { refreshData } = useStaffOperations()
   const [loading, setLoading] = useState(true)
   const [checkoutInspection, setCheckoutInspection] =
     useState<CheckoutInspection | null>(null)
@@ -79,6 +85,17 @@ export default function StaffCheckoutSummaryPage() {
     }
   }, [sessionId])
 
+  // Checkout changes the session, booking, fleet and today's booking list at
+  // once. Keep every staff screen in sync immediately instead of waiting for
+  // a browser refresh or a later polling cycle.
+  const syncOperationalState = useCallback(async () => {
+    await Promise.allSettled([
+      loadSession(false),
+      refreshData(),
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.all }),
+    ])
+  }, [loadSession, queryClient, refreshData])
+
   useEffect(() => {
     if (!sessionId) return
     queueMicrotask(() => {
@@ -97,6 +114,23 @@ export default function StaffCheckoutSummaryPage() {
     }, 5_000)
     return () => window.clearInterval(intervalId)
   }, [sessionId, sessionStatus, loadSession])
+
+  const handleCheckoutRealtime = useCallback((message: WsMessage) => {
+    const payload = message.data as { sessionId?: string } | undefined
+    if (payload?.sessionId && payload.sessionId !== sessionId) return
+
+    if (
+      [
+        "CUSTOMER_CHECKOUT_CONFIRMED",
+        "SESSION_CHECKOUT_COMPLETED",
+        "CUSTOMER_PAYMENT_CONFIRMED",
+      ].includes(message.event)
+    ) {
+      void syncOperationalState()
+    }
+  }, [sessionId, syncOperationalState])
+
+  useWebSocket(handleCheckoutRealtime, Boolean(sessionId))
 
   const enterEditMode = () => {
     if (!checkoutInspection) return
@@ -179,20 +213,21 @@ export default function StaffCheckoutSummaryPage() {
       )
       toast.success(
         result.alreadyCompleted
-          ? "Khách đã hoàn tất checkout. Trạng thái phiên đã được đồng bộ."
+          ? "Khách đã hoàn tất xác nhận trả xe. Trạng thái phiên đã được đồng bộ."
           : "Đã xác nhận trả xe thành công. Phiên chơi đã hoàn tất!",
       )
-      void loadSession()
+      await syncOperationalState()
+      navigate(`/staff/sessions/${sessionId}`, { replace: true })
     } catch (err: unknown) {
       const response = (err as { response?: { data?: { message?: string; code?: string } } })
         ?.response?.data?.message
       const code = (err as { response?: { data?: { code?: string } } })
         ?.response?.data?.code
       if (code === "INVALID_SESSION_STATE") {
-        await loadSession(false)
+        await syncOperationalState()
         toast.info("Trạng thái phiên đã được cập nhật. Vui lòng kiểm tra lại.")
       } else {
-        toast.error(response ?? "Không thể xác nhận checkout.")
+        toast.error(response ?? "Không thể xác nhận trả xe.")
       }
     } finally {
       setConfirming(false)
@@ -212,7 +247,7 @@ export default function StaffCheckoutSummaryPage() {
         disputeNote,
       )
       toast.success(
-        "Đã leo thang tranh chấp lên Provider. Vui lòng chờ phán quyết.",
+        "Đã chuyển tranh chấp lên quản lý cơ sở. Vui lòng chờ phán quyết.",
       )
       setDisputeOpen(false)
       navigate("/staff/today-bookings")
@@ -240,7 +275,7 @@ export default function StaffCheckoutSummaryPage() {
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 p-4">
         <AlertTriangle className="size-12 text-[#6b7280]" />
         <h3 className="text-lg font-bold text-[#1c1b1b]">
-          Chưa có biên bản Check-Out
+          Chưa có biên bản trả xe
         </h3>
         <p className="text-xs text-[#6b7280] font-semibold text-center max-w-xs">
           Cần hoàn tất kiểm tra xe trước khi xem biên bản này.
@@ -279,7 +314,7 @@ export default function StaffCheckoutSummaryPage() {
             Phiên: {sessionId}
           </span>
           <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">
-            Biên Bản Trả Xe — Xác Nhận Checkout
+            Biên bản trả xe — Xác nhận hoàn tất
           </h2>
         </div>
       </div>
@@ -289,7 +324,7 @@ export default function StaffCheckoutSummaryPage() {
         <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 flex items-center gap-2.5 text-sm font-semibold text-amber-800">
           <Info className="size-5 shrink-0 text-amber-600" />
           Đang chờ xác nhận — Trình bày biên bản cho khách xem, sau đó nhấn "Xác
-          nhận Checkout".
+          nhận trả xe".
         </div>
       )}
 
@@ -568,11 +603,11 @@ export default function StaffCheckoutSummaryPage() {
           <div className="flex items-center gap-2">
             <ShieldAlert className="size-5 text-amber-600" />
             <h3 className="text-sm font-bold text-amber-900">
-              Leo thang tranh chấp lên Provider
+              Chuyển tranh chấp lên quản lý cơ sở
             </h3>
           </div>
           <p className="text-xs text-[#6b7280] font-semibold">
-            Provider sẽ được thông báo và có toàn quyền phán quyết về mức bồi
+            Quản lý cơ sở sẽ được thông báo và có toàn quyền phán quyết về mức bồi
             thường.
           </p>
           <textarea
@@ -616,7 +651,7 @@ export default function StaffCheckoutSummaryPage() {
             <FileCheck className="size-5" />
             {confirming
               ? "Đang xác nhận..."
-              : "Xác nhận Checkout — Hoàn tất phiên chơi"}
+              : "Xác nhận trả xe — Hoàn tất phiên chơi"}
           </StaffButton>
 
           {!disputeOpen && (
@@ -627,7 +662,7 @@ export default function StaffCheckoutSummaryPage() {
               onClick={() => setDisputeOpen(true)}
             >
               <ShieldAlert className="size-4" />
-              Khách phản hồi sai lệch — Leo thang lên Provider
+              Khách phản hồi sai lệch — Chuyển quản lý cơ sở
             </StaffButton>
           )}
         </div>

@@ -6,7 +6,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import {
   BarChart3,
   Building2,
-  CalendarDays,
   CircleHelp,
   ClipboardList,
   Flag,
@@ -66,7 +65,6 @@ const providerNavGroups: NavGroup[] = [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Contest", icon: Flag, to: routePaths.providerContests },
-      { label: "Ca làm việc", icon: CalendarDays, to: routePaths.providerSchedule },
       { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],
@@ -121,6 +119,12 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     "Vận hành": true,
     "Hệ thống": true,
   })
+  const [isContestMenuExpanded, setIsContestMenuExpanded] = useState(false)
+  const [collapsedContestPath, setCollapsedContestPath] = useState<string | null>(null)
+  const isOnContestRoute = location.pathname.startsWith(routePaths.providerContests)
+  const isContestMenuOpen = isOnContestRoute
+    ? collapsedContestPath !== location.pathname
+    : isContestMenuExpanded
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const desktopNavRef = useRef<HTMLElement | null>(null)
@@ -134,7 +138,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
     return () => cancelAnimationFrame(frame)
   }, [location.pathname, mobileMenuOpen])
-  
+
   // IMPERSONATION CANNOT DELETE
   const impersonation = useAuthStore((state) => state.impersonation)
 
@@ -151,6 +155,28 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         })
         void queryClient.invalidateQueries({ queryKey: ["bookings"] })
         void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      } else if (
+        msg.event === "MAINTENANCE_COMPLETED_NOTIFICATION" ||
+        msg.event === "VEHICLE_MAINTENANCE_COMPLETED"
+      ) {
+        const data = msg.data as { title?: string; message?: string; vehicleName?: string; cafeName?: string }
+        const title = data.title || "Bảo trì xe thành công"
+        const message =
+          data.message ||
+          `Xe ${data.vehicleName || ""} thuộc cơ sở ${data.cafeName || ""} đã được bảo trì thành công.`
+
+        toast.success(`🎉 ${title}`, {
+          description: message,
+          duration: 8000,
+        })
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        // Invalidate vehicles để cập nhật trạng thái ngay lập tức
+        void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      } else if (msg.event === "VEHICLE_STATUS_CHANGED") {
+        // Cập nhật realtime trạng thái xe (IN_USE / AVAILABLE / MAINTENANCE)
+        // khi customer bắt đầu chơi, trả xe, hoặc staff thực hiện bảo trì
+        void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
       }
     },
     [queryClient],
@@ -189,6 +215,17 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     sessionStorage.removeItem(storageKeys.auth)
     toast.success("Đã đăng xuất khỏi khu vực nhà cung cấp.")
     navigate(routePaths.login, { replace: true })
+  }
+
+  const toggleContestMenu = () => {
+    if (isOnContestRoute) {
+      setCollapsedContestPath((current) =>
+        current === location.pathname ? null : location.pathname,
+      )
+      return
+    }
+
+    setIsContestMenuExpanded((current) => !current)
   }
 
   const renderSubMenu = (isMobile: boolean) => {
@@ -350,7 +387,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                 )}
               >
                 <Coffee className="size-3.5" />
-                Menu F&B
+                Thực đơn
               </button>
               <button
                 type="button"
@@ -500,21 +537,40 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
                   return (
                     <div key={item.to} className="flex flex-col">
-                      <Link
-                        to={item.to}
-                        onClick={() => saveProviderSidebarScroll(desktopNavRef.current)}
+                      <div
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
+                          "flex items-center rounded-lg text-sm font-bold transition-all duration-150",
                           active
                             ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                            : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
+                            : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700",
                         )}
                       >
-                        <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                        {item.label}
-                      </Link>
+                        {item.to === routePaths.providerContests ? (
+                          <button
+                            type="button"
+                            aria-label={isContestMenuOpen ? "Thu gọn Contest" : "Mở rộng Contest"}
+                            aria-expanded={isContestMenuOpen}
+                            onClick={toggleContestMenu}
+                            className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-left"
+                          >
+                            <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                            {item.label}
+                          </button>
+                        ) : (
+                          <Link
+                            to={item.to}
+                            onClick={() => saveProviderSidebarScroll(desktopNavRef.current)}
+                            className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
+                          >
+                            <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                            {item.label}
+                          </Link>
+                        )}
+                      </div>
                       {item.to === routePaths.providerCafes && renderSubMenu(false)}
-                      {item.to === routePaths.providerContests && renderContestSubMenu(false)}
+                      {item.to === routePaths.providerContests && isContestMenuOpen
+                        ? renderContestSubMenu(false)
+                        : null}
                     </div>
                   )
                 })}
@@ -590,25 +646,43 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
                       return (
                         <div key={item.to} className="flex flex-col">
-                          <Link
-                            key={item.to}
-                            to={item.to}
-                            onClick={() => {
-                              saveProviderSidebarScroll(mobileNavRef.current)
-                              setMobileMenuOpen(false)
-                            }}
+                          <div
                             className={cn(
-                              "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
+                              "flex items-center rounded-lg text-sm font-bold transition-all",
                               active
                                 ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                                : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
+                                : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700",
                             )}
                           >
-                            <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                            {item.label}
-                          </Link>
+                            {item.to === routePaths.providerContests ? (
+                              <button
+                                type="button"
+                                aria-label={isContestMenuOpen ? "Thu gọn Contest" : "Mở rộng Contest"}
+                                aria-expanded={isContestMenuOpen}
+                                onClick={toggleContestMenu}
+                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-left"
+                              >
+                                <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                                {item.label}
+                              </button>
+                            ) : (
+                              <Link
+                                to={item.to}
+                                onClick={() => {
+                                  saveProviderSidebarScroll(mobileNavRef.current)
+                                  setMobileMenuOpen(false)
+                                }}
+                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
+                              >
+                                <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                                {item.label}
+                              </Link>
+                            )}
+                          </div>
                           {item.to === routePaths.providerCafes && renderSubMenu(true)}
-                          {item.to === routePaths.providerContests && renderContestSubMenu(true)}
+                          {item.to === routePaths.providerContests && isContestMenuOpen
+                            ? renderContestSubMenu(true)
+                            : null}
                         </div>
                       )
                     })}
@@ -652,4 +726,3 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     </div>
   )
 }
-

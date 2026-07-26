@@ -113,7 +113,7 @@ export function CafeBookingCard({
           )}
           {fnbTotal > 0 && (
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span>F&B đặt trước</span>
+              <span>Đồ ăn & thức uống đặt trước</span>
               <span className="font-mono">+{formatCurrency(fnbTotal)}</span>
             </div>
           )}

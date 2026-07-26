@@ -4,6 +4,7 @@ import {
   getMatchParticipantName,
   getMatchParticipantSubtitle,
 } from "@/features/contests/lib/contest-runtime"
+import { getParticipantStatusLabel } from "@/features/contests/lib/contest-status"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Input } from "@/shared/ui/input"
 import { MatchDetailField } from "./MatchDetailField"
@@ -63,7 +64,7 @@ export function MatchSubmitResultsForm({
                 {participantMap.get(result.registration_id)
                   ? (getMatchParticipantSubtitle(
                       participantMap.get(result.registration_id),
-                    ) ?? "Chưa có email / check-in code")
+                    ) ?? "Chưa có email hoặc mã điểm danh")
                   : "Chưa có thông tin bổ sung"}
               </p>
             </div>
@@ -144,12 +145,12 @@ export function MatchSubmitResultsForm({
                     )
                   }
                 >
-                  <option value="READY">READY</option>
-                  <option value="STARTED">STARTED</option>
-                  <option value="FINISHED">FINISHED</option>
-                  <option value="DNS">DNS</option>
-                  <option value="DNF">DNF</option>
-                  <option value="DQ">DQ</option>
+                  <option value="READY">{getParticipantStatusLabel("READY")}</option>
+                  <option value="STARTED">{getParticipantStatusLabel("STARTED")}</option>
+                  <option value="FINISHED">{getParticipantStatusLabel("FINISHED")}</option>
+                  <option value="DNS">{getParticipantStatusLabel("DNS")}</option>
+                  <option value="DNF">{getParticipantStatusLabel("DNF")}</option>
+                  <option value="DQ">{getParticipantStatusLabel("DQ")}</option>
                 </select>
               </MatchDetailField>
               <MatchDetailField label="Ghi chú kết quả">
