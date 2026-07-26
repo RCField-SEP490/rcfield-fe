@@ -2,9 +2,6 @@ import { useMemo, useState, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
 import {
-  Plus,
-  User,
-  DollarSign,
   Filter,
   Car,
   Building2,
@@ -24,7 +21,6 @@ import {
   StaffHeader,
   StaffCard,
   StaffBadge,
-  StaffButton,
 } from "./components/StaffUI"
 
 export const PART_TYPE_LABELS: Record<string, string> = {
@@ -62,42 +58,18 @@ export default function StaffMaintenancePage() {
 
   useWebSocket(handleWsMessage)
 
-  // Local state controls
-  const [showLogForm, setShowLogForm] = useState(false)
-
-  // Form input fields
-  const [vehicleId, setVehicleId] = useState("")
-  const [issueDescription, setIssueDescription] = useState("")
-  const [staffNotes, setStaffNotes] = useState("")
-  const [cost, setCost] = useState<number>(0)
-  const [performedBy, setPerformedBy] = useState("")
-
   // Filter states
   const [statusFilter, setStatusFilter] = useState<"ALL" | "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED">("ALL")
   const [searchQuery, setSearchQuery] = useState("")
 
   // REAL API QUERY for Maintenance Logs
   const { data: apiLogs, isLoading: apiLoading } = useQuery({
-    queryKey: staffQueryKeys.maintenanceLogs(assignedCafeId ?? undefined, statusFilter, searchQuery),
+    queryKey: staffQueryKeys.maintenanceLogs(assignedCafeId ?? undefined),
     queryFn: () =>
       staffApi.getMaintenanceLogs({
         cafe_id: assignedCafeId ?? undefined,
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
-        search: searchQuery || undefined,
       }),
     enabled: true,
-  })
-
-  // REAL API MUTATION for creating maintenance log
-  const createLogApiMutation = useMutation({
-    mutationFn: staffApi.createMaintenanceLog,
-    onSuccess: () => {
-      toast.success("Đã lưu phiếu bảo trì thành công trên Server Backend!")
-      void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
-    },
-    onError: (err: unknown) => {
-      console.warn("Backend API not connected or offline, falling back to local state:", err)
-    },
   })
 
   // REAL API MUTATION for updating maintenance status
@@ -113,60 +85,39 @@ export default function StaffMaintenancePage() {
     },
   })
 
-  // Dynamic vehicle options from API data
-  const vehicleOptions = useMemo(() => {
-    const logs = apiLogs || []
-    const namesById = new Map(logs.map((log) => [log.vehicleId, log.vehicleName]))
-    return Array.from(namesById.entries())
-      .map(([id, rawName]) => ({
-        id,
-        name:
-          rawName ||
-          id
-            .replace(/^V-/, "")
-            .split("-")
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-            .join(" "),
-      }))
-  }, [apiLogs])
-
-  const handleVehicleSelect = (id: string) => {
-    setVehicleId(id)
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!vehicleId || !issueDescription.trim() || !performedBy.trim()) {
-      toast.error("Vui lòng chọn xe, nhập mô tả hư hỏng và tên kỹ thuật viên phụ trách!")
-      return
-    }
-
-    // Call real API mutation
-    createLogApiMutation.mutate({
-      vehicleId,
-      issueDescription,
-      cost,
-      performedBy,
-      staffNotes,
-    })
-
-    // Auto update vehicle state in fleet
-    updateFleetVehicleStatus(vehicleId, "MAINTENANCE")
-
-    // Reset Form
-    setVehicleId("")
-    setIssueDescription("")
-    setStaffNotes("")
-    setCost(0)
-    setPerformedBy("")
-    setShowLogForm(false)
-  }
-
-  // 100% REAL BACKEND DATA ONLY - ZERO MOCK DATA FALLBACK
+  // 100% REAL BACKEND DATA WITH LOCAL FILTER FOR SMOOTH UX
   const filteredLogs = useMemo(() => {
     const logs = apiLogs || []
-    return logs.map((item: StaffMaintenanceLogItem) => ({
+
+    // 1. Filter by status
+    const statusFiltered = logs.filter((item: StaffMaintenanceLogItem) => {
+      if (statusFilter === "ALL") return true
+      return item.status === statusFilter
+    })
+
+    // 2. Filter by search query
+    const searchFiltered = statusFiltered.filter((item: StaffMaintenanceLogItem) => {
+      if (!searchQuery.trim()) return true
+      const q = searchQuery.toLowerCase().trim()
+
+      const matchVehicleId = item.vehicleId.toLowerCase().includes(q)
+      const matchVehicleName = item.vehicleName?.toLowerCase().includes(q)
+      const matchCategoryName = item.categoryName?.toLowerCase().includes(q)
+      const matchIssue = item.issueDescription?.toLowerCase().includes(q)
+      const matchLogId = item.logId.toLowerCase().includes(q)
+      const matchCafe = item.cafeName?.toLowerCase().includes(q)
+
+      return (
+        matchVehicleId ||
+        matchVehicleName ||
+        matchCategoryName ||
+        matchIssue ||
+        matchLogId ||
+        matchCafe
+      )
+    })
+
+    return searchFiltered.map((item: StaffMaintenanceLogItem) => ({
       logId: item.logId,
       vehicleId: item.vehicleId,
       vehicleName: item.vehicleName,
@@ -184,149 +135,19 @@ export default function StaffMaintenancePage() {
       inspectionPhotos: item.inspectionPhotos,
       damagedChecklist: item.damagedChecklist,
     }))
-  }, [apiLogs])
+  }, [apiLogs, statusFilter, searchQuery])
 
   return (
     <div className="space-y-6">
-      {/* 1. Page Header with CTA Action button */}
+      {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <StaffHeader
           title="Bảo trì & Kỹ thuật Đội xe"
           subtitle="Quản lý lịch sửa chữa xe sau khi trả, thay thế linh kiện hao mòn và bàn giao đội xe"
         />
-
-        <StaffButton
-          onClick={() => setShowLogForm(!showLogForm)}
-          variant="primary"
-          className="shrink-0 uppercase tracking-wider text-xs shadow-sm"
-        >
-          <Plus className="size-4" />
-          {showLogForm ? "Đóng Phiếu" : "Đăng ký Bảo Trì Định Kỳ"}
-        </StaffButton>
       </div>
 
       <div className="space-y-6">
-        {/* LOGS CREATION FORM */}
-        {showLogForm && (
-          <form onSubmit={handleSubmit} className="animate-fadeIn">
-            <StaffCard className="p-5 space-y-5 border-orange-200 bg-[#fffbf9]/80 shadow-md">
-              <div className="flex items-center justify-between border-b border-orange-100 pb-3">
-                <div>
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-2">
-                    <Wrench className="size-4 text-[#ea580c]" />
-                    Biên bản Bảo trì Định kỳ & Sửa chữa Xe kho
-                  </h3>
-                  <p className="text-[11px] text-[#6b7280] mt-0.5 font-medium">
-                    Khai báo lịch bảo trì định kỳ, thay pin/linh kiện hao mòn hoặc sự cố phát sinh sau khi trả xe.
-                  </p>
-                </div>
-                <span className="text-[10px] font-bold text-[#ea580c] uppercase bg-orange-50 px-2 py-0.5 rounded border border-orange-200 shrink-0">
-                  Bảo trì định kỳ
-                </span>
-              </div>
-
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {/* Select vehicle */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Chọn xe hư hỏng *
-                  </label>
-                  <select
-                    value={vehicleId}
-                    onChange={(e) => handleVehicleSelect(e.target.value)}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
-                  >
-                    <option value="">-- Chọn xe từ kho --</option>
-                    {vehicleOptions.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name} ({v.id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Technician */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Kỹ thuật viên phụ trách *
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-3.5 flex items-center text-[#6b7280]">
-                      <User className="size-3.5" />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Họ tên thợ phụ trách..."
-                      value={performedBy}
-                      onChange={(e) => setPerformedBy(e.target.value)}
-                      className="w-full rounded-lg border border-[#e5e2e1] bg-white pl-10 pr-3 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Cost */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Chi phí thay linh kiện (đ)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-3.5 flex items-center text-[#6b7280]">
-                      <DollarSign className="size-3.5" />
-                    </span>
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={cost || ""}
-                      onChange={(e) => setCost(Number(e.target.value))}
-                      className="w-full rounded-lg border border-[#e5e2e1] bg-white pl-10 pr-3 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Issue Description */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                  Mô tả hỏng hóc hoặc chẩn đoán cơ học *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Mô-tơ bốc khói, nứt vỡ cản trước sau va chạm, mòn vỏ bánh xe drift..."
-                  value={issueDescription}
-                  onChange={(e) => setIssueDescription(e.target.value)}
-                  className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none"
-                />
-              </div>
-
-              {/* Treatment Notes */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                  Phương pháp xử lý & Linh kiện thay mới
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Đã quấn lại cuộn roto, thay vỏ nhựa ABS loại Drift Tech, căn chỉnh lại góc đặt bánh..."
-                  value={staffNotes}
-                  onChange={(e) => setStaffNotes(e.target.value)}
-                  className="w-full rounded-lg border border-[#e5e2e1] bg-white p-3 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none placeholder-[#a09e9d] resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowLogForm(false)}
-                  className="px-4 py-2 rounded-lg border border-[#e5e2e1] text-xs font-bold text-[#6b7280] hover:bg-gray-50"
-                >
-                  Hủy bỏ
-                </button>
-                <StaffButton type="submit" variant="primary" className="uppercase tracking-wider text-xs">
-                  Ghi phiếu sửa chữa
-                </StaffButton>
-              </div>
-            </StaffCard>
-          </form>
-        )}
 
         {/* FILTER CONTROL PANEL */}
         <div className="space-y-4">
