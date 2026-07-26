@@ -16,12 +16,19 @@ export function usePublicPackages(cafeId?: string) {
   })
 }
 
-export function useMyPackages(params?: { status?: CustomerPackageStatus; cafe_id?: string }) {
+/**
+ * @param options.enabled Tắt query ở những màn chỉ thỉnh thoảng mới cần danh sách
+ *   gói (mặc định bật). Luôn phải đăng nhập mới chạy.
+ */
+export function useMyPackages(
+  params?: { status?: CustomerPackageStatus; cafe_id?: string },
+  options?: { enabled?: boolean },
+) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   return useQuery({
     queryKey: customerPackageQueryKeys.mine(params),
     queryFn: () => customerPackageApi.listMine(params),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && (options?.enabled ?? true),
   })
 }
 
