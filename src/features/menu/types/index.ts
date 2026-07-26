@@ -1,20 +1,35 @@
-export const FNB_CATEGORIES = [
-  { value: 'FOOD', label: 'Đồ ăn' },
-  { value: 'DRINK', label: 'Đồ uống' },
-  { value: 'SNACK', label: 'Ăn vặt' },
-  { value: 'DESSERT', label: 'Tráng miệng' },
-  { value: 'OTHER', label: 'Khác' },
-] as const
+/** Nhãn hiển thị cho món chưa gán danh mục. */
+export const UNCATEGORIZED_LABEL = 'Chưa phân loại'
 
-export type FnbCategory = (typeof FNB_CATEGORIES)[number]['value']
+/** Giá trị lọc đặc biệt để lấy riêng nhóm "Chưa phân loại". */
+export const UNCATEGORIZED_FILTER = 'none'
 
-export const FNB_CATEGORY_LABEL: Record<string, string> = {
-  FOOD: 'Đồ ăn',
-  DRINK: 'Đồ uống',
-  SNACK: 'Ăn vặt',
-  DESSERT: 'Tráng miệng',
-  COMBO: 'Combo',
-  OTHER: 'Khác',
+export type MenuCategory = {
+  id: string
+  cafeId: string
+  name: string
+  displayOrder: number
+  /**
+   * Số món thuộc danh mục, TÍNH CẢ món tạm ngưng bán.
+   * Chỉ dùng cho màn quản lý — không dùng để quyết định ẩn danh mục khỏi màn khách.
+   */
+  itemCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type MenuCategoryUpsertBody = {
+  name: string
+}
+
+/**
+ * Món được đặt nhiều nhất tại chi nhánh, đếm từ đơn F&B có thật trong 90 ngày.
+ * Backend chỉ trả về món đạt ngưỡng tối thiểu — mảng rỗng nghĩa là chưa đủ
+ * dữ liệu, khi đó KHÔNG được hiển thị số liệu phỏng đoán nào.
+ */
+export type PopularMenuItem = {
+  menuItemId: string
+  orderCount: number
 }
 
 export type MenuComponent = {
@@ -29,7 +44,8 @@ export type MenuItem = {
   name: string
   description: string | null
   price: string | number
-  category: string | null
+  categoryId: string | null
+  categoryName: string | null
   isCombo: boolean
   components?: MenuComponent[]
   imageUrl: string | null
@@ -42,7 +58,8 @@ export type MenuItem = {
 export type MenuListParams = {
   page?: number
   limit?: number
-  category?: string
+  /** uuid danh mục, hoặc 'none' cho nhóm "Chưa phân loại". */
+  category_id?: string
   available?: boolean
 }
 
@@ -50,7 +67,7 @@ export type MenuUpsertBody = {
   name: string
   description?: string | null
   price: number
-  category?: string | null
+  category_id?: string | null
   image_url?: string | null
   is_available?: boolean
 }
@@ -59,6 +76,7 @@ export type ComboUpsertBody = {
   name: string
   description?: string | null
   price: number
+  category_id?: string | null
   image_url?: string | null
   is_available?: boolean
   components: Array<{ item_id: string; quantity: number }>
