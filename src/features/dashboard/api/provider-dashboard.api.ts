@@ -3,6 +3,7 @@ import type {
   ProviderKpi,
   RevenueTrendItem,
   RevenueBreakdownItem,
+  BookingChannelItem,
   BranchPerformanceItem,
   RecentBookingItem,
   RevenuePeriod,
@@ -51,6 +52,24 @@ export const providerDashboardApi = {
         cafeId: params.cafeId || undefined,
       },
     })
+    return res.data.data
+  },
+
+  getBookingChannels: async (params: {
+    from?: string
+    to?: string
+    cafeId?: string | null
+  }): Promise<BookingChannelItem[]> => {
+    const res = await api.get<{ success: boolean; data: BookingChannelItem[] }>(
+      "/v1/provider/dashboard/booking-channels",
+      {
+        params: {
+          from: params.from || undefined,
+          to: params.to || undefined,
+          cafeId: params.cafeId || undefined,
+        },
+      },
+    )
     return res.data.data
   },
 

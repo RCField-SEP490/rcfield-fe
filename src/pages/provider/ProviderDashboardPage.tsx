@@ -47,7 +47,7 @@ import { useProviderDashboard } from "@/features/dashboard/hooks/useProviderDash
 import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
-import type { RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
+import type { BookingChannelItem, RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
 import { AiInsightsPanel } from "@/features/dashboard/components/AiInsightsPanel"
 
 function formatTooltipCurrency(value: TooltipValueType | undefined): string {
@@ -418,7 +418,7 @@ function RealDashboard({
   })
   const isAiAnalyticsEnabled = featureFlags?.AI_REVENUE_ANALYTICS ?? false
 
-  const { kpi, trend, breakdown, branches, recent, topStats, isLoading } =
+  const { kpi, trend, breakdown, channels, branches, recent, topStats, isLoading } =
     useProviderDashboard({
       cafeId: selectedCafeId,
       period,
@@ -932,6 +932,8 @@ function RealDashboard({
           </div>
         </div>
       </section>
+
+      <BookingChannelsCard channels={channels} isLoading={isLoading} />
 
       {/* Charts row 2: Branch bar + Fleet */}
       <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-12">
@@ -1761,5 +1763,103 @@ function OnboardingChecklist({
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Cơ cấu đơn đặt theo kênh — khách tự đặt qua app, nhân viên tạo tại quầy,
+ * hay đến từ giải đấu. Hiển thị cả số đơn lẫn doanh thu vì hai chỉ số này có
+ * thể lệch nhau: kênh nhiều đơn chưa chắc là kênh mang về nhiều tiền hơn.
+ */
+function BookingChannelsCard({
+  channels,
+  isLoading,
+}: {
+  channels: BookingChannelItem[]
+  isLoading: boolean
+}) {
+  const totalBookings = channels.reduce((sum, c) => sum + c.bookingCount, 0)
+  const totalRevenue = channels.reduce((sum, c) => sum + c.revenue, 0)
+
+  const CHANNEL_COLOR: Record<string, string> = {
+    APP: "#ea580c",
+    STAFF_MANUAL: "#0ea5e9",
+    CONTEST: "#8b5cf6",
+  }
+
+  return (
+    <section className="mt-4 rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <h3 className="text-sm font-extrabold text-[#1c1b1b]">Kênh đặt lịch</h3>
+        <p className="mt-0.5 text-xs text-[#747878]">
+          Khách tự đặt qua app hay nhân viên tạo tại quầy
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-12 animate-pulse rounded-lg bg-[#f6f3f2]" />
+          ))}
+        </div>
+      ) : totalBookings === 0 ? (
+        <div className="flex h-24 items-center justify-center text-sm text-[#747878]">
+          Chưa có đơn đặt nào trong khoảng thời gian này
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Thanh tỉ trọng gộp — đọc được ngay kênh nào chiếm ưu thế */}
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-[#f0ede9]">
+            {channels
+              .filter((c) => c.bookingCount > 0)
+              .map((c) => (
+                <div
+                  key={c.source}
+                  style={{
+                    width: `${c.bookingShare * 100}%`,
+                    background: CHANNEL_COLOR[c.source] ?? "#94a3b8",
+                  }}
+                  title={`${c.label}: ${c.bookingCount} đơn`}
+                />
+              ))}
+          </div>
+
+          <div className="space-y-2.5">
+            {channels.map((c) => (
+              <div key={c.source} className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ background: CHANNEL_COLOR[c.source] ?? "#94a3b8" }}
+                  />
+                  <span className="truncate text-xs font-semibold text-[#5d5f5f]">{c.label}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-4 text-xs">
+                  <span className="font-bold text-[#1c1b1b] tabular-nums">
+                    {c.bookingCount} đơn
+                    <span className="ml-1 font-semibold text-[#747878]">
+                      ({Math.round(c.bookingShare * 100)}%)
+                    </span>
+                  </span>
+                  <span className="w-24 text-right font-bold text-[#1c1b1b] tabular-nums">
+                    {formatCurrency(c.revenue)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-[#f0ede9] pt-3 text-xs">
+            <span className="font-bold text-[#5d5f5f]">Tổng</span>
+            <div className="flex items-center gap-4">
+              <span className="font-extrabold text-[#1c1b1b] tabular-nums">{totalBookings} đơn</span>
+              <span className="w-24 text-right font-extrabold text-[#1c1b1b] tabular-nums">
+                {formatCurrency(totalRevenue)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   )
 }

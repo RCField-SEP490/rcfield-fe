@@ -30,6 +30,16 @@ export interface RevenueBreakdownItem {
   amount: number;
 }
 
+/** Cơ cấu đơn đặt theo kênh: khách tự đặt qua app, nhân viên tạo, hay giải đấu. */
+export interface BookingChannelItem {
+  source: string;
+  label: string;
+  bookingCount: number;
+  revenue: number;
+  /** Tỉ lệ số đơn trên tổng, 0–1. */
+  bookingShare: number;
+}
+
 export interface BranchPerformanceItem {
   cafeId: string;
   cafeName: string;

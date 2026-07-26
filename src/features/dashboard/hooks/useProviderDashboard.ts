@@ -28,6 +28,12 @@ export function useProviderDashboard({ cafeId, period, from, to }: UseProviderDa
     staleTime: 15000,
   })
 
+  const channelsQuery = useQuery({
+    queryKey: ["provider-dashboard", "booking-channels", { cafeId, from, to }],
+    queryFn: () => providerDashboardApi.getBookingChannels({ from, to, cafeId }),
+    staleTime: 15000,
+  })
+
   const branchesQuery = useQuery({
     queryKey: ["provider-dashboard", "branches", { from, to }],
     queryFn: () => providerDashboardApi.getBranchPerformance({ from, to }),
@@ -50,6 +56,7 @@ export function useProviderDashboard({ cafeId, period, from, to }: UseProviderDa
     kpi: kpiQuery.data,
     trend: trendQuery.data ?? [],
     breakdown: breakdownQuery.data ?? [],
+    channels: channelsQuery.data ?? [],
     branches: branchesQuery.data ?? [],
     recent: recentQuery.data ?? [],
     topStats: topStatsQuery.data,
@@ -57,6 +64,7 @@ export function useProviderDashboard({ cafeId, period, from, to }: UseProviderDa
       kpiQuery.isLoading ||
       trendQuery.isLoading ||
       breakdownQuery.isLoading ||
+      channelsQuery.isLoading ||
       branchesQuery.isLoading ||
       recentQuery.isLoading ||
       topStatsQuery.isLoading,
@@ -64,6 +72,7 @@ export function useProviderDashboard({ cafeId, period, from, to }: UseProviderDa
       kpiQuery.refetch()
       trendQuery.refetch()
       breakdownQuery.refetch()
+      channelsQuery.refetch()
       branchesQuery.refetch()
       recentQuery.refetch()
       topStatsQuery.refetch()
