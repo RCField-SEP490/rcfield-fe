@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
+import { motion } from "framer-motion"
+import { useSectionEntrance } from "@/shared/lib/motion"
 import { routePaths } from "@/app/router/route-paths"
 import {
   cafeApi,
@@ -85,6 +87,16 @@ export function CafeDetailPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString("sv-SE"))
   const [selectedSlotId, setSelectedSlotId] = useState("")
 
+  // Cùng bộ biến thể với danh sách ở trang Khám phá, có tôn trọng reduced-motion.
+  // Phải gọi trước mọi nhánh return sớm bên dưới (quy tắc hook).
+  const sectionEntrance = useSectionEntrance()
+  const entranceProps = (index: number) => ({
+    custom: index,
+    variants: sectionEntrance,
+    initial: "hidden" as const,
+    animate: "visible" as const,
+  })
+
   if (listLoading || detailLoading) {
     return (
       <div className="mx-auto w-full max-w-[1440px] px-4 py-6 md:px-6">
@@ -135,20 +147,29 @@ export function CafeDetailPage() {
 
   return (
     <div className="bg-white pb-10">
-      <div className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6"
+      >
         <Link to={routePaths.cafes} className="hover:text-slate-900">Cơ sở</Link>
         <span>/</span>
         <span className="text-slate-400">{cafe.city}</span>
         <span>/</span>
         <span className="text-slate-900">{cafe.name}</span>
-      </div>
+      </motion.div>
 
       <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6">
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-8">
-            <CafeDetailHero cafe={cafe} />
-            <CafePromoBanner cafeId={resolvedCafe.id} />
-            <div className="lg:hidden">
+            <motion.div {...entranceProps(0)}>
+              <CafeDetailHero cafe={cafe} />
+            </motion.div>
+            <motion.div {...entranceProps(1)}>
+              <CafePromoBanner cafeId={resolvedCafe.id} />
+            </motion.div>
+            <motion.div {...entranceProps(2)} className="lg:hidden">
               <CafeBookingCard
                 cafe={cafe}
                 selectedVehicleId={selectedVehicleId}
@@ -161,41 +182,53 @@ export function CafeDetailPage() {
                 setSelectedSlotId={setSelectedSlotId}
                 menuItems={cafeMenu?.data ?? []}
               />
-            </div>
-            <CafeVehiclesSection
-              cafe={cafe}
-              selectedVehicleId={selectedVehicleId}
-              onSelectVehicle={setSelectedVehicleId}
-            />
-            <CafePackagesSection cafeId={resolvedCafe.id} />
-            <CafeFnbSection
-              menuItems={cafeMenu?.data ?? []}
-              isLoading={menuLoading}
-              isError={menuError}
-              fnbQuantities={fnbQuantities}
-              onChangeFnb={setFnbQuantities}
-            />
-            <CafeDetailContent
-              description={cafe.description}
-              amenities={cafeDetail?.amenities}
-              rules={cafeDetail?.rules}
-              cafeId={cafeDetail?.id}
-            />
+            </motion.div>
+            <motion.div {...entranceProps(3)}>
+              <CafeVehiclesSection
+                cafe={cafe}
+                selectedVehicleId={selectedVehicleId}
+                onSelectVehicle={setSelectedVehicleId}
+              />
+            </motion.div>
+            <motion.div {...entranceProps(4)}>
+              <CafePackagesSection cafeId={resolvedCafe.id} />
+            </motion.div>
+            <motion.div {...entranceProps(5)}>
+              <CafeFnbSection
+                menuItems={cafeMenu?.data ?? []}
+                isLoading={menuLoading}
+                isError={menuError}
+                fnbQuantities={fnbQuantities}
+                onChangeFnb={setFnbQuantities}
+              />
+            </motion.div>
+            <motion.div {...entranceProps(6)}>
+              <CafeDetailContent
+                description={cafe.description}
+                amenities={cafeDetail?.amenities}
+                rules={cafeDetail?.rules}
+                cafeId={cafeDetail?.id}
+              />
+            </motion.div>
           </div>
 
+          {/* Giữ position:sticky ở chính <aside> — bọc motion.div ra ngoài sẽ tạo
+              containing block mới do transform và làm hỏng dính khi cuộn. */}
           <aside className="hidden lg:sticky lg:top-20 lg:block">
-            <CafeBookingCard
-              cafe={cafe}
-              selectedVehicleId={selectedVehicleId}
-              fnbQuantities={fnbQuantities}
-              mode={bookingMode}
-              setMode={setBookingMode}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              selectedSlotId={selectedSlotId}
-              setSelectedSlotId={setSelectedSlotId}
-              menuItems={cafeMenu?.data ?? []}
-            />
+            <motion.div {...entranceProps(2)}>
+              <CafeBookingCard
+                cafe={cafe}
+                selectedVehicleId={selectedVehicleId}
+                fnbQuantities={fnbQuantities}
+                mode={bookingMode}
+                setMode={setBookingMode}
+                selectedDate={selectedDate}
+                setSelectedDate={setSelectedDate}
+                selectedSlotId={selectedSlotId}
+                setSelectedSlotId={setSelectedSlotId}
+                menuItems={cafeMenu?.data ?? []}
+              />
+            </motion.div>
           </aside>
         </div>
       </main>

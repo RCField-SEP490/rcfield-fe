@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { ImagePlus } from "lucide-react"
 
-import type { MenuItem, MenuUpsertBody } from "@/features/menu/types"
-import { FNB_CATEGORIES } from "@/features/menu/types"
+import type { MenuCategory, MenuItem, MenuUpsertBody } from "@/features/menu/types"
+import { UNCATEGORIZED_LABEL } from "@/features/menu/types"
 import { uploadImage } from "@/features/uploads/api/upload.api"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
@@ -12,9 +12,13 @@ import { Label } from "@/shared/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 import { Textarea } from "@/shared/ui/textarea"
 
+/** Giá trị Select đại diện cho "không gán danh mục" — Radix Select không nhận value rỗng. */
+const NO_CATEGORY_VALUE = "__none__"
+
 type ProviderMenuItemFormDialogProps = {
   open: boolean
   item: MenuItem | null
+  categories: MenuCategory[]
   isPending: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: MenuUpsertBody) => Promise<void>
@@ -24,7 +28,7 @@ const defaultValues: MenuUpsertBody = {
   name: "",
   description: "",
   price: 0,
-  category: "Đồ uống",
+  category_id: null,
   image_url: null,
   is_available: true,
 }
@@ -32,6 +36,7 @@ const defaultValues: MenuUpsertBody = {
 export function ProviderMenuItemFormDialog({
   open,
   item,
+  categories,
   isPending,
   onOpenChange,
   onSubmit,
@@ -50,7 +55,7 @@ export function ProviderMenuItemFormDialog({
       name: item.name,
       description: item.description ?? "",
       price: Number(item.price),
-      category: item.category ?? "",
+      category_id: item.categoryId,
       image_url: item.imageUrl ?? null,
       is_available: item.isAvailable,
     }
@@ -67,7 +72,7 @@ export function ProviderMenuItemFormDialog({
       name: values.name.trim(),
       description: values.description?.trim() ? values.description.trim() : null,
       price: Number(values.price),
-      category: values.category?.trim() ? values.category.trim() : null,
+      category_id: values.category_id ?? null,
       image_url: values.image_url?.trim() ? values.image_url.trim() : null,
       is_available: values.is_available ?? true,
     })
@@ -103,8 +108,9 @@ export function ProviderMenuItemFormDialog({
             {/* Row 2: danh mục + trạng thái */}
             <div className="grid gap-3 sm:grid-cols-[1fr_160px] sm:items-end">
               <CategoryField
-                value={values.category ?? ""}
-                onChange={(value) => setField("category", value)}
+                categories={categories}
+                value={values.category_id}
+                onChange={(value) => setField("category_id", value)}
               />
               <Label className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[#e5e2e1] px-3">
                 <Checkbox
@@ -190,22 +196,39 @@ function TextField({
   )
 }
 
-function CategoryField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function CategoryField({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: MenuCategory[]
+  value: string | null | undefined
+  onChange: (value: string | null) => void
+}) {
   return (
     <div className="space-y-2">
       <span className="text-sm font-bold text-[#1c1b1b]">Danh mục</span>
-      <Select value={value || ""} onValueChange={onChange}>
+      <Select
+        value={value ?? NO_CATEGORY_VALUE}
+        onValueChange={(next) => onChange(next === NO_CATEGORY_VALUE ? null : next)}
+      >
         <SelectTrigger className="h-10 w-full rounded-lg border-[#c4c7c8]">
           <SelectValue placeholder="Chọn danh mục" />
         </SelectTrigger>
         <SelectContent>
-          {FNB_CATEGORIES.map((cat) => (
-            <SelectItem key={cat.value} value={cat.value}>
-              {cat.label}
+          <SelectItem value={NO_CATEGORY_VALUE}>{UNCATEGORIZED_LABEL}</SelectItem>
+          {categories.map((category) => (
+            <SelectItem key={category.id} value={category.id}>
+              {category.name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+      {categories.length === 0 && (
+        <p className="text-xs font-medium text-[#747878]">
+          Cơ sở chưa có danh mục nào. Tạo danh mục ở nút "Danh mục" phía trên.
+        </p>
+      )}
     </div>
   )
 }

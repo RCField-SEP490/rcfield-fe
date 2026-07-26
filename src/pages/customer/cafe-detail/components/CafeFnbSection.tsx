@@ -1,5 +1,6 @@
+import { useMemo } from "react"
 import { Coffee, Plus, Minus } from "lucide-react"
-import { FNB_CATEGORY_LABEL, type MenuItem } from "@/features/menu/types"
+import { UNCATEGORIZED_LABEL, type MenuItem } from "@/features/menu/types"
 import { formatCurrency } from "@/shared/lib/format"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -14,7 +15,35 @@ type CafeFnbSectionProps = {
   onChangeFnb: (quantities: Record<string, number>) => void
 }
 
+/**
+ * Gom món theo danh mục, giữ nguyên thứ tự API trả về (đã sắp theo display_order
+ * của danh mục, nhóm "Chưa phân loại" xếp cuối).
+ *
+ * ⚠️ Nhóm rỗng được loại bỏ tự nhiên vì chỉ sinh ra từ chính danh sách món đã lọc —
+ * KHÔNG dùng `itemCount` của endpoint danh mục, vì trường đó đếm cả món tạm ngưng
+ * bán nên danh mục toàn món ẩn vẫn có itemCount > 0 mà vẫn phải giấu khỏi khách.
+ */
+function groupByCategory(menuItems: MenuItem[]): Array<{ label: string; items: MenuItem[] }> {
+  const groups: Array<{ label: string; items: MenuItem[] }> = []
+  const indexByLabel = new Map<string, number>()
+
+  for (const item of menuItems) {
+    const label = item.categoryName ?? UNCATEGORIZED_LABEL
+    const existing = indexByLabel.get(label)
+    if (existing === undefined) {
+      indexByLabel.set(label, groups.length)
+      groups.push({ label, items: [item] })
+    } else {
+      groups[existing].items.push(item)
+    }
+  }
+
+  return groups
+}
+
 export function CafeFnbSection({ menuItems, isLoading = false, isError = false, fnbQuantities, onChangeFnb }: CafeFnbSectionProps) {
+  const groups = useMemo(() => groupByCategory(menuItems), [menuItems])
+
   const handleIncrement = (id: string) => {
     const current = fnbQuantities[id] ?? 0
     onChangeFnb({
@@ -66,11 +95,15 @@ export function CafeFnbSection({ menuItems, isLoading = false, isError = false, 
           Cơ sở này chưa mở bán đồ ăn hoặc thức uống.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {menuItems.map((item) => {
+        <div className="space-y-6">
+        {groups.map((group) => (
+          <div key={group.label} className="space-y-3">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">{group.label}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {group.items.map((item) => {
           const quantity = fnbQuantities[item.id] ?? 0
           const hasSelected = quantity > 0
-          const categoryLabel = FNB_CATEGORY_LABEL[item.category ?? ""] ?? "Khác"
+          const categoryLabel = item.categoryName ?? UNCATEGORIZED_LABEL
 
           return (
             <Card 
@@ -153,6 +186,9 @@ export function CafeFnbSection({ menuItems, isLoading = false, isError = false, 
             </Card>
           )
         })}
+            </div>
+          </div>
+        ))}
         </div>
       )}
     </section>

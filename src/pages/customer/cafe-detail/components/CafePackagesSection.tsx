@@ -8,6 +8,7 @@ import {
   usePurchasePackage,
 } from "@/features/customer-packages/hooks/use-customer-packages"
 import type { PublicPackage } from "@/features/customer-packages/api/customer-package.api"
+import { formatApplicablePlayModes } from "@/features/customer-packages/lib/play-mode"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -108,9 +109,9 @@ function PackageCard({
   isPurchasing: boolean
   onPurchase: () => void
 }) {
-  const playModeLabel = pkg.applicable_play_modes
-    .map((m) => (m === "RENTAL" ? "Thuê xe" : "Mang xe riêng"))
-    .join(", ")
+  // Dùng helper chung: mảng rỗng = áp dụng mọi hình thức, map+join thẳng sẽ
+  // cho ra chuỗi rỗng và khách tưởng gói không dùng được cho hình thức nào.
+  const playModeLabel = formatApplicablePlayModes(pkg.applicable_play_modes)
 
   return (
     <Card className="relative overflow-hidden border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col">

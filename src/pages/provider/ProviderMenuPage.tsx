@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Coffee, Layers3, Pencil, Plus, Power, RefreshCw, Trash2, Utensils } from "lucide-react"
+import { Coffee, Layers3, Pencil, Plus, Power, RefreshCw, Tags, Trash2, Utensils } from "lucide-react"
 import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import type { BackendCafe } from "@/features/cafes/types"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
-import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
+import { menuApi, menuCategoryQueryKeys, menuQueryKeys } from "@/features/menu/api/menu.api"
 import type { ComboUpsertBody, MenuItem, MenuListParams, MenuUpsertBody } from "@/features/menu/types"
-import { FNB_CATEGORIES, FNB_CATEGORY_LABEL } from "@/features/menu/types"
+import { UNCATEGORIZED_FILTER, UNCATEGORIZED_LABEL } from "@/features/menu/types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader, ProviderTable, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderMenuItemFormDialog } from "@/pages/provider/components/ProviderMenuItemFormDialog"
+import { ProviderMenuCategoryDialog } from "@/pages/provider/components/ProviderMenuCategoryDialog"
 import { ProviderComboFormDialog } from "@/pages/provider/components/ProviderComboFormDialog"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Button } from "@/shared/ui/button"
@@ -34,6 +35,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null)
   const [comboDialogOpen, setComboDialogOpen] = useState(false)
   const [editingCombo, setEditingCombo] = useState<MenuItem | null>(null)
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const PAGE_SIZE = 10
 
@@ -61,7 +63,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
     () => ({
       page: 1,
       limit: 100,
-      category: selectedCategory === "all" ? undefined : selectedCategory,
+      category_id: selectedCategory === "all" ? undefined : selectedCategory,
       available: selectedAvailability === "all" ? undefined : selectedAvailability === "true",
     }),
     [selectedAvailability, selectedCategory],
@@ -73,16 +75,22 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
     enabled: !!selectedCafeId,
   })
 
+  const categoriesQuery = useQuery({
+    queryKey: menuCategoryQueryKeys.list(selectedCafeId),
+    queryFn: () => menuApi.listCategories(selectedCafeId),
+    enabled: !!selectedCafeId,
+  })
+
   const menuItems = menuQuery.data?.data ?? []
+  const categories = categoriesQuery.data ?? []
   const totalPages = Math.ceil(menuItems.length / PAGE_SIZE)
   const paginatedMenuItems = menuItems.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   )
-  const categoryOptions = FNB_CATEGORIES
 
   const availableCount = menuItems.filter((item) => item.isAvailable).length
-  const categoryCount = categoryOptions.length
+  const categoryCount = categories.length
 
   const saveMutation = useMutation({
     mutationFn: async ({ cafeId, item, values }: { cafeId: string; item: MenuItem | null; values: MenuUpsertBody }) => {
@@ -167,7 +175,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard label="Tổng món" value={`${menuItems.length}`} helper={selectedCafe?.name ?? "Chọn cơ sở"} icon={<Utensils />} tone="neutral" />
         <MetricCard label="Đang bán" value={`${availableCount}`} helper={`${menuItems.length - availableCount} món tạm ẩn`} icon={<Coffee />} tone="success" />
-        <MetricCard label="Danh mục" value={`${categoryCount}`} helper="Theo dữ liệu hệ thống" icon={<Layers3 />} tone="info" />
+        <MetricCard label="Danh mục" value={`${categoryCount}`} helper={selectedCafe ? "Danh mục của cơ sở này" : "Chọn cơ sở"} icon={<Layers3 />} tone="info" />
       </section>
 
       <Panel className="mt-4">
@@ -178,6 +186,16 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
             <div className="flex flex-wrap items-center justify-end gap-3">
               <Button type="button" variant="outline" size="icon-sm" onClick={() => void menuQuery.refetch()} disabled={!selectedCafeId || menuQuery.isFetching} className="rounded-lg">
                 <RefreshCw className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCategoryDialogOpen(true)}
+                disabled={!selectedCafeId}
+                className="h-10 gap-2 rounded-lg border-[#c4c7c8] font-bold"
+              >
+                <Tags className="size-4" />
+                Danh mục
               </Button>
               <Button
                 type="button"
@@ -219,11 +237,12 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả danh mục</SelectItem>
-              {categoryOptions.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
                 </SelectItem>
               ))}
+              <SelectItem value={UNCATEGORIZED_FILTER}>{UNCATEGORIZED_LABEL}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -255,7 +274,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
               columns={["Món", "Danh mục", "Giá", "Cơ sở", "Trạng thái", "Hành động"]}
               rows={paginatedMenuItems.map((item) => [
                 <MenuNameCell key={`${item.id}-name`} item={item} />,
-                item.isCombo ? "Combo" : (FNB_CATEGORY_LABEL[item.category ?? ""] ?? item.category ?? "--"),
+                item.categoryName ?? UNCATEGORIZED_LABEL,
                 formatMoney(item.price),
                 selectedCafe ? formatCafeName(selectedCafe) : "--",
                 <StatusBadge key={`${item.id}-status`} status={item.isAvailable ? "Đang bán" : "Tạm ẩn"} />,
@@ -325,9 +344,18 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
         )}
       </Panel>
 
+      <ProviderMenuCategoryDialog
+        open={categoryDialogOpen}
+        cafeId={selectedCafeId}
+        categories={categories}
+        isLoading={categoriesQuery.isLoading}
+        onOpenChange={setCategoryDialogOpen}
+      />
+
       <ProviderMenuItemFormDialog
         open={dialogOpen}
         item={editingItem}
+        categories={categories}
         isPending={saveMutation.isPending}
         onOpenChange={(open) => {
           setDialogOpen(open)
@@ -346,6 +374,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
         open={comboDialogOpen}
         combo={editingCombo}
         menuItems={menuItems}
+        categories={categories}
         isPending={saveComboMutation.isPending}
         onOpenChange={(open) => {
           setComboDialogOpen(open)

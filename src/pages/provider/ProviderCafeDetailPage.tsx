@@ -219,7 +219,7 @@ export function ProviderCafeDetailPage() {
                 tone="neutral"
               />
               <MetricCard
-                label="Tỷ lệ lấp đầy"
+                label="Tỷ lệ hoàn thành đơn"
                 value={kpi ? `${kpi.totalBookings > 0 ? ((kpi.completedBookings / kpi.totalBookings) * 100).toFixed(0) : 0}%` : "--"}
                 helper={kpi ? `${kpi.completedBookings}/${kpi.totalBookings} lượt hoàn tất` : "Đang tải..."}
                 icon={<TrendingUp />}

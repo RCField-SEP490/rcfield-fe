@@ -25,6 +25,7 @@ import { menuApi } from "@/features/menu/api/menu.api"
 import type { VehicleUnit } from "@/features/vehicles/types"
 import type { MenuItem } from "@/features/menu/types"
 import type { BookingFinancialSummary } from "@/features/booking/types/booking.types"
+import { UNCATEGORIZED_LABEL } from "@/features/menu/types"
 import { getApiErrorInfo } from "@/shared/lib/utils"
 import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
 import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
@@ -196,6 +197,24 @@ export default function StaffSessionDetailPage() {
   const [currentTime, setCurrentTime] = useState(() => Date.now())
   const [menuItems, setMenuItems] = useState<MenuItem[]>([])
   const [loadingMenu, setLoadingMenu] = useState(false)
+
+  // Gom món theo danh mục do Provider đặt, giữ nguyên thứ tự API trả về.
+  // Nhóm "Chưa phân loại" tự nằm cuối vì backend đã sắp món chưa phân loại xuống cuối.
+  const menuItemGroups = useMemo(() => {
+    const groups: Array<{ label: string; items: MenuItem[] }> = []
+    const indexByLabel = new Map<string, number>()
+    for (const item of menuItems) {
+      const label = item.categoryName ?? UNCATEGORIZED_LABEL
+      const existing = indexByLabel.get(label)
+      if (existing === undefined) {
+        indexByLabel.set(label, groups.length)
+        groups.push({ label, items: [item] })
+      } else {
+        groups[existing].items.push(item)
+      }
+    }
+    return groups
+  }, [menuItems])
   const [availableFleet, setAvailableFleet] = useState<VehicleUnit[]>([])
   const [settlingPayment, setSettlingPayment] = useState(false)
   const [confirmSettleOpen, setConfirmSettleOpen] = useState(false)
@@ -920,10 +939,14 @@ export default function StaffSessionDetailPage() {
                     onChange={(e) => setSelectedItemName(e.target.value)}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
-                    {menuItems.map((item) => (
-                      <option key={item.id} value={item.name}>
-                        {item.name} - {Number(item.price).toLocaleString("vi-VN")} đ
-                      </option>
+                    {menuItemGroups.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.items.map((item) => (
+                          <option key={item.id} value={item.name}>
+                            {item.name} - {Number(item.price).toLocaleString("vi-VN")} đ
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "framer-motion"
+import { cardVariants, emphasizedEase } from "@/shared/lib/motion"
 import { getCafes } from "@/features/explore/api/explore.api"
 import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
 import {
@@ -31,22 +32,8 @@ import {
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 
-const emphasizedEase: [number, number, number, number] = [0.22, 1, 0.36, 1]
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 24, scale: 0.97 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      delay: i * 0.06,
-      duration: 0.4,
-      ease: emphasizedEase,
-    },
-  }),
-  exit: { opacity: 0, y: -12, scale: 0.97, transition: { duration: 0.2 } },
-}
+// emphasizedEase + cardVariants nay nằm ở shared/lib/motion để trang chi tiết cơ sở
+// dùng đúng cùng bộ giá trị — sửa một chỗ là cả hai trang đổi theo.
 
 export function ExplorePage() {
   const navigate = useNavigate()

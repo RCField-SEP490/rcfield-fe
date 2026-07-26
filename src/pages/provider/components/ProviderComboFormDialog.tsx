@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { Minus, Plus, Trash2 } from "lucide-react"
 
-import type { ComboUpsertBody, MenuItem } from "@/features/menu/types"
+import type { ComboUpsertBody, MenuCategory, MenuItem } from "@/features/menu/types"
+import { CategoryField } from "@/pages/provider/components/ProviderMenuItemFormDialog"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
@@ -15,6 +16,7 @@ type ProviderComboFormDialogProps = {
   open: boolean
   combo: MenuItem | null
   menuItems: MenuItem[]
+  categories: MenuCategory[]
   isPending: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: ComboUpsertBody) => Promise<void>
@@ -26,6 +28,7 @@ const defaultValues = {
   name: "",
   description: "",
   price: 0,
+  category_id: null as string | null,
   image_url: null as string | null,
   is_available: true,
 }
@@ -34,6 +37,7 @@ export function ProviderComboFormDialog({
   open,
   combo,
   menuItems,
+  categories,
   isPending,
   onOpenChange,
   onSubmit,
@@ -58,6 +62,7 @@ export function ProviderComboFormDialog({
       name: combo.name,
       description: combo.description ?? "",
       price: Number(combo.price),
+      category_id: combo.categoryId,
       image_url: combo.imageUrl ?? null,
       is_available: combo.isAvailable,
     }
@@ -94,6 +99,7 @@ export function ProviderComboFormDialog({
       name: values.name.trim(),
       description: values.description?.trim() || null,
       price: Number(values.price),
+      category_id: values.category_id ?? null,
       image_url: values.image_url?.trim() || null,
       is_available: values.is_available,
       components,
@@ -136,6 +142,13 @@ export function ProviderComboFormDialog({
                 />
               </label>
             </div>
+
+            {/* Provider tự chọn danh mục cho combo — hệ thống không tự gán (FR-013) */}
+            <CategoryField
+              categories={categories}
+              value={values.category_id}
+              onChange={(value) => setValues((v) => ({ ...v, category_id: value }))}
+            />
 
             <label className="block space-y-2">
               <span className="text-sm font-bold text-[#1c1b1b]">Mô tả</span>

@@ -4,6 +4,7 @@ import { AlertTriangle, Building2, Plus, TrendingUp } from "lucide-react"
 import { useNavigate } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
+import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { BranchList, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -42,6 +43,11 @@ export function ProviderCafesPage() {
     queryFn: () => cafeApi.listCafes(listParams),
   })
   const cafes = data?.data ?? []
+
+  const { data: kpi } = useQuery({
+    queryKey: ["provider-dashboard-kpi", null],
+    queryFn: () => providerDashboardApi.getKpi({}),
+  })
   const activeCount = cafes.filter((c) => c.status === "ACTIVE").length
   const pendingCount = cafes.filter((c) => c.status === "PENDING").length
   const suspendedCount = cafes.filter((c) => c.status === "SUSPENDED").length
@@ -62,9 +68,9 @@ export function ProviderCafesPage() {
           tone="success"
         />
         <CafeStatCard
-          label="Tỷ lệ lấp đầy TB"
-          value="--"
-          helper="Chưa có dữ liệu vận hành"
+          label="Tỷ lệ hoàn thành đơn TB"
+          value={kpi ? `${kpi.totalBookings > 0 ? ((kpi.completedBookings / kpi.totalBookings) * 100).toFixed(0) : 0}%` : "--"}
+          helper={kpi ? `${kpi.completedBookings}/${kpi.totalBookings} lượt hoàn tất` : "Đang tải..."}
           icon={<TrendingUp />}
           tone="neutral"
         />

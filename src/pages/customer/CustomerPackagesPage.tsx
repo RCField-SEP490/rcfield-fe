@@ -1,12 +1,15 @@
 import { useState } from "react"
 import { Link } from "react-router"
 import {
+  AlertTriangle,
+  Car,
   ChevronRight,
   Clock,
   Compass,
   Layers,
   Loader2,
 } from "lucide-react"
+import { formatApplicablePlayModes } from "@/features/customer-packages/lib/play-mode"
 import { useMyPackages, usePackageUsageHistory } from "@/features/customer-packages/hooks/use-customer-packages"
 import type { MyPackageItem } from "@/features/customer-packages/api/customer-package.api"
 import { Button } from "@/shared/ui/button"
@@ -95,21 +98,34 @@ function OwnedPackageCard({
 
   const usedSlots = pkg.slots_total - pkg.slots_remaining
   const pct = pkg.slots_total > 0 ? (usedSlots / pkg.slots_total) * 100 : 0
-  const isActive = pkg.status === "ACTIVE"
-  const expiresAt = new Date(pkg.expires_at).toLocaleDateString("vi-VN")
+  const expiryDate = new Date(pkg.expires_at)
+  const expiresAt = expiryDate.toLocaleDateString("vi-VN")
+
+  // Backend đã suy ra trạng thái hiệu lực khi đọc. Kiểm tra thêm mốc thời gian ở
+  // đây để thẻ vẫn đúng nếu tab mở xuyên qua thời điểm hết hạn hoặc cache bị cũ.
+  const isExpired = pkg.status === "EXPIRED" || expiryDate.getTime() < Date.now()
+  const isExhausted = pkg.status === "EXHAUSTED"
+  const isUsable = !isExpired && !isExhausted
+  const effectiveStatus: MyPackageItem["status"] = isExpired ? "EXPIRED" : pkg.status
 
   return (
-    <Card className="border-slate-200/80 shadow-sm relative overflow-hidden bg-white hover:shadow-md transition-all flex flex-col">
-      <div className={`absolute top-0 left-0 right-0 h-1.5 ${isActive ? "bg-orange-500" : "bg-slate-300"}`} />
+    <Card
+      className={`border-slate-200/80 shadow-sm relative overflow-hidden hover:shadow-md transition-all flex flex-col ${
+        isExpired ? "bg-slate-50" : "bg-white"
+      }`}
+    >
+      <div className={`absolute top-0 left-0 right-0 h-1.5 ${isUsable ? "bg-orange-500" : "bg-slate-300"}`} />
 
       <CardHeader className="flex flex-row items-start justify-between pb-3">
         <div className="min-w-0">
-          <CardTitle className="text-base font-extrabold text-slate-950 leading-tight">
+          <CardTitle
+            className={`text-base font-extrabold leading-tight ${isExpired ? "text-slate-500" : "text-slate-950"}`}
+          >
             {pkg.package_name}
           </CardTitle>
           <p className="text-[9px] font-bold text-slate-400 mt-1 truncate">{pkg.cafe_name}</p>
         </div>
-        <StatusBadge status={pkg.status} />
+        <StatusBadge status={effectiveStatus} />
       </CardHeader>
 
       <CardContent className="space-y-4 text-xs font-semibold text-slate-700 flex-grow">
@@ -120,25 +136,56 @@ function OwnedPackageCard({
           </div>
           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${isActive ? "bg-orange-500" : "bg-slate-300"}`}
+              className={`h-full rounded-full transition-all ${isUsable ? "bg-orange-500" : "bg-slate-300"}`}
               style={{ width: `${pct}%` }}
             />
           </div>
-          <p className="text-[10px] text-slate-500 font-bold text-right">
-            {pkg.slots_remaining} lượt còn lại
+          {/* Lượt còn lại của gói hết hạn KHÔNG dùng được — phải nói rõ, nếu chỉ
+              đổi màu thì khách vẫn hiểu là còn tín dụng dùng được. */}
+          <p
+            className={`text-[10px] font-bold text-right ${isExpired ? "text-slate-400" : "text-slate-500"}`}
+          >
+            {isExpired && pkg.slots_remaining > 0
+              ? `${pkg.slots_remaining} lượt không dùng được`
+              : `${pkg.slots_remaining} lượt còn lại`}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl text-[11px] font-bold text-slate-600">
+        {isExpired && (
+          <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+            <p className="text-[11px] font-bold leading-relaxed text-amber-800">
+              Gói đã hết hạn ngày {expiresAt}
+              {pkg.slots_remaining > 0
+                ? ` — ${pkg.slots_remaining} lượt chưa dùng không còn áp dụng được khi đặt sân.`
+                : "."}
+            </p>
+          </div>
+        )}
+
+        <div
+          className={`grid grid-cols-2 gap-3 p-3 rounded-xl text-[11px] font-bold text-slate-600 ${
+            isExpired ? "bg-white" : "bg-slate-50"
+          }`}
+        >
           <div>
             <span className="block text-[9px] text-slate-400 uppercase">Giá mua</span>
             <span className="text-slate-900">{formatCurrency(pkg.purchased_price)}</span>
           </div>
           <div>
-            <span className="block text-[9px] text-slate-400 uppercase">Hết hạn</span>
-            <span className="text-slate-900 flex items-center gap-1">
-              <Clock className="h-3 w-3 text-slate-400" />
+            <span className="block text-[9px] text-slate-400 uppercase">
+              {isExpired ? "Đã hết hạn" : "Hết hạn"}
+            </span>
+            <span className={`flex items-center gap-1 ${isExpired ? "text-amber-700" : "text-slate-900"}`}>
+              <Clock className={`h-3 w-3 ${isExpired ? "text-amber-600" : "text-slate-400"}`} />
               {expiresAt}
+            </span>
+          </div>
+          <div className="col-span-2">
+            <span className="block text-[9px] text-slate-400 uppercase">Áp dụng cho</span>
+            <span className="flex items-center gap-1 text-slate-900">
+              <Car className="h-3 w-3 shrink-0 text-slate-400" />
+              {formatApplicablePlayModes(pkg.applicable_play_modes)}
             </span>
           </div>
         </div>
