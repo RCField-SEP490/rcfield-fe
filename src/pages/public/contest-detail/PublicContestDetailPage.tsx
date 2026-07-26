@@ -59,6 +59,12 @@ export function PublicContestDetailPage() {
   const [rentalMode, setRentalMode] = useState<"EXISTING_BOOKING" | "NEW_RENTAL">(
     "EXISTING_BOOKING",
   )
+  // Đánh dấu khi user tự chọn nguồn xe để smart-default không ghi đè lựa chọn đó.
+  const [rentalModeTouched, setRentalModeTouched] = useState(false)
+  const handleRentalModeChange = (mode: "EXISTING_BOOKING" | "NEW_RENTAL") => {
+    setRentalModeTouched(true)
+    setRentalMode(mode)
+  }
   const [rentalSlotValue, setRentalSlotValue] = useState<{
     cafe_id: string
     slot_start: string
@@ -99,10 +105,25 @@ export function PublicContestDetailPage() {
     enabled: role === "customer",
   })
 
+  const contest = contestQuery.data
+  const bookingOptions = myBookingsQuery.data?.data ?? []
+  const byocOnly = contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY"
+  // Mode hiệu lực derive tại render (không setState trong effect):
+  // - Giải BYOC_ONLY: ép sang khai báo xe cá nhân.
+  // - User không có booking CONFIRMED nào: mặc định "Thuê xe tại quầy"
+  //   thay vì kẹt ở nguồn "Xe của tôi" (trừ khi user đã tự chọn).
+  const effectiveRegistrationMode: "RENTAL" | "BYOC" = byocOnly
+    ? "BYOC"
+    : registrationMode
+  const effectiveRentalMode: "EXISTING_BOOKING" | "NEW_RENTAL" =
+    !rentalModeTouched && myBookingsQuery.isSuccess && bookingOptions.length === 0
+      ? "NEW_RENTAL"
+      : rentalMode
+
   const registerMutation = useMutation({
     mutationFn: async () => {
       if (!contestId) throw new Error("Missing contestId")
-      if (registrationMode === "BYOC") {
+      if (effectiveRegistrationMode === "BYOC") {
         return contestApi.registerContest(contestId, {
           vehicle_source: "BYOC",
           byoc_vehicle_name: byocVehicleName,
@@ -111,7 +132,7 @@ export function PublicContestDetailPage() {
           byoc_vehicle_notes: byocVehicleNotes || undefined,
         })
       }
-      if (rentalMode === "NEW_RENTAL") {
+      if (effectiveRentalMode === "NEW_RENTAL") {
         if (!rentalSlotValue) throw new Error("Thiếu thông tin thuê xe")
         return contestApi.registerContest(contestId, {
           vehicle_source: "RENTAL",
@@ -146,8 +167,6 @@ export function PublicContestDetailPage() {
       bookingApi.createCheckout(bookingId),
   })
 
-  const contest = contestQuery.data
-  const bookingOptions = myBookingsQuery.data?.data ?? []
   const selectedBooking = bookingDetailQuery.data
   const existingRegistration = useMemo(
     () =>
@@ -182,7 +201,6 @@ export function PublicContestDetailPage() {
   const allowsByoc =
     contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY" ||
     contest?.vehicle_rule?.vehicle_policy === "MIXED"
-  const rentalOnly = contest?.vehicle_rule?.vehicle_policy === "RENTAL_ONLY"
   const prizeStructure = contest?.prize_structure
   const prizeItems = Array.isArray(prizeStructure?.items)
     ? (prizeStructure.items as Array<Record<string, unknown>>)
@@ -191,7 +209,7 @@ export function PublicContestDetailPage() {
       : []
   const bookingHelperMessage = useMemo(() => {
     if (!contest) return null
-    if (rentalMode === "NEW_RENTAL") {
+    if (effectiveRentalMode === "NEW_RENTAL") {
       return "Hệ thống sẽ tạo booking thuê xe mới cho bạn. Bạn có thể chọn chi nhánh, khung giờ và dòng xe phù hợp."
     }
     if (myBookingsQuery.isLoading) {
@@ -201,8 +219,8 @@ export function PublicContestDetailPage() {
 
     const branchName = contest.host_branch?.cafe?.name ?? "chi nhánh tổ chức"
     const trackName = contest.track_type?.name ?? "track tương ứng"
-    return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Hãy chọn "Thuê xe ngay" hoặc tạo booking trước rồi quay lại đăng ký contest.`
-  }, [contest, myBookingsQuery.isLoading, bookingOptions.length, rentalMode])
+    return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Bạn có thể thuê xe tại quầy ngay trong luồng đăng ký này.`
+  }, [contest, myBookingsQuery.isLoading, bookingOptions.length, effectiveRentalMode])
 
   const handleRegister = async () => {
     try {
@@ -368,8 +386,7 @@ export function PublicContestDetailPage() {
                   entryFeePaymentPending={entryFeePaymentMutation.isPending}
                   onContinuePayment={() => void handleContinuePayment()}
                   allowsByoc={allowsByoc}
-                  rentalOnly={rentalOnly}
-                  registrationMode={registrationMode}
+                  registrationMode={effectiveRegistrationMode}
                   setRegistrationMode={setRegistrationMode}
                   byocVehicleName={byocVehicleName}
                   setByocVehicleName={setByocVehicleName}
@@ -380,6 +397,7 @@ export function PublicContestDetailPage() {
                   byocVehicleNotes={byocVehicleNotes}
                   setByocVehicleNotes={setByocVehicleNotes}
                   bookingOptions={bookingOptions}
+                  bookingsLoading={myBookingsQuery.isLoading}
                   selectedBookingId={selectedBookingId}
                   setSelectedBookingId={setSelectedBookingId}
                   selectedVehicleId={selectedVehicleId}
@@ -394,8 +412,8 @@ export function PublicContestDetailPage() {
                     bookingCheckoutMutation.isPending
                   }
                   onRegister={() => void handleRegister()}
-                  rentalMode={rentalMode}
-                  setRentalMode={setRentalMode}
+                  rentalMode={effectiveRentalMode}
+                  setRentalMode={handleRentalModeChange}
                   rentalSlotValue={rentalSlotValue}
                   rentalSlotEstimate={rentalSlotEstimate}
                   onRentalSlotChange={(value, estimate) => {

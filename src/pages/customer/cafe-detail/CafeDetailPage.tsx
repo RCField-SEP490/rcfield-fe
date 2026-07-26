@@ -15,6 +15,7 @@ import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { ChatWidget } from "@/features/chat/components/ChatWidget"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
+import { CafeContestsSection } from "./components/CafeContestsSection"
 import { CafeDetailContent } from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
@@ -169,6 +170,9 @@ export function CafeDetailPage() {
             <motion.div {...entranceProps(1)}>
               <CafePromoBanner cafeId={resolvedCafe.id} />
             </motion.div>
+            {/* Tự ẩn khi quán không có contest OPEN — không bọc motion.div
+                để tránh khoảng trống thừa trong space-y-8. */}
+            <CafeContestsSection cafeId={resolvedCafe.id} />
             <motion.div {...entranceProps(2)} className="lg:hidden">
               <CafeBookingCard
                 cafe={cafe}

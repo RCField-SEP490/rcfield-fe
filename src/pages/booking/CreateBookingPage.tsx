@@ -63,7 +63,6 @@ import {
 import { bookingApi } from "@/features/booking/api/booking.api"
 import { toast } from "sonner"
 import { LoginPromptDialog } from "./components/LoginPromptDialog"
-import { ContestRentalEntry } from "./components/ContestRentalEntry"
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -795,7 +794,6 @@ export function CreateBookingPage() {
             currentStep={currentStep}
             visibleSteps={orderedSteps}
           />
-          <ContestRentalEntry />
         </div>
       </section>
 
