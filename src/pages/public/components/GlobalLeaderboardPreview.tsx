@@ -4,7 +4,7 @@ import { Link } from "react-router"
 import { motion } from "framer-motion"
 import { routePaths } from "@/app/router/route-paths"
 import { racingApi, racingQueryKeys } from "@/features/racing/api/racing.api"
-import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
+import { DriverIdentity } from "@/features/racing/components/DriverIdentity"
 
 export function GlobalLeaderboardPreview() {
   const params = {
@@ -101,19 +101,14 @@ export function GlobalLeaderboardPreview() {
 
                         {/* Driver */}
                         <td className="px-6 py-4">
-                          <div className="flex flex-col gap-0.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-extrabold text-slate-900">
-                                {entry.display_name}
-                              </span>
-                              {entry.current_title && (
-                                <DriverTitleChip label={entry.current_title.label} />
-                              )}
-                            </div>
-                            <span className="text-2xs font-semibold text-slate-400">
-                              {entry.driver_handle ? `@${entry.driver_handle}` : "Driver"}
-                            </span>
-                          </div>
+                          <DriverIdentity
+                            name={entry.display_name}
+                            avatarUrl={entry.avatar_url}
+                            titleLabel={entry.current_title?.label}
+                            titleCode={entry.current_title?.code}
+                            handle={entry.driver_handle ?? undefined}
+                            size="sm"
+                          />
                         </td>
 
                         {/* Cafe */}

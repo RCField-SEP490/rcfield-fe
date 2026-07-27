@@ -432,6 +432,7 @@ export type ContestLeaderboardEntry = {
   registration_id: string
   user_id: string | null
   display_name: string | null
+  avatar_url?: string | null
   driver_handle: string | null
   driver_title_label: string | null
   wins: number

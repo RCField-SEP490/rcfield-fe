@@ -1,14 +1,17 @@
 import { CalendarCheck, Car, LogOut, Menu, Package, Trophy, UserRound, X } from "lucide-react"
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { NavLink, useNavigate } from "react-router"
 import { toast } from "sonner"
 import { logoutSession } from "@/features/auth/api/auth.api"
 import { routePaths } from "@/app/router/route-paths"
 import { useAuthStore, type AuthUser } from "@/features/auth/stores/auth.store"
+import { racingApi, racingQueryKeys } from "@/features/racing/api/racing.api"
+import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { storageKeys } from "@/shared/lib/storage"
 import { AppLogo } from "@/shared/components/AppLogo"
 import { cn } from "@/shared/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
+import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Button } from "@/shared/ui/button"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import {
@@ -201,6 +204,15 @@ export function PublicHeader() {
 }
 
 function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<void> }) {
+  const { data: passport } = useQuery({
+    queryKey: racingQueryKeys.passport(),
+    queryFn: () => racingApi.getMyPassport(),
+    enabled: user.role === "customer",
+    retry: false,
+    staleTime: 60_000,
+  })
+  const titleLabel = passport?.current_title.label ?? null
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -208,6 +220,11 @@ function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<
           <Avatar>
             <AvatarImage src={user.avatarUrl} />
             <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
+            {titleLabel ? (
+              <AvatarBadge>
+                <Trophy />
+              </AvatarBadge>
+            ) : null}
           </Avatar>
           <span className="hidden max-w-32 truncate text-sm font-bold text-slate-800 xl:block">{user.fullName}</span>
         </button>
@@ -222,6 +239,13 @@ function UserMenu({ user, onLogout }: { user: AuthUser; onLogout: () => Promise<
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-slate-950">{user.fullName}</p>
               <p className="truncate text-xs text-slate-500">{user.email}</p>
+              {titleLabel ? (
+                <DriverTitleChip
+                  label={titleLabel}
+                  code={passport?.current_title.code}
+                  className="mt-1"
+                />
+              ) : null}
             </div>
           </div>
         </DropdownMenuLabel>

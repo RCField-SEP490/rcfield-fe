@@ -39,6 +39,7 @@ export type GlobalLeaderboardEntry = {
   user_id: string
   display_name: string
   driver_handle: string | null
+  avatar_url: string | null
   current_title: {
     code: string | null
     label: string | null

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useMemo, useState } from "react"
 import { TimerReset, Trophy } from "lucide-react"
 import { racingApi, racingQueryKeys } from "@/features/racing/api/racing.api"
-import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
+import { DriverIdentity } from "@/features/racing/components/DriverIdentity"
 
 const periodOptions = [
   { value: "all_time", label: "All-time" },
@@ -99,15 +99,13 @@ export function PublicGlobalLeaderboardPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-bold text-slate-900">{entry.display_name}</p>
-                            <DriverTitleChip label={entry.current_title.label} />
-                          </div>
-                          <p className="text-xs font-medium text-slate-500">
-                            {entry.driver_handle ? `@${entry.driver_handle}` : "Driver công khai"}
-                          </p>
-                        </div>
+                        <DriverIdentity
+                          name={entry.display_name}
+                          avatarUrl={entry.avatar_url}
+                          titleLabel={entry.current_title.label}
+                          titleCode={entry.current_title.code}
+                          handle={entry.driver_handle ?? undefined}
+                        />
                       </td>
                       <td className="px-5 py-4">
                         <p className="font-semibold text-slate-900">{entry.cafe.name}</p>
