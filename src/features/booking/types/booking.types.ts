@@ -139,6 +139,7 @@ export interface FnbOrderItem {
   id: string
   menuItemId: string
   itemName: string | null
+  variantName: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -230,6 +231,7 @@ export interface BookingListResponse {
 
 export interface FnbItemBody {
   menu_item_id: string
+  variant_id?: string
   quantity: number
   notes?: string
 }

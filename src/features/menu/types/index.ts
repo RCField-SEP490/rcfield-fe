@@ -35,7 +35,18 @@ export type PopularMenuItem = {
 export type MenuComponent = {
   itemId: string
   name: string
+  variantId: string | null
+  variantName: string | null
+  variantPrice: string | number | null
   quantity: number
+}
+
+export type MenuVariant = {
+  id: string
+  name: string
+  price: string | number
+  displayOrder: number
+  isAvailable: boolean
 }
 
 export type MenuItem = {
@@ -47,6 +58,8 @@ export type MenuItem = {
   categoryId: string | null
   categoryName: string | null
   isCombo: boolean
+  /** Older cached menu responses may omit this field; treat that as fixed-price. */
+  variants?: MenuVariant[]
   components?: MenuComponent[]
   imageUrl: string | null
   isAvailable: boolean
@@ -70,6 +83,7 @@ export type MenuUpsertBody = {
   category_id?: string | null
   image_url?: string | null
   is_available?: boolean
+  variants?: Array<{ name: string; price: number; is_available?: boolean }>
 }
 
 export type ComboUpsertBody = {
@@ -79,7 +93,25 @@ export type ComboUpsertBody = {
   category_id?: string | null
   image_url?: string | null
   is_available?: boolean
-  components: Array<{ item_id: string; quantity: number }>
+  components: Array<{ item_id: string; variant_id?: string | null; quantity: number }>
+}
+
+/** A selected menu line. The key is stable for quantity updates and URL serialisation. */
+export type FnbSelection = {
+  menuItemId: string
+  variantId?: string
+  quantity: number
+  notes?: string
+}
+
+export type FnbSelections = Record<string, FnbSelection>
+
+export const fnbSelectionKey = (menuItemId: string, variantId?: string) =>
+  variantId ? `${menuItemId}::${variantId}` : menuItemId
+
+export const parseFnbSelectionKey = (key: string) => {
+  const [menuItemId, variantId] = key.split("::")
+  return { menuItemId, variantId: variantId || undefined }
 }
 
 export type ApiEnvelope<T> = {

@@ -162,6 +162,7 @@ export type StaffCheckInResponse = {
 
 export interface FnbOrderItemDetail {
   name: string
+  variantName: string | null
   quantity: number
   unitPrice: number
   subtotal: number
@@ -171,6 +172,7 @@ export interface FnbOrderItemDetail {
 export interface TodayFnbOrderItem {
   id: string
   bookingId: string
+  orderType: "PRE_ORDER" | "ON_SITE"
   status: "PENDING" | "CONFIRMED" | "DELIVERED" | "CANCELLED"
   totalAmount: number
   createdAt: string
@@ -378,7 +380,7 @@ export const staffApi = {
     return res.data.data
   },
 
-  addSessionFnbOrder: async (sessionId: string, data: { items: { name: string; qty: number; price: number }[] }): Promise<any> => {
+  addSessionFnbOrder: async (sessionId: string, data: { items: { menu_item_id: string; variant_id?: string; quantity: number; notes?: string }[] }): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/fnb-orders`, data)
     return res.data.data
   },

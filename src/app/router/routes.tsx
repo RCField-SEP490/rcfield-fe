@@ -24,6 +24,7 @@ import StaffContestsPage from "@/pages/staff/contest/StaffContestsPage"
 import StaffContestCheckInPage from "@/pages/staff/contest/StaffContestCheckInPage"
 import StaffContestRuntimePage from "@/pages/staff/contest/StaffContestRuntimePage"
 import StaffCheckoutSummaryPage from "@/pages/staff/StaffCheckoutSummaryPage"
+import StaffHelpPage from "@/pages/staff/StaffHelpPage"
 
 import { ProtectedRoute } from "@/shared/components/ProtectedRoute"
 import { RoleGuard } from "@/shared/components/RoleGuard"
@@ -69,6 +70,7 @@ import { AdminPaymentRequestsPage } from "@/pages/admin/AdminPaymentRequestsPage
 import { AdminSubscriptionPlansPage } from "@/pages/admin/AdminSubscriptionPlansPage"
 import { AdminAmenitiesPage } from "@/pages/admin/AdminAmenitiesPage"
 import { AdminTrackTypesPage } from "@/pages/admin/AdminTrackTypesPage"
+import { AdminGuidePage } from "@/pages/admin/AdminGuidePage"
 import { ProviderRegisterPage } from "@/pages/auth/ProviderRegisterPage"
 import { ProviderDashboardPage } from "@/pages/provider/ProviderDashboardPage"
 import { ProviderCafesPage } from "@/pages/provider/ProviderCafesPage"
@@ -92,6 +94,7 @@ import { ProviderStaffDetailPage } from "@/pages/provider/ProviderStaffDetailPag
 import { StaffActivatePage } from "@/pages/staff/activate/StaffActivatePage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
 import { ProviderConfigurationPage } from "@/pages/provider/ProviderConfigurationPage"
+import { ProviderHelpPage } from "@/pages/provider/ProviderHelpPage"
 import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
 import { FacebookOAuthCallbackPage } from "@/pages/FacebookOAuthCallbackPage"
 import { ProviderStatusGuard } from "@/shared/components/ProviderStatusGuard"
@@ -222,6 +225,7 @@ export const router = createBrowserRouter([
           { path: routePaths.staffMaintenance, element: <StaffMaintenancePage /> },
           { path: routePaths.staffByoc, element: <StaffByocPage /> },
           { path: routePaths.staffPackages, element: <StaffPackagesPage /> },
+          { path: routePaths.staffHelp, element: <StaffHelpPage /> },
         ],
       },
       {
@@ -273,6 +277,7 @@ export const router = createBrowserRouter([
           { path: routePaths.providerContestAudit, element: providerGuardRoute(<ProviderContestWorkspacePage section="audit" />) },
           { path: routePaths.providerContestDiscipline, element: providerGuardRoute(<ProviderContestWorkspacePage section="discipline" />) },
           { path: routePaths.providerConfiguration, element: providerGuardRoute(<ProviderConfigurationPage />) },
+          { path: routePaths.providerHelp, element: providerGuardRoute(<ProviderHelpPage />) },
           { path: routePaths.providerChannels, element: providerGuardRoute(<ChannelSettingsPage />) },
           { path: routePaths.facebookOAuthCallback, element: providerGuardRoute(<FacebookOAuthCallbackPage />) },
           { path: routePaths.adminDashboard, element: guardRoute(<AdminDashboardPage />, ["admin"]) },
@@ -292,6 +297,7 @@ export const router = createBrowserRouter([
           { path: routePaths.adminSubscriptionPlans, element: guardRoute(<AdminSubscriptionPlansPage />, ["admin"]) },
           { path: routePaths.adminAmenities, element: guardRoute(<AdminAmenitiesPage />, ["admin"]) },
           { path: routePaths.adminTrackTypes, element: guardRoute(<AdminTrackTypesPage />, ["admin"]) },
+          { path: routePaths.adminGuide, element: guardRoute(<AdminGuidePage />, ["admin"]) },
         ],
       },
       {

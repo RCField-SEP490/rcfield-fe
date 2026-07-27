@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Clock, ChefHat, Check, X, ClipboardList } from "lucide-react"
+import { Clock, ChefHat, Check, X, ClipboardList, Utensils } from "lucide-react"
 import { staffApi, staffQueryKeys, type TodayFnbOrderItem } from "@/features/staff/api/staff.api"
 import { cn } from "@/shared/lib/utils"
 import { formatCurrency } from "@/shared/lib/format"
@@ -33,9 +33,15 @@ export default function StaffFnbOrdersPage() {
   const filteredOrders = orders.filter((o) => o.status === activeTab)
 
   const sortedOrders = [...filteredOrders].sort((a, b) => {
-    const timeA = new Date(a.createdAt).getTime()
-    const timeB = new Date(b.createdAt).getTime()
-    return activeTab === "DELIVERED" ? timeB - timeA : timeA - timeB
+    if (activeTab === "DELIVERED") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    }
+
+    if (a.orderType !== b.orderType) return a.orderType === "ON_SITE" ? -1 : 1
+    if (a.orderType === "ON_SITE") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    }
+    return new Date(a.slotStart).getTime() - new Date(b.slotStart).getTime()
   })
 
   const pendingCount = orders.filter((o) => o.status === "PENDING").length
@@ -45,7 +51,7 @@ export default function StaffFnbOrdersPage() {
     <div className="space-y-6">
       <StaffHeader
         title="Gọi món & chuẩn bị đồ ăn, thức uống"
-        subtitle="Quản lý và điều phối các đơn đặt trước từ lịch hôm nay"
+        subtitle="Hàng đợi hôm nay: đơn đặt trước đã xác nhận và món gọi tại quầy"
       />
 
       <div className="flex border-b border-[#e5e2e1] gap-2">
@@ -99,7 +105,7 @@ export default function StaffFnbOrdersPage() {
             <StaffCard className="col-span-full py-16 text-center text-[#6b7280] space-y-2 border-dashed">
               <ClipboardList className="size-10 text-[#6b7280] mx-auto" />
               <p className="text-sm font-bold">Không có đơn đồ ăn & thức uống nào</p>
-              <p className="text-xs">Đơn đặt trước từ lịch hôm nay sẽ hiển thị ở đây.</p>
+              <p className="text-xs">Đơn đã thanh toán và món gọi tại quầy hôm nay sẽ hiển thị ở đây.</p>
             </StaffCard>
           )}
         </div>
@@ -160,17 +166,31 @@ function FnbOrderCard({
     hour: "2-digit",
     minute: "2-digit",
   })
+  const orderTime = new Date(order.createdAt).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+  const isOnSite = order.orderType === "ON_SITE"
 
   return (
     <StaffCard className="flex flex-col justify-between h-full space-y-4">
       <div>
-        <div className="flex items-center justify-between mb-3.5 font-bold text-xs">
-          <span className="text-[#1c1b1b] font-semibold truncate max-w-[60%]">
-            {order.customerName}
-          </span>
-          <span className="text-[#6b7280] flex items-center gap-1 shrink-0">
+        <div className="flex items-start justify-between mb-3.5 gap-3 font-bold text-xs">
+          <div className="min-w-0">
+            <span className="block text-[#1c1b1b] font-semibold truncate">{order.customerName}</span>
+            <span
+              className={cn(
+                "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold",
+                isOnSite ? "bg-orange-50 text-orange-700" : "bg-sky-50 text-sky-700",
+              )}
+            >
+              {isOnSite ? <Utensils className="size-3" /> : <Clock className="size-3" />}
+              {isOnSite ? "Gọi tại quầy" : "Đặt trước"}
+            </span>
+          </div>
+          <span className="text-[#6b7280] flex items-center gap-1 shrink-0 pt-0.5">
             <Clock className="size-3 text-orange-600" />
-            {slotTime}
+            {isOnSite ? orderTime : slotTime}
           </span>
         </div>
 
@@ -179,14 +199,17 @@ function FnbOrderCard({
             <p className="text-xs text-[#6b7280]">Không có chi tiết món</p>
           ) : (
             order.items.map((item, index) => (
-              <div key={index} className="flex justify-between items-center text-xs font-semibold">
-                <div className="flex items-center gap-2">
+              <div key={index} className="flex justify-between items-start gap-3 text-xs font-semibold">
+                <div className="flex min-w-0 items-start gap-2">
                   <span className="flex size-5 items-center justify-center rounded bg-[#f5f3f2] border border-[#e5e2e1] text-orange-600 text-[10px] font-bold">
                     x{item.quantity}
                   </span>
-                  <span className="text-[#1c1b1b]">{item.name}</span>
+                  <div className="min-w-0">
+                    <p className="text-[#1c1b1b]">{item.name}{item.variantName ? ` · ${item.variantName}` : ""}</p>
+                    {item.notes && <p className="mt-0.5 text-[11px] font-medium text-orange-700">Ghi chú: {item.notes}</p>}
+                  </div>
                 </div>
-                <span className="text-[#6b7280]">{formatCurrency(item.subtotal)}</span>
+                <span className="shrink-0 text-[#6b7280]">{formatCurrency(item.subtotal)}</span>
               </div>
             ))
           )}
