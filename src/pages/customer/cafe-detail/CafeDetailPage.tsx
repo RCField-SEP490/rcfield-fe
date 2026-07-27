@@ -22,6 +22,7 @@ import { CafePackagesSection } from "./components/CafePackagesSection"
 import { CafePromoBanner } from "./components/CafePromoBanner"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
 import { useCafeConfigurationRefresh } from "@/features/cafes/hooks/useCafeConfigurationRefresh"
+import { CafeContestsSection } from "./components/CafeContestsSection"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 
 export function CafeDetailPage() {

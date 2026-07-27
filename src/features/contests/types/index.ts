@@ -507,8 +507,6 @@ export type ContestMatchesQuery = {
   participant_query?: string
 }
 
-
-
 export type ContestAuditLogsQuery = {
   page?: number
   limit?: number
