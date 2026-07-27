@@ -164,10 +164,18 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
             <UserRound className="size-5 text-[#747878]" />
             Hồ sơ cá nhân
           </Link>
-          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b] text-left">
-            <CircleHelp className="size-5 text-[#747878]" />
-            Hướng dẫn sử dụng
-          </button>
+          <Link
+            to={routePaths.adminGuide}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
+              location.pathname === routePaths.adminGuide
+                ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
+            )}
+          >
+            <CircleHelp className={cn("size-5", location.pathname === routePaths.adminGuide ? "text-orange-600" : "text-[#747878]")} />
+            Hướng dẫn quản trị
+          </Link>
           <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700 text-left">
             <LogOut className="size-5 text-[#747878] group-hover:text-red-600" />
             Đăng xuất
@@ -239,6 +247,19 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
               <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2]">
                 <UserRound className="size-5" />
                 Hồ sơ cá nhân
+              </Link>
+              <Link
+                to={routePaths.adminGuide}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
+                  location.pathname === routePaths.adminGuide
+                    ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                    : "text-[#444748] hover:bg-[#f6f3f2]"
+                )}
+              >
+                <CircleHelp className={cn("size-5", location.pathname === routePaths.adminGuide ? "text-orange-600" : "text-[#747878]")} />
+                Hướng dẫn quản trị
               </Link>
               <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 text-left">
                 <LogOut className="size-5" />

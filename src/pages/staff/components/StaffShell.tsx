@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Link, useLocation, useNavigate } from "react-router"
 import {
   LayoutDashboard,
@@ -31,6 +32,7 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { StaffAccountMenu } from "./StaffUI"
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
+import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
 
 type NavItem = { label: string; icon: React.ComponentType<{ className?: string }>; path: string }
 type NavGroup = { heading: string; items: NavItem[] }
@@ -85,6 +87,13 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
     "Vận hành": true,
     "Đội xe & Thiết bị": true,
   })
+  const { data: fnbOrders = [] } = useQuery({
+    queryKey: staffQueryKeys.fnbOrders(),
+    queryFn: staffApi.getFnbOrders,
+    enabled: !!assignedCafeId,
+    refetchInterval: 30_000,
+  })
+  const pendingFnbCount = fnbOrders.filter((order) => order.status === "PENDING").length
 
   // Provider-impersonating-staff mode
   const staffImpersonationRaw = localStorage.getItem(storageKeys.staffImpersonation)
@@ -264,7 +273,12 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                       )}
                     >
                       <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                      {item.label}
+                      <span className="min-w-0 flex-1">{item.label}</span>
+                      {item.path === routePaths.staffFnbOrders && pendingFnbCount > 0 && (
+                        <span className="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
+                          {pendingFnbCount > 99 ? "99+" : pendingFnbCount}
+                        </span>
+                      )}
                     </Link>
                   )
                 })}
@@ -286,10 +300,18 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
             <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
             Hồ sơ cá nhân
           </Link>
-          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]">
-            <CircleHelp className="size-5 text-[#747878]" />
+          <Link
+            to={routePaths.staffHelp}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
+              location.pathname === routePaths.staffHelp
+                ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                : "text-[#444748] hover:bg-[rgb(246,243,242)] hover:text-[rgb(28,27,27)]"
+            )}
+          >
+            <CircleHelp className={cn("size-5", location.pathname === routePaths.staffHelp ? "text-orange-600" : "text-[#747878]")} />
             Trợ giúp
-          </button>
+          </Link>
           <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
             <LogOut className="size-5 text-[#747878]" />
             Đăng xuất
@@ -363,7 +385,12 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                           )}
                         >
                           <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                          {item.label}
+                          <span className="min-w-0 flex-1">{item.label}</span>
+                          {item.path === routePaths.staffFnbOrders && pendingFnbCount > 0 && (
+                            <span className="rounded-full bg-orange-600 px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
+                              {pendingFnbCount > 99 ? "99+" : pendingFnbCount}
+                            </span>
+                          )}
                         </Link>
                       )
                     })}
@@ -386,10 +413,19 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
                 <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
                 Hồ sơ cá nhân
               </Link>
-              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[rgb(246,243,242)]">
-                <CircleHelp className="size-5 text-[#747878]" />
+              <Link
+                to={routePaths.staffHelp}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
+                  location.pathname === routePaths.staffHelp
+                    ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                    : "text-[#444748] hover:bg-[rgb(246,243,242)]"
+                )}
+              >
+                <CircleHelp className={cn("size-5", location.pathname === routePaths.staffHelp ? "text-orange-600" : "text-[#747878]")} />
                 Trợ giúp
-              </button>
+              </Link>
               <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
                 <LogOut className="size-5 text-[#747878]" />
                 Đăng xuất

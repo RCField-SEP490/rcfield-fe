@@ -590,10 +590,18 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
             Hồ sơ cá nhân
           </Link>
-          <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-orange-50/70 hover:text-orange-700">
-            <CircleHelp className="size-5 text-[#747878]" />
+          <Link
+            to={routePaths.providerHelp}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
+              location.pathname === routePaths.providerHelp
+                ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
+            )}
+          >
+            <CircleHelp className={cn("size-5", location.pathname === routePaths.providerHelp ? "text-orange-600" : "text-[#747878]")} />
             Trợ giúp
-          </button>
+          </Link>
           <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
             <LogOut className="size-5 text-[#747878]" />
             Đăng xuất
@@ -703,10 +711,19 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                 <UserRound className={cn("size-5", location.pathname === routePaths.profile ? "text-orange-600" : "text-[#747878]")} />
                 Hồ sơ cá nhân
               </Link>
-              <button className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-orange-50/70 hover:text-orange-700">
-                <CircleHelp className="size-5 text-[#747878]" />
+              <Link
+                to={routePaths.providerHelp}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
+                  location.pathname === routePaths.providerHelp
+                    ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
+                    : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <CircleHelp className={cn("size-5", location.pathname === routePaths.providerHelp ? "text-orange-600" : "text-[#747878]")} />
                 Trợ giúp
-              </button>
+              </Link>
               <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700">
                 <LogOut className="size-5 text-[#747878]" />
                 Đăng xuất
