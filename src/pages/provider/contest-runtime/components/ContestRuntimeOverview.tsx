@@ -49,16 +49,6 @@ export function ContestRuntimeOverview({
             <StatusRow label="Thể thức vận hành" value={getContestFormatLabel(runtimeFormat || contest.contest_format?.code)} good />
             <StatusRow label="Bảng xếp hạng" value={metrics?.leaderboard.published ? "Đã công bố" : "Chưa công bố"} good={Boolean(metrics?.leaderboard.published)} />
           </div>
-          {contest.status === "CLOSED" && new Date(contest.starts_at) <= new Date() ? (
-            <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">
-              Giải đấu đã đến giờ bắt đầu. Hệ thống sẽ tự động chuyển sang RUNNING khi cron chạy (nếu đã có nhánh đấu).
-            </div>
-          ) : null}
-          {contest.status === "RUNNING" ? (
-            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
-              Giải đấu đang diễn ra. Nhập kết quả từng trận để cập nhật bảng xếp hạng.
-            </div>
-          ) : null}
         </Panel>
 
         <Panel>

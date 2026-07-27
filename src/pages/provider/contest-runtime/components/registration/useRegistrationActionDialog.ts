@@ -55,15 +55,6 @@ export function useRegistrationActionDialog(workspace: WorkspaceHook) {
           registrationId: registration.id,
           reason: reason || undefined,
         })
-      } else if (dialogState.kind === "confirmRefund") {
-        const refundTxnId = (dialogState.registration.metadata?.refund_txn_id as string | undefined) ?? ""
-        if (!refundTxnId) {
-          throw new Error("Thiếu mã giao dịch hoàn tiền")
-        }
-        await workspace.confirmEntryFeeRefundMutation.mutateAsync({
-          registrationId: registration.id,
-          refundTxnId,
-        })
       } else {
         await workspace.eventDay.cancelRegistrationMutation.mutateAsync(
           registration.id,

@@ -7,7 +7,6 @@ export type RegistrationActionKind =
   | "approve"
   | "reject"
   | "cancel"
-  | "confirmRefund"
 
 function getRegistrationActions(registration: ContestRegistration) {
   const editablePaymentStatuses: ContestRegistration["paymentStatus"][] = [
@@ -16,14 +15,6 @@ function getRegistrationActions(registration: ContestRegistration) {
   ]
   const canEditBeforeCheckIn =
     registration.status === "PENDING" || registration.status === "CONFIRMED"
-  const metadata = (registration.metadata ?? {}) as {
-    refund_needed?: boolean
-    refund_txn_id?: string
-  }
-  const canConfirmRefund =
-    registration.status === "CANCELLED" &&
-    metadata.refund_needed === true &&
-    typeof metadata.refund_txn_id === "string"
 
   return {
     canMarkPaid:
@@ -35,7 +26,6 @@ function getRegistrationActions(registration: ContestRegistration) {
     canApprove: registration.status === "PENDING",
     canReject: registration.status === "PENDING",
     canCancel: registration.status === "PENDING" || registration.status === "CONFIRMED",
-    canConfirmRefund,
   }
 }
 
@@ -74,14 +64,6 @@ export function RegistrationRowActions({
         onClick={() => onAction("reject", registration)}
       >
         Từ chối
-      </Button>
-      <Button
-        variant="outline"
-        className="h-8 rounded-lg border-emerald-200 bg-emerald-50 px-3 text-xs text-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
-        disabled={!actions.canConfirmRefund}
-        onClick={() => onAction("confirmRefund", registration)}
-      >
-        Xác nhận hoàn tiền
       </Button>
       <Button
         variant="outline"

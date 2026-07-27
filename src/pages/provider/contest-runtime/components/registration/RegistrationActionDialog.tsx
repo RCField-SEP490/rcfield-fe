@@ -64,8 +64,6 @@ function dialogTitle(kind: RegistrationActionKind | null) {
       return "Từ chối đăng ký"
     case "cancel":
       return "Hủy đăng ký"
-    case "confirmRefund":
-      return "Xác nhận đã hoàn tiền lệ phí"
     default:
       return "Cập nhật đăng ký"
   }
