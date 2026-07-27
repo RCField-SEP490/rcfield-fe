@@ -113,6 +113,17 @@ export function useContestWorkspace(
     onSuccess: invalidateGovernance,
   })
 
+  const confirmEntryFeeRefundMutation = useMutation({
+    mutationFn: ({
+      registrationId,
+      refundTxnId,
+    }: {
+      registrationId: string
+      refundTxnId: string
+    }) => contestApi.confirmEntryFeeRefund(registrationId, refundTxnId),
+    onSuccess: invalidateGovernance,
+  })
+
   return {
     runtime,
     eventDay,
@@ -124,5 +135,6 @@ export function useContestWorkspace(
     createBanMutation,
     liftBanMutation,
     disqualifyRegistrationMutation,
+    confirmEntryFeeRefundMutation,
   }
 }

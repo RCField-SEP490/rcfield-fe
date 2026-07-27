@@ -36,6 +36,7 @@ export function ContestRegistrationTable({
                 </p>
                 <RegistrationStatusBadge status={registration.status} />
                 <PaymentStatusBadge status={registration.paymentStatus} />
+                <RefundStatus metadata={registration.metadata ?? {}} />
                 {registration.customerJourneyStatus ? (
                   <JourneyStatusBadge
                     status={registration.customerJourneyStatus}
@@ -111,4 +112,25 @@ function formatCurrency(value: number) {
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(value)
+}
+
+function RefundStatus({ metadata }: { metadata: Record<string, unknown> }) {
+  const confirmed =
+    metadata.refund_confirmed === true ||
+    (typeof metadata.refund_confirmed_at === "string" && metadata.refund_confirmed_at.length > 0)
+  if (metadata.refund_needed === true && confirmed) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+        Đã hoàn tiền
+      </span>
+    )
+  }
+  if (metadata.refund_needed === true) {
+    return (
+      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+        Chờ hoàn tiền
+      </span>
+    )
+  }
+  return null
 }

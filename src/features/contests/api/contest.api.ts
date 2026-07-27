@@ -467,6 +467,16 @@ export const contestApi = {
     return mapContestRegistration(res.data.data)
   },
 
+  confirmEntryFeeRefund: async (
+    registrationId: string,
+    refundTxnId: string,
+  ): Promise<ContestRegistration> => {
+    const res = await api.post<ApiEnvelope<ContestRegistration>>(
+      `/v1/contest-registrations/${registrationId}/refunds/${refundTxnId}/confirm`,
+    )
+    return mapContestRegistration(res.data.data)
+  },
+
   createEntryFeePayment: async (
     registrationId: string,
     body?: { return_url?: string },
