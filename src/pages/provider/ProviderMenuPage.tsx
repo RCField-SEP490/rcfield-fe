@@ -275,7 +275,7 @@ export function ProviderMenuPage({ cafeId: propCafeId }: { cafeId?: string }) {
               rows={paginatedMenuItems.map((item) => [
                 <MenuNameCell key={`${item.id}-name`} item={item} />,
                 item.categoryName ?? UNCATEGORIZED_LABEL,
-                formatMoney(item.price),
+                <PriceCell key={`${item.id}-price`} item={item} />,
                 selectedCafe ? formatCafeName(selectedCafe) : "--",
                 <StatusBadge key={`${item.id}-status`} status={item.isAvailable ? "Đang bán" : "Tạm ẩn"} />,
                 <div key={`${item.id}-actions`} className="flex items-center gap-2">
@@ -420,6 +420,18 @@ function MenuNameCell({ item }: { item: MenuItem }) {
         <div className="truncate font-bold text-[#1c1b1b]">{item.name}</div>
         <div className="truncate text-xs font-semibold text-[#5d5f5f]">{item.description ?? "Chưa có mô tả"}</div>
       </div>
+    </div>
+  )
+}
+
+function PriceCell({ item }: { item: MenuItem }) {
+  const variants = item.variants ?? []
+  if (!variants.length) return <span>{formatMoney(item.price)}</span>
+  const from = Math.min(...variants.map((variant) => Number(variant.price)))
+  return (
+    <div>
+      <div className="font-semibold">Từ {formatMoney(from)}</div>
+      <div className="text-xs text-[#747878]">{variants.length} lựa chọn</div>
     </div>
   )
 }
