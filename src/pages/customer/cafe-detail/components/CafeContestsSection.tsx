@@ -1,98 +1,94 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router";
-import { Trophy, Calendar, Users, ArrowRight } from "lucide-react";
-import { contestsApi } from "@/features/contests/api/contests.api";
-import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
+import { useQuery } from "@tanstack/react-query"
+import { CalendarClock, ChevronRight, Trophy } from "lucide-react"
+import { Link } from "react-router"
 
-interface CafeContestsSectionProps {
-  cafeId: string;
-}
+import { routePaths } from "@/app/router/route-paths"
+import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import { formatContestDateTime } from "@/features/contests/lib/contest-runtime"
+import type { ContestItem } from "@/features/contests/types"
+import { formatCurrency } from "@/shared/lib/format"
 
-export function CafeContestsSection({ cafeId }: CafeContestsSectionProps) {
-  const { data: contestsEnvelope, isLoading } = useQuery({
-    queryKey: ["cafe-contests", cafeId],
-    queryFn: () => contestsApi.getCafeContests(cafeId, { upcoming: true, limit: 10 }),
-    enabled: !!cafeId,
-  });
+// Chỉ render khi quán có contest đang mở đăng ký - không có thì ẩn hoàn toàn.
+export function CafeContestsSection({ cafeId }: { cafeId: string }) {
+  const { data } = useQuery({
+    queryKey: contestQueryKeys.list({ cafe_id: cafeId, status: "OPEN", limit: 6 }),
+    queryFn: () => contestApi.listCafeContests(cafeId, { status: "OPEN", limit: 6 }),
+    staleTime: 60_000,
+  })
 
-  const contests = contestsEnvelope?.data || [];
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <div className="h-6 w-48 animate-pulse rounded bg-slate-100" />
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
-          <div className="h-28 animate-pulse rounded-xl bg-slate-100" />
-        </div>
-      </div>
-    );
-  }
-
-  if (contests.length === 0) return null;
+  const contests = data?.data ?? []
+  if (contests.length === 0) return null
 
   return (
-    <section className="space-y-4 border-t pt-8">
-      <div>
-        <h2 className="text-lg font-bold text-slate-950 flex items-center gap-2">
-          <Trophy className="text-orange-500" size={20} /> Giải đấu sắp diễn ra tại cơ sở
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Các giải đấu tốc độ chuyên nghiệp và phong trào đang mở cổng đăng ký tại chi nhánh này.
+    <section className="space-y-3 rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50/80 via-white to-white p-4 shadow-sm md:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm">
+            <Trophy className="size-4.5" />
+          </span>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Giải đấu đang mở đăng ký</h2>
+            <p className="text-xs text-slate-500">
+              Quán đang tổ chức {contests.length} giải - chưa có xe vẫn tham gia được,
+              chọn &quot;Thuê xe tại quầy&quot; khi đăng ký.
+            </p>
+          </div>
+        </div>
+        <Link
+          to={routePaths.contests}
+          className="hidden shrink-0 text-xs font-bold text-orange-600 hover:text-orange-700 sm:block"
+        >
+          Xem tất cả giải
+        </Link>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {contests.map((contest) => (
+          <CafeContestCard key={contest.id} contest={contest} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CafeContestCard({ contest }: { contest: ContestItem }) {
+  return (
+    <Link
+      to={routePaths.contestDetail.replace(":contestId", contest.id)}
+      className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition hover:border-orange-300 hover:shadow-md"
+    >
+      {contest.banner_image_url ? (
+        <img
+          src={contest.banner_image_url}
+          alt={contest.name}
+          className="size-16 shrink-0 rounded-lg object-cover"
+        />
+      ) : (
+        <span className="flex size-16 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-500">
+          <Trophy className="size-6" />
+        </span>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-extrabold text-slate-900 group-hover:text-orange-600">
+          {contest.name}
+        </p>
+        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+          <CalendarClock className="size-3 shrink-0" />
+          <span className="truncate">{formatContestDateTime(contest.starts_at)}</span>
+        </p>
+        <p className="mt-0.5 text-[11px] font-semibold text-slate-600">
+          {contest.contest_format?.name ?? "Thi đấu"} · {contest.track_type?.name ?? "Track"} · Lệ phí{" "}
+          <span className="text-orange-600">
+            {contest.entry_fee > 0 ? formatCurrency(contest.entry_fee) : "Miễn phí"}
+          </span>
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {contests.map((contest) => {
-          const registered = contest.registration_summary?.active || 0;
-          const capacity = contest.capacity;
-          const startDate = new Date(contest.starts_at).toLocaleDateString("vi-VN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-
-          return (
-            <Card key={contest.id} className="border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
-                <div className="flex justify-between items-start gap-2">
-                  <h3 className="font-bold text-slate-950 text-sm line-clamp-1">{contest.name}</h3>
-                  <Badge variant={contest.status === "OPEN" ? "default" : "secondary"} className="text-[9px] uppercase font-bold shrink-0">
-                    {contest.status === "OPEN" ? "Đăng ký" : contest.status}
-                  </Badge>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-500">
-                  <div className="flex items-center gap-1">
-                    <Calendar size={13} className="text-orange-500" />
-                    <span>Khai mạc: {startDate}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Users size={13} className="text-orange-500" />
-                    <span>Đã đăng ký: {registered} / {capacity}</span>
-                  </div>
-                </div>
-
-                <div className="border-t pt-3 flex justify-between items-center mt-auto">
-                  <span className="text-xs font-bold text-orange-600">
-                    {contest.entry_fee > 0 ? `${contest.entry_fee.toLocaleString()}đ` : "Miễn phí"}
-                  </span>
-                  <Button asChild size="sm" variant="outline" className="h-8 text-[11px] rounded-lg">
-                    <Link to={`/contests/${contest.id}`} className="flex items-center gap-1">
-                      Chi tiết <ArrowRight size={10} />
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-    </section>
-  );
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-3 py-1.5 text-[11px] font-bold text-white transition group-hover:bg-orange-600">
+        Đăng ký
+        <ChevronRight className="size-3.5" />
+      </span>
+    </Link>
+  )
 }
-export default CafeContestsSection;

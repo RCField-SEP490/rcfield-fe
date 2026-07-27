@@ -46,7 +46,6 @@ export function ContestRegistrationPanel({
   entryFeePaymentPending,
   onContinuePayment,
   allowsByoc,
-  rentalOnly,
   registrationMode,
   setRegistrationMode,
   byocVehicleName,
@@ -58,6 +57,7 @@ export function ContestRegistrationPanel({
   byocVehicleNotes,
   setByocVehicleNotes,
   bookingOptions,
+  bookingsLoading,
   selectedBookingId,
   setSelectedBookingId,
   selectedVehicleId,
@@ -82,7 +82,6 @@ export function ContestRegistrationPanel({
   entryFeePaymentPending: boolean
   onContinuePayment: () => void
   allowsByoc: boolean
-  rentalOnly: boolean
   registrationMode: "RENTAL" | "BYOC"
   setRegistrationMode: (mode: "RENTAL" | "BYOC") => void
   byocVehicleName: string
@@ -97,6 +96,7 @@ export function ContestRegistrationPanel({
     id: string
     slotStart: string
   }>
+  bookingsLoading: boolean
   selectedBookingId: string
   setSelectedBookingId: (value: string) => void
   selectedVehicleId: string
@@ -133,9 +133,16 @@ export function ContestRegistrationPanel({
     contest,
   )
 
-  const rentalAllowed = !rentalOnly && contest.vehicle_rule?.vehicle_policy !== "BYOC_ONLY"
+  const byocOnly = contest.vehicle_rule?.vehicle_policy === "BYOC_ONLY"
+  // Nguồn xe thuê (booking có sẵn hoặc thuê mới tại quầy) khả dụng cho mọi giải
+  // trừ BYOC_ONLY. Trước đây RENTAL_ONLY bị ẩn bước chọn nguồn xe khiến ngưởi
+  // chưa có booking không thể tới được "Thuê xe tại quầy".
+  const rentalAllowed = !byocOnly
   const source: VehicleSourceKey =
-    registrationMode === "BYOC" ? "BYOC" : rentalMode
+    byocOnly || (registrationMode === "BYOC" && allowsByoc)
+      ? "BYOC"
+      : rentalMode
+  const noConfirmedBookings = !bookingsLoading && bookingOptions.length === 0
 
   const steps = useMemo<Array<{ id: StepId; label: string }>>(() => {
     const list: Array<{ id: StepId; label: string }> = []
@@ -237,10 +244,14 @@ export function ContestRegistrationPanel({
           <VehicleSourceCard
             icon={CalendarCheck}
             title="Xe của tôi"
-            description="Dùng booking thuê xe đã xác nhận (CONFIRMED) của bạn tại chi nhánh tổ chức — không phát sinh phí thuê mới."
-            priceHint="Không phát sinh phí thuê"
+            description={
+              noConfirmedBookings
+                ? "Bạn chưa có booking thuê xe nào đã xác nhận (CONFIRMED) — hãy chọn “Thuê xe tại quầy” bên dưới, không cần chuẩn bị trước."
+                : "Dùng booking thuê xe đã xác nhận (CONFIRMED) của bạn tại chi nhánh tổ chức — không phát sinh phí thuê mới."
+            }
+            priceHint={noConfirmedBookings ? null : "Không phát sinh phí thuê"}
             selected={source === "EXISTING_BOOKING"}
-            disabled={registrationClosed}
+            disabled={registrationClosed || noConfirmedBookings}
             onClick={() => selectSource("EXISTING_BOOKING")}
           />
           <VehicleSourceCard
@@ -369,6 +380,18 @@ export function ContestRegistrationPanel({
                   <InfoIcon className="mt-0.5 size-3.5 shrink-0" />
                   <span>{bookingHelperMessage}</span>
                 </div>
+              ) : null}
+              {noConfirmedBookings ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-2 w-full rounded-xl border-orange-300 text-xs font-bold text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                  disabled={registrationClosed}
+                  onClick={() => selectSource("NEW_RENTAL")}
+                >
+                  <KeyRound className="size-3.5" />
+                  Thuê xe tại quầy ngay
+                </Button>
               ) : null}
             </div>
 
