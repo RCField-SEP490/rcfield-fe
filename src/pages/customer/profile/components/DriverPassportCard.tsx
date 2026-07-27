@@ -18,6 +18,7 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { Switch } from "@/shared/ui/switch"
 
 export function DriverPassportCard() {
   const queryClient = useQueryClient()
@@ -27,6 +28,12 @@ export function DriverPassportCard() {
   })
   const [draftDisplayName, setDraftDisplayName] = useState<string | null>(null)
   const [draftDriverHandle, setDraftDriverHandle] = useState<string | null>(
+    null,
+  )
+  const [draftLeaderboardOptIn, setDraftLeaderboardOptIn] = useState<
+    boolean | null
+  >(null)
+  const [draftPublicProfile, setDraftPublicProfile] = useState<boolean | null>(
     null,
   )
 
@@ -42,10 +49,18 @@ export function DriverPassportCard() {
             passportQuery.data?.driver_handle ??
             ""
           ).trim() || undefined,
+        ...(draftLeaderboardOptIn !== null
+          ? { leaderboard_opt_in: draftLeaderboardOptIn }
+          : {}),
+        ...(draftPublicProfile !== null
+          ? { public_profile_enabled: draftPublicProfile }
+          : {}),
       }),
     onSuccess: async () => {
       setDraftDisplayName(null)
       setDraftDriverHandle(null)
+      setDraftLeaderboardOptIn(null)
+      setDraftPublicProfile(null)
       toast.success("Đã cập nhật Driver Passport.")
       await queryClient.invalidateQueries({
         queryKey: racingQueryKeys.passport(),
@@ -70,6 +85,10 @@ export function DriverPassportCard() {
   )
   const displayNameValue = draftDisplayName ?? passport?.display_name ?? ""
   const driverHandleValue = draftDriverHandle ?? passport?.driver_handle ?? ""
+  const leaderboardOptInValue =
+    draftLeaderboardOptIn ?? passport?.leaderboard_opt_in ?? true
+  const publicProfileValue =
+    draftPublicProfile ?? passport?.public_profile_enabled ?? true
 
   return (
     <Card className="overflow-hidden rounded-xl border-slate-200 shadow-sm">
@@ -153,6 +172,20 @@ export function DriverPassportCard() {
                 />
               </label>
             </div>
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+              <PrivacyToggle
+                label="Hiển thị trên Global Leaderboard"
+                description="Tắt để ẩn tên bạn khỏi bảng xếp hạng toàn hệ thống."
+                checked={leaderboardOptInValue}
+                onCheckedChange={setDraftLeaderboardOptIn}
+              />
+              <PrivacyToggle
+                label="Hồ sơ công khai"
+                description="Cho phép người khác xem Driver Passport của bạn qua driver handle."
+                checked={publicProfileValue}
+                onCheckedChange={setDraftPublicProfile}
+              />
+            </div>
             <Button
               disabled={updateMutation.isPending || passportQuery.isLoading}
               onClick={() => updateMutation.mutate()}
@@ -203,8 +236,29 @@ export function DriverPassportCard() {
   )
 }
 
-function Metric({
-  icon: Icon,
+function PrivacyToggle({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onCheckedChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-sm font-bold text-slate-900">{label}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  )
+}
+
+function Metric({  icon: Icon,
   label,
   value,
 }: {

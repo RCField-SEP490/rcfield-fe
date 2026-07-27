@@ -11,6 +11,7 @@ import {
   Info as InfoIcon,
   KeyRound,
   ShieldCheck,
+  Trophy,
 } from "lucide-react"
 
 import { contestApi } from "@/features/contests/api/contest.api"
@@ -204,6 +205,22 @@ export function ContestRegistrationPanel({
     if (step === "source") {
       return (
         <div className="space-y-3">
+          <div className="flex flex-col gap-3 rounded-xl border border-orange-100 bg-orange-50/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-orange-200 bg-white text-orange-600">
+                <Trophy className="size-4" />
+              </div>
+              <div className="text-sm">
+                <p className="font-semibold text-orange-900">
+                  Cần thuê xe cho giải đấu?
+                </p>
+                <p className="text-orange-800/80">
+                  Chọn "Thuê xe tại quầy" bên dưới để chọn chi nhánh, khung giờ
+                  và dòng xe ngay trong luồng đăng ký.
+                </p>
+              </div>
+            </div>
+          </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
             <div className="flex items-start gap-3">
               <CalendarClock className="mt-0.5 size-4 shrink-0 text-orange-500" />

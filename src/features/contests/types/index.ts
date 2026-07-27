@@ -457,6 +457,10 @@ export type ContestAuditLogItem = {
   matchId: string | null
   actorId: string | null
   actorRole: string | null
+  /** Tên người thao tác (join từ users) — null với SYSTEM. */
+  actorName?: string | null
+  /** Câu mô tả hành động tiếng Việt do BE build lúc đọc. */
+  actionSummary?: string | null
   eventType: string
   beforeJson: Record<string, unknown> | null
   afterJson: Record<string, unknown> | null

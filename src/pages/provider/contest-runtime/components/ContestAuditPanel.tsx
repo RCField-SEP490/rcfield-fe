@@ -4,6 +4,39 @@ import { getAuditGroup } from "@/features/contests/lib/contest-runtime"
 import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
 import { Button } from "@/shared/ui/button"
 
+const ACTOR_ROLE_LABEL: Record<string, string> = {
+  PROVIDER: "Provider",
+  STAFF: "Staff",
+  CUSTOMER: "Khách hàng",
+  ADMIN: "Admin",
+  SYSTEM: "Hệ thống",
+}
+
+function formatFieldValue(value: unknown): string {
+  if (value === null || value === undefined) return "--"
+  if (typeof value === "boolean") return value ? "Có" : "Không"
+  if (typeof value === "number" || typeof value === "string") return String(value)
+  return JSON.stringify(value)
+}
+
+/** Diff before/after thành danh sách {field, before, after} để render dạng bảng đọc được. */
+function buildAuditDiff(
+  beforeJson: Record<string, unknown> | null,
+  afterJson: Record<string, unknown> | null,
+) {
+  const before = beforeJson ?? {}
+  const after = afterJson ?? {}
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+  return keys
+    .map((field) => ({
+      field,
+      before: formatFieldValue(before[field]),
+      after: formatFieldValue(after[field]),
+      changed: formatFieldValue(before[field]) !== formatFieldValue(after[field]),
+    }))
+    .filter((row) => row.changed || row.after !== "--")
+}
+
 export function ContestAuditPanel({
   logs,
   page,
@@ -50,39 +83,87 @@ export function ContestAuditPanel({
       </div>
 
       <div className="space-y-3">
-        {filteredLogs.map((log) => (
-          <article key={log.id} className="rounded-lg border border-[#e5e2e1] p-4">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-extrabold text-[#1c1b1b]">{log.eventType}</p>
-                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[#747878]">
-                  <span>{new Date(log.createdAt).toLocaleString("vi-VN")}</span>
-                  <span>{log.actorRole ?? "--"}</span>
-                  <span>{log.matchId ? `match ${log.matchId.slice(0, 8)}` : "--"}</span>
-                  <span>{log.registrationId ? `registration ${log.registrationId.slice(0, 8)}` : "--"}</span>
+        {filteredLogs.map((log) => {
+          const actorRoleLabel = ACTOR_ROLE_LABEL[log.actorRole ?? ""] ?? log.actorRole ?? "--"
+          const actorDisplay = log.actorName
+            ? `${log.actorName} · ${actorRoleLabel}`
+            : actorRoleLabel
+          const diff = buildAuditDiff(log.beforeJson, log.afterJson)
+          const expanded = expandedLogId === log.id
+          return (
+            <article key={log.id} className="rounded-lg border border-[#e5e2e1] p-4">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-extrabold text-[#1c1b1b]">
+                    {log.actionSummary ?? log.eventType}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[#747878]">
+                    <span>{new Date(log.createdAt).toLocaleString("vi-VN")}</span>
+                    <span>{actorDisplay}</span>
+                    <span className="rounded bg-[#fcf8f8] px-1.5 py-0.5 font-mono text-[11px]">
+                      {log.eventType}
+                    </span>
+                    {log.matchId ? <span>match {log.matchId.slice(0, 8)}</span> : null}
+                    {log.registrationId ? (
+                      <span>registration {log.registrationId.slice(0, 8)}</span>
+                    ) : null}
+                  </div>
+                  {log.reason ? (
+                    <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Lý do: {log.reason}</p>
+                  ) : null}
                 </div>
-                {log.reason ? <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">{log.reason}</p> : null}
+                <button
+                  type="button"
+                  onClick={() => setExpandedLogId((current) => (current === log.id ? null : log.id))}
+                  className="text-sm font-bold text-orange-700"
+                >
+                  {expanded ? "Ẩn chi tiết" : "Xem chi tiết"}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setExpandedLogId((current) => (current === log.id ? null : log.id))}
-                className="text-sm font-bold text-orange-700"
-              >
-                {expandedLogId === log.id ? "Ẩn JSON" : "Xem JSON"}
-              </button>
-            </div>
-            {expandedLogId === log.id ? (
-              <div className="mt-3 grid gap-3 xl:grid-cols-2">
-                <pre className="overflow-x-auto rounded-lg bg-[#fcf8f8] p-3 text-xs text-[#444748]">
-                  {JSON.stringify(log.beforeJson ?? {}, null, 2)}
-                </pre>
-                <pre className="overflow-x-auto rounded-lg bg-[#fcf8f8] p-3 text-xs text-[#444748]">
-                  {JSON.stringify(log.afterJson ?? {}, null, 2)}
-                </pre>
-              </div>
-            ) : null}
-          </article>
-        ))}
+              {expanded ? (
+                <div className="mt-3 space-y-3">
+                  {diff.length > 0 ? (
+                    <div className="overflow-hidden rounded-lg border border-[#e5e2e1]">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-[#fcf8f8] text-left font-bold text-[#747878]">
+                            <th className="px-3 py-2">Trường dữ liệu</th>
+                            <th className="px-3 py-2">Trước</th>
+                            <th className="px-3 py-2">Sau</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#f0eeee]">
+                          {diff.map((row) => (
+                            <tr key={row.field}>
+                              <td className="px-3 py-2 font-mono font-semibold text-[#444748]">
+                                {row.field}
+                              </td>
+                              <td className="px-3 py-2 text-[#747878]">{row.before}</td>
+                              <td className="px-3 py-2 font-bold text-[#1c1b1b]">{row.after}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                  <details className="rounded-lg bg-[#fcf8f8] p-3">
+                    <summary className="cursor-pointer text-xs font-bold text-[#747878]">
+                      Chi tiết kỹ thuật (JSON)
+                    </summary>
+                    <div className="mt-2 grid gap-3 xl:grid-cols-2">
+                      <pre className="overflow-x-auto rounded-lg bg-white p-3 text-xs text-[#444748]">
+                        {JSON.stringify(log.beforeJson ?? {}, null, 2)}
+                      </pre>
+                      <pre className="overflow-x-auto rounded-lg bg-white p-3 text-xs text-[#444748]">
+                        {JSON.stringify(log.afterJson ?? {}, null, 2)}
+                      </pre>
+                    </div>
+                  </details>
+                </div>
+              ) : null}
+            </article>
+          )
+        })}
         {filteredLogs.length === 0 ? (
           <p className="text-sm font-semibold text-[#747878]">Chưa có audit log nào.</p>
         ) : null}
