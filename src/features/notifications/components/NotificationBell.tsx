@@ -65,6 +65,12 @@ export function NotificationBell() {
     if (!n.readAt) markReadMutation.mutate(n.id)
     setOpen(false)
 
+    const directRoute = typeof n.data?.route === "string" ? n.data.route : null
+    if (directRoute?.startsWith("/")) {
+      navigate(directRoute)
+      return
+    }
+
     const contestId = typeof n.data?.contest_id === "string" ? n.data.contest_id : null
     const sessionId = typeof n.data?.sessionId === "string" ? n.data.sessionId : null
     if (contestId && n.type.startsWith("CONTEST_")) {

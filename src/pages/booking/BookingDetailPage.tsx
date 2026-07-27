@@ -205,6 +205,7 @@ export function BookingDetailPage() {
         "SESSION_CHECKOUT_INSPECTION",
         "SESSION_FNB_ORDER_ADDED",
         "SESSION_FNB_ORDER_UPDATED",
+        "FNB_ORDER_SERVED",
         "SESSION_EXTENSION_PROPOSED",
         "SESSION_EXTENSION_UPDATED",
         "CUSTOMER_EXTENSION_APPROVED",
@@ -396,8 +397,15 @@ export function BookingDetailPage() {
           {orders.flatMap((order) => order.items.map((item) => ({ orderId: order.id, item }))).map(({ orderId, item }) => (
             <div key={`${orderId}-${item.id}`} className="flex items-start justify-between gap-4 text-sm">
               <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-900">{item.itemName ?? "Sản phẩm"}</p>
-                {item.notes && <p className="mt-0.5 text-xs text-slate-500">{item.notes}</p>}
+                <p className="font-medium text-slate-900">
+                  {item.itemName ?? "Sản phẩm"}
+                  {item.variantName && <span className="text-slate-500"> · {item.variantName}</span>}
+                </p>
+                {item.notes && (
+                  <p className="mt-1 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-700">Ghi chú:</span> {item.notes}
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <p className="text-xs text-slate-500">×{item.quantity} · {formatCurrency(Number(item.unitPrice))}</p>

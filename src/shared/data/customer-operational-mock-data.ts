@@ -101,7 +101,7 @@ export interface MockSessionDetail {
     orderId: string
     orderType?: string
     status?: string
-    items: { name: string; qty: number; price: number }[]
+    items: { name: string; variantName?: string | null; qty: number; price: number; notes?: string | null }[]
     total: number
   }[]
 }

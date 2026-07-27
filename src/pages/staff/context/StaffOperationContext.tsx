@@ -68,7 +68,7 @@ export interface StaffOperationContextType {
     damageLineItems?: DamageLineItemInput[]
   ) => Promise<boolean>
   proposeExtension: (sessionId: string, extraMinutes: number, additionalFee: number, direct?: boolean) => Promise<boolean>
-  addFnbOrder: (sessionId: string, items: { name: string; qty: number; price: number }[]) => Promise<boolean>
+  addFnbOrder: (sessionId: string, items: { menu_item_id: string; variant_id?: string; quantity: number; notes?: string }[]) => Promise<boolean>
   updateFnbOrderStatus: (orderId: string, status: FnbOrder["status"]) => void
   swapSessionVehicle: (
     sessionId: string,
@@ -253,6 +253,23 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         void fetchData()
         void queryClient.invalidateQueries({ queryKey: staffQueryKeys.bookingLists() })
         void queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() })
+        return
+      }
+
+      if (msg.event === "FNB_ORDER_READY_FOR_PREP") {
+        const orderData = msg.data as { orderType?: "PRE_ORDER" | "ON_SITE" } | undefined
+        toast.info("Có món cần chế biến", {
+          description:
+            orderData?.orderType === "ON_SITE"
+              ? "Có món gọi tại quầy mới trong hàng đợi."
+              : "Có đơn đặt trước đã xác nhận cần chuẩn bị.",
+          action: {
+            label: "Xem hàng đợi",
+            onClick: () => navigate("/staff/fnb-orders"),
+          },
+          duration: 8000,
+        })
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.fnbOrders() })
         return
       }
 
@@ -571,7 +588,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     }
   }, [fetchData])
 
-  const addFnbOrder = useCallback(async (sessionId: string, items: { name: string; qty: number; price: number }[]) => {
+  const addFnbOrder = useCallback(async (sessionId: string, items: { menu_item_id: string; variant_id?: string; quantity: number; notes?: string }[]) => {
     try {
       await staffApi.addSessionFnbOrder(sessionId, { items })
       toast.success(`Đã thêm món ăn, thức uống thành công cho phiên chạy!`)

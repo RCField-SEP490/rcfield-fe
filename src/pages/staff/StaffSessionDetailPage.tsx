@@ -221,8 +221,10 @@ export default function StaffSessionDetailPage() {
   const [settledBookingId, setSettledBookingId] = useState<string | null>(null)
 
   // F&B local form state
-  const [selectedItemName, setSelectedItemName] = useState("")
+  const [selectedItemId, setSelectedItemId] = useState("")
+  const [selectedVariantId, setSelectedVariantId] = useState("")
   const [selectedQty, setSelectedQty] = useState(1)
+  const [selectedFnbNote, setSelectedFnbNote] = useState("")
 
   // Extension mode: false = propose to customer, true = direct (staff confirms in-person)
   const [directExtensionMode, setDirectExtensionMode] = useState(false)
@@ -277,7 +279,7 @@ export default function StaffSessionDetailPage() {
         .then((res) => {
           setMenuItems(res.data)
           if (res.data.length > 0) {
-            setSelectedItemName(res.data[0].name)
+            setSelectedItemId(res.data[0].id)
           }
         })
         .catch((err) => console.error("Error loading menu:", err))
@@ -320,20 +322,19 @@ export default function StaffSessionDetailPage() {
   // Handle adding custom F&B order
   const handleAddFnb = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedItemName) return
-
-    const menuItem = menuItems.find((i) => i.name === selectedItemName)
-    const price = menuItem ? Number(menuItem.price) || 30000 : 30000
+    if (!selectedItemId) return
 
     const created = await addFnbOrder(session.sessionId, [
       {
-        name: selectedItemName,
-        qty: selectedQty,
-        price,
+        menu_item_id: selectedItemId,
+        variant_id: selectedVariantId || undefined,
+        quantity: selectedQty,
+        notes: selectedFnbNote.trim() || undefined,
       },
     ])
     if (created) {
       setSelectedQty(1)
+      setSelectedFnbNote("")
       void refetchSessionDetail()
     }
   }
@@ -466,6 +467,8 @@ export default function StaffSessionDetailPage() {
     new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
   const onsiteFnbOrders = (session.fnbOrders || [])
     .filter((order) => order.orderType !== "PRE_ORDER" && order.status !== "CANCELLED")
+  const preorderFnbOrders = (session.fnbOrders || [])
+    .filter((order) => order.orderType === "PRE_ORDER" && order.status !== "CANCELLED")
 
   // The API summary, not the operational F&B/order lists, is the financial
   // source of truth. This keeps staff and customer totals identical after a
@@ -697,6 +700,15 @@ export default function StaffSessionDetailPage() {
               <>
                 <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
                 <p className="text-[11px] text-amber-600 font-semibold mt-1">Chuẩn bị trước khi bắt đầu ca</p>
+                <div className="mt-2 space-y-1 border-t border-amber-100 pt-2 text-[11px] text-[#4c4a49]">
+                  {preorderFnbOrders.flatMap((order) => order.items).map((item, index) => (
+                    <div key={`${item.name}-${index}`}>
+                      <span className="font-bold">{item.name}{item.variantName ? ` · ${item.variantName}` : ""}</span>
+                      <span className="text-[#6b7280]"> ×{item.qty}</span>
+                      {item.notes && <p className="mt-0.5 text-amber-700">Ghi chú: {item.notes}</p>}
+                    </div>
+                  ))}
+                </div>
               </>
             ) : (
               <p className="text-xs text-[#9b8fa8] font-semibold">Khách không đặt món trước</p>
@@ -935,21 +947,50 @@ export default function StaffSessionDetailPage() {
                     Chọn món ăn/nước uống
                   </label>
                   <select
-                    value={selectedItemName}
-                    onChange={(e) => setSelectedItemName(e.target.value)}
+                    value={selectedItemId}
+                    onChange={(e) => {
+                      setSelectedItemId(e.target.value)
+                      setSelectedVariantId("")
+                    }}
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   >
                     {menuItemGroups.map((group) => (
                       <optgroup key={group.label} label={group.label}>
                         {group.items.map((item) => (
-                          <option key={item.id} value={item.name}>
-                            {item.name} - {Number(item.price).toLocaleString("vi-VN")} đ
+                          <option key={item.id} value={item.id}>
+                            {item.name} - {item.variants?.length ? `từ ${Math.min(...item.variants.map((variant) => Number(variant.price))).toLocaleString("vi-VN")}` : Number(item.price).toLocaleString("vi-VN")} đ
                           </option>
                         ))}
                       </optgroup>
                     ))}
                   </select>
                 </div>
+
+                {(() => {
+                  const selectedItem = menuItems.find((item) => item.id === selectedItemId)
+                  const variants = selectedItem?.variants?.filter((variant) => variant.isAvailable) ?? []
+                  if (!variants.length) return null
+                  return (
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                        Size / lựa chọn
+                      </label>
+                      <select
+                        value={selectedVariantId}
+                        onChange={(e) => setSelectedVariantId(e.target.value)}
+                        className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                        required
+                      >
+                        <option value="">Chọn lựa chọn</option>
+                        {variants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name} - {Number(variant.price).toLocaleString("vi-VN")} đ
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                })()}
 
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
@@ -961,6 +1002,19 @@ export default function StaffSessionDetailPage() {
                     max={10}
                     value={selectedQty}
                     onChange={(e) => setSelectedQty(Number(e.target.value))}
+                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                    Ghi chú bếp (tuỳ chọn)
+                  </label>
+                  <input
+                    value={selectedFnbNote}
+                    maxLength={500}
+                    onChange={(e) => setSelectedFnbNote(e.target.value)}
+                    placeholder="Ví dụ: ít đá, giao bàn số 2"
                     className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                   />
                 </div>
@@ -1127,7 +1181,8 @@ export default function StaffSessionDetailPage() {
                 <div className="space-y-0.5 flex-1 min-w-0">
                   {order.items.map((i, idx) => (
                     <span key={idx} className="block text-[#1c1b1b]">
-                      {i.name} <span className="text-[#6b7280] font-normal">×{i.qty}</span>
+                      {i.name}{i.variantName ? ` · ${i.variantName}` : ""} <span className="text-[#6b7280] font-normal">×{i.qty}</span>
+                      {i.notes && <span className="block mt-0.5 text-[10px] text-[#b45309] font-medium">Ghi chú: {i.notes}</span>}
                     </span>
                   ))}
                 </div>

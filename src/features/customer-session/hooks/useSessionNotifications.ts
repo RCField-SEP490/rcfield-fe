@@ -66,6 +66,13 @@ export function useSessionNotifications(enabled = true): void {
         return
       }
 
+      if (msg.event === "FNB_ORDER_SERVED") {
+        toast.success("Món của bạn đã sẵn sàng", {
+          description: "Nhân viên đã xác nhận phục vụ đơn đồ ăn & thức uống của bạn.",
+        })
+        return
+      }
+
       if (msg.event === "SESSION_CHECKOUT_INSPECTION") {
         toast.info("Nhân viên vừa lập biên bản trả xe", {
           description: "Vui lòng kiểm tra biên bản và xác nhận tình trạng xe.",

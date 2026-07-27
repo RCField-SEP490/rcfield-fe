@@ -521,7 +521,7 @@ export function CustomerActiveSessionPage() {
                         orderId: string
                         orderType?: string
                         status?: string
-                        items: { name: string; qty: number; price: number }[]
+                        items: { name: string; variantName?: string | null; qty: number; price: number; notes?: string | null }[]
                         total: number
                       }>
                     ).map((order) => {
@@ -564,10 +564,11 @@ export function CustomerActiveSessionPage() {
                             {order.items.map((item, idx) => (
                               <div key={idx} className="flex justify-between">
                                 <span className="text-slate-500">
-                                  {item.name}{" "}
+                                  {item.name}{item.variantName ? ` · ${item.variantName}` : ""}{" "}
                                   <strong className="text-slate-800">
                                     ×{item.qty}
                                   </strong>
+                                  {item.notes && <span className="block mt-0.5 text-[10px] text-orange-700">Ghi chú: {item.notes}</span>}
                                 </span>
                                 <span className="text-slate-800">
                                   {formatCurrency(item.price * item.qty)}

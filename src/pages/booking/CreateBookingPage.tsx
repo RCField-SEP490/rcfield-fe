@@ -10,6 +10,7 @@ import type {
   PaymentComponentLine,
 } from "@/features/customer-booking/data/customer-booking-demo"
 import { menuApi, menuQueryKeys, popularMenuQueryKeys } from "@/features/menu/api/menu.api"
+import { fnbSelectionKey, parseFnbSelectionKey } from "@/features/menu/types"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Button } from "@/shared/ui/button"
 import { useQuery } from "@tanstack/react-query"
@@ -222,6 +223,7 @@ export function CreateBookingPage() {
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>(
     () => parseFnbParam(searchParams.get("fnb")),
   )
+  const [fnbNotes, setFnbNotes] = useState<Record<string, string>>({})
   const [paymentMethod, setPaymentMethod] =
     useState<CustomerPaymentMethod>("vnpay")
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(
@@ -452,10 +454,12 @@ export function CreateBookingPage() {
   )
   const fnbTotal = useMemo(
     () =>
-      menuItems.reduce((sum, item) => {
-        const price =
-          typeof item.price === "string" ? parseFloat(item.price) : item.price
-        return sum + price * (fnbQuantities[item.id] ?? 0)
+      Object.entries(fnbQuantities).reduce((sum, [key, quantity]) => {
+        const { menuItemId, variantId } = parseFnbSelectionKey(key)
+        const item = menuItems.find((candidate) => candidate.id === menuItemId)
+        if (!item) return sum
+        const variant = item.variants?.find((candidate) => candidate.id === variantId)
+        return sum + Number(variant?.price ?? item.price) * quantity
       }, 0),
     [fnbQuantities, menuItems],
   )
@@ -589,7 +593,10 @@ export function CreateBookingPage() {
         participants: participantList,
         fnb_items: Object.entries(fnbQuantities)
           .filter(([, qty]) => qty > 0)
-          .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
+          .map(([key, quantity]) => {
+            const { menuItemId, variantId } = parseFnbSelectionKey(key)
+            return { menu_item_id: menuItemId, variant_id: variantId, quantity, notes: fnbNotes[key]?.trim() || undefined }
+          }),
         ...(selectedTrackConfig
           ? {
               track_type_id: selectedTrackConfig.track_type_id,
@@ -718,7 +725,10 @@ export function CreateBookingPage() {
         participants: participantList,
         fnb_items: Object.entries(fnbQuantities)
           .filter(([, qty]) => qty > 0)
-          .map(([menu_item_id, quantity]) => ({ menu_item_id, quantity })),
+          .map(([key, quantity]) => {
+            const { menuItemId, variantId } = parseFnbSelectionKey(key)
+            return { menu_item_id: menuItemId, variant_id: variantId, quantity, notes: fnbNotes[key]?.trim() || undefined }
+          }),
         ...(selectedTrackConfig
           ? {
               track_type_id: selectedTrackConfig.track_type_id,
@@ -878,12 +888,42 @@ export function CreateBookingPage() {
               popularItems={popularItems}
               isLoading={menuLoading}
               quantities={fnbQuantities}
-              onQuantityChange={(itemId, quantity) =>
-                setFnbQuantities((current) => ({
-                  ...current,
-                  [itemId]: quantity,
-                }))
+              notes={fnbNotes}
+              onQuantityChange={(itemId, variantId, quantity) =>
+                setFnbQuantities((current) => {
+                  const key = fnbSelectionKey(itemId, variantId)
+                  if (quantity <= 0) {
+                    const next = { ...current }
+                    delete next[key]
+                    setFnbNotes((currentNotes) => {
+                      const nextNotes = { ...currentNotes }
+                      delete nextNotes[key]
+                      return nextNotes
+                    })
+                    return next
+                  }
+                  return { ...current, [key]: quantity }
+                })
               }
+              onNoteChange={(key, note) => setFnbNotes((current) => ({ ...current, [key]: note }))}
+              onVariantChange={(fromKey, menuItemId, variantId) => {
+                const toKey = fnbSelectionKey(menuItemId, variantId)
+                if (fromKey === toKey) return
+                setFnbQuantities((current) => {
+                  const quantity = current[fromKey] ?? 0
+                  const next = { ...current }
+                  delete next[fromKey]
+                  next[toKey] = (next[toKey] ?? 0) + quantity
+                  return next
+                })
+                setFnbNotes((current) => {
+                  const note = current[fromKey]
+                  const next = { ...current }
+                  delete next[fromKey]
+                  if (note && !next[toKey]) next[toKey] = note
+                  return next
+                })
+              }}
             />
           )}
           {currentStep === "payment" && (
