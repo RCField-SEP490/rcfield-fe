@@ -364,9 +364,6 @@ function SessionTimer({ plannedEndAt, actualStartAt, status }: { plannedEndAt: s
 }
 
 export function ProviderBookingsPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = (searchParams.get("tab") as "bookings" | "sessions") || "bookings"
-  
   const [selectedDate, setSelectedDate] = useState(today)
   const [selectedCafeId, setSelectedCafeId] = useState<string>("")
   const [cancelTarget, setCancelTarget] = useState<CafeBookingListItem | null>(null)
@@ -374,13 +371,6 @@ export function ProviderBookingsPage() {
   const [page, setPage] = useState(1)
   const [now] = useState(() => Date.now())
   const limit = 20
-
-  const queryClient = useQueryClient()
-
-  const setActiveTab = (tab: "bookings" | "sessions") => {
-    setSearchParams({ tab })
-    setPage(1)
-  }
 
   const { data: cafesData } = useQuery({
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
@@ -397,17 +387,6 @@ export function ProviderBookingsPage() {
   const bookings = data?.data ?? []
   const total = data?.total ?? 0
 
-  // React Query cho Sessions
-  const { data: sessionsData, isLoading: isSessionsLoading, refetch: refetchSessions } = useCafeSessions(activeCafeId, {
-    date: selectedDate,
-    page,
-    limit,
-  })
-  const sessionsList = sessionsData?.sessions ?? []
-  const sessionsTotal = sessionsData?.total ?? 0
-
-  const { data: sessionStats } = useCafeSessionStats(activeCafeId, selectedDate)
-
   const cancelMutation = useCancelBooking()
 
   const confirmedCount = bookings.filter((b) => b.status === "CONFIRMED").length
@@ -417,18 +396,6 @@ export function ProviderBookingsPage() {
     const diff = (new Date(b.slotStart).getTime() - now) / 60000
     return diff < 30 && diff > 0
   }).length
-
-  // WebSocket real-time synchronization
-  useWebSocket((msg) => {
-    if (
-      msg.event === "SESSION_CHECKIN_CONFIRMED" ||
-      msg.event === "SESSION_EXTENSION_PROPOSED" ||
-      msg.event === "CUSTOMER_CHECKOUT_CONFIRMED" ||
-      msg.event === "SESSION_STATUS_CHANGED"
-    ) {
-      void queryClient.invalidateQueries({ queryKey: ["bookings"] })
-    }
-  })
 
   const handleCancelConfirm = (reason: string) => {
     if (!cancelTarget) return
@@ -450,88 +417,38 @@ export function ProviderBookingsPage() {
   return (
     <ProviderShell>
       <ProviderPageHeader
-        title="Danh sách đặt lịch & Phiên chạy"
-        description="Quản lý đặt lịch theo trạng thái thanh toán và giám sát phiên chạy thực tế trên sân."
+        title="Danh sách đặt lịch"
+        description="Quản lý đặt lịch theo trạng thái thanh toán, khung giờ và cơ sở."
       />
 
-      {/* Tab Switcher */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
-        <button
-          className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors ${activeTab === "bookings" ? "border-slate-900 text-slate-900 dark:border-white dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600"}`}
-          onClick={() => setActiveTab("bookings")}
-        >
-          Danh sách đặt lịch
-        </button>
-        <button
-          className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors ${activeTab === "sessions" ? "border-slate-900 text-slate-900 dark:border-white dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600"}`}
-          onClick={() => setActiveTab("sessions")}
-        >
-          Phiên chạy đang diễn ra
-        </button>
-      </div>
-
-      {/* Metric Cards tùy theo Tab */}
-      {activeTab === "bookings" ? (
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <MetricCard
-            label="Hôm nay"
-            value={String(bookings.length)}
-            helper={`${confirmedCount} confirmed, ${pendingCount} pending`}
-            icon={<CalendarClock />}
-            tone="info"
-          />
-          <MetricCard
-            label="Tổng booking"
-            value={String(total)}
-            helper={`Trang ${page}/${Math.ceil(total / limit) || 1}`}
-            icon={<CreditCard />}
-            tone="success"
-          />
-          <MetricCard
-            label="No-show risk"
-            value={String(noShowRisk)}
-            helper="Sắp quá 30 phút"
-            icon={<AlertTriangle />}
-            tone={noShowRisk > 0 ? "warning" : "success"}
-          />
-        </section>
-      ) : (
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <MetricCard
-            label="ACTIVE"
-            value={String(sessionStats?.active ?? 0)}
-            helper="Đang chạy trên sân"
-            icon={<PlayCircle />}
-            tone="success"
-          />
-          <MetricCard
-            label="EXTENDING"
-            value={String(sessionStats?.extending ?? 0)}
-            helper="Chờ khách phản hồi"
-            icon={<CalendarClock />}
-            tone="warning"
-          />
-          <MetricCard
-            label="CHECKING OUT"
-            value={String(sessionStats?.checkingOut ?? 0)}
-            helper="Đang xác nhận ảnh"
-            icon={<ShieldCheck />}
-            tone="info"
-          />
-          <MetricCard
-            label="SỰ CỐ"
-            value={String(sessionStats?.issue ?? 0)}
-            helper="Có bằng chứng hư hỏng"
-            icon={<AlertTriangle />}
-            tone={sessionStats?.issue && sessionStats.issue > 0 ? "danger" : "neutral"}
-          />
-        </section>
-      )}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          label="Hôm nay"
+          value={String(bookings.length)}
+          helper={`${confirmedCount} confirmed, ${pendingCount} pending`}
+          icon={<CalendarClock />}
+          tone="info"
+        />
+        <MetricCard
+          label="Tổng booking"
+          value={String(total)}
+          helper={`Trang ${page}/${Math.ceil(total / limit) || 1}`}
+          icon={<CreditCard />}
+          tone="success"
+        />
+        <MetricCard
+          label="No-show risk"
+          value={String(noShowRisk)}
+          helper="Sắp quá 30 phút"
+          icon={<AlertTriangle />}
+          tone={noShowRisk > 0 ? "warning" : "success"}
+        />
+      </section>
 
       <Panel className="mt-4">
         <PanelTitle
-          title={activeTab === "bookings" ? "Danh sách đặt lịch" : "Live board phiên chạy"}
-          subtitle={activeTab === "bookings" ? "Theo dõi đặt lịch theo cơ sở, thời gian và trạng thái." : "Nhận xe, gia hạn, trả xe và đối soát theo từng phiên chơi."}
+          title="Danh sách đặt lịch"
+          subtitle="Theo dõi đặt lịch theo cơ sở, thời gian và trạng thái."
           action={
             <div className="flex flex-wrap items-center gap-3">
               {cafes.length > 1 && (
@@ -558,235 +475,108 @@ export function ProviderBookingsPage() {
           }
         />
 
-        {activeTab === "bookings" ? (
-          isLoading ? (
-            <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
-          ) : bookings.length === 0 ? (
-            <div className="py-12 text-center text-sm text-slate-400">
-              Không có đặt lịch nào cho ngày {selectedDate}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
-                    <th className="pb-3 pl-1">Mã</th>
-                    <th className="pb-3">Khách hàng</th>
-                    <th className="pb-3">Thời gian</th>
-                    <th className="pb-3">Chế độ</th>
-                    <th className="pb-3">Trạng thái</th>
-                    <th className="pb-3 text-right pr-1">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {bookings.map((booking) => {
-                    const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
-                    const canCancel = booking.status === "CONFIRMED" || booking.status === "PENDING"
-                    return (
-                      <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 pl-1 font-mono font-bold text-slate-800">
-                          #{booking.id.substring(0, 8).toUpperCase()}
-                        </td>
-                        <td className="py-3">
-                          <p className="font-semibold text-slate-800">{booking.customerName}</p>
-                          {booking.customerPhone && (
-                            <p className="text-[10px] text-slate-400">{booking.customerPhone}</p>
-                          )}
-                        </td>
-                        <td className="py-3 text-slate-700">
-                          {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
-                        </td>
-                        <td className="py-3">
-                          <Badge className={`text-[10px] px-1.5 py-0 border-none font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}>
-                            {PLAY_MODE_LABELS[booking.playMode] ?? booking.playMode}
-                          </Badge>
-                        </td>
-                        <td className="py-3">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
-                            {statusInfo.label}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-1 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
+        {isLoading ? (
+          <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
+        ) : bookings.length === 0 ? (
+          <div className="py-12 text-center text-sm text-slate-400">
+            Không có đặt lịch nào cho ngày {selectedDate}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
+                  <th className="pb-3 pl-1">Mã</th>
+                  <th className="pb-3">Khách hàng</th>
+                  <th className="pb-3">Thời gian</th>
+                  <th className="pb-3">Chế độ</th>
+                  <th className="pb-3">Trạng thái</th>
+                  <th className="pb-3 text-right pr-1">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {bookings.map((booking) => {
+                  const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
+                  const canCancel = booking.status === "CONFIRMED" || booking.status === "PENDING"
+                  return (
+                    <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3 pl-1 font-mono font-bold text-slate-800">
+                        #{booking.id.substring(0, 8).toUpperCase()}
+                      </td>
+                      <td className="py-3">
+                        <p className="font-semibold text-slate-800">{booking.customerName}</p>
+                        {booking.customerPhone && (
+                          <p className="text-[10px] text-slate-400">{booking.customerPhone}</p>
+                        )}
+                      </td>
+                      <td className="py-3 text-slate-700">
+                        {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
+                      </td>
+                      <td className="py-3">
+                        <Badge className={`text-[10px] px-1.5 py-0 border-none font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}>
+                          {PLAY_MODE_LABELS[booking.playMode] ?? booking.playMode}
+                        </Badge>
+                      </td>
+                      <td className="py-3">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-1 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-2"
+                            onClick={() => setDetailBookingId(booking.id)}
+                          >
+                            Chi tiết
+                          </Button>
+                          {canCancel && (
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-2"
-                              onClick={() => setDetailBookingId(booking.id)}
+                              className="h-7 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-2"
+                              onClick={() => setCancelTarget(booking)}
                             >
-                              Chi tiết
+                              <XCircle className="h-3 w-3 mr-1" />
+                              Hủy
                             </Button>
-                            {canCancel && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-2"
-                                onClick={() => setCancelTarget(booking)}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Hủy
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-
-              {total > limit && (
-                <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs text-slate-500">
-                    {page} / {Math.ceil(total / limit)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={page >= Math.ceil(total / limit)}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )
-        ) : (
-          isSessionsLoading ? (
-            <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
-          ) : sessionsList.length === 0 ? (
-            <div className="py-12 text-center text-sm text-slate-400">
-              Không có phiên chạy nào cho ngày {selectedDate}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
-                    <th className="pb-3 pl-1">Phiên chơi</th>
-                    <th className="pb-3">Đơn đặt</th>
-                    <th className="pb-3">Xe</th>
-                    <th className="pb-3">Nhân viên</th>
-                    <th className="pb-3">Thời lượng</th>
-                    <th className="pb-3">Trạng thái</th>
-                    <th className="pb-3 text-right pr-1">Sự cố</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {sessionsList.map((session) => {
-                    const stateLabelColors: Record<string, string> = {
-                      ACTIVE: "bg-emerald-100 text-emerald-800",
-                      EXTENDING: "bg-orange-100 text-orange-800",
-                      CHECKING_OUT: "bg-blue-100 text-blue-800",
-                      COMPLETED: "bg-indigo-100 text-indigo-800",
-                      CANCELLED: "bg-red-100 text-red-800",
-                    }
-                    return (
-                      <tr key={session.sessionId} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3 pl-1 font-mono font-bold text-slate-800">
-                          {session.sessionCode}
-                        </td>
-                        <td className="py-3">
-                          <p className="font-mono font-bold text-slate-800">#{session.bookingCode}</p>
-                          <p className="text-[10px] text-slate-500 font-sans">{session.customerName}</p>
-                          <p className="text-[10px] text-slate-400 font-sans">
-                            {session.customerPhone || "Chưa có sđt"}
-                          </p>
-                        </td>
-                        <td className="py-3 font-medium text-slate-800">
-                          {session.vehicles.length === 0 ? (
-                            <p className="text-slate-400">Xe riêng (BYOC)</p>
-                          ) : (
-                            session.vehicles.map((v, idx) => {
-                              if (v.vehicleSource === "BYOC") {
-                                return <p key={idx} className="text-slate-400">Xe riêng (BYOC)</p>
-                              }
-                              const tierLabels: Record<string, string> = {
-                                STANDARD: "Tiêu Chuẩn",
-                                PREMIUM: "Cao Cấp",
-                                RESTRICTED: "Giới Hạn",
-                              }
-                              const tierText = tierLabels[v.tier || ""] || v.tier || "Tiêu Chuẩn"
-                              return (
-                                <div key={idx} className="mb-1 last:mb-0">
-                                  <p className="font-bold text-slate-900 text-xs">{v.catalogName}</p>
-                                  <p className="text-[10px] text-slate-500 font-normal">
-                                    {tierText} &nbsp;&bull;&nbsp; {v.color || "Không màu"} &nbsp;&bull;&nbsp; #{v.identifier || "Chưa gán"}
-                                  </p>
-                                </div>
-                              )
-                            })
                           )}
-                        </td>
-                        <td className="py-3 text-slate-700">
-                          {session.staffName}
-                        </td>
-                        <td className="py-3 text-slate-700">
-                          <SessionTimer
-                            plannedEndAt={session.plannedEndAt}
-                            actualStartAt={session.actualStartAt}
-                            status={session.status}
-                          />
-                        </td>
-                        <td className="py-3">
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${stateLabelColors[session.status] ?? "bg-slate-100 text-slate-800"}`}>
-                            {session.status}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-1 text-right">
-                          {session.hasIssue ? (
-                            <span className="inline-flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-lg border border-red-100">
-                              <AlertTriangle className="h-3 w-3" />
-                              Có lỗi hư hại
-                            </span>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
 
-              {sessionsTotal > limit && (
-                <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs text-slate-500">
-                    {page} / {Math.ceil(sessionsTotal / limit)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                    disabled={page >= Math.ceil(sessionsTotal / limit)}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )
+            {total > limit && (
+              <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-slate-500">
+                  {page} / {Math.ceil(total / limit)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  disabled={page >= Math.ceil(total / limit)}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </Panel>
 

@@ -63,7 +63,7 @@ const providerNavGroups: NavGroup[] = [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Contest", icon: Flag, to: routePaths.providerContests },
-      { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
+      // { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],
   },
