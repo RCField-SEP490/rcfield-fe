@@ -7,6 +7,7 @@ import type {
   CreateBookingResult,
   ListCafeBookingsParams,
   ListMyBookingsParams,
+  ListCafeSessionsParams,
 } from "../types/booking.types"
 
 /**
@@ -205,5 +206,29 @@ export function useCancelBooking() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.all })
     },
+  })
+}
+
+export function useCafeSessions(
+  cafeId: string | undefined,
+  params: ListCafeSessionsParams,
+) {
+  return useQuery({
+    queryKey: bookingQueryKeys.sessions(cafeId ?? "", params),
+    queryFn: () => bookingApi.listCafeSessions(cafeId!, params),
+    enabled: !!cafeId && !!params.date,
+    staleTime: 0,
+  })
+}
+
+export function useCafeSessionStats(
+  cafeId: string | undefined,
+  date: string,
+) {
+  return useQuery({
+    queryKey: bookingQueryKeys.sessionsStats(cafeId ?? "", date),
+    queryFn: () => bookingApi.listCafeSessionStats(cafeId!, date),
+    enabled: !!cafeId && !!date,
+    staleTime: 0,
   })
 }

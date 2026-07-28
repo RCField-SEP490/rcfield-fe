@@ -121,6 +121,7 @@ export interface BookingParticipant {
   guestPhone: string | null
   resolvedName: string | null
   resolvedPhone: string | null
+  resolvedAvatarUrl: string | null
 }
 
 export interface BookingVehicleItem {
@@ -179,14 +180,17 @@ export interface BookingResponse {
   fnb_orders?: FnbOrder[]
   /** @deprecated Use fnb_orders when available. Kept for older API payloads. */
   fnb_order: FnbOrder | null
-  cafe: { name: string; address: string; city: string } | null
+  cafe: { name: string; address: string; city: string; coverImageUrl: string | null } | null
   track_type_name: string | null
+  track_type_cover_image?: string | null
   session: {
     id: string
     status: string
     plannedEndAt: string
     actualStartAt: string
     actualEndAt: string | null
+    proposedExtensionMinutes?: number | null
+    approvedExtensionMinutes?: number | null
   } | null
   damage_breakdown: {
     lineItems: {
@@ -310,6 +314,7 @@ export interface CafeBookingListItem {
   cancellationReason: string | null
   customerName: string
   customerPhone: string | null
+  sessionStatus?: string | null
 }
 
 export interface CafeBookingListResponse {
@@ -324,4 +329,49 @@ export interface ListCafeBookingsParams {
   status?: BookingStatus
   page?: number
   limit?: number
+}
+
+export interface CafeSessionVehicle {
+  catalogName: string | null
+  identifier: string | null
+  color: string | null
+  tier: string | null
+  vehicleSource: string
+}
+
+export interface CafeSessionListItem {
+  sessionId: string
+  sessionCode: string
+  bookingId: string
+  bookingCode: string
+  vehicles: CafeSessionVehicle[]
+  staffName: string
+  customerName: string
+  customerPhone: string | null
+  actualStartAt: string
+  plannedEndAt: string
+  actualEndAt: string | null
+  status: string
+  hasIssue: boolean
+}
+
+export interface CafeSessionListResponse {
+  sessions: CafeSessionListItem[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface ListCafeSessionsParams {
+  date: string
+  status?: string
+  page?: number
+  limit?: number
+}
+
+export interface CafeSessionStatsResponse {
+  active: number
+  extending: number
+  checkingOut: number
+  issue: number
 }
