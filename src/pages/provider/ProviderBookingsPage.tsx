@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight, Wrench, X, Clock, User, PlayCircle, ShieldCheck } from "lucide-react"
+import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight, Wrench, Clock, User, PlayCircle } from "lucide-react"
 import { toast } from "sonner"
-import { useSearchParams } from "react-router"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import { useCafeBookings, useCancelBooking, useBooking, useCafeSessions, useCafeSessionStats } from "@/features/booking/hooks/use-booking"
+import { useCafeBookings, useCancelBooking, useBooking } from "@/features/booking/hooks/use-booking"
 import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { sanitizeImageUrl } from "@/shared/lib/utils"
 import type { BookingStatus, CafeBookingListItem } from "@/features/booking/types/booking.types"
@@ -135,7 +134,7 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
                 <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-200 flex-shrink-0 flex items-center justify-center border border-slate-100">
                   {booker.resolvedAvatarUrl ? (
                     <img
-                      src={sanitizeImageUrl(booker.resolvedAvatarUrl)}
+                      src={sanitizeImageUrl(booker.resolvedAvatarUrl ?? undefined) ?? undefined}
                       alt={booker.resolvedName}
                       className="h-full w-full object-cover"
                     />
@@ -164,7 +163,7 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
                       <div className="h-12 w-20 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 flex items-center justify-center border border-slate-200">
                         {v.coverImageUrl ? (
                           <img
-                            src={sanitizeImageUrl(v.coverImageUrl)}
+                            src={sanitizeImageUrl(v.coverImageUrl ?? undefined) ?? undefined}
                             alt={v.catalogName || "Xe thuê"}
                             className="h-full w-full object-cover"
                           />
@@ -193,7 +192,7 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
                 <div className="flex items-center gap-3 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
                   {booking.track_type_cover_image ? (
                     <img
-                      src={sanitizeImageUrl(booking.track_type_cover_image)}
+                      src={sanitizeImageUrl(booking.track_type_cover_image ?? undefined) ?? undefined}
                       alt={booking.track_type_name}
                       className="h-14 w-20 object-cover flex-shrink-0"
                     />

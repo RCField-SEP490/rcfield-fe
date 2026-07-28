@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  PlayCircle,
   Settings,
   ShieldCheck,
   Share2,
