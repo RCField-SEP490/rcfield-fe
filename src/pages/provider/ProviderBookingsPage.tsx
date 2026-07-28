@@ -61,6 +61,27 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
             {/* Status + mode badges */}
             <div className="flex items-center gap-2 flex-wrap">
               {(() => {
+                if (booking.session?.status === "ACTIVE") {
+                  return (
+                    <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 animate-pulse">
+                      Đang chơi
+                    </span>
+                  )
+                }
+                if (booking.session?.status === "EXTENDING") {
+                  return (
+                    <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800">
+                      Đang gia hạn
+                    </span>
+                  )
+                }
+                if (booking.session?.status === "CHECKING_OUT") {
+                  return (
+                    <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-800">
+                      Chờ trả xe
+                    </span>
+                  )
+                }
                 const s = STATUS_LABELS[booking.status as BookingStatus]
                 return s ? (
                   <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${s.className}`}>{s.label}</span>
@@ -72,14 +93,21 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
             </div>
 
             {/* Time slot */}
-            <div className="flex items-center gap-2 text-sm text-slate-700">
-              <Clock className="h-4 w-4 text-slate-400 shrink-0" />
-              <span className="font-semibold">
-                {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
-              </span>
-              <span className="text-xs text-slate-400">
-                {new Date(booking.slotStart).toLocaleDateString("vi-VN")}
-              </span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <Clock className="h-4 w-4 text-slate-400 shrink-0" />
+                <span className="font-semibold">
+                  {formatTime(booking.slotStart)} – {formatTime(booking.session?.plannedEndAt || booking.slotEnd)}
+                </span>
+                <span className="text-xs text-slate-400">
+                  {new Date(booking.slotStart).toLocaleDateString("vi-VN")}
+                </span>
+              </div>
+              {booking.session?.approvedExtensionMinutes && booking.session.approvedExtensionMinutes > 0 ? (
+                <div className="pl-6 text-[11px] font-bold text-orange-600 flex items-center gap-1 animate-pulse">
+                  <span>( +{booking.session.approvedExtensionMinutes}p gia hạn )</span>
+                </div>
+              ) : null}
             </div>
 
             {/* Customer info with Avatar */}
@@ -145,7 +173,24 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
                 <p className="font-semibold text-slate-700 text-[11px] uppercase tracking-wide">Ca chơi đang diễn ra</p>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Trạng thái</span>
-                  <span className="font-bold text-slate-800">{booking.session.status}</span>
+                  <span className="font-bold text-slate-800">
+                    {(() => {
+                      switch (booking.session.status) {
+                        case "ACTIVE":
+                          return "Đang chơi"
+                        case "EXTENDING":
+                          return `Đang gia hạn (${booking.session.proposedExtensionMinutes || 15} phút)`
+                        case "CHECKING_OUT":
+                          return "Chờ trả xe"
+                        case "COMPLETED":
+                          return "Hoàn thành"
+                        case "CANCELLED":
+                          return "Đã hủy"
+                        default:
+                          return booking.session.status
+                      }
+                    })()}
+                  </span>
                 </div>
                 {booking.session.actualStartAt && (
                   <div className="flex items-center justify-between text-slate-500">
@@ -372,6 +417,24 @@ export function ProviderBookingsPage() {
   const [now] = useState(() => Date.now())
   const limit = 20
 
+  const queryClient = useQueryClient()
+
+  // WebSocket real-time synchronization
+  useWebSocket((msg) => {
+    if (
+      msg.event === "SESSION_CHECKIN_CONFIRMED" ||
+      msg.event === "SESSION_EXTENSION_PROPOSED" ||
+      msg.event === "CUSTOMER_CHECKOUT_CONFIRMED" ||
+      msg.event === "SESSION_STATUS_CHANGED" ||
+      msg.event === "booking.new"
+    ) {
+      void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+      if (detailBookingId) {
+        void queryClient.invalidateQueries({ queryKey: ["booking", detailBookingId] })
+      }
+    }
+  })
+
   const { data: cafesData } = useQuery({
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
     queryFn: () => cafeApi.listCafes({ page: 1, limit: 100, scope: "managed" }),
@@ -518,9 +581,34 @@ export function ProviderBookingsPage() {
                         </Badge>
                       </td>
                       <td className="py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
-                          {statusInfo.label}
-                        </span>
+                        {(() => {
+                          if (booking.sessionStatus === "ACTIVE") {
+                            return (
+                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 animate-pulse">
+                                Đang chơi
+                              </span>
+                            )
+                          }
+                          if (booking.sessionStatus === "EXTENDING") {
+                            return (
+                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800">
+                                Đang gia hạn
+                              </span>
+                            )
+                          }
+                          if (booking.sessionStatus === "CHECKING_OUT") {
+                            return (
+                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-800">
+                                Chờ trả xe
+                              </span>
+                            )
+                          }
+                          return (
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
+                              {statusInfo.label}
+                            </span>
+                          )
+                        })()}
                       </td>
                       <td className="py-3 pr-1 text-right">
                         <div className="flex items-center justify-end gap-1.5">

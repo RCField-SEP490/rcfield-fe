@@ -188,6 +188,8 @@ export interface BookingResponse {
     plannedEndAt: string
     actualStartAt: string
     actualEndAt: string | null
+    proposedExtensionMinutes?: number | null
+    approvedExtensionMinutes?: number | null
   } | null
   damage_breakdown: {
     lineItems: {
@@ -311,6 +313,7 @@ export interface CafeBookingListItem {
   cancellationReason: string | null
   customerName: string
   customerPhone: string | null
+  sessionStatus?: string | null
 }
 
 export interface CafeBookingListResponse {
