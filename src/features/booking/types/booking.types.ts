@@ -325,3 +325,38 @@ export interface ListCafeBookingsParams {
   page?: number
   limit?: number
 }
+
+export interface CafeSessionListItem {
+  sessionId: string
+  sessionCode: string
+  bookingId: string
+  bookingCode: string
+  vehiclesInfo: string
+  staffName: string
+  actualStartAt: string
+  plannedEndAt: string
+  actualEndAt: string | null
+  status: string
+  hasIssue: boolean
+}
+
+export interface CafeSessionListResponse {
+  sessions: CafeSessionListItem[]
+  total: number
+  page: number
+  limit: number
+}
+
+export interface ListCafeSessionsParams {
+  date: string
+  status?: string
+  page?: number
+  limit?: number
+}
+
+export interface CafeSessionStatsResponse {
+  active: number
+  extending: number
+  checkingOut: number
+  issue: number
+}

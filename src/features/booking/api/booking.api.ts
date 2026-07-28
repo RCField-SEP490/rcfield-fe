@@ -12,6 +12,9 @@ import type {
   ListCafeBookingsParams,
   ListMyBookingsParams,
   PaymentResultTransaction,
+  CafeSessionListResponse,
+  ListCafeSessionsParams,
+  CafeSessionStatsResponse,
 } from '../types/booking.types'
 
 interface ApiEnvelope<T> {
@@ -27,6 +30,10 @@ export const bookingQueryKeys = {
     [...bookingQueryKeys.all, 'cafe', cafeId, params ?? {}] as const,
   availability: (cafeId: string, params: CheckAvailabilityParams) =>
     ['availability', cafeId, params] as const,
+  sessions: (cafeId: string, params?: ListCafeSessionsParams) =>
+    [...bookingQueryKeys.all, 'sessions', cafeId, params ?? {}] as const,
+  sessionsStats: (cafeId: string, date: string) =>
+    [...bookingQueryKeys.all, 'sessions-stats', cafeId, date] as const,
 }
 
 export const bookingApi = {
@@ -114,6 +121,28 @@ export const bookingApi = {
     const res = await api.post<ApiEnvelope<BookingResponse>>(
       `/v1/bookings/${bookingId}/cancel`,
       { reason },
+    )
+    return res.data.data
+  },
+
+  listCafeSessions: async (
+    cafeId: string,
+    params: ListCafeSessionsParams,
+  ): Promise<CafeSessionListResponse> => {
+    const res = await api.get<ApiEnvelope<CafeSessionListResponse>>(
+      `/v1/provider/cafes/${cafeId}/sessions`,
+      { params },
+    )
+    return res.data.data
+  },
+
+  listCafeSessionStats: async (
+    cafeId: string,
+    date: string,
+  ): Promise<CafeSessionStatsResponse> => {
+    const res = await api.get<ApiEnvelope<CafeSessionStatsResponse>>(
+      `/v1/provider/cafes/${cafeId}/sessions/stats`,
+      { params: { date } },
     )
     return res.data.data
   },

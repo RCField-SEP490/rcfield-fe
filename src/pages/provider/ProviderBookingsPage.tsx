@@ -1,10 +1,12 @@
-import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight, Wrench, X, Clock, User } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight, Wrench, X, Clock, User, PlayCircle, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
+import { useSearchParams } from "react-router"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
-import { useCafeBookings, useCancelBooking, useBooking } from "@/features/booking/hooks/use-booking"
+import { useCafeBookings, useCancelBooking, useBooking, useCafeSessions, useCafeSessionStats } from "@/features/booking/hooks/use-booking"
+import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import type { BookingStatus, CafeBookingListItem } from "@/features/booking/types/booking.types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -265,7 +267,51 @@ function CancelDialog({
   )
 }
 
+function SessionTimer({ plannedEndAt, actualStartAt, status }: { plannedEndAt: string; actualStartAt: string; status: string }) {
+  const [timeStr, setTimeStr] = useState("")
+
+  useEffect(() => {
+    if (status !== 'ACTIVE') {
+      setTimeStr(status === 'EXTENDING' ? 'Gia hạn' : 'Chờ xác nhận')
+      return
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now()
+      const end = new Date(plannedEndAt).getTime()
+      const diff = end - now
+      const isOverdue = diff < 0
+      const absDiff = Math.abs(diff)
+
+      const hrs = Math.floor(absDiff / 3600000)
+      const mins = Math.floor((absDiff % 3600000) / 60000)
+      const secs = Math.floor((absDiff % 60000) / 1000)
+
+      const format = (n: number) => String(n).padStart(2, "0")
+      const timeFormatted = `${format(hrs)}:${format(mins)}:${format(secs)}`
+
+      if (isOverdue) {
+        setTimeStr(`Quá giờ: ${timeFormatted}`)
+      } else {
+        setTimeStr(timeFormatted)
+      }
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [plannedEndAt, actualStartAt, status])
+
+  const isOverdue = new Date(plannedEndAt).getTime() < Date.now() && status === 'ACTIVE'
+  return (
+    <span className={isOverdue ? "text-red-500 font-bold" : "text-slate-700 font-mono font-medium"}>
+      {timeStr || "00:00:00"}
+    </span>
+  )
+}
+
 export function ProviderBookingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = (searchParams.get("tab") as "bookings" | "sessions") || "bookings"
+  
   const [selectedDate, setSelectedDate] = useState(today)
   const [selectedCafeId, setSelectedCafeId] = useState<string>("")
   const [cancelTarget, setCancelTarget] = useState<CafeBookingListItem | null>(null)
@@ -273,6 +319,13 @@ export function ProviderBookingsPage() {
   const [page, setPage] = useState(1)
   const [now] = useState(() => Date.now())
   const limit = 20
+
+  const queryClient = useQueryClient()
+
+  const setActiveTab = (tab: "bookings" | "sessions") => {
+    setSearchParams({ tab })
+    setPage(1)
+  }
 
   const { data: cafesData } = useQuery({
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
@@ -289,6 +342,17 @@ export function ProviderBookingsPage() {
   const bookings = data?.data ?? []
   const total = data?.total ?? 0
 
+  // React Query cho Sessions
+  const { data: sessionsData, isLoading: isSessionsLoading, refetch: refetchSessions } = useCafeSessions(activeCafeId, {
+    date: selectedDate,
+    page,
+    limit,
+  })
+  const sessionsList = sessionsData?.sessions ?? []
+  const sessionsTotal = sessionsData?.total ?? 0
+
+  const { data: sessionStats } = useCafeSessionStats(activeCafeId, selectedDate)
+
   const cancelMutation = useCancelBooking()
 
   const confirmedCount = bookings.filter((b) => b.status === "CONFIRMED").length
@@ -298,6 +362,18 @@ export function ProviderBookingsPage() {
     const diff = (new Date(b.slotStart).getTime() - now) / 60000
     return diff < 30 && diff > 0
   }).length
+
+  // WebSocket real-time synchronization
+  useWebSocket((msg) => {
+    if (
+      msg.event === "SESSION_CHECKIN_CONFIRMED" ||
+      msg.event === "SESSION_EXTENSION_PROPOSED" ||
+      msg.event === "CUSTOMER_CHECKOUT_CONFIRMED" ||
+      msg.event === "SESSION_STATUS_CHANGED"
+    ) {
+      void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+    }
+  })
 
   const handleCancelConfirm = (reason: string) => {
     if (!cancelTarget) return
@@ -319,38 +395,88 @@ export function ProviderBookingsPage() {
   return (
     <ProviderShell>
       <ProviderPageHeader
-        title="Danh sách đặt lịch"
-        description="Quản lý đặt lịch theo trạng thái thanh toán, khung giờ và cơ sở."
+        title="Danh sách đặt lịch & Phiên chạy"
+        description="Quản lý đặt lịch theo trạng thái thanh toán và giám sát phiên chạy thực tế trên sân."
       />
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricCard
-          label="Hôm nay"
-          value={String(bookings.length)}
-          helper={`${confirmedCount} confirmed, ${pendingCount} pending`}
-          icon={<CalendarClock />}
-          tone="info"
-        />
-        <MetricCard
-          label="Tổng booking"
-          value={String(total)}
-          helper={`Trang ${page}/${Math.ceil(total / limit) || 1}`}
-          icon={<CreditCard />}
-          tone="success"
-        />
-        <MetricCard
-          label="No-show risk"
-          value={String(noShowRisk)}
-          helper="Sắp quá 30 phút"
-          icon={<AlertTriangle />}
-          tone={noShowRisk > 0 ? "warning" : "success"}
-        />
-      </section>
+      {/* Tab Switcher */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
+        <button
+          className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors ${activeTab === "bookings" ? "border-slate-900 text-slate-900 dark:border-white dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+          onClick={() => setActiveTab("bookings")}
+        >
+          Danh sách đặt lịch
+        </button>
+        <button
+          className={`pb-3 text-sm font-bold border-b-2 px-4 transition-colors ${activeTab === "sessions" ? "border-slate-900 text-slate-900 dark:border-white dark:text-white" : "border-transparent text-slate-400 hover:text-slate-600"}`}
+          onClick={() => setActiveTab("sessions")}
+        >
+          Phiên chạy đang diễn ra
+        </button>
+      </div>
+
+      {/* Metric Cards tùy theo Tab */}
+      {activeTab === "bookings" ? (
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <MetricCard
+            label="Hôm nay"
+            value={String(bookings.length)}
+            helper={`${confirmedCount} confirmed, ${pendingCount} pending`}
+            icon={<CalendarClock />}
+            tone="info"
+          />
+          <MetricCard
+            label="Tổng booking"
+            value={String(total)}
+            helper={`Trang ${page}/${Math.ceil(total / limit) || 1}`}
+            icon={<CreditCard />}
+            tone="success"
+          />
+          <MetricCard
+            label="No-show risk"
+            value={String(noShowRisk)}
+            helper="Sắp quá 30 phút"
+            icon={<AlertTriangle />}
+            tone={noShowRisk > 0 ? "warning" : "success"}
+          />
+        </section>
+      ) : (
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <MetricCard
+            label="ACTIVE"
+            value={String(sessionStats?.active ?? 0)}
+            helper="Đang chạy trên sân"
+            icon={<PlayCircle />}
+            tone="success"
+          />
+          <MetricCard
+            label="EXTENDING"
+            value={String(sessionStats?.extending ?? 0)}
+            helper="Chờ khách phản hồi"
+            icon={<CalendarClock />}
+            tone="warning"
+          />
+          <MetricCard
+            label="CHECKING OUT"
+            value={String(sessionStats?.checkingOut ?? 0)}
+            helper="Đang xác nhận ảnh"
+            icon={<ShieldCheck />}
+            tone="info"
+          />
+          <MetricCard
+            label="SỰ CỐ"
+            value={String(sessionStats?.issue ?? 0)}
+            helper="Có bằng chứng hư hỏng"
+            icon={<AlertTriangle />}
+            tone={sessionStats?.issue && sessionStats.issue > 0 ? "danger" : "neutral"}
+          />
+        </section>
+      )}
 
       <Panel className="mt-4">
         <PanelTitle
-          title="Danh sách đặt lịch"
-          subtitle="Theo dõi đặt lịch theo cơ sở, thời gian và trạng thái."
+          title={activeTab === "bookings" ? "Danh sách đặt lịch" : "Live board phiên chạy"}
+          subtitle={activeTab === "bookings" ? "Theo dõi đặt lịch theo cơ sở, thời gian và trạng thái." : "Nhận xe, gia hạn, trả xe và đối soát theo từng phiên chơi."}
           action={
             <div className="flex flex-wrap items-center gap-3">
               {cafes.length > 1 && (
@@ -377,108 +503,209 @@ export function ProviderBookingsPage() {
           }
         />
 
-        {isLoading ? (
-          <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
-        ) : bookings.length === 0 ? (
-          <div className="py-12 text-center text-sm text-slate-400">
-            Không có đặt lịch nào cho ngày {selectedDate}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
-                  <th className="pb-3 pl-1">Mã</th>
-                  <th className="pb-3">Khách hàng</th>
-                  <th className="pb-3">Thời gian</th>
-                  <th className="pb-3">Chế độ</th>
-                  <th className="pb-3">Trạng thái</th>
-                  <th className="pb-3 text-right pr-1">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {bookings.map((booking) => {
-                  const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
-                  const canCancel = booking.status === "CONFIRMED" || booking.status === "PENDING"
-                  return (
-                    <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3 pl-1 font-mono font-bold text-slate-800">
-                        #{booking.id.substring(0, 8).toUpperCase()}
-                      </td>
-                      <td className="py-3">
-                        <p className="font-semibold text-slate-800">{booking.customerName}</p>
-                        {booking.customerPhone && (
-                          <p className="text-[10px] text-slate-400">{booking.customerPhone}</p>
-                        )}
-                      </td>
-                      <td className="py-3 text-slate-700">
-                        {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
-                      </td>
-                      <td className="py-3">
-                        <Badge className={`text-[10px] px-1.5 py-0 border-none font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}>
-                          {PLAY_MODE_LABELS[booking.playMode] ?? booking.playMode}
-                        </Badge>
-                      </td>
-                      <td className="py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
-                          {statusInfo.label}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-1 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-2"
-                            onClick={() => setDetailBookingId(booking.id)}
-                          >
-                            Chi tiết
-                          </Button>
-                          {canCancel && (
+        {activeTab === "bookings" ? (
+          isLoading ? (
+            <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
+          ) : bookings.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-400">
+              Không có đặt lịch nào cho ngày {selectedDate}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
+                    <th className="pb-3 pl-1">Mã</th>
+                    <th className="pb-3">Khách hàng</th>
+                    <th className="pb-3">Thời gian</th>
+                    <th className="pb-3">Chế độ</th>
+                    <th className="pb-3">Trạng thái</th>
+                    <th className="pb-3 text-right pr-1">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {bookings.map((booking) => {
+                    const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
+                    const canCancel = booking.status === "CONFIRMED" || booking.status === "PENDING"
+                    return (
+                      <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3 pl-1 font-mono font-bold text-slate-800">
+                          #{booking.id.substring(0, 8).toUpperCase()}
+                        </td>
+                        <td className="py-3">
+                          <p className="font-semibold text-slate-800">{booking.customerName}</p>
+                          {booking.customerPhone && (
+                            <p className="text-[10px] text-slate-400">{booking.customerPhone}</p>
+                          )}
+                        </td>
+                        <td className="py-3 text-slate-700">
+                          {formatTime(booking.slotStart)} – {formatTime(booking.slotEnd)}
+                        </td>
+                        <td className="py-3">
+                          <Badge className={`text-[10px] px-1.5 py-0 border-none font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}>
+                            {PLAY_MODE_LABELS[booking.playMode] ?? booking.playMode}
+                          </Badge>
+                        </td>
+                        <td className="py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-1 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-2"
-                              onClick={() => setCancelTarget(booking)}
+                              className="h-7 text-[10px] font-bold border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg px-2"
+                              onClick={() => setDetailBookingId(booking.id)}
                             >
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Hủy
+                              Chi tiết
                             </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                            {canCancel && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-[10px] font-bold border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-2"
+                                onClick={() => setCancelTarget(booking)}
+                              >
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Hủy
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
 
-            {total > limit && (
-              <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-slate-500">
-                  {page} / {Math.ceil(total / limit)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-xs"
-                  disabled={page >= Math.ceil(total / limit)}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+              {total > limit && (
+                <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-slate-500">
+                    {page} / {Math.ceil(total / limit)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={page >= Math.ceil(total / limit)}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
+        ) : (
+          isSessionsLoading ? (
+            <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
+          ) : sessionsList.length === 0 ? (
+            <div className="py-12 text-center text-sm text-slate-400">
+              Không có phiên chạy nào cho ngày {selectedDate}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
+                    <th className="pb-3 pl-1">Phiên chơi</th>
+                    <th className="pb-3">Đơn đặt</th>
+                    <th className="pb-3">Xe</th>
+                    <th className="pb-3">Nhân viên</th>
+                    <th className="pb-3">Thời lượng</th>
+                    <th className="pb-3">Trạng thái</th>
+                    <th className="pb-3 text-right pr-1">Sự cố</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {sessionsList.map((session) => {
+                    const stateLabelColors: Record<string, string> = {
+                      ACTIVE: "bg-emerald-100 text-emerald-800",
+                      EXTENDING: "bg-orange-100 text-orange-800",
+                      CHECKING_OUT: "bg-blue-100 text-blue-800",
+                      COMPLETED: "bg-indigo-100 text-indigo-800",
+                      CANCELLED: "bg-red-100 text-red-800",
+                    }
+                    return (
+                      <tr key={session.sessionId} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3 pl-1 font-mono font-bold text-slate-800">
+                          {session.sessionCode}
+                        </td>
+                        <td className="py-3 font-mono text-slate-600">
+                          #{session.bookingCode}
+                        </td>
+                        <td className="py-3 font-medium text-slate-800">
+                          {session.vehiclesInfo}
+                        </td>
+                        <td className="py-3 text-slate-700">
+                          {session.staffName}
+                        </td>
+                        <td className="py-3 text-slate-700">
+                          <SessionTimer
+                            plannedEndAt={session.plannedEndAt}
+                            actualStartAt={session.actualStartAt}
+                            status={session.status}
+                          />
+                        </td>
+                        <td className="py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${stateLabelColors[session.status] ?? "bg-slate-100 text-slate-800"}`}>
+                            {session.status}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-1 text-right">
+                          {session.hasIssue ? (
+                            <span className="inline-flex items-center gap-1 text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded-lg border border-red-100">
+                              <AlertTriangle className="h-3 w-3" />
+                              Có lỗi hư hại
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+
+              {sessionsTotal > limit && (
+                <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-slate-500">
+                    {page} / {Math.ceil(sessionsTotal / limit)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    disabled={page >= Math.ceil(sessionsTotal / limit)}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
         )}
       </Panel>
 
