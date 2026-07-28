@@ -7,6 +7,7 @@ import { useSearchParams } from "react-router"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useCafeBookings, useCancelBooking, useBooking, useCafeSessions, useCafeSessionStats } from "@/features/booking/hooks/use-booking"
 import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
+import { sanitizeImageUrl } from "@/shared/lib/utils"
 import type { BookingStatus, CafeBookingListItem } from "@/features/booking/types/booking.types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -81,26 +82,70 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
               </span>
             </div>
 
-            {/* Customer info */}
+            {/* Customer info with Avatar */}
             {booker?.resolvedName && (
-              <div className="flex items-start gap-2 text-sm text-slate-700">
-                <User className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold">{booker.resolvedName}</span>
-                  {booker.resolvedPhone && (
-                    <span className="text-xs text-slate-400 ml-1">· {booker.resolvedPhone}</span>
+              <div className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-200 flex-shrink-0 flex items-center justify-center border border-slate-100">
+                  {booker.resolvedAvatarUrl ? (
+                    <img
+                      src={sanitizeImageUrl(booker.resolvedAvatarUrl)}
+                      alt={booker.resolvedName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-5 w-5 text-slate-400" />
                   )}
+                </div>
+                <div>
+                  <p className="font-bold text-xs text-slate-900">{booker.resolvedName}</p>
+                  <p className="text-[10px] text-slate-500">{booker.resolvedPhone || "Chưa có sđt"}</p>
                 </div>
               </div>
             )}
 
+            {/* Vehicles list with images */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Phương tiện</p>
+              {booking.vehicles.length === 0 ? (
+                <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-xs text-slate-400">
+                  Xe riêng (BYOC)
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {booking.vehicles.map((v, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                      <div className="h-12 w-20 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0 flex items-center justify-center border border-slate-200">
+                        {v.coverImageUrl ? (
+                          <img
+                            src={sanitizeImageUrl(v.coverImageUrl)}
+                            alt={v.catalogName || "Xe thuê"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Wrench className="h-5 w-5 text-slate-400" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs text-slate-900">{v.catalogName || "Xe thuê"}</p>
+                        <p className="text-[10px] text-slate-500">
+                          {v.tier ? (v.tier === "STANDARD" ? "Tiêu Chuẩn" : v.tier === "PREMIUM" ? "Cao Cấp" : "Giới Hạn") : "Tiêu Chuẩn"}
+                          {v.color ? ` • ${v.color}` : ""}
+                          {v.identifier ? ` • #${v.identifier}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Session info */}
             {booking.session && (
-              <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-xs space-y-1.5">
-                <p className="font-semibold text-slate-700 text-[11px] uppercase tracking-wide">Ca chơi</p>
+              <div className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-xs space-y-2">
+                <p className="font-semibold text-slate-700 text-[11px] uppercase tracking-wide">Ca chơi đang diễn ra</p>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Trạng thái</span>
-                  <span className="font-medium text-slate-700">{booking.session.status}</span>
+                  <span className="font-bold text-slate-800">{booking.session.status}</span>
                 </div>
                 {booking.session.actualStartAt && (
                   <div className="flex items-center justify-between text-slate-500">
@@ -108,6 +153,16 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
                     <span className="font-medium text-slate-700">
                       {new Date(booking.session.actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                     </span>
+                  </div>
+                )}
+                {booking.session.status === "ACTIVE" && (
+                  <div className="flex items-center justify-between text-slate-500">
+                    <span>Thời lượng chơi còn lại</span>
+                    <SessionTimer
+                      plannedEndAt={booking.session.plannedEndAt}
+                      actualStartAt={booking.session.actualStartAt}
+                      status={booking.session.status}
+                    />
                   </div>
                 )}
                 {booking.session.actualEndAt && (
@@ -642,11 +697,37 @@ export function ProviderBookingsPage() {
                         <td className="py-3 pl-1 font-mono font-bold text-slate-800">
                           {session.sessionCode}
                         </td>
-                        <td className="py-3 font-mono text-slate-600">
-                          #{session.bookingCode}
+                        <td className="py-3">
+                          <p className="font-mono font-bold text-slate-800">#{session.bookingCode}</p>
+                          <p className="text-[10px] text-slate-500 font-sans">{session.customerName}</p>
+                          <p className="text-[10px] text-slate-400 font-sans">
+                            {session.customerPhone || "Chưa có sđt"}
+                          </p>
                         </td>
                         <td className="py-3 font-medium text-slate-800">
-                          {session.vehiclesInfo}
+                          {session.vehicles.length === 0 ? (
+                            <p className="text-slate-400">Xe riêng (BYOC)</p>
+                          ) : (
+                            session.vehicles.map((v, idx) => {
+                              if (v.vehicleSource === "BYOC") {
+                                return <p key={idx} className="text-slate-400">Xe riêng (BYOC)</p>
+                              }
+                              const tierLabels: Record<string, string> = {
+                                STANDARD: "Tiêu Chuẩn",
+                                PREMIUM: "Cao Cấp",
+                                RESTRICTED: "Giới Hạn",
+                              }
+                              const tierText = tierLabels[v.tier || ""] || v.tier || "Tiêu Chuẩn"
+                              return (
+                                <div key={idx} className="mb-1 last:mb-0">
+                                  <p className="font-bold text-slate-900 text-xs">{v.catalogName}</p>
+                                  <p className="text-[10px] text-slate-500 font-normal">
+                                    {tierText} &nbsp;&bull;&nbsp; {v.color || "Không màu"} &nbsp;&bull;&nbsp; #{v.identifier || "Chưa gán"}
+                                  </p>
+                                </div>
+                              )
+                            })
+                          )}
                         </td>
                         <td className="py-3 text-slate-700">
                           {session.staffName}

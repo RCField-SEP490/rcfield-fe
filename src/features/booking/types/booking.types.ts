@@ -121,6 +121,7 @@ export interface BookingParticipant {
   guestPhone: string | null
   resolvedName: string | null
   resolvedPhone: string | null
+  resolvedAvatarUrl: string | null
 }
 
 export interface BookingVehicleItem {
@@ -326,13 +327,23 @@ export interface ListCafeBookingsParams {
   limit?: number
 }
 
+export interface CafeSessionVehicle {
+  catalogName: string | null
+  identifier: string | null
+  color: string | null
+  tier: string | null
+  vehicleSource: string
+}
+
 export interface CafeSessionListItem {
   sessionId: string
   sessionCode: string
   bookingId: string
   bookingCode: string
-  vehiclesInfo: string
+  vehicles: CafeSessionVehicle[]
   staffName: string
+  customerName: string
+  customerPhone: string | null
   actualStartAt: string
   plannedEndAt: string
   actualEndAt: string | null
