@@ -36,19 +36,38 @@ const DAMAGE_STATUS_LABELS: Record<string, { label: string; className: string }>
 function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
   const { data: booking, isLoading } = useBooking(bookingId)
   const damage = booking?.damage_breakdown
+  const [visible, setVisible] = useState(false)
 
   const booker = booking?.participants?.find((p) => p.participantType === "BOOKER") ?? booking?.participants?.[0]
 
+  // Trigger slide-in animation after mount
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setVisible(true))
+    return () => cancelAnimationFrame(t)
+  }, [])
+
+  const handleClose = () => {
+    setVisible(false)
+    setTimeout(onClose, 280)
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-white shadow-2xl flex flex-col h-full overflow-y-auto">
+      <div
+        className="fixed inset-0 bg-black/40 transition-opacity duration-300"
+        style={{ opacity: visible ? 1 : 0 }}
+        onClick={handleClose}
+      />
+      <div
+        className="relative z-10 w-full max-w-md bg-white shadow-2xl flex flex-col h-full overflow-y-auto transition-transform duration-300 ease-out"
+        style={{ transform: visible ? "translateX(0)" : "translateX(100%)" }}
+      >
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <h2 className="text-sm font-black text-slate-900">
             Chi tiết đặt lịch #{bookingId.substring(0, 8).toUpperCase()}
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
-            <X className="h-5 w-5" />
+          <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <ChevronRight className="h-5 w-5" />
           </button>
         </div>
 
@@ -166,6 +185,27 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
                 </div>
               )}
             </div>
+
+            {/* Loại sân */}
+            {booking.track_type_name && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Loại sân</p>
+                <div className="flex items-center gap-3 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                  {booking.track_type_cover_image ? (
+                    <img
+                      src={sanitizeImageUrl(booking.track_type_cover_image)}
+                      alt={booking.track_type_name}
+                      className="h-14 w-20 object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="h-14 w-20 flex-shrink-0 bg-slate-200 flex items-center justify-center">
+                      <PlayCircle className="h-6 w-6 text-slate-400" />
+                    </div>
+                  )}
+                  <p className="font-bold text-xs text-slate-900 px-3">{booking.track_type_name}</p>
+                </div>
+              </div>
+            )}
 
             {/* Session info */}
             {booking.session && (

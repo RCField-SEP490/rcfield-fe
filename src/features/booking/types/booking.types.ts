@@ -180,8 +180,9 @@ export interface BookingResponse {
   fnb_orders?: FnbOrder[]
   /** @deprecated Use fnb_orders when available. Kept for older API payloads. */
   fnb_order: FnbOrder | null
-  cafe: { name: string; address: string; city: string } | null
+  cafe: { name: string; address: string; city: string; coverImageUrl: string | null } | null
   track_type_name: string | null
+  track_type_cover_image?: string | null
   session: {
     id: string
     status: string
