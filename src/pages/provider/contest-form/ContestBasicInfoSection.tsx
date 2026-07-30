@@ -1,4 +1,7 @@
 import type { Dispatch, SetStateAction } from "react"
+import { useMutation } from "@tanstack/react-query"
+import { Upload } from "lucide-react"
+import { toast } from "sonner"
 
 import type { TrackType } from "@/features/cafes/types"
 import type {
@@ -6,10 +9,12 @@ import type {
   ContestCatalogType,
   ContestTemplate,
 } from "@/features/contests/types"
+import { contestApi } from "@/features/contests/api/contest.api"
 import {
   Panel,
   PanelTitle,
 } from "@/pages/provider/components/ProviderPrimitives"
+import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Textarea } from "@/shared/ui/textarea"
 
@@ -24,6 +29,7 @@ interface ContestBasicInfoSectionProps {
   contestTypes: ContestCatalogType[] | undefined
   contestFormats: ContestCatalogFormat[] | undefined
   contestTemplates: ContestTemplate[] | undefined
+  contestId?: string
 }
 
 export function ContestBasicInfoSection({
@@ -34,7 +40,35 @@ export function ContestBasicInfoSection({
   contestTypes,
   contestFormats,
   contestTemplates,
+  contestId,
 }: ContestBasicInfoSectionProps) {
+  const uploadBannerMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!contestId) throw new Error("Cần lưu contest trước khi upload banner")
+      return contestApi.uploadBanner(contestId, file)
+    },
+    onSuccess: (data) => {
+      setForm((s) => ({ ...s, banner_image_url: data.banner_image_url }))
+      toast.success("Upload banner thành công")
+    },
+    onError: () => {
+      toast.error("Không thể upload banner")
+    },
+  })
+
+  const handleBannerFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ảnh tối đa 5MB")
+      return
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type)) {
+      toast.error("Chỉ hỗ trợ JPG, PNG, WEBP")
+      return
+    }
+    uploadBannerMutation.mutate(file)
+  }
   return (
     <Panel>
       <PanelTitle
@@ -215,12 +249,48 @@ export function ContestBasicInfoSection({
           className="md:col-span-2"
           error={validationErrors["banner_image_url"]}
         >
-          <Input
-            value={form.banner_image_url}
-            onChange={(e) =>
-              setForm((s) => ({ ...s, banner_image_url: e.target.value }))
-            }
-          />
+          <div className="space-y-3">
+            <Input
+              value={form.banner_image_url}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, banner_image_url: e.target.value }))
+              }
+              placeholder="https://..."
+            />
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-lg"
+                disabled={!contestId || uploadBannerMutation.isPending}
+                onClick={() => document.getElementById("contest-banner-file")?.click()}
+              >
+                <Upload className="size-4" />
+                {uploadBannerMutation.isPending ? "Đang upload..." : "Upload ảnh"}
+              </Button>
+              <input
+                id="contest-banner-file"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/jpg"
+                className="hidden"
+                onChange={handleBannerFileChange}
+              />
+              {!contestId ? (
+                <p className="text-xs text-muted-foreground">
+                  Lưu contest trước để upload banner
+                </p>
+              ) : null}
+            </div>
+            {form.banner_image_url ? (
+              <div className="rounded-xl border border-border bg-muted/30 p-2">
+                <img
+                  src={form.banner_image_url}
+                  alt="Banner preview"
+                  className="h-32 w-full rounded-lg object-cover"
+                />
+              </div>
+            ) : null}
+          </div>
         </ContestFormField>
         <ContestFormField
           label="Mô tả"

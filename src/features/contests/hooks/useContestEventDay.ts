@@ -23,10 +23,12 @@ export function useContestEventDay(contestId?: string) {
     mutationFn: ({
       registrationId,
       checkedInCafeId,
+      byocConfirmed,
     }: {
       registrationId: string
       checkedInCafeId: string
-    }) => contestApi.checkInRegistration(registrationId, checkedInCafeId),
+      byocConfirmed?: boolean
+    }) => contestApi.checkInRegistration(registrationId, checkedInCafeId, byocConfirmed),
     onSuccess: async () => {
       await invalidateEventDay()
       lookupMutation.reset()

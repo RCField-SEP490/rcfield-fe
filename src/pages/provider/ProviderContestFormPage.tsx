@@ -85,6 +85,7 @@ export function ProviderContestFormPage() {
           contestTypes={typesQuery.data}
           contestFormats={formatsQuery.data}
           contestTemplates={templatesQuery.data}
+          contestId={contestId}
         />
 
         <div className="space-y-4">

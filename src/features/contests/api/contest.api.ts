@@ -503,10 +503,11 @@ export const contestApi = {
   checkInRegistration: async (
     registrationId: string,
     checkedInCafeId: string,
+    byocConfirmed?: boolean,
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/check-in`,
-      { checked_in_cafe_id: checkedInCafeId },
+      { checked_in_cafe_id: checkedInCafeId, byoc_confirmed: byocConfirmed },
     )
     return mapContestRegistration(res.data.data)
   },
@@ -598,5 +599,19 @@ export const contestApi = {
       { reason },
     )
     return mapContestRegistration(res.data.data)
+  },
+
+  uploadBanner: async (
+    contestId: string,
+    file: File,
+  ): Promise<{ banner_image_url: string; public_id: string }> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    const res = await api.post<ApiEnvelope<{ banner_image_url: string; public_id: string }>>(
+      `/v1/contests/${contestId}/banner`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    )
+    return res.data.data
   },
 }

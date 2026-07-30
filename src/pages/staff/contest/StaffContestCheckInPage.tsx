@@ -31,19 +31,20 @@ export default function StaffContestCheckInPage() {
     try {
       await eventDay.lookupMutation.mutateAsync(code.trim())
     } catch (error) {
-      toast.error("Không thể tra cứu người đăng ký", { description: getErrorMessage(error).message })
+      toast.error("Không thể tra cứu ngườ đăng ký", { description: getErrorMessage(error).message })
     }
   }
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (byocConfirmed?: boolean) => {
     const registration = eventDay.lookupMutation.data
     if (!registration || !assignedCafeId) return
     try {
       await eventDay.checkInMutation.mutateAsync({
         registrationId: registration.id,
         checkedInCafeId: assignedCafeId,
+        byocConfirmed,
       })
-      toast.success("Đã điểm danh người đăng ký")
+      toast.success("Đã điểm danh ngườ đăng ký")
     } catch (error) {
       toast.error("Không thể điểm danh", { description: getErrorMessage(error).message })
     }
@@ -53,7 +54,7 @@ export default function StaffContestCheckInPage() {
     <div className="space-y-6">
       <StaffHeader
         title={contestQuery.data?.name ?? "Điểm danh giải đấu"}
-        subtitle="Tra cứu người đăng ký theo mã điểm danh và xác nhận điểm danh đúng cơ sở được phân công."
+        subtitle="Tra cứu ngườ đăng ký theo mã điểm danh và xác nhận điểm danh đúng cơ sở được phân công."
       />
 
       <ContestCheckInLookupCard
@@ -65,7 +66,7 @@ export default function StaffContestCheckInPage() {
 
       <ContestCheckInResultCard
         registration={eventDay.lookupMutation.data ?? null}
-        onCheckIn={() => void handleCheckIn()}
+        onCheckIn={handleCheckIn}
         isPending={eventDay.checkInMutation.isPending}
       />
     </div>

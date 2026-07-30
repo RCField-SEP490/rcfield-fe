@@ -21,6 +21,10 @@ import {
   getEffectiveContestStatus,
   getJourneyStatusLabel,
 } from "@/features/contests/lib/contest-status"
+import {
+  contestByocDeclarationSchema,
+  contestRentalSlotSchema,
+} from "@/features/contests/schemas/contest.schema"
 import type { ContestItem, ContestRegistration } from "@/features/contests/types"
 import { Card } from "@/shared/ui/card"
 import { Skeleton } from "@/shared/ui/skeleton"
@@ -106,8 +110,26 @@ export function PublicContestDetailPage() {
   })
 
   const contest = contestQuery.data
-  const bookingOptions = myBookingsQuery.data?.data ?? []
+  const allBookingOptions = myBookingsQuery.data?.data ?? []
+  const participatingCafeIds = useMemo(
+    () => new Set((contest?.participating_branches ?? []).map((b) => b.cafe_id)),
+    [contest?.participating_branches],
+  )
+  const bookingOptions = useMemo(() => {
+    if (!contest) return []
+    return allBookingOptions.filter((booking) => {
+      if (booking.status !== "CONFIRMED") return false
+      if (booking.contestId && booking.contestId !== contest.id) return false
+      if (!participatingCafeIds.has(booking.cafeId)) return false
+      const bookingStart = new Date(booking.slotStart).getTime()
+      const bookingEnd = new Date(booking.slotEnd).getTime()
+      const contestStart = new Date(contest.starts_at).getTime()
+      const contestEnd = new Date(contest.ends_at).getTime()
+      return bookingStart <= contestEnd && bookingEnd >= contestStart
+    })
+  }, [allBookingOptions, contest, participatingCafeIds])
   const byocOnly = contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY"
+  const rentalOnly = contest?.vehicle_rule?.vehicle_policy === "RENTAL_ONLY"
   // Mode hiệu lực derive tại render (không setState trong effect):
   // - Giải BYOC_ONLY: ép sang khai báo xe cá nhân.
   // - User không có booking CONFIRMED nào: mặc định "Thuê xe tại quầy"
@@ -116,7 +138,9 @@ export function PublicContestDetailPage() {
     ? "BYOC"
     : registrationMode
   const effectiveRentalMode: "EXISTING_BOOKING" | "NEW_RENTAL" =
-    !rentalModeTouched && myBookingsQuery.isSuccess && bookingOptions.length === 0
+    !rentalModeTouched &&
+    myBookingsQuery.isSuccess &&
+    (bookingOptions.length === 0 || rentalOnly)
       ? "NEW_RENTAL"
       : rentalMode
 
@@ -219,11 +243,38 @@ export function PublicContestDetailPage() {
 
     const branchName = contest.host_branch?.cafe?.name ?? "chi nhánh tổ chức"
     const trackName = contest.track_type?.name ?? "track tương ứng"
+    if (rentalOnly) {
+      return `Giải đấu bắt buộc thuê xe thông qua luồng contest. Bạn chưa có booking contest CONFIRMED phù hợp tại ${branchName}. Hãy chọn "Thuê xe tại quầy" để tạo booking mới ngay trong luồng đăng ký.`
+    }
     return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Bạn có thể thuê xe tại quầy ngay trong luồng đăng ký này.`
-  }, [contest, myBookingsQuery.isLoading, bookingOptions.length, effectiveRentalMode])
+  }, [contest, myBookingsQuery.isLoading, bookingOptions.length, effectiveRentalMode, rentalOnly])
 
   const handleRegister = async () => {
     try {
+      // Client-side validation before hitting the API.
+      if (effectiveRegistrationMode === "BYOC") {
+        const parsed = contestByocDeclarationSchema.safeParse({
+          byoc_vehicle_name: byocVehicleName,
+          byoc_vehicle_brand: byocVehicleBrand,
+          byoc_vehicle_class: byocVehicleClass,
+          byoc_vehicle_notes: byocVehicleNotes || undefined,
+        })
+        if (!parsed.success) {
+          toast.error("Thông tin xe cá nhân chưa hợp lệ", {
+            description: parsed.error.issues[0]?.message,
+          })
+          return
+        }
+      } else if (effectiveRentalMode === "NEW_RENTAL") {
+        const parsed = contestRentalSlotSchema.safeParse(rentalSlotValue)
+        if (!parsed.success) {
+          toast.error("Thông tin thuê xe chưa hợp lệ", {
+            description: parsed.error.issues[0]?.message,
+          })
+          return
+        }
+      }
+
       const registration = await registerMutation.mutateAsync()
       toast.success("Đăng ký tham gia giải đấu thành công!")
       // WF-B: registration can carry an inline rental booking that still needs

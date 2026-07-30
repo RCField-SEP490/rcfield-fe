@@ -117,3 +117,28 @@ export const contestSubmitResultsSchema = z.object({
 export const contestCorrectResultsSchema = contestSubmitResultsSchema.extend({
   force_cascade: z.boolean().optional(),
 })
+
+
+export const contestBannerUploadSchema = z.object({
+  file: z.instanceof(File, { message: "Vui lòng chọn file ảnh" })
+    .refine((file) => file.size <= 5 * 1024 * 1024, "Ảnh tối đa 5MB")
+    .refine(
+      (file) => ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type),
+      "Chỉ hỗ trợ JPG, PNG, WEBP",
+    ),
+})
+
+export const contestByocDeclarationSchema = z.object({
+  byoc_vehicle_name: z.string().trim().min(2, "Tên xe cá nhân tối thiểu 2 ký tự").max(120, "Tên xe cá nhân tối đa 120 ký tự"),
+  byoc_vehicle_brand: z.string().trim().min(1, "Hãng xe không được để trống").max(120, "Hãng xe tối đa 120 ký tự"),
+  byoc_vehicle_class: z.string().trim().min(1, "Class xe không được để trống").max(120, "Class xe tối đa 120 ký tự"),
+  byoc_vehicle_notes: z.string().trim().max(1000, "Ghi chú tối đa 1000 ký tự").optional(),
+})
+
+export const contestRentalSlotSchema = z.object({
+  cafe_id: z.string().uuid("Chi nhánh không hợp lệ"),
+  slot_start: z.string().min(1, "Chọn khung giờ bắt đầu"),
+  slot_end: z.string().min(1, "Chọn khung giờ kết thúc"),
+  track_config_id: z.string().uuid("Cấu hình track không hợp lệ").nullable().optional(),
+  vehicle_catalog_id: z.string().uuid("Dòng xe không hợp lệ").nullable().optional(),
+})
