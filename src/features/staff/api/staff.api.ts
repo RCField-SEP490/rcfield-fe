@@ -453,4 +453,24 @@ export const staffApi = {
     )
     return res.data.data
   },
+
+  lookupCustomerPackages: async (query: string): Promise<any> => {
+    const res = await api.get<{ success: boolean; data: any }>("/v1/staff/packages/lookup", {
+      params: { query },
+    })
+    return res.data.data
+  },
+
+  getTopCustomers: async (): Promise<any> => {
+    const res = await api.get<{ success: boolean; data: any }>("/v1/staff/packages/top-customers")
+    return res.data.data
+  },
+
+  searchCustomers: async (query: string): Promise<any[]> => {
+    const res = await api.get<{ success: boolean; data: any[] }>("/v1/staff/packages/search-customers", {
+      params: { query },
+    })
+    return res.data.data
+  },
 }
+
