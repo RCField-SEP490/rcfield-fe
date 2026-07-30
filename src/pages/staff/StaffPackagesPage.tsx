@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Search, Phone, Mail, Shield, Compass, Calendar, Layers, HelpCircle, CheckCircle2, Info, Loader2, UserCheck } from "lucide-react"
+import { Search, Phone, Mail, Shield, Compass, Calendar, HelpCircle, CheckCircle2, Info, Loader2, UserCheck } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { staffApi } from "@/features/staff/api/staff.api"
 import { useStaffOperations } from "./context/StaffOperationContext"
@@ -63,6 +63,10 @@ export default function StaffPackagesPage() {
     retry: false,
   })
 
+  const filteredSubscriptions = lookupData?.activeSubscriptions?.filter(
+    (sub: any) => sub.status === "ACTIVE" || sub.status === "EXPIRED" || sub.status === "EXHAUSTED"
+  ) || []
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) {
@@ -94,7 +98,7 @@ export default function StaffPackagesPage() {
       case "ACTIVE":
         return (
           <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
-            Đang dùng
+            Hoạt động
           </span>
         )
       case "PENDING_PAYMENT":
@@ -106,7 +110,7 @@ export default function StaffPackagesPage() {
       case "EXHAUSTED":
         return (
           <span className="bg-red-50 border border-red-200 text-red-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0">
-            Hết lượt
+            Hết hạn
           </span>
         )
       case "EXPIRED":
@@ -307,9 +311,9 @@ export default function StaffPackagesPage() {
                 Thành viên tháng (Subscriptions)
               </h4>
 
-              {lookupData.activeSubscriptions && lookupData.activeSubscriptions.length > 0 ? (
+              {filteredSubscriptions && filteredSubscriptions.length > 0 ? (
                 <div className="space-y-3">
-                  {lookupData.activeSubscriptions.map((sub: any, idx: number) => (
+                  {filteredSubscriptions.map((sub: any, idx: number) => (
                     <div
                       key={idx}
                       className="rounded-xl border border-orange-200 bg-[#fffbf9]/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -326,7 +330,11 @@ export default function StaffPackagesPage() {
                         </p>
                         <p className="text-[10px] text-[#6b7280] font-semibold flex items-center gap-1">
                           <Calendar className="size-3 text-[#6b7280]" />
-                          Hạn sử dụng: {sub.expiresAt ? new Date(sub.expiresAt).toLocaleDateString("vi-VN") : "Không thời hạn"}
+                          Ngày bắt đầu: {sub.purchasedAt ? new Date(sub.purchasedAt).toLocaleDateString("vi-VN") : "N/A"}
+                        </p>
+                        <p className="text-[10px] text-[#6b7280] font-semibold flex items-center gap-1">
+                          <Calendar className="size-3 text-[#6b7280]" />
+                          Ngày kết thúc: {sub.expiresAt ? new Date(sub.expiresAt).toLocaleDateString("vi-VN") : "Không thời hạn"}
                         </p>
                       </div>
 
@@ -342,51 +350,6 @@ export default function StaffPackagesPage() {
               ) : (
                 <div className="rounded-xl border border-dashed border-[#e5e2e1] p-6 text-center text-xs text-[#6b7280] font-semibold">
                   Chưa đăng ký gói chạy tháng nào tại cơ sở này.
-                </div>
-              )}
-            </StaffCard>
-
-            {/* COMBOS AND RETAIL PACKAGES */}
-            <StaffCard className="p-5 space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-1.5">
-                <Layers className="size-4 text-[#ea580c]" />
-                Gói Combo ca chơi (Combos)
-              </h4>
-
-              {lookupData.purchasedPackages && lookupData.purchasedPackages.length > 0 ? (
-                <div className="space-y-3">
-                  {lookupData.purchasedPackages.map((pkg: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1">
-                        <h5 className="text-xs font-bold text-[#1c1b1b] flex items-center gap-1.5 flex-wrap">
-                          <span>{pkg.packageName}</span>
-                          {renderStatusBadge(pkg.status)}
-                        </h5>
-                        <p className="text-[10px] text-[#ea580c] font-bold flex items-center gap-1">
-                          <Compass className="size-3 text-[#ea580c]" />
-                          Cơ sở áp dụng: {pkg.cafeName || "Toàn hệ thống"}
-                        </p>
-                        <p className="text-[10px] text-[#6b7280] font-semibold flex items-center gap-1">
-                          <Calendar className="size-3 text-[#6b7280]" />
-                          Ngày mua: {new Date(pkg.purchasedAt).toLocaleDateString("vi-VN")}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg bg-white border border-[#e5e2e1] px-3 py-1.5 text-center shrink-0 font-semibold">
-                        <span className="text-[9px] text-[#6b7280] uppercase block">Số ca còn lại</span>
-                        <span className="text-xs text-[#1c1b1b] font-bold">
-                          {pkg.remainingSlots} / {pkg.totalSlots} ca
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-[#e5e2e1] p-6 text-center text-xs text-[#6b7280] font-semibold">
-                  Không có gói combo lượt chạy nào hoạt động tại cơ sở này.
                 </div>
               )}
             </StaffCard>
