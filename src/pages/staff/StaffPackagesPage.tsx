@@ -67,9 +67,23 @@ export default function StaffPackagesPage() {
     (sub: any) => sub.status === "ACTIVE" || sub.status === "EXPIRED" || sub.status === "EXHAUSTED"
   ) || []
 
+  // Auto reset search results when input is cleared
+  React.useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchTriggerQuery("")
+      setHasSearched(false)
+      setSelectedCustomerId("")
+      setHasSelectedCustomer(false)
+    }
+  }, [searchQuery])
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (!searchQuery.trim()) {
+      setSearchTriggerQuery("")
+      setHasSearched(false)
+      setSelectedCustomerId("")
+      setHasSelectedCustomer(false)
       return
     }
     setSearchTriggerQuery(searchQuery.trim())
