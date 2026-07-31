@@ -26,6 +26,8 @@ interface ContestBasicInfoSectionProps {
   setForm: Dispatch<SetStateAction<ContestFormState>>
   validationErrors: Record<string, string>
   trackTypes: TrackType[] | undefined
+  // null = chưa chọn chi nhánh hoặc đang tải cấu hình sân (dùng danh sách đầy đủ)
+  trackTypesIntersection: TrackType[] | null
   contestTypes: ContestCatalogType[] | undefined
   contestFormats: ContestCatalogFormat[] | undefined
   contestTemplates: ContestTemplate[] | undefined
@@ -37,6 +39,7 @@ export function ContestBasicInfoSection({
   setForm,
   validationErrors,
   trackTypes,
+  trackTypesIntersection,
   contestTypes,
   contestFormats,
   contestTemplates,
@@ -55,6 +58,13 @@ export function ContestBasicInfoSection({
       toast.error("Không thể upload banner")
     },
   })
+
+  const cafesSelected = form.participating_cafe_ids.length > 0
+  const trackTypeOptions = trackTypesIntersection ?? trackTypes
+  const noCommonTrackType =
+    cafesSelected &&
+    trackTypesIntersection !== null &&
+    trackTypesIntersection.length === 0
 
   const handleBannerFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -89,19 +99,30 @@ export function ContestBasicInfoSection({
           error={validationErrors["track_type_id"]}
         >
           <select
-            className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+            className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm disabled:bg-[#f6f3f2] disabled:text-[#9a9494]"
             value={form.track_type_id}
+            disabled={noCommonTrackType}
             onChange={(e) =>
               setForm((s) => ({ ...s, track_type_id: e.target.value }))
             }
           >
             <option value="">Chọn loại đường đua</option>
-            {trackTypes?.map((item) => (
+            {trackTypeOptions?.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </select>
+          {!cafesSelected ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Chọn chi nhánh trước để lọc loại đường đua
+            </p>
+          ) : null}
+          {noCommonTrackType ? (
+            <p className="mt-1 text-xs font-semibold text-red-600">
+              Các chi nhánh đã chọn không có đường đua chung
+            </p>
+          ) : null}
         </ContestFormField>
         <ContestFormField
           label="Loại giải"

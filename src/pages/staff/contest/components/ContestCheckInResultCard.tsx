@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import type { ContestRegistration } from "@/features/contests/types"
 import { formatContestDateTime, getRegistrationDisplayName, getRegistrationSubtitle } from "@/features/contests/lib/contest-runtime"
@@ -13,6 +13,14 @@ type ByocInspectionChecklistItem = {
   itemLabel: string
   status?: "OK" | "NOT_OK" | "NA"
   note?: string
+}
+
+function defaultByocChecklist(): ByocInspectionChecklistItem[] {
+  return [
+    { itemKey: "body", itemLabel: "Thân xe / vỏ xe", status: "OK" },
+    { itemKey: "power_system", itemLabel: "Hệ thống nguồn / pin / motor", status: "OK" },
+    { itemKey: "wheels", itemLabel: "Bánh xe / lốp / trục bánh", status: "OK" },
+  ]
 }
 
 export function ContestCheckInResultCard({
@@ -32,11 +40,18 @@ export function ContestCheckInResultCard({
 }) {
   const [byocConfirmed, setByocConfirmed] = useState(false)
   const [byocPhotos, setByocPhotos] = useState<ByocPhotoSlot[]>([])
-  const [byocChecklist, setByocChecklist] = useState<ByocInspectionChecklistItem[]>([
-    { itemKey: "body", itemLabel: "Thân xe / vỏ xe", status: "OK" },
-    { itemKey: "power_system", itemLabel: "Hệ thống nguồn / pin / motor", status: "OK" },
-    { itemKey: "wheels", itemLabel: "Bánh xe / lốp / trục bánh", status: "OK" },
-  ])
+  const [byocChecklist, setByocChecklist] = useState<ByocInspectionChecklistItem[]>(defaultByocChecklist)
+
+  // Reset trạng thái kiểm tra khi tra cứu sang đăng ký khác để ảnh/checklist
+  // của người trước không bị rò rỉ sang người sau.
+  const registrationId = registration?.id
+  useEffect(() => {
+    queueMicrotask(() => {
+      setByocConfirmed(false)
+      setByocPhotos([])
+      setByocChecklist(defaultByocChecklist())
+    })
+  }, [registrationId])
 
   const isByoc = registration?.vehicleSource === "BYOC"
   const isCheckedIn = registration?.status === "CHECKED_IN"
@@ -57,12 +72,15 @@ export function ContestCheckInResultCard({
     (photo) => photo.url.trim().length > 0 && !photo.uploading,
   ).length
   const anyUploading = byocPhotos.some((photo) => photo.uploading)
+  // BE từ chối check-in BYOC khi có hạng mục NOT_OK (CONTEST_BYOC_INSPECTION_FAILED).
+  const hasNotOkItem = byocChecklist.some((item) => item.status === "NOT_OK")
   const canCheckIn =
     !isByoc ||
     (byocConfirmed &&
       validPhotoCount >= 2 &&
       missingChecklistKeys.length === 0 &&
-      !anyUploading)
+      !anyUploading &&
+      !hasNotOkItem)
 
   const handleCheckIn = () => {
     if (!registration) return
@@ -257,7 +275,13 @@ export function ContestCheckInResultCard({
                     </span>
                   </label>
 
-                  {isByoc && !canCheckIn ? (
+                  {hasNotOkItem ? (
+                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+                      Xe không đạt hạng mục kiểm tra — không thể điểm danh
+                    </p>
+                  ) : null}
+
+                  {isByoc && !canCheckIn && !hasNotOkItem ? (
                     <p className="text-xs text-amber-700">
                       Vui lòng hoàn tất checklist, tải lên ít nhất 2 ảnh (chờ tải xong), và xác nhận xe đạt chuẩn trước khi điểm danh.
                     </p>

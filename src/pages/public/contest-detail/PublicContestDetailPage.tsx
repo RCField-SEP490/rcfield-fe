@@ -1,15 +1,10 @@
 import { useMemo, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft, Info as InfoIcon, ShieldCheck } from "lucide-react"
 import { Link, useParams } from "react-router"
-import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
-import {
-  bookingApi,
-  bookingQueryKeys,
-} from "@/features/booking/api/booking.api"
 import {
   contestApi,
   contestQueryKeys,
@@ -21,10 +16,6 @@ import {
   getEffectiveContestStatus,
   getJourneyStatusLabel,
 } from "@/features/contests/lib/contest-status"
-import {
-  contestByocDeclarationSchema,
-  contestRentalSlotSchema,
-} from "@/features/contests/schemas/contest.schema"
 import type { ContestItem, ContestRegistration } from "@/features/contests/types"
 import { Card } from "@/shared/ui/card"
 import { Skeleton } from "@/shared/ui/skeleton"
@@ -41,42 +32,14 @@ import {
 import { ContestRegistrationPanel } from "./components/ContestRegistrationPanel"
 import { StatusRow } from "./components/DetailPrimitives"
 import { MyRegistrationMatches } from "./components/MyRegistrationSection"
-import { getErrorMessage } from "./utils"
 
 type DetailTab = "overview" | "matches" | "leaderboard" | "registration"
 
 export function PublicContestDetailPage() {
   const { contestId } = useParams()
-  const queryClient = useQueryClient()
   const role = useAuthStore((state) => state.role)
   const profile = useAuthStore((state) => state.user)
-  const [selectedBookingId, setSelectedBookingId] = useState("")
-  const [selectedVehicleId, setSelectedVehicleId] = useState("")
-  const [registrationMode, setRegistrationMode] = useState<"RENTAL" | "BYOC">(
-    "RENTAL",
-  )
-  const [byocVehicleName, setByocVehicleName] = useState("")
-  const [byocVehicleBrand, setByocVehicleBrand] = useState("")
-  const [byocVehicleClass, setByocVehicleClass] = useState("")
-  const [byocVehicleNotes, setByocVehicleNotes] = useState("")
   const [activeTab, setActiveTab] = useState<DetailTab>("overview")
-  const [rentalMode, setRentalMode] = useState<"EXISTING_BOOKING" | "NEW_RENTAL">(
-    "EXISTING_BOOKING",
-  )
-  // Đánh dấu khi user tự chọn nguồn xe để smart-default không ghi đè lựa chọn đó.
-  const [rentalModeTouched, setRentalModeTouched] = useState(false)
-  const handleRentalModeChange = (mode: "EXISTING_BOOKING" | "NEW_RENTAL") => {
-    setRentalModeTouched(true)
-    setRentalMode(mode)
-  }
-  const [rentalSlotValue, setRentalSlotValue] = useState<{
-    cafe_id: string
-    slot_start: string
-    slot_end: string
-    track_config_id?: string | null
-    vehicle_catalog_id?: string | null
-  } | null>(null)
-  const [rentalSlotEstimate, setRentalSlotEstimate] = useState(0)
 
   const contestQuery = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
@@ -88,21 +51,6 @@ export function PublicContestDetailPage() {
     queryFn: () => contestApi.listMatches(contestId!),
     enabled: Boolean(contestId),
   })
-  const myBookingsQuery = useQuery({
-    queryKey: bookingQueryKeys.mine({
-      status: "CONFIRMED",
-      page: 1,
-      limit: 50,
-    }),
-    queryFn: () =>
-      bookingApi.listMyBookings({ status: "CONFIRMED", page: 1, limit: 50 }),
-    enabled: role === "customer",
-  })
-  const bookingDetailQuery = useQuery({
-    queryKey: bookingQueryKeys.detail(selectedBookingId),
-    queryFn: () => bookingApi.getBooking(selectedBookingId),
-    enabled: Boolean(selectedBookingId),
-  })
   const myRegistrationsQuery = useQuery({
     queryKey: contestQueryKeys.myRegistrations(),
     queryFn: () => contestApi.listMyRegistrations(),
@@ -110,88 +58,6 @@ export function PublicContestDetailPage() {
   })
 
   const contest = contestQuery.data
-  const allBookingOptions = myBookingsQuery.data?.data ?? []
-  const participatingCafeIds = useMemo(
-    () => new Set((contest?.participating_branches ?? []).map((b) => b.cafe_id)),
-    [contest?.participating_branches],
-  )
-  const bookingOptions = useMemo(() => {
-    if (!contest) return []
-    return allBookingOptions.filter((booking) => {
-      if (booking.status !== "CONFIRMED") return false
-      if (booking.contestId && booking.contestId !== contest.id) return false
-      if (!participatingCafeIds.has(booking.cafeId)) return false
-      const bookingStart = new Date(booking.slotStart).getTime()
-      const bookingEnd = new Date(booking.slotEnd).getTime()
-      const contestStart = new Date(contest.starts_at).getTime()
-      const contestEnd = new Date(contest.ends_at).getTime()
-      return bookingStart <= contestEnd && bookingEnd >= contestStart
-    })
-  }, [allBookingOptions, contest, participatingCafeIds])
-  const byocOnly = contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY"
-  const rentalOnly = contest?.vehicle_rule?.vehicle_policy === "RENTAL_ONLY"
-  // Mode hiệu lực derive tại render (không setState trong effect):
-  // - Giải BYOC_ONLY: ép sang khai báo xe cá nhân.
-  // - User không có booking CONFIRMED nào: mặc định "Thuê xe tại quầy"
-  //   thay vì kẹt ở nguồn "Xe của tôi" (trừ khi user đã tự chọn).
-  const effectiveRegistrationMode: "RENTAL" | "BYOC" = byocOnly
-    ? "BYOC"
-    : registrationMode
-  const effectiveRentalMode: "EXISTING_BOOKING" | "NEW_RENTAL" =
-    !rentalModeTouched &&
-    myBookingsQuery.isSuccess &&
-    (bookingOptions.length === 0 || rentalOnly)
-      ? "NEW_RENTAL"
-      : rentalMode
-
-  const registerMutation = useMutation({
-    mutationFn: async () => {
-      if (!contestId) throw new Error("Missing contestId")
-      if (effectiveRegistrationMode === "BYOC") {
-        return contestApi.registerContest(contestId, {
-          vehicle_source: "BYOC",
-          byoc_vehicle_name: byocVehicleName,
-          byoc_vehicle_brand: byocVehicleBrand || undefined,
-          byoc_vehicle_class: byocVehicleClass || undefined,
-          byoc_vehicle_notes: byocVehicleNotes || undefined,
-        })
-      }
-      if (effectiveRentalMode === "NEW_RENTAL") {
-        if (!rentalSlotValue) throw new Error("Thiếu thông tin thuê xe")
-        return contestApi.registerContest(contestId, {
-          vehicle_source: "RENTAL",
-          rental_slot: rentalSlotValue,
-        })
-      }
-      return contestApi.registerContest(contestId, {
-        booking_id: selectedBookingId,
-        vehicle_id: selectedVehicleId,
-        vehicle_source: "RENTAL",
-      })
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: contestQueryKeys.myRegistrations(),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: contestQueryKeys.detail(contestId),
-      })
-      void queryClient.invalidateQueries({
-        queryKey: contestQueryKeys.matches(contestId),
-      })
-      setActiveTab("registration")
-    },
-  })
-  const entryFeePaymentMutation = useMutation({
-    mutationFn: async (registrationId: string) =>
-      contestApi.createEntryFeePayment(registrationId),
-  })
-  const bookingCheckoutMutation = useMutation({
-    mutationFn: async (bookingId: string) =>
-      bookingApi.createCheckout(bookingId),
-  })
-
-  const selectedBooking = bookingDetailQuery.data
   const existingRegistration = useMemo(
     () =>
       contest?.my_registration ??
@@ -210,10 +76,6 @@ export function PublicContestDetailPage() {
       ),
     [matches],
   )
-  const selectedVehicle =
-    selectedBooking?.vehicles.find(
-      (vehicle) => vehicle.vehicleId === selectedVehicleId,
-    ) ?? null
   const runtimeSummary = contest?.runtime_summary
   const highlightRounds = contest?.highlight_rounds ?? runtimeSummary?.highlight_rounds ?? []
   const leaderboard = contest?.published_leaderboard ?? null
@@ -221,103 +83,12 @@ export function PublicContestDetailPage() {
   const registrationAvailability = contest
     ? getContestRegistrationAvailability(contest)
     : null
-  const registrationClosed = registrationAvailability !== "AVAILABLE"
-  const allowsByoc =
-    contest?.vehicle_rule?.vehicle_policy === "BYOC_ONLY" ||
-    contest?.vehicle_rule?.vehicle_policy === "MIXED"
   const prizeStructure = contest?.prize_structure
   const prizeItems = Array.isArray(prizeStructure?.items)
     ? (prizeStructure.items as Array<Record<string, unknown>>)
     : Array.isArray(prizeStructure?.tiers)
       ? (prizeStructure.tiers as Array<Record<string, unknown>>)
       : []
-  const bookingHelperMessage = useMemo(() => {
-    if (!contest) return null
-    if (effectiveRentalMode === "NEW_RENTAL") {
-      return "Hệ thống sẽ tạo booking thuê xe mới cho bạn. Bạn có thể chọn chi nhánh, khung giờ và dòng xe phù hợp."
-    }
-    if (myBookingsQuery.isLoading) {
-      return "Đang tải danh sách booking phù hợp..."
-    }
-    if (bookingOptions.length > 0) return null
-
-    const branchName = contest.host_branch?.cafe?.name ?? "chi nhánh tổ chức"
-    const trackName = contest.track_type?.name ?? "track tương ứng"
-    if (rentalOnly) {
-      return `Giải đấu bắt buộc thuê xe thông qua luồng contest. Bạn chưa có booking contest CONFIRMED phù hợp tại ${branchName}. Hãy chọn "Thuê xe tại quầy" để tạo booking mới ngay trong luồng đăng ký.`
-    }
-    return `Bạn chưa có booking CONFIRMED phù hợp tại ${branchName} với track ${trackName}. Bạn có thể thuê xe tại quầy ngay trong luồng đăng ký này.`
-  }, [contest, myBookingsQuery.isLoading, bookingOptions.length, effectiveRentalMode, rentalOnly])
-
-  const handleRegister = async () => {
-    try {
-      // Client-side validation before hitting the API.
-      if (effectiveRegistrationMode === "BYOC") {
-        const parsed = contestByocDeclarationSchema.safeParse({
-          byoc_vehicle_name: byocVehicleName,
-          byoc_vehicle_brand: byocVehicleBrand,
-          byoc_vehicle_class: byocVehicleClass,
-          byoc_vehicle_notes: byocVehicleNotes || undefined,
-        })
-        if (!parsed.success) {
-          toast.error("Thông tin xe cá nhân chưa hợp lệ", {
-            description: parsed.error.issues[0]?.message,
-          })
-          return
-        }
-      } else if (effectiveRentalMode === "NEW_RENTAL") {
-        const parsed = contestRentalSlotSchema.safeParse(rentalSlotValue)
-        if (!parsed.success) {
-          toast.error("Thông tin thuê xe chưa hợp lệ", {
-            description: parsed.error.issues[0]?.message,
-          })
-          return
-        }
-      }
-
-      const registration = await registerMutation.mutateAsync()
-      toast.success("Đăng ký tham gia giải đấu thành công!")
-      // WF-B: registration can carry an inline rental booking that still needs
-      // payment — check it out first, entry fee is paid separately afterwards.
-      const linkedBooking = registration.booking
-      if (linkedBooking && linkedBooking.status === "PENDING") {
-        const checkout = await bookingCheckoutMutation.mutateAsync(
-          linkedBooking.id,
-        )
-        if (checkout.payment_url) {
-          window.location.assign(checkout.payment_url)
-          return
-        }
-      }
-      if (
-        (registration.entryFeeAmount ?? 0) > 0 &&
-        registration.paymentStatus === "PENDING_PAYMENT"
-      ) {
-        const payment = await entryFeePaymentMutation.mutateAsync(
-          registration.id,
-        )
-        window.location.assign(payment.payment_url)
-      }
-    } catch (error) {
-      toast.error("Không thể đăng ký giải đấu", {
-        description: getErrorMessage(error),
-      })
-    }
-  }
-
-  const handleContinuePayment = async () => {
-    if (!existingRegistration) return
-    try {
-      const payment = await entryFeePaymentMutation.mutateAsync(
-        existingRegistration.id,
-      )
-      window.location.assign(payment.payment_url)
-    } catch (error) {
-      toast.error("Không thể tạo thanh toán lệ phí", {
-        description: getErrorMessage(error),
-      })
-    }
-  }
 
   return (
     <section className="bg-background">
@@ -434,43 +205,7 @@ export function PublicContestDetailPage() {
                   role={role}
                   profileName={profile?.email ?? profile?.fullName ?? "--"}
                   existingRegistration={existingRegistration}
-                  entryFeePaymentPending={entryFeePaymentMutation.isPending}
-                  onContinuePayment={() => void handleContinuePayment()}
-                  allowsByoc={allowsByoc}
-                  registrationMode={effectiveRegistrationMode}
-                  setRegistrationMode={setRegistrationMode}
-                  byocVehicleName={byocVehicleName}
-                  setByocVehicleName={setByocVehicleName}
-                  byocVehicleBrand={byocVehicleBrand}
-                  setByocVehicleBrand={setByocVehicleBrand}
-                  byocVehicleClass={byocVehicleClass}
-                  setByocVehicleClass={setByocVehicleClass}
-                  byocVehicleNotes={byocVehicleNotes}
-                  setByocVehicleNotes={setByocVehicleNotes}
-                  bookingOptions={bookingOptions}
-                  bookingsLoading={myBookingsQuery.isLoading}
-                  selectedBookingId={selectedBookingId}
-                  setSelectedBookingId={setSelectedBookingId}
-                  selectedVehicleId={selectedVehicleId}
-                  setSelectedVehicleId={setSelectedVehicleId}
-                  selectedBooking={selectedBooking}
-                  selectedVehicle={selectedVehicle}
-                  bookingHelperMessage={bookingHelperMessage}
-                  registrationClosed={registrationClosed}
-                  registerPending={
-                    registerMutation.isPending ||
-                    entryFeePaymentMutation.isPending ||
-                    bookingCheckoutMutation.isPending
-                  }
-                  onRegister={() => void handleRegister()}
-                  rentalMode={effectiveRentalMode}
-                  setRentalMode={handleRentalModeChange}
-                  rentalSlotValue={rentalSlotValue}
-                  rentalSlotEstimate={rentalSlotEstimate}
-                  onRentalSlotChange={(value, estimate) => {
-                    setRentalSlotValue(value)
-                    setRentalSlotEstimate(estimate)
-                  }}
+                  onRegistered={() => setActiveTab("registration")}
                 />
               </div>
             </div>

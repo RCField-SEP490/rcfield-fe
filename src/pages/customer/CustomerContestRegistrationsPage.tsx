@@ -68,6 +68,9 @@ export function CustomerContestRegistrationsPage() {
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const [cancelId, setCancelId] = useState<string | null>(null)
+  // Giữ CTA thanh toán disabled cho tới khi redirect sang VNPay (không reset
+  // theo isPending vì mutation resolve trước khi điều hướng).
+  const [payingId, setPayingId] = useState<string | null>(null)
   const query = searchParams.get("query") ?? ""
   const journeyStatus = searchParams.get("journey") ?? "ALL"
   const contestStatus = searchParams.get("contestStatus") ?? "ALL"
@@ -91,11 +94,14 @@ export function CustomerContestRegistrationsPage() {
 
   const entryFeePaymentMutation = useMutation({
     mutationFn: (registrationId: string) =>
-      contestApi.createEntryFeePayment(registrationId),
+      contestApi.createEntryFeePayment(registrationId, {
+        return_url: window.location.href,
+      }),
     onSuccess: (payment) => {
       window.location.href = payment.payment_url
     },
     onError: (error) => {
+      setPayingId(null)
       toast.error("Không thể tạo thanh toán lệ phí", {
         description: getErrorMessage(error),
       })
@@ -292,19 +298,14 @@ export function CustomerContestRegistrationsPage() {
                           <Button
                             type="button"
                             className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
-                            disabled={
-                              entryFeePaymentMutation.isPending &&
-                              entryFeePaymentMutation.variables ===
-                                registration.id
-                            }
-                            onClick={() =>
+                            disabled={payingId === registration.id}
+                            onClick={() => {
+                              setPayingId(registration.id)
                               entryFeePaymentMutation.mutate(registration.id)
-                            }
+                            }}
                           >
                             <CreditCard className="mr-2 size-4" />
-                            {entryFeePaymentMutation.isPending &&
-                            entryFeePaymentMutation.variables ===
-                              registration.id
+                            {payingId === registration.id
                               ? "Đang chuyển sang thanh toán..."
                               : "Thanh toán lệ phí"}
                           </Button>
