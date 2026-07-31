@@ -12,7 +12,9 @@ import {
   ChevronLeft,
   Car,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  Eye,
+  EyeOff
 } from "lucide-react"
 
 import { AppLogo } from "@/shared/components/AppLogo"
@@ -21,7 +23,7 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { toast } from "sonner"
-import { registerWithPassword } from "@/features/auth/api/auth.api"
+import { registerWithPassword, checkExists } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { storageKeys } from "@/shared/lib/storage"
 
@@ -29,14 +31,14 @@ const registerSchema = z.object({
   fullName: z.string().min(2, { message: "Họ và tên phải chứa ít nhất 2 ký tự" }),
   email: z.string().email({ message: "Địa chỉ email không hợp lệ" }),
   phoneNumber: z.string()
-    .regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/, { message: "Số điện thoại không đúng định dạng Việt Nam" }),
+    .regex(/(84|0[3|5|7|8|9])+([0-9]{8})\b/, { message: "Số điện thoại không đúng định dạng" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 ký tự" }),
-  confirmPassword: z.string().min(6, { message: "Vui lòng nhập lại mật khẩu xác nhận" }),
+  confirmPassword: z.string().min(6, { message: "Vui lòng xác nhận mật khẩu" }),
   agreeToTerms: z.boolean().refine(val => val === true, {
-    message: "Bạn phải đồng ý với Điều khoản & Chính sách bảo mật"
+    message: "Bạn chưa đồng ý với điều khoản"
   })
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Mật khẩu xác nhận không trùng khớp",
+  message: "Mật khẩu xác nhận không khớp",
   path: ["confirmPassword"],
 })
 
@@ -46,8 +48,10 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const setAuthenticated = useAuthStore((state) => state.setAuthenticated)
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<RegisterFormValues>({
+  const { register, handleSubmit, control, setError, clearErrors, formState: { errors } } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
@@ -59,9 +63,66 @@ export function RegisterPage() {
     }
   })
 
+  const handleCheckEmail = async (val: string) => {
+    if (!val || !val.includes("@")) return
+    try {
+      const res = await checkExists({ email: val })
+      if (res.emailExists) {
+        setError("email", {
+          type: "manual",
+          message: "Email này đã được sử dụng"
+        })
+      } else {
+        clearErrors("email")
+      }
+    } catch {
+      // Bỏ qua lỗi mạng khi check trùng
+    }
+  }
+
+  const handleCheckPhone = async (val: string) => {
+    if (!val || val.length < 8) return
+    try {
+      const res = await checkExists({ phone: val })
+      if (res.phoneExists) {
+        setError("phoneNumber", {
+          type: "manual",
+          message: "Số điện thoại này đã được sử dụng"
+        })
+      } else {
+        clearErrors("phoneNumber")
+      }
+    } catch {
+      // Bỏ qua
+    }
+  }
+
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true)
     try {
+      // Gọi API checkExists kiểm tra trùng email/SĐT trước để hiển thị lỗi inline lập tức
+      const checkRes = await checkExists({
+        email: data.email.trim().toLowerCase(),
+        phone: data.phoneNumber.trim()
+      })
+
+      if (checkRes.emailExists || checkRes.phoneExists) {
+        if (checkRes.emailExists) {
+          setError("email", {
+            type: "manual",
+            message: "Email này đã được sử dụng"
+          })
+        }
+        if (checkRes.phoneExists) {
+          setError("phoneNumber", {
+            type: "manual",
+            message: "Số điện thoại này đã được sử dụng"
+          })
+        }
+        setIsLoading(false)
+        return
+      }
+
       const auth = await registerWithPassword({
         fullName: data.fullName.trim(),
         email: data.email.trim().toLowerCase(),
@@ -98,13 +159,41 @@ export function RegisterPage() {
 
       navigate("/cafes")
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { code?: string; message?: string } } }
+      const err = error as {
+        response?: {
+          data?: {
+            code?: string;
+            message?: string;
+            details?: Record<string, string>;
+          };
+        };
+      };
       const code = err?.response?.data?.code
       const message = err?.response?.data?.message
+      const details = err?.response?.data?.details
 
-      if (code === "EMAIL_TAKEN") {
-        toast.error("Email đã được sử dụng", {
-          description: "Vui lòng dùng email khác hoặc đăng nhập vào tài khoản hiện có.",
+      if (code === "REGISTRATION_CONFLICT" && details) {
+        if (details.email) {
+          setError("email", {
+            type: "manual",
+            message: details.email
+          })
+        }
+        if (details.phone) {
+          setError("phoneNumber", {
+            type: "manual",
+            message: details.phone
+          })
+        }
+      } else if (code === "EMAIL_TAKEN" || code === "EMAIL_ALREADY_EXISTS") {
+        setError("email", {
+          type: "manual",
+          message: "Email này đã được sử dụng"
+        })
+      } else if (code === "PHONE_ALREADY_EXISTS") {
+        setError("phoneNumber", {
+          type: "manual",
+          message: "Số điện thoại này đã được sử dụng"
         })
       } else if (code === "VALIDATION_ERROR") {
         toast.error("Thông tin không hợp lệ", { description: message })
@@ -187,7 +276,7 @@ export function RegisterPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
 
             <div className="space-y-1.5">
               <Label htmlFor="fullName" className="text-xs font-bold text-slate-700">Họ và tên</Label>
@@ -203,9 +292,11 @@ export function RegisterPage() {
                   {...register("fullName")}
                 />
               </div>
-              {errors.fullName && (
-                <p className="text-[11px] font-bold text-red-500">{errors.fullName.message}</p>
-              )}
+              <div className="min-h-[20px] flex items-center mt-1">
+                {errors.fullName && (
+                  <p className="text-[11px] font-bold text-red-500 leading-tight">{errors.fullName.message}</p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -219,12 +310,16 @@ export function RegisterPage() {
                   type="email"
                   placeholder="name@example.com"
                   className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.email ? 'border-red-500 focus:border-red-500' : ''}`}
-                  {...register("email")}
+                  {...register("email", {
+                    onBlur: (e) => handleCheckEmail(e.target.value)
+                  })}
                 />
               </div>
-              {errors.email && (
-                <p className="text-[11px] font-bold text-red-500">{errors.email.message}</p>
-              )}
+              <div className="min-h-[20px] flex items-center mt-1">
+                {errors.email && (
+                  <p className="text-[11px] font-bold text-red-500 leading-tight">{errors.email.message}</p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -238,15 +333,19 @@ export function RegisterPage() {
                   type="tel"
                   placeholder="0987654321"
                   className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.phoneNumber ? 'border-red-500 focus:border-red-500' : ''}`}
-                  {...register("phoneNumber")}
+                  {...register("phoneNumber", {
+                    onBlur: (e) => handleCheckPhone(e.target.value)
+                  })}
                 />
               </div>
-              {errors.phoneNumber && (
-                <p className="text-[11px] font-bold text-red-500">{errors.phoneNumber.message}</p>
-              )}
+              <div className="min-h-[20px] flex items-center mt-1">
+                {errors.phoneNumber && (
+                  <p className="text-[11px] font-bold text-red-500 leading-tight">{errors.phoneNumber.message}</p>
+                )}
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
               <div className="space-y-1.5">
                 <Label htmlFor="password" className="text-xs font-bold text-slate-700">Mật khẩu</Label>
                 <div className="relative">
@@ -255,15 +354,28 @@ export function RegisterPage() {
                   </div>
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.password ? 'border-red-500 focus:border-red-500' : ''}`}
+                    className={`pl-10 pr-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.password ? 'border-red-500 focus:border-red-500' : ''}`}
                     {...register("password")}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-                {errors.password && (
-                  <p className="text-[11px] font-bold text-red-500">{errors.password.message}</p>
-                )}
+                <div className="min-h-[20px] flex items-center mt-1">
+                  {errors.password && (
+                    <p className="text-[11px] font-bold text-red-500 leading-tight">{errors.password.message}</p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1.5">
@@ -274,15 +386,28 @@ export function RegisterPage() {
                   </div>
                   <Input
                     id="confirmPassword"
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className={`pl-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
+                    className={`pl-10 pr-10 h-11 rounded-xl border-slate-200 focus:border-orange-500 focus:ring-orange-500/20 ${errors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
                     {...register("confirmPassword")}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-                {errors.confirmPassword && (
-                  <p className="text-[11px] font-bold text-red-500">{errors.confirmPassword.message}</p>
-                )}
+                <div className="min-h-[20px] flex items-center mt-1">
+                  {errors.confirmPassword && (
+                    <p className="text-[11px] font-bold text-red-500 leading-tight">{errors.confirmPassword.message}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -307,9 +432,11 @@ export function RegisterPage() {
                   <a href="#" className="text-orange-600 hover:underline">Chính sách bảo mật</a>
                 </Label>
               </div>
-              {errors.agreeToTerms && (
-                <p className="text-[11px] font-bold text-red-500">{errors.agreeToTerms.message}</p>
-              )}
+              <div className="min-h-[20px] flex items-center mt-1">
+                {errors.agreeToTerms && (
+                  <p className="text-[11px] font-bold text-red-500 leading-tight">{errors.agreeToTerms.message}</p>
+                )}
+              </div>
             </div>
 
             <Button
