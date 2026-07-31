@@ -222,3 +222,8 @@ export async function logoutSession(accessToken: string, refreshToken: string): 
     }
   )
 }
+
+export async function checkExists(data: { email?: string; phone?: string }): Promise<{ emailExists: boolean; phoneExists: boolean }> {
+  const res = await api.post<{ success: boolean; data: { emailExists: boolean; phoneExists: boolean } }>("/v1/auth/check-exists", data);
+  return res.data.data;
+}
