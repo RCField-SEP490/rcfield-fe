@@ -259,7 +259,7 @@ export default function StaffPackagesPage() {
           <StaffCard className="py-12 text-center text-[#6b7280] space-y-1 border-dashed">
             <Info className="size-8 text-red-500 mx-auto" />
             <p className="text-sm font-bold text-[#1c1b1b]">Không tìm thấy khách hàng!</p>
-            <p className="text-xs">Không tìm thấy khách hàng nào đã từng mua gói tại chi nhánh của bạn khớp với từ khóa trên.</p>
+            <p className="text-xs">Không tìm thấy khách hàng nào đã từng chơi tại chi nhánh của bạn khớp với từ khóa trên.</p>
           </StaffCard>
         )
       )}
@@ -362,8 +362,8 @@ export default function StaffPackagesPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-[#e5e2e1] p-6 text-center text-xs text-[#6b7280] font-semibold">
-                  Chưa đăng ký gói chạy tháng nào tại cơ sở này.
+                <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/30 p-8 text-center text-xs text-amber-700 font-bold uppercase tracking-wider">
+                  Chưa mua gói
                 </div>
               )}
             </StaffCard>
