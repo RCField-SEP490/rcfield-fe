@@ -5,9 +5,12 @@ import { Link, useSearchParams } from "react-router"
 import {
   ArrowRight,
   CalendarClock,
+  Car,
+  CreditCard,
   MapPin,
   ShieldAlert,
   Swords,
+  Ticket,
   Trophy,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -82,6 +85,20 @@ export function CustomerContestRegistrationsPage() {
         contest_status:
           contestStatus === "ALL" ? undefined : (contestStatus as never),
       }),
+    refetchInterval: 15_000,
+  })
+
+  const entryFeePaymentMutation = useMutation({
+    mutationFn: (registrationId: string) =>
+      contestApi.createEntryFeePayment(registrationId),
+    onSuccess: (payment) => {
+      window.location.href = payment.payment_url
+    },
+    onError: (error) => {
+      toast.error("Không thể tạo thanh toán lệ phí", {
+        description: getErrorMessage(error),
+      })
+    },
   })
 
   const cancelMutation = useMutation({
@@ -185,17 +202,24 @@ export function CustomerContestRegistrationsPage() {
           registrations.map((registration) => {
             const contest = registration.contest
             const latestMatch = registration.latestMatch
-            const opponentNames =
-              latestMatch && contest
-                ? registrations
-                    .filter(
-                      (item) =>
-                        item.contest?.id === contest.id &&
-                        item.id !== registration.id,
-                    )
-                    .slice(0, 2)
-                    .map((item) => getRegistrationDisplayName(item))
-                : []
+            const byocDeclaration =
+              registration.vehicleSource === "BYOC"
+                ? ((registration.metadata?.byoc_declaration ?? null) as {
+                    vehicle_name?: string | null
+                    vehicle_brand?: string | null
+                    vehicle_class?: string | null
+                    notes?: string | null
+                  } | null)
+                : null
+            const contestUpcoming = contest?.starts_at
+              ? new Date(contest.starts_at).getTime() > Date.now()
+              : false
+            const bookingNeedsPayment =
+              registration.bookingId &&
+              registration.booking &&
+              ["PENDING", "AWAITING_PAYMENT"].includes(
+                registration.booking.status,
+              )
 
             return (
               <article
@@ -263,6 +287,27 @@ export function CustomerContestRegistrationsPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-2">
+                        {registration.paymentStatus === "PENDING_PAYMENT" ? (
+                          <Button
+                            type="button"
+                            className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
+                            disabled={
+                              entryFeePaymentMutation.isPending &&
+                              entryFeePaymentMutation.variables ===
+                                registration.id
+                            }
+                            onClick={() =>
+                              entryFeePaymentMutation.mutate(registration.id)
+                            }
+                          >
+                            <CreditCard className="mr-2 size-4" />
+                            {entryFeePaymentMutation.isPending &&
+                            entryFeePaymentMutation.variables ===
+                              registration.id
+                              ? "Đang chuyển sang thanh toán..."
+                              : "Thanh toán lệ phí"}
+                          </Button>
+                        ) : null}
                         <Button
                           asChild
                           variant="outline"
@@ -292,6 +337,60 @@ export function CustomerContestRegistrationsPage() {
                         ) : null}
                       </div>
                     </div>
+
+                    {bookingNeedsPayment ? (
+                      <Link
+                        to={routePaths.customerBookingDetail.replace(
+                          ":bookingId",
+                          registration.bookingId!,
+                        )}
+                        className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-orange-600 hover:text-orange-700"
+                      >
+                        Thanh toán tiền thuê xe
+                        <ArrowRight className="size-4" />
+                      </Link>
+                    ) : null}
+
+                    {registration.status === "CONFIRMED" &&
+                    contestUpcoming &&
+                    registration.checkInCode ? (
+                      <p className="mt-4 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
+                        <Ticket className="size-4 shrink-0" />
+                        Khi đến điểm danh, mang theo mã:{" "}
+                        <span className="font-black tracking-widest">
+                          {registration.checkInCode}
+                        </span>
+                      </p>
+                    ) : null}
+
+                    {byocDeclaration ? (
+                      <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                        <div className="flex items-center gap-2 text-amber-900">
+                          <Car className="size-4" />
+                          <h4 className="text-sm font-black uppercase tracking-wide">
+                            Khai báo xe cá nhân (BYOC)
+                          </h4>
+                        </div>
+                        <div className="mt-3 grid gap-3 text-sm text-amber-900 sm:grid-cols-2 xl:grid-cols-4">
+                          <p>
+                            <span className="font-semibold">Tên xe:</span>{" "}
+                            {byocDeclaration.vehicle_name ?? "--"}
+                          </p>
+                          <p>
+                            <span className="font-semibold">Hãng:</span>{" "}
+                            {byocDeclaration.vehicle_brand ?? "--"}
+                          </p>
+                          <p>
+                            <span className="font-semibold">Class:</span>{" "}
+                            {byocDeclaration.vehicle_class ?? "--"}
+                          </p>
+                          <p>
+                            <span className="font-semibold">Ghi chú:</span>{" "}
+                            {byocDeclaration.notes ?? "--"}
+                          </p>
+                        </div>
+                      </section>
+                    ) : null}
 
                     <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                       <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
@@ -338,10 +437,7 @@ export function CustomerContestRegistrationsPage() {
                                   : "Đang chờ cập nhật"}
                             </p>
                             <p className="text-sm font-medium text-slate-600">
-                              Đối thủ nổi bật:{" "}
-                              {opponentNames.length > 0
-                                ? opponentNames.join(", ")
-                                : "Sẽ cập nhật theo bracket"}
+                              Đối thủ sẽ được cập nhật theo bracket.
                             </p>
                           </div>
                         ) : (
@@ -409,7 +505,9 @@ export function CustomerContestRegistrationsPage() {
             </DialogTitle>
             <DialogDescription className="mt-2 text-center text-sm leading-relaxed text-slate-500">
               Bạn có chắc chắn muốn hủy đăng ký tham gia giải đấu này không?
-              Hành động này không thể hoàn tác.
+              Hành động này không thể hoàn tác. Phí tham gia đã thanh toán sẽ
+              được hoàn theo chính sách của giải. Nếu bạn đang thuê xe cho giải
+              này, booking thuê cũng sẽ bị hủy tự động.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 gap-2 sm:justify-center">

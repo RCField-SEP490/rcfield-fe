@@ -480,8 +480,10 @@ export function ContestRegistrationPanel({
               </div>
               <p className="mt-1 text-xs text-emerald-700">
                 Giá tính theo đơn giá/giờ của dòng xe tại chi nhánh. Phí thuê
-                chính thức và tiền cọc (nếu có) sẽ hiển thị ở bước thanh toán
-                booking.
+                chính thức sẽ hiển thị ở bước thanh toán booking.
+              </p>
+              <p className="mt-1 text-xs font-bold text-emerald-800">
+                Tiền cọc xe: sẽ hiển thị ở bước thanh toán VNPay
               </p>
             </div>
           ) : null}
@@ -645,6 +647,23 @@ export function ContestRegistrationPanel({
                 Bạn đã đăng ký giải đấu này
               </span>
             </div>
+            {existingRegistration.paymentStatus === "PENDING_PAYMENT" ? (
+              <div className="rounded-xl border border-orange-200 bg-white p-3">
+                <p className="text-xs font-semibold text-orange-800">
+                  Đăng ký của bạn đang chờ thanh toán lệ phí để hoàn tất.
+                </p>
+                <Button
+                  type="button"
+                  className="mt-2 w-full rounded-xl bg-orange-600 py-5 text-sm font-bold text-white hover:bg-orange-700"
+                  disabled={entryFeePaymentPending}
+                  onClick={onContinuePayment}
+                >
+                  {entryFeePaymentPending
+                    ? "Đang chuyển sang thanh toán..."
+                    : "Thanh toán lệ phí qua VNPay"}
+                </Button>
+              </div>
+            ) : null}
             <JourneyStatusBadge
               status={existingRegistration.customerJourneyStatus}
               className="h-auto px-3 py-1 font-bold"
@@ -672,18 +691,6 @@ export function ContestRegistrationPanel({
                   {existingRegistration.checkInCode}
                 </p>
               </div>
-            ) : null}
-            {existingRegistration.paymentStatus === "PENDING_PAYMENT" ? (
-              <Button
-                type="button"
-                className="w-full rounded-xl bg-orange-600 py-5 text-sm font-bold text-white hover:bg-orange-700"
-                disabled={entryFeePaymentPending}
-                onClick={onContinuePayment}
-              >
-                {entryFeePaymentPending
-                  ? "Đang chuyển sang thanh toán..."
-                  : "Thanh toán lệ phí qua VNPay"}
-              </Button>
             ) : null}
           </div>
         ) : (
