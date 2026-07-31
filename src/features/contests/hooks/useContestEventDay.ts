@@ -23,10 +23,28 @@ export function useContestEventDay(contestId?: string) {
     mutationFn: ({
       registrationId,
       checkedInCafeId,
+      byocConfirmed,
+      byocInspection,
     }: {
       registrationId: string
       checkedInCafeId: string
-    }) => contestApi.checkInRegistration(registrationId, checkedInCafeId),
+      byocConfirmed?: boolean
+      byocInspection?: {
+        photos?: Array<{ url: string; angle?: string; notes?: string }>
+        checklist?: Array<{
+          itemKey: string
+          itemLabel: string
+          status?: 'OK' | 'NOT_OK' | 'NA'
+          note?: string
+        }>
+      }
+    }) =>
+      contestApi.checkInRegistration(
+        registrationId,
+        checkedInCafeId,
+        byocConfirmed,
+        byocInspection,
+      ),
     onSuccess: async () => {
       await invalidateEventDay()
       lookupMutation.reset()

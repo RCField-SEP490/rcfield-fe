@@ -1,4 +1,7 @@
 import type { Dispatch, SetStateAction } from "react"
+import { useMutation } from "@tanstack/react-query"
+import { Upload } from "lucide-react"
+import { toast } from "sonner"
 
 import type { TrackType } from "@/features/cafes/types"
 import type {
@@ -6,10 +9,12 @@ import type {
   ContestCatalogType,
   ContestTemplate,
 } from "@/features/contests/types"
+import { contestApi } from "@/features/contests/api/contest.api"
 import {
   Panel,
   PanelTitle,
 } from "@/pages/provider/components/ProviderPrimitives"
+import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Textarea } from "@/shared/ui/textarea"
 
@@ -21,9 +26,12 @@ interface ContestBasicInfoSectionProps {
   setForm: Dispatch<SetStateAction<ContestFormState>>
   validationErrors: Record<string, string>
   trackTypes: TrackType[] | undefined
+  // null = chưa chọn chi nhánh hoặc đang tải cấu hình sân (dùng danh sách đầy đủ)
+  trackTypesIntersection: TrackType[] | null
   contestTypes: ContestCatalogType[] | undefined
   contestFormats: ContestCatalogFormat[] | undefined
   contestTemplates: ContestTemplate[] | undefined
+  contestId?: string
 }
 
 export function ContestBasicInfoSection({
@@ -31,10 +39,46 @@ export function ContestBasicInfoSection({
   setForm,
   validationErrors,
   trackTypes,
+  trackTypesIntersection,
   contestTypes,
   contestFormats,
   contestTemplates,
+  contestId,
 }: ContestBasicInfoSectionProps) {
+  const uploadBannerMutation = useMutation({
+    mutationFn: async (file: File) => {
+      if (!contestId) throw new Error("Cần lưu contest trước khi upload banner")
+      return contestApi.uploadBanner(contestId, file)
+    },
+    onSuccess: (data) => {
+      setForm((s) => ({ ...s, banner_image_url: data.banner_image_url }))
+      toast.success("Upload banner thành công")
+    },
+    onError: () => {
+      toast.error("Không thể upload banner")
+    },
+  })
+
+  const cafesSelected = form.participating_cafe_ids.length > 0
+  const trackTypeOptions = trackTypesIntersection ?? trackTypes
+  const noCommonTrackType =
+    cafesSelected &&
+    trackTypesIntersection !== null &&
+    trackTypesIntersection.length === 0
+
+  const handleBannerFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Ảnh tối đa 5MB")
+      return
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type)) {
+      toast.error("Chỉ hỗ trợ JPG, PNG, WEBP")
+      return
+    }
+    uploadBannerMutation.mutate(file)
+  }
   return (
     <Panel>
       <PanelTitle
@@ -55,19 +99,30 @@ export function ContestBasicInfoSection({
           error={validationErrors["track_type_id"]}
         >
           <select
-            className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+            className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm disabled:bg-[#f6f3f2] disabled:text-[#9a9494]"
             value={form.track_type_id}
+            disabled={noCommonTrackType}
             onChange={(e) =>
               setForm((s) => ({ ...s, track_type_id: e.target.value }))
             }
           >
             <option value="">Chọn loại đường đua</option>
-            {trackTypes?.map((item) => (
+            {trackTypeOptions?.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
               </option>
             ))}
           </select>
+          {!cafesSelected ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Chọn chi nhánh trước để lọc loại đường đua
+            </p>
+          ) : null}
+          {noCommonTrackType ? (
+            <p className="mt-1 text-xs font-semibold text-red-600">
+              Các chi nhánh đã chọn không có đường đua chung
+            </p>
+          ) : null}
         </ContestFormField>
         <ContestFormField
           label="Loại giải"
@@ -215,12 +270,48 @@ export function ContestBasicInfoSection({
           className="md:col-span-2"
           error={validationErrors["banner_image_url"]}
         >
-          <Input
-            value={form.banner_image_url}
-            onChange={(e) =>
-              setForm((s) => ({ ...s, banner_image_url: e.target.value }))
-            }
-          />
+          <div className="space-y-3">
+            <Input
+              value={form.banner_image_url}
+              onChange={(e) =>
+                setForm((s) => ({ ...s, banner_image_url: e.target.value }))
+              }
+              placeholder="https://..."
+            />
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 gap-2 rounded-lg"
+                disabled={!contestId || uploadBannerMutation.isPending}
+                onClick={() => document.getElementById("contest-banner-file")?.click()}
+              >
+                <Upload className="size-4" />
+                {uploadBannerMutation.isPending ? "Đang upload..." : "Upload ảnh"}
+              </Button>
+              <input
+                id="contest-banner-file"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/jpg"
+                className="hidden"
+                onChange={handleBannerFileChange}
+              />
+              {!contestId ? (
+                <p className="text-xs text-muted-foreground">
+                  Lưu contest trước để upload banner
+                </p>
+              ) : null}
+            </div>
+            {form.banner_image_url ? (
+              <div className="rounded-xl border border-border bg-muted/30 p-2">
+                <img
+                  src={form.banner_image_url}
+                  alt="Banner preview"
+                  className="h-32 w-full rounded-lg object-cover"
+                />
+              </div>
+            ) : null}
+          </div>
         </ContestFormField>
         <ContestFormField
           label="Mô tả"

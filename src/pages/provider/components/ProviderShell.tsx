@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PlayCircle,
   Settings,
   ShieldCheck,
   Share2,
@@ -27,6 +28,7 @@ import {
   Car,
   Package,
   Star,
+  Trophy,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -62,7 +64,8 @@ const providerNavGroups: NavGroup[] = [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Contest", icon: Flag, to: routePaths.providerContests },
-      // { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
+      { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
+      { label: "Giải đấu", icon: Trophy, to: routePaths.providerContests },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],
   },

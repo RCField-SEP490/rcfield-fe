@@ -3,6 +3,8 @@ export type DriverPassport = {
   driver_handle: string
   display_name: string
   passport_code: string
+  public_profile_enabled: boolean
+  leaderboard_opt_in: boolean
   current_title: {
     code: string | null
     label: string | null
@@ -39,6 +41,7 @@ export type GlobalLeaderboardEntry = {
   user_id: string
   display_name: string
   driver_handle: string | null
+  avatar_url: string | null
   current_title: {
     code: string | null
     label: string | null

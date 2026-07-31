@@ -432,6 +432,7 @@ export type ContestLeaderboardEntry = {
   registration_id: string
   user_id: string | null
   display_name: string | null
+  avatar_url?: string | null
   driver_handle: string | null
   driver_title_label: string | null
   wins: number
@@ -457,6 +458,10 @@ export type ContestAuditLogItem = {
   matchId: string | null
   actorId: string | null
   actorRole: string | null
+  /** Tên người thao tác (join từ users) — null với SYSTEM. */
+  actorName?: string | null
+  /** Câu mô tả hành động tiếng Việt do BE build lúc đọc. */
+  actionSummary?: string | null
   eventType: string
   beforeJson: Record<string, unknown> | null
   afterJson: Record<string, unknown> | null
@@ -502,8 +507,6 @@ export type ContestMatchesQuery = {
   cafe_id?: string
   participant_query?: string
 }
-
-
 
 export type ContestAuditLogsQuery = {
   page?: number

@@ -503,10 +503,24 @@ export const contestApi = {
   checkInRegistration: async (
     registrationId: string,
     checkedInCafeId: string,
+    byocConfirmed?: boolean,
+    byocInspection?: {
+      photos?: Array<{ url: string; angle?: string; notes?: string }>;
+      checklist?: Array<{
+        itemKey: string;
+        itemLabel: string;
+        status?: 'OK' | 'NOT_OK' | 'NA';
+        note?: string;
+      }>;
+    },
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/check-in`,
-      { checked_in_cafe_id: checkedInCafeId },
+      {
+        checked_in_cafe_id: checkedInCafeId,
+        byoc_confirmed: byocConfirmed,
+        byoc_inspection: byocInspection,
+      },
     )
     return mapContestRegistration(res.data.data)
   },
@@ -516,6 +530,22 @@ export const contestApi = {
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/cancel`,
+    )
+    return mapContestRegistration(res.data.data)
+  },
+
+  updateByocDeclaration: async (
+    registrationId: string,
+    body: {
+      vehicle_name: string
+      vehicle_brand?: string | null
+      vehicle_class?: string | null
+      notes?: string | null
+    },
+  ): Promise<ContestRegistration> => {
+    const res = await api.patch<ApiEnvelope<ContestRegistration>>(
+      `/v1/contest-registrations/${registrationId}/byoc-declaration`,
+      body,
     )
     return mapContestRegistration(res.data.data)
   },
@@ -598,5 +628,19 @@ export const contestApi = {
       { reason },
     )
     return mapContestRegistration(res.data.data)
+  },
+
+  uploadBanner: async (
+    contestId: string,
+    file: File,
+  ): Promise<{ banner_image_url: string; public_id: string }> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    const res = await api.post<ApiEnvelope<{ banner_image_url: string; public_id: string }>>(
+      `/v1/contests/${contestId}/banner`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    )
+    return res.data.data
   },
 }

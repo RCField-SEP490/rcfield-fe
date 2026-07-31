@@ -79,7 +79,13 @@ export function getPublishedLeaderboard(contest?: ContestItem | null) {
 
 export function getAuditGroup(log: ContestAuditLogItem) {
   if (log.eventType.startsWith("match.")) return "match"
-  if (log.eventType.startsWith("registration.")) return "registration"
+  // booking.* = vòng đời xe thuê của đăng ký → gom vào nhóm Đăng ký.
+  if (
+    log.eventType.startsWith("registration.") ||
+    log.eventType.startsWith("booking.")
+  )
+    return "registration"
+  // race_records.* (sync leaderboard) và contest.* → nhóm Giải đấu.
   return "contest"
 }
 

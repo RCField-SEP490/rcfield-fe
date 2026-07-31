@@ -10,6 +10,7 @@ import type {
   ContestLeaderboardPayload,
   ContestMatch,
 } from "@/features/contests/types"
+import { DriverIdentity } from "@/features/racing/components/DriverIdentity"
 import { Card } from "@/shared/ui/card"
 import { EmptyState } from "@/shared/ui/empty-state"
 
@@ -85,18 +86,19 @@ export function ContestLeaderboardSection({
                       {entry.rank}
                     </td>
                     <td className="py-3">
-                      <div className="space-y-1">
-                        <p className="font-bold text-slate-900">
-                          {entry.display_name ??
-                            participantNameByRegistrationId.get(entry.registration_id) ??
-                            `Người chơi #${entry.registration_id.slice(0, 8)}`}
-                        </p>
-                        {entry.driver_title_label ? (
-                          <p className="text-xs font-bold text-orange-700">
-                            {entry.driver_title_label}
-                          </p>
-                        ) : null}
-                      </div>
+                      <DriverIdentity
+                        name={
+                          entry.display_name ??
+                          participantNameByRegistrationId.get(
+                            entry.registration_id,
+                          ) ??
+                          `Ngườii chơi #${entry.registration_id.slice(0, 8)}`
+                        }
+                        avatarUrl={entry.avatar_url}
+                        titleLabel={entry.driver_title_label}
+                        handle={entry.driver_handle ?? undefined}
+                        size="sm"
+                      />
                     </td>
                     <td className="py-3 text-slate-600">{entry.wins}</td>
                     <td className="py-3 text-slate-600">

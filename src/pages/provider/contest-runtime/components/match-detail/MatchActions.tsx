@@ -1,6 +1,7 @@
 import { Button } from "@/shared/ui/button"
 import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import { Textarea } from "@/shared/ui/textarea"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { MatchDetailField } from "./MatchDetailField"
 
 export function MatchActions({
@@ -25,6 +26,9 @@ export function MatchActions({
   onAdvance: () => Promise<void>
 }) {
   const actionsDisabled = !readyForResultEntry || hasPendingBracketChanges
+  // BE chỉ cho provider force_cascade (staff bị 403) — ẩn khỏi UI staff.
+  const role = useAuthStore((state) => state.role)
+  const canForceCascade = role === "provider"
 
   return (
     <section className="space-y-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
@@ -35,14 +39,16 @@ export function MatchActions({
           onChange={(event) => onReasonChange(event.target.value)}
         />
       </MatchDetailField>
-      <label className="flex items-center gap-2 text-sm font-semibold text-[#1c1b1b]">
-        <input
-          type="checkbox"
-          checked={forceCascade}
-          onChange={(event) => onForceCascadeChange(event.target.checked)}
-        />
-        Cho phép làm mới nhánh kế tiếp khi sửa kết quả
-      </label>
+      {canForceCascade ? (
+        <label className="flex items-center gap-2 text-sm font-semibold text-[#1c1b1b]">
+          <input
+            type="checkbox"
+            checked={forceCascade}
+            onChange={(event) => onForceCascadeChange(event.target.checked)}
+          />
+          Cho phép làm mới nhánh kế tiếp khi sửa kết quả
+        </label>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button
           className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"

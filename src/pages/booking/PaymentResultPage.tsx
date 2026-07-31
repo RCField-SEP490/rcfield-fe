@@ -9,9 +9,11 @@ import {
   Loader2,
   ReceiptText,
   RotateCcw,
+  Trophy,
 } from "lucide-react"
 import { Link, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
+import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 import { bookingApi } from "@/features/booking/api/booking.api"
@@ -125,6 +127,12 @@ export function PaymentResultPage() {
                 </Link>
               </Button>
             )}
+
+            <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
+              <Link to={routePaths.customerContestRegistrations}>
+                <Trophy className="size-4" /> Xem đăng ký giải đấu
+              </Link>
+            </Button>
 
             {isSuccess && bookingId ? (
               <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">

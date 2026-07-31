@@ -10,7 +10,7 @@ import {
   trackTypeApi,
   trackTypeQueryKeys,
 } from "@/features/cafes/api/cafe.api"
-import type { TrackConfig } from "@/features/cafes/types"
+import type { TrackConfig, TrackType } from "@/features/cafes/types"
 import {
   contestApi,
   contestQueryKeys,
@@ -193,8 +193,7 @@ export function useContestForm() {
   useEffect(() => {
     if (form.participating_cafe_ids.length === 0) return
     queueMicrotask(() =>
-      setResourceLocks((current) => {
-        const next = { ...current }
+      setResourceLocks((current) => {        const next = { ...current }
         for (const cafeId of form.participating_cafe_ids) {
           const configs = (trackConfigsByCafe[cafeId] ?? []).filter(
             (item) => item.is_active,
@@ -228,6 +227,38 @@ export function useContestForm() {
       }),
     )
   }, [form.participating_cafe_ids, trackConfigsByCafe])
+
+  // Giao (intersection) loại đường đua mà TẤT CẢ chi nhánh đã chọn đều có
+  // (chỉ tính track config ACTIVE). null = chưa chọn chi nhánh hoặc đang tải
+  // cấu hình sân — khi đó hiển thị toàn bộ track type như trước.
+  const trackTypesIntersection = useMemo<TrackType[] | null>(() => {
+    const cafeIds = form.participating_cafe_ids
+    if (cafeIds.length === 0) return null
+    if (!cafeIds.every((cafeId) => trackConfigsByCafe[cafeId])) return null
+    const activeTypeIds = cafeIds.map(
+      (cafeId) =>
+        new Set(
+          (trackConfigsByCafe[cafeId] ?? [])
+            .filter((config) => config.is_active)
+            .map((config) => config.track_type_id),
+        ),
+    )
+    const commonIds = activeTypeIds.reduce(
+      (common, ids) => new Set([...common].filter((id) => ids.has(id))),
+      activeTypeIds[0],
+    )
+    return (trackTypesQuery.data ?? []).filter((type) => commonIds.has(type.id))
+  }, [form.participating_cafe_ids, trackConfigsByCafe, trackTypesQuery.data])
+
+  // Loại đường đua đang chọn không còn hợp lệ với các chi nhánh mới → reset.
+  useEffect(() => {
+    if (!trackTypesIntersection || !form.track_type_id) return
+    if (trackTypesIntersection.some((type) => type.id === form.track_type_id))
+      return
+    queueMicrotask(() =>
+      setForm((current) => ({ ...current, track_type_id: "" })),
+    )
+  }, [trackTypesIntersection, form.track_type_id])
 
   const saveMutation = useMutation({
     mutationFn: async (payload: ContestUpsertBody) =>
@@ -358,6 +389,7 @@ export function useContestForm() {
     validationErrors,
     setValidationErrors,
     trackConfigsByCafe,
+    trackTypesIntersection,
     resourceLocks,
     setResourceLocks,
     extraConfig,

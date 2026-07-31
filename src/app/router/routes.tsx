@@ -89,6 +89,8 @@ import { ProviderMenuPage } from "@/pages/provider/ProviderMenuPage"
 import { ProviderPackageCopyPage, ProviderPackageCreatePage, ProviderPackageEditPage, ProviderPackagesPage } from "@/pages/provider/ProviderPackagesPage"
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
 import { ProviderPromotionCopyPage, ProviderPromotionCreatePage, ProviderPromotionEditPage, ProviderPromotionsPage } from "@/pages/provider/ProviderPromotionsPage"
+import { ProviderContestsPage } from "@/pages/provider/ProviderContestsPage"
+import { ProviderContestFormPage } from "@/pages/provider/ProviderContestFormPage"
 import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderStaffDetailPage } from "@/pages/provider/ProviderStaffDetailPage"
 import { StaffActivatePage } from "@/pages/staff/activate/StaffActivatePage"
@@ -106,10 +108,9 @@ import { PublicGlobalLeaderboardPage } from "@/pages/public/PublicGlobalLeaderbo
 import { PendingReviewPage } from "@/pages/auth/PendingReviewPage"
 import { RejectedPage } from "@/pages/auth/RejectedPage"
 import { SuspendedPage } from "@/pages/auth/SuspendedPage"
+
 import { routePaths } from "./route-paths"
 import type { UserRole } from "@/shared/types/common"
-import { ProviderContestsPage } from "@/pages/provider/ProviderContestsPage"
-import { ProviderContestFormPage } from "@/pages/provider/ProviderContestFormPage"
 import { ProviderContestWorkspacePage } from "@/pages/provider/contest-runtime/ProviderContestWorkspacePage"
 
 const guardRoute = (element: ReactNode, allowedRoles: UserRole[]) => (

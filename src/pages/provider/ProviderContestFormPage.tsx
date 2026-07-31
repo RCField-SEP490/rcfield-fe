@@ -21,6 +21,7 @@ export function ProviderContestFormPage() {
     setForm,
     validationErrors,
     trackConfigsByCafe,
+    trackTypesIntersection,
     resourceLocks,
     setResourceLocks,
     typesQuery,
@@ -82,9 +83,11 @@ export function ProviderContestFormPage() {
           setForm={setForm}
           validationErrors={validationErrors}
           trackTypes={trackTypesQuery.data}
+          trackTypesIntersection={trackTypesIntersection}
           contestTypes={typesQuery.data}
           contestFormats={formatsQuery.data}
           contestTemplates={templatesQuery.data}
+          contestId={contestId}
         />
 
         <div className="space-y-4">

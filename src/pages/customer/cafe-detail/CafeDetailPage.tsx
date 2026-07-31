@@ -15,6 +15,8 @@ import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { ChatWidget } from "@/features/chat/components/ChatWidget"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
+import { CafeTopDriversSection } from "./components/CafeTopDriversSection"
+import { CafeContestsSection } from "./components/CafeContestsSection"
 import { CafeDetailContent } from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
@@ -169,7 +171,13 @@ export function CafeDetailPage() {
             <motion.div {...entranceProps(1)}>
               <CafePromoBanner cafeId={resolvedCafe.id} />
             </motion.div>
-            <motion.div {...entranceProps(2)} className="lg:hidden">
+            <motion.div {...entranceProps(2)}>
+              <CafeTopDriversSection cafeId={resolvedCafe.id} />
+            </motion.div>
+            <motion.div {...entranceProps(3)}>
+              <CafeContestsSection cafeId={resolvedCafe.id} />
+            </motion.div>
+            <motion.div {...entranceProps(4)} className="lg:hidden">
               <CafeBookingCard
                 cafe={cafe}
                 selectedVehicleId={selectedVehicleId}
@@ -183,17 +191,17 @@ export function CafeDetailPage() {
                 menuItems={cafeMenu?.data ?? []}
               />
             </motion.div>
-            <motion.div {...entranceProps(3)}>
+            <motion.div {...entranceProps(5)}>
               <CafeVehiclesSection
                 cafe={cafe}
                 selectedVehicleId={selectedVehicleId}
                 onSelectVehicle={setSelectedVehicleId}
               />
             </motion.div>
-            <motion.div {...entranceProps(4)}>
+            <motion.div {...entranceProps(6)}>
               <CafePackagesSection cafeId={resolvedCafe.id} />
             </motion.div>
-            <motion.div {...entranceProps(5)}>
+            <motion.div {...entranceProps(7)}>
               <CafeFnbSection
                 menuItems={cafeMenu?.data ?? []}
                 isLoading={menuLoading}
@@ -202,7 +210,7 @@ export function CafeDetailPage() {
                 onChangeFnb={setFnbQuantities}
               />
             </motion.div>
-            <motion.div {...entranceProps(6)}>
+            <motion.div {...entranceProps(8)}>
               <CafeDetailContent
                 description={cafe.description}
                 amenities={cafeDetail?.amenities}
@@ -212,10 +220,10 @@ export function CafeDetailPage() {
             </motion.div>
           </div>
 
-          {/* Giữ position:sticky ở chính <aside> — bọc motion.div ra ngoài sẽ tạo
+          {/* Giữ position:sticky ở chính <aside> - bọc motion.div ra ngoài sẽ tạo
               containing block mới do transform và làm hỏng dính khi cuộn. */}
           <aside className="hidden lg:sticky lg:top-20 lg:block">
-            <motion.div {...entranceProps(2)}>
+            <motion.div {...entranceProps(4)}>
               <CafeBookingCard
                 cafe={cafe}
                 selectedVehicleId={selectedVehicleId}

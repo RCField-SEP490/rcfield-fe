@@ -216,6 +216,7 @@ export interface BookingListItem {
   slotEnd: string
   paymentExpiresAt: string | null
   checkInCode: string | null
+  contestId?: string | null
   createdAt: string
   updatedAt: string
   session: {
