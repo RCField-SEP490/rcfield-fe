@@ -504,10 +504,23 @@ export const contestApi = {
     registrationId: string,
     checkedInCafeId: string,
     byocConfirmed?: boolean,
+    byocInspection?: {
+      photos?: Array<{ url: string; angle?: string; notes?: string }>;
+      checklist?: Array<{
+        itemKey: string;
+        itemLabel: string;
+        status?: 'OK' | 'NOT_OK' | 'NA';
+        note?: string;
+      }>;
+    },
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
       `/v1/contest-registrations/${registrationId}/check-in`,
-      { checked_in_cafe_id: checkedInCafeId, byoc_confirmed: byocConfirmed },
+      {
+        checked_in_cafe_id: checkedInCafeId,
+        byoc_confirmed: byocConfirmed,
+        byoc_inspection: byocInspection,
+      },
     )
     return mapContestRegistration(res.data.data)
   },

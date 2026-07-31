@@ -47,7 +47,6 @@ const customerMenuItems = [
   { label: "Giải đấu tham gia", to: routePaths.customerContestRegistrations, icon: Trophy },
   { label: "Xe cá nhân", to: routePaths.customerVehicles, icon: Car },
   { label: "Gói hội viên", to: routePaths.customerPackages, icon: Package },
-  { label: "Thưởng giải đấu", to: routePaths.customerRewards, icon: Trophy },
 ]
 
 export function PublicHeader() {

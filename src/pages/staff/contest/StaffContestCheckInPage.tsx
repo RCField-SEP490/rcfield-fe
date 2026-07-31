@@ -35,14 +35,26 @@ export default function StaffContestCheckInPage() {
     }
   }
 
-  const handleCheckIn = async (byocConfirmed?: boolean) => {
+  const handleCheckIn = async (payload: {
+    byocConfirmed?: boolean
+    byocInspection?: {
+      photos?: Array<{ url: string; angle?: string; notes?: string }>
+      checklist?: Array<{
+        itemKey: string
+        itemLabel: string
+        status?: 'OK' | 'NOT_OK' | 'NA'
+        note?: string
+      }>
+    }
+  }) => {
     const registration = eventDay.lookupMutation.data
     if (!registration || !assignedCafeId) return
     try {
       await eventDay.checkInMutation.mutateAsync({
         registrationId: registration.id,
         checkedInCafeId: assignedCafeId,
-        byocConfirmed,
+        byocConfirmed: payload.byocConfirmed,
+        byocInspection: payload.byocInspection,
       })
       toast.success("Đã điểm danh ngườ đăng ký")
     } catch (error) {
