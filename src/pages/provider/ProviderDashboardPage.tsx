@@ -47,7 +47,7 @@ import { useProviderDashboard } from "@/features/dashboard/hooks/useProviderDash
 import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
-import type { BookingChannelItem, RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
+import type { BookingChannelItem, RevenuePeriod, RecentBookingItem } from "@/features/dashboard/types/dashboard.types"
 import { AiInsightsPanel } from "@/features/dashboard/components/AiInsightsPanel"
 import ExcelJS from "exceljs"
 import { saveAs } from "file-saver"
@@ -466,7 +466,7 @@ function FleetStatusItem({
 // ── Real Dashboard (hiển thị sau onboarding) ─────────────────────────────────
 
 function RealDashboard({
-  onResetOnboarding,
+  onResetOnboarding: _onResetOnboarding,
 }: {
   onResetOnboarding: () => void
 }) {
