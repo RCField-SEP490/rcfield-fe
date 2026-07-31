@@ -799,6 +799,97 @@ function RealDashboard({
       column.width = Math.max(maxLen + 4, 15)
     })
 
+    // ────────────────────────────────────────────────────────────────────────────
+    // SHEET 5: CHI TIẾT ĐƠN ĐẶT (BOOKINGS)
+    // ────────────────────────────────────────────────────────────────────────────
+    const wsBookings = workbook.addWorksheet("Đơn đặt")
+    wsBookings.views = [{ showGridLines: true }]
+
+    wsBookings.mergeCells("A1:G1")
+    const bkTitle = wsBookings.getCell("A1")
+    bkTitle.value = "DANH SÁCH ĐƠN ĐẶT GẦN ĐÂY"
+    bkTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF0F172A" } }
+    wsBookings.addRow([]) // Dòng trống
+
+    const bkHeader = wsBookings.addRow([
+      "Mã đơn đặt",
+      "Chi nhánh",
+      "Khách hàng",
+      "Chế độ chơi",
+      "Thời gian bắt đầu",
+      "Trạng thái",
+      "Tổng thanh toán (đ)"
+    ])
+    bkHeader.height = 25
+    bkHeader.eachCell((cell) => {
+      cell.fill = headerFill
+      cell.font = headerFont
+      cell.alignment = headerAlignment
+      cell.border = cellBorder
+    })
+
+    const translatePlayMode = (mode: string) => {
+      if (mode === "RENTAL") return "Thuê xe"
+      if (mode === "BYOC") return "Tự mang xe"
+      return mode
+    }
+
+    const translateStatus = (status: string) => {
+      const map: Record<string, string> = {
+        CONFIRMED: "Đã xác nhận",
+        COMPLETED: "Hoàn thành",
+        CANCELLED: "Đã hủy",
+        PENDING: "Chờ thanh toán",
+        NO_SHOW: "Vắng mặt",
+      }
+      return map[status] || status
+    }
+
+    if (recent && recent.length > 0) {
+      recent.forEach((item: any, index: number) => {
+        const formattedDate = new Date(item.slotStart).toLocaleString("vi-VN")
+        const row = wsBookings.addRow([
+          item.bookingId,
+          item.cafeName,
+          item.customerName,
+          translatePlayMode(item.playMode),
+          formattedDate,
+          translateStatus(item.status),
+          item.totalCharged
+        ])
+        row.height = 22
+        row.eachCell((cell, colNum) => {
+          cell.border = cellBorder
+          cell.font = { name: "Calibri", size: 11 }
+          
+          if (colNum === 7) {
+            cell.alignment = { horizontal: "right", vertical: "middle" }
+            cell.numFmt = "#,##0"
+          } else if (colNum === 4 || colNum === 5 || colNum === 6) {
+            cell.alignment = { horizontal: "center", vertical: "middle" }
+          } else {
+            cell.alignment = { horizontal: "left", vertical: "middle" }
+          }
+
+          if (index % 2 === 1) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } }
+          }
+        })
+      })
+    } else {
+      const emptyRow = wsBookings.addRow(["Không có dữ liệu đơn đặt", "", "", "", "", "", 0])
+      emptyRow.eachCell(cell => cell.border = cellBorder)
+    }
+
+    wsBookings.columns.forEach((column) => {
+      let maxLen = 0
+      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? cell.value.toString() : ""
+        if (valStr.length > maxLen) maxLen = valStr.length
+      })
+      column.width = Math.max(maxLen + 4, 15)
+    })
+
     // 6. Ghi và tải file Excel xuống
     const buffer = await workbook.xlsx.writeBuffer()
     const branchNameSafe = selectedCafeId 
