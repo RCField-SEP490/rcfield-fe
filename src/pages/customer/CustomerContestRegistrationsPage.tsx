@@ -8,6 +8,7 @@ import {
   Car,
   CreditCard,
   MapPin,
+  Pencil,
   ShieldAlert,
   Swords,
   Ticket,
@@ -364,32 +365,11 @@ export function CustomerContestRegistrationsPage() {
                     ) : null}
 
                     {byocDeclaration ? (
-                      <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-                        <div className="flex items-center gap-2 text-amber-900">
-                          <Car className="size-4" />
-                          <h4 className="text-sm font-black uppercase tracking-wide">
-                            Khai báo xe cá nhân (BYOC)
-                          </h4>
-                        </div>
-                        <div className="mt-3 grid gap-3 text-sm text-amber-900 sm:grid-cols-2 xl:grid-cols-4">
-                          <p>
-                            <span className="font-semibold">Tên xe:</span>{" "}
-                            {byocDeclaration.vehicle_name ?? "--"}
-                          </p>
-                          <p>
-                            <span className="font-semibold">Hãng:</span>{" "}
-                            {byocDeclaration.vehicle_brand ?? "--"}
-                          </p>
-                          <p>
-                            <span className="font-semibold">Class:</span>{" "}
-                            {byocDeclaration.vehicle_class ?? "--"}
-                          </p>
-                          <p>
-                            <span className="font-semibold">Ghi chú:</span>{" "}
-                            {byocDeclaration.notes ?? "--"}
-                          </p>
-                        </div>
-                      </section>
+                      <ByocDeclarationCard
+                        registrationId={registration.id}
+                        declaration={byocDeclaration}
+                        editable={registration.status === "PENDING"}
+                      />
                     ) : null}
 
                     <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
@@ -540,8 +520,179 @@ export function CustomerContestRegistrationsPage() {
   )
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function ByocDeclarationCard({
+  registrationId,
+  declaration,
+  editable,
+}: {
+  registrationId: string
+  declaration: {
+    vehicle_name?: string | null
+    vehicle_brand?: string | null
+    vehicle_class?: string | null
+    notes?: string | null
+  }
+  editable: boolean
+}) {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [vehicleName, setVehicleName] = useState(declaration.vehicle_name ?? "")
+  const [vehicleBrand, setVehicleBrand] = useState(
+    declaration.vehicle_brand ?? "",
+  )
+  const [vehicleClass, setVehicleClass] = useState(
+    declaration.vehicle_class ?? "",
+  )
+  const [notes, setNotes] = useState(declaration.notes ?? "")
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      contestApi.updateByocDeclaration(registrationId, {
+        vehicle_name: vehicleName.trim(),
+        vehicle_brand: vehicleBrand.trim() || null,
+        vehicle_class: vehicleClass.trim() || null,
+        notes: notes.trim() || null,
+      }),
+    onSuccess: () => {
+      toast.success("Cập nhật khai báo xe thành công!")
+      setEditing(false)
+      void queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.myRegistrations(),
+      })
+      void queryClient.invalidateQueries({ queryKey: contestQueryKeys.all })
+    },
+    onError: (error) => {
+      toast.error("Không thể cập nhật khai báo xe", {
+        description: getErrorMessage(error),
+      })
+    },
+  })
+
+  const isNameValid = vehicleName.trim().length >= 2
+  const inputClassName =
+    "h-10 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm text-amber-950 focus:border-amber-400 focus:outline-none"
+
   return (
+    <section className="mt-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+      <div className="flex items-center justify-between gap-2 text-amber-900">
+        <div className="flex items-center gap-2">
+          <Car className="size-4" />
+          <h4 className="text-sm font-black uppercase tracking-wide">
+            Khai báo xe cá nhân (BYOC)
+          </h4>
+        </div>
+        {editable && !editing ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-xl border-amber-300 bg-white font-bold text-amber-800 hover:bg-amber-100"
+            onClick={() => setEditing(true)}
+          >
+            <Pencil className="mr-1 size-3.5" />
+            Chỉnh sửa
+          </Button>
+        ) : null}
+      </div>
+
+      {editing ? (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-amber-800">
+                Tên xe <span className="text-red-600">*</span>
+              </label>
+              <input
+                className={inputClassName}
+                value={vehicleName}
+                onChange={(e) => setVehicleName(e.target.value)}
+                placeholder="VD: Xe đua của tôi"
+              />
+              {!isNameValid && vehicleName.trim().length > 0 ? (
+                <p className="mt-1 text-xs font-semibold text-red-600">
+                  Tên xe cần ít nhất 2 ký tự.
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-amber-800">
+                Hãng
+              </label>
+              <input
+                className={inputClassName}
+                value={vehicleBrand}
+                onChange={(e) => setVehicleBrand(e.target.value)}
+                placeholder="VD: Tamiya"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-amber-800">
+                Class
+              </label>
+              <input
+                className={inputClassName}
+                value={vehicleClass}
+                onChange={(e) => setVehicleClass(e.target.value)}
+                placeholder="VD: Open"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-amber-800">
+                Ghi chú
+              </label>
+              <input
+                className={inputClassName}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ghi chú thêm (nếu có)"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              className="rounded-xl bg-amber-600 font-bold text-white hover:bg-amber-700"
+              disabled={!isNameValid || updateMutation.isPending}
+              onClick={() => updateMutation.mutate()}
+            >
+              {updateMutation.isPending ? "Đang lưu..." : "Lưu"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-xl border-amber-300 bg-white font-bold text-amber-800 hover:bg-amber-100"
+              disabled={updateMutation.isPending}
+              onClick={() => setEditing(false)}
+            >
+              Hủy
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-3 text-sm text-amber-900 sm:grid-cols-2 xl:grid-cols-4">
+          <p>
+            <span className="font-semibold">Tên xe:</span>{" "}
+            {declaration.vehicle_name ?? "--"}
+          </p>
+          <p>
+            <span className="font-semibold">Hãng:</span>{" "}
+            {declaration.vehicle_brand ?? "--"}
+          </p>
+          <p>
+            <span className="font-semibold">Class:</span>{" "}
+            {declaration.vehicle_class ?? "--"}
+          </p>
+          <p>
+            <span className="font-semibold">Ghi chú:</span>{" "}
+            {declaration.notes ?? "--"}
+          </p>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: string }) {  return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
         {label}

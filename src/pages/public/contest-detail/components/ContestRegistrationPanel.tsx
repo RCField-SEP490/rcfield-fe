@@ -483,7 +483,7 @@ export function ContestRegistrationPanel({
                 chính thức sẽ hiển thị ở bước thanh toán booking.
               </p>
               <p className="mt-1 text-xs font-bold text-emerald-800">
-                Tiền cọc xe: sẽ hiển thị ở bước thanh toán VNPay
+                Miễn đặt cọc xe
               </p>
             </div>
           ) : null}
@@ -607,7 +607,7 @@ export function ContestRegistrationPanel({
           <CreditCard className="mt-0.5 size-4 shrink-0 text-orange-500" />
           <span>
             {source === "NEW_RENTAL"
-              ? "Sau khi xác nhận, hệ thống tạo booking thuê xe và chuyển bạn sang cổng thanh toán VNPay để thanh toán booking (gồm phí thuê và cọc nếu có). Lệ phí giải (nếu có) thanh toán sau tại mục Đăng ký của tôi."
+              ? "Sau khi xác nhận, hệ thống tạo booking thuê xe và chuyển bạn sang cổng thanh toán VNPay để thanh toán booking (gồm phí thuê, miễn đặt cọc xe). Lệ phí giải (nếu có) thanh toán sau tại mục Đăng ký của tôi."
               : source === "EXISTING_BOOKING"
                 ? "Booking của bạn đã được xác nhận và thanh toán. Sau khi gửi đăng ký, bạn sẽ thanh toán lệ phí giải (nếu có) qua VNPay."
                 : "Xe cá nhân sẽ chờ provider/staff duyệt. Lệ phí giải (nếu có) thanh toán qua VNPay sau khi gửi đăng ký."}

@@ -534,6 +534,22 @@ export const contestApi = {
     return mapContestRegistration(res.data.data)
   },
 
+  updateByocDeclaration: async (
+    registrationId: string,
+    body: {
+      vehicle_name: string
+      vehicle_brand?: string | null
+      vehicle_class?: string | null
+      notes?: string | null
+    },
+  ): Promise<ContestRegistration> => {
+    const res = await api.patch<ApiEnvelope<ContestRegistration>>(
+      `/v1/contest-registrations/${registrationId}/byoc-declaration`,
+      body,
+    )
+    return mapContestRegistration(res.data.data)
+  },
+
   listStaffAssignments: async (
     contestId: string,
   ): Promise<ContestStaffAssignment[]> => {
