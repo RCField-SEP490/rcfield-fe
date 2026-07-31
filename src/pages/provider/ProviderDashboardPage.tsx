@@ -49,10 +49,95 @@ import { cafeApi } from "@/features/cafes/api/cafe.api"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import type { BookingChannelItem, RevenuePeriod } from "@/features/dashboard/types/dashboard.types"
 import { AiInsightsPanel } from "@/features/dashboard/components/AiInsightsPanel"
+import ExcelJS from "exceljs"
+import { saveAs } from "file-saver"
 
 function formatTooltipCurrency(value: TooltipValueType | undefined): string {
   const numericValue = Array.isArray(value) ? value[0] : value
   return formatCurrency(Number(numericValue ?? 0))
+}
+
+const FEE_COLOR_MAP: Record<string, string> = {
+  SLOT_FEE: "#ec4899",
+  RENTAL_FEE: "#3b82f6",
+  FNB_PREORDER: "#ef4444",
+  EXTENSION_FEE: "#10b981",
+  DAMAGE_CHARGE: "#f59e0b",
+  PACKAGE_PURCHASE: "#8b5cf6",
+}
+
+const drawPieChartCanvas = (data: { label: string; amount: number; type: string }[]): string => {
+  const canvas = document.createElement("canvas")
+  canvas.width = 500
+  canvas.height = 360
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return ""
+
+  // Vẽ nền trắng
+  ctx.fillStyle = "#ffffff"
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  const total = data.reduce((sum, item) => sum + item.amount, 0)
+  if (total === 0) return ""
+
+  const centerX = 160
+  const centerY = 180
+  const radius = 110
+
+  let startAngle = -Math.PI / 2
+
+  // 1. Vẽ các lát bánh Donut
+  data.forEach((item) => {
+    const sliceAngle = (item.amount / total) * 2 * Math.PI
+    const endAngle = startAngle + sliceAngle
+
+    ctx.beginPath()
+    ctx.moveTo(centerX, centerY)
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle)
+    ctx.closePath()
+
+    ctx.fillStyle = FEE_COLOR_MAP[item.type] || "#cccccc"
+    ctx.fill()
+
+    ctx.strokeStyle = "#ffffff"
+    ctx.lineWidth = 2
+    ctx.stroke()
+
+    startAngle = endAngle
+  })
+
+  // 2. Vẽ vòng tròn trắng ở giữa để tạo Donut Chart
+  ctx.beginPath()
+  ctx.arc(centerX, centerY, radius * 0.55, 0, 2 * Math.PI)
+  ctx.fillStyle = "#ffffff"
+  ctx.fill()
+
+  // 3. Vẽ chú thích (Legend) ở bên phải
+  const legendX = 310
+  let legendY = 60
+  const boxSize = 12
+
+  // Tiêu đề nhỏ cho Legend
+  ctx.fillStyle = "#0f172a"
+  ctx.font = "bold 12px Calibri, sans-serif"
+  ctx.fillText("Tỷ trọng nguồn thu", legendX, legendY - 20)
+
+  data.forEach((item) => {
+    ctx.fillStyle = FEE_COLOR_MAP[item.type] || "#cccccc"
+    ctx.fillRect(legendX, legendY, boxSize, boxSize)
+
+    const percentage = ((item.amount / total) * 100).toFixed(1)
+    
+    ctx.fillStyle = "#334155"
+    ctx.font = "bold 11px Calibri, sans-serif"
+    ctx.textAlign = "left"
+    ctx.textBaseline = "middle"
+    ctx.fillText(`${item.label} (${percentage}%)`, legendX + boxSize + 8, legendY + boxSize / 2)
+
+    legendY += 24
+  })
+
+  return canvas.toDataURL("image/png")
 }
 
 export function ProviderDashboardPage() {
@@ -211,14 +296,7 @@ const CHART_COLORS = {
 }
 
 // Map màu cố định theo type — dùng cho cả AreaChart lẫn PieChart
-const FEE_COLOR_MAP: Record<string, string> = {
-  SLOT_FEE: "#ec4899",
-  RENTAL_FEE: "#3b82f6",
-  FNB_PREORDER: "#ef4444",
-  EXTENSION_FEE: "#10b981",
-  DAMAGE_CHARGE: "#f59e0b",
-  PACKAGE_PURCHASE: "#8b5cf6",
-}
+
 
 const PIE_COLORS = ["#ec4899", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
 
@@ -426,6 +504,314 @@ function RealDashboard({
       to,
     })
 
+  const handleExportReport = async () => {
+    if (!kpi) {
+      toast.error("Không có dữ liệu để xuất báo cáo!")
+      return
+    }
+
+    // 1. Tạo Workbook mới
+    const workbook = new ExcelJS.Workbook()
+    workbook.creator = "RCField System"
+
+    // Định nghĩa bảng màu và style chung (Slate 900 cho Header, Gray 100 cho Alternating)
+    const headerFill: ExcelJS.Fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF0F172A" } // Slate 900
+    }
+    const headerFont: Partial<ExcelJS.Font> = {
+      name: "Calibri",
+      size: 11,
+      bold: true,
+      color: { argb: "FFFFFFFF" }
+    }
+    const headerAlignment: Partial<ExcelJS.Alignment> = {
+      vertical: "middle",
+      horizontal: "center",
+      wrapText: true
+    }
+    const cellBorder: Partial<ExcelJS.Borders> = {
+      top: { style: "thin", color: { argb: "FFE2E8F0" } },
+      left: { style: "thin", color: { argb: "FFE2E8F0" } },
+      bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+      right: { style: "thin", color: { argb: "FFE2E8F0" } }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // SHEET 1: TỔNG QUAN
+    // ────────────────────────────────────────────────────────────────────────────
+    const wsKpi = workbook.addWorksheet("Tổng quan")
+    wsKpi.views = [{ showGridLines: true }]
+
+    // Tiêu đề báo cáo
+    wsKpi.mergeCells("A1:C1")
+    const titleCell = wsKpi.getCell("A1")
+    titleCell.value = "BÁO CÁO DOANH THU HỆ THỐNG RCFIELD"
+    titleCell.font = { name: "Calibri", size: 16, bold: true, color: { argb: "FFEA580C" } } // Màu cam
+    titleCell.alignment = { vertical: "middle", horizontal: "left" }
+
+    wsKpi.addRow([`Thời gian xuất: ${new Date().toLocaleString("vi-VN")}`])
+    wsKpi.addRow([`Chi nhánh: ${selectedCafeId ? (cafes.find((c: any) => c.id === selectedCafeId)?.name || "Chi nhánh đã chọn") : "Tất cả chi nhánh"}`])
+    wsKpi.addRow([`Khoảng thời gian: Từ ${new Date(from).toLocaleDateString("vi-VN")} đến ${new Date(to).toLocaleDateString("vi-VN")}`])
+    wsKpi.addRow([]) // Dòng trống
+
+    // Header bảng
+    const kpiHeaderRow = wsKpi.addRow(["Chỉ số", "Giá trị", "Mô tả"])
+    kpiHeaderRow.height = 25
+    kpiHeaderRow.eachCell((cell) => {
+      cell.fill = headerFill
+      cell.font = headerFont
+      cell.alignment = headerAlignment
+      cell.border = cellBorder
+    })
+
+    const completionRate = kpi.totalBookings > 0 ? ((kpi.completedBookings / kpi.totalBookings) * 100).toFixed(0) : "0"
+    const vehicleRate = (kpi.vehicleUtilizationRate * 100).toFixed(0)
+
+    const kpiRows = [
+      ["Tổng doanh thu (đ)", kpi.totalRevenue, "HELD & đã giải ngân"],
+      ["Tổng lượt đặt", kpi.totalBookings, "Tất cả trạng thái"],
+      ["Tỷ lệ hoàn thành đơn", `${completionRate}%`, `${kpi.completedBookings}/${kpi.totalBookings} lượt`],
+      ["Tỷ lệ xe hoạt động", `${vehicleRate}%`, `${kpi.inUseVehicles}/${kpi.totalVehicles} xe`],
+      ["Khách hàng mới", kpi.newCustomers, "Lần đầu đặt trong kỳ"]
+    ]
+
+    kpiRows.forEach((row, index) => {
+      const addedRow = wsKpi.addRow(row)
+      addedRow.height = 22
+      addedRow.eachCell((cell, colNum) => {
+        cell.border = cellBorder
+        cell.font = { name: "Calibri", size: 11 }
+        if (colNum === 2) {
+          cell.alignment = { horizontal: "right", vertical: "middle" }
+          if (typeof cell.value === "number") {
+            cell.numFmt = "#,##0"
+          }
+        } else {
+          cell.alignment = { horizontal: "left", vertical: "middle" }
+        }
+        if (index % 2 === 1) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } }
+        }
+      })
+    })
+
+    // Tự động giãn cột
+    wsKpi.columns.forEach((column) => {
+      let maxLen = 0
+      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? cell.value.toString() : ""
+        if (valStr.length > maxLen) maxLen = valStr.length
+      })
+      column.width = Math.max(maxLen + 4, 15)
+    })
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // SHEET 2: PHÂN BỔ DOANH THU (NGUỒN THU)
+    // ────────────────────────────────────────────────────────────────────────────
+    const wsBreakdown = workbook.addWorksheet("Nguồn thu")
+    wsBreakdown.views = [{ showGridLines: true }]
+
+    wsBreakdown.mergeCells("A1:B1")
+    const bdTitle = wsBreakdown.getCell("A1")
+    bdTitle.value = "PHÂN BỔ DOANH THU THEO NGUỒN THU"
+    bdTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF0F172A" } }
+    wsBreakdown.addRow([]) // Dòng trống
+
+    const bdHeader = wsBreakdown.addRow(["Nguồn thu", "Doanh thu (đ)"])
+    bdHeader.height = 25
+    bdHeader.eachCell((cell) => {
+      cell.fill = headerFill
+      cell.font = headerFont
+      cell.alignment = headerAlignment
+      cell.border = cellBorder
+    })
+
+    if (breakdown && breakdown.length > 0) {
+      breakdown.forEach((item: any, index: number) => {
+        const row = wsBreakdown.addRow([item.label, item.amount])
+        row.height = 22
+        row.eachCell((cell, colNum) => {
+          cell.border = cellBorder
+          cell.font = { name: "Calibri", size: 11 }
+          if (colNum === 2) {
+            cell.alignment = { horizontal: "right", vertical: "middle" }
+            cell.numFmt = "#,##0"
+          } else {
+            cell.alignment = { horizontal: "left", vertical: "middle" }
+          }
+          if (index % 2 === 1) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } }
+          }
+        })
+      })
+    } else {
+      const emptyRow = wsBreakdown.addRow(["Không có dữ liệu", 0])
+      emptyRow.eachCell(cell => cell.border = cellBorder)
+    }
+
+    wsBreakdown.columns.forEach((column) => {
+      let maxLen = 0
+      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? cell.value.toString() : ""
+        if (valStr.length > maxLen) maxLen = valStr.length
+      })
+      column.width = Math.max(maxLen + 4, 18)
+    })
+
+    // Thêm biểu đồ Donut trực quan phân bổ doanh thu nguồn thu
+    const chartBase64 = drawPieChartCanvas(breakdown)
+    if (chartBase64) {
+      const imageId = workbook.addImage({
+        base64: chartBase64,
+        extension: "png"
+      })
+      wsBreakdown.addImage(imageId, {
+        tl: { col: 3, row: 2 }, // Đặt tại D3
+        ext: { width: 450, height: 324 }
+      })
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // SHEET 3: CHI NHÁNH
+    // ────────────────────────────────────────────────────────────────────────────
+    const wsBranches = workbook.addWorksheet("Chi nhánh")
+    wsBranches.views = [{ showGridLines: true }]
+
+    wsBranches.mergeCells("A1:C1")
+    const brTitle = wsBranches.getCell("A1")
+    brTitle.value = "DOANH THU CHI TIẾT THEO CHI NHÁNH"
+    brTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF0F172A" } }
+    wsBranches.addRow([]) // Dòng trống
+
+    const brHeader = wsBranches.addRow(["Tên chi nhánh", "Doanh thu (đ)", "Số lượt đặt"])
+    brHeader.height = 25
+    brHeader.eachCell((cell) => {
+      cell.fill = headerFill
+      cell.font = headerFont
+      cell.alignment = headerAlignment
+      cell.border = cellBorder
+    })
+
+    if (branches && branches.length > 0) {
+      branches.forEach((item: any, index: number) => {
+        const row = wsBranches.addRow([
+          item.cafeName,
+          item.totalRevenue,
+          item.bookingCount
+        ])
+        row.height = 22
+        row.eachCell((cell, colNum) => {
+          cell.border = cellBorder
+          cell.font = { name: "Calibri", size: 11 }
+          if (colNum === 2 || colNum === 3) {
+            cell.alignment = { horizontal: "right", vertical: "middle" }
+            if (colNum === 2) cell.numFmt = "#,##0"
+          } else {
+            cell.alignment = { horizontal: "left", vertical: "middle" }
+          }
+          if (index % 2 === 1) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } }
+          }
+        })
+      })
+    } else {
+      const emptyRow = wsBranches.addRow(["Không có dữ liệu", 0, 0])
+      emptyRow.eachCell(cell => cell.border = cellBorder)
+    }
+
+    wsBranches.columns.forEach((column) => {
+      let maxLen = 0
+      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? cell.value.toString() : ""
+        if (valStr.length > maxLen) maxLen = valStr.length
+      })
+      column.width = Math.max(maxLen + 4, 18)
+    })
+
+    // ────────────────────────────────────────────────────────────────────────────
+    // SHEET 4: XU HƯỚNG
+    // ────────────────────────────────────────────────────────────────────────────
+    const wsTrend = workbook.addWorksheet("Xu hướng")
+    wsTrend.views = [{ showGridLines: true }]
+
+    wsTrend.mergeCells("A1:G1")
+    const trTitle = wsTrend.getCell("A1")
+    trTitle.value = "XU HƯỚNG DOANH THU THEO THỜI GIAN"
+    trTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF0F172A" } }
+    wsTrend.addRow([]) // Dòng trống
+
+    const trHeader = wsTrend.addRow([
+      "Thời gian",
+      "Phí sân (đ)",
+      "Thuê xe (đ)",
+      "Đồ ăn & thức uống (đ)",
+      "Phí gia hạn (đ)",
+      "Phí bồi thường (đ)",
+      "Phí gói (đ)"
+    ])
+    trHeader.height = 25
+    trHeader.eachCell((cell) => {
+      cell.fill = headerFill
+      cell.font = headerFont
+      cell.alignment = headerAlignment
+      cell.border = cellBorder
+    })
+
+    if (trend && trend.length > 0) {
+      trend.forEach((item: any, index: number) => {
+        const row = wsTrend.addRow([
+          item.label,
+          item.slotFee || 0,
+          item.rentalFee || 0,
+          item.fnbPreorder || 0,
+          item.extensionFee || 0,
+          item.damageCharge || 0,
+          item.packageFee || 0
+        ])
+        row.height = 22
+        row.eachCell((cell, colNum) => {
+          cell.border = cellBorder
+          cell.font = { name: "Calibri", size: 11 }
+          if (colNum > 1) {
+            cell.alignment = { horizontal: "right", vertical: "middle" }
+            cell.numFmt = "#,##0"
+          } else {
+            cell.alignment = { horizontal: "center", vertical: "middle" }
+          }
+          if (index % 2 === 1) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } }
+          }
+        })
+      })
+    } else {
+      const emptyRow = wsTrend.addRow(["Không có dữ liệu", 0, 0, 0, 0, 0, 0])
+      emptyRow.eachCell(cell => cell.border = cellBorder)
+    }
+
+    wsTrend.columns.forEach((column) => {
+      let maxLen = 0
+      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? cell.value.toString() : ""
+        if (valStr.length > maxLen) maxLen = valStr.length
+      })
+      column.width = Math.max(maxLen + 4, 15)
+    })
+
+    // 6. Ghi và tải file Excel xuống
+    const buffer = await workbook.xlsx.writeBuffer()
+    const branchNameSafe = selectedCafeId 
+      ? (cafes.find((c: any) => c.id === selectedCafeId)?.name || "branch").replace(/\s+/g, "_") 
+      : "all_branches"
+    const dateStr = new Date().toISOString().substring(0, 10)
+    
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+    saveAs(blob, `Bao_cao_doanh_thu_${branchNameSafe}_${dateStr}.xlsx`)
+
+    toast.success("Tải báo cáo Excel thành công!")
+  }
+
   const handleFromChange = useCallback(
     (val: string) => {
       if (!val) {
@@ -557,6 +943,7 @@ function RealDashboard({
 
           <Button
             variant="outline"
+            onClick={handleExportReport}
             className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold flex-1 sm:flex-none justify-center"
           >
             <Download className="size-3.5" />
