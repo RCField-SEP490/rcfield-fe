@@ -557,13 +557,6 @@ function RealDashboard({
 
           <Button
             variant="outline"
-            onClick={onResetOnboarding}
-            className="h-9 gap-1.5 rounded-lg border-orange-200 bg-orange-50/30 text-orange-700 hover:bg-orange-100/60 text-xs font-bold flex-1 sm:flex-none justify-center"
-          >
-            Xem Setup
-          </Button>
-          <Button
-            variant="outline"
             className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] text-xs font-bold flex-1 sm:flex-none justify-center"
           >
             <Download className="size-3.5" />
