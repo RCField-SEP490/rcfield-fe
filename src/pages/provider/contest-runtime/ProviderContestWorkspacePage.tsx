@@ -5,7 +5,9 @@ import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import {
+  formatMatchLabel,
   getErrorMessage,
+  getMatchParticipantName,
   getMatchPhase,
   getPublishedLeaderboard,
   splitMatchesByPhase,
@@ -20,6 +22,7 @@ import type {
   ContestMatch,
   ContestMatchParticipant,
   ContestMatchStatus,
+  ContestParticipantStatus,
   ContestRegistrationStatus,
   ContestUpdateMatchParticipantsBody,
   ContestAuditLogsQuery,
@@ -227,10 +230,19 @@ export function ProviderContestWorkspacePage({
     }
   }
 
-  const stageParticipantAdvance = (
+  const stageParticipantAdvance = async (
     sourceMatchId: string,
     targetMatchId: string,
     registrationId: string,
+    submitResult?: {
+      finishPosition?: number | null
+      score?: number | null
+      bestLapSeconds?: number | null
+      totalTimeSeconds?: number | null
+      status?: ContestParticipantStatus
+      isWinner?: boolean
+      resultNote?: string | null
+    },
   ) => {
     const sourceMatch = matches.find((match) => match.id === sourceMatchId)
     const targetMatch = matches.find((match) => match.id === targetMatchId)
@@ -246,6 +258,53 @@ export function ProviderContestWorkspacePage({
     if (targetMatch.status === "COMPLETED") {
       toast.error("Không thể chỉnh trận đã hoàn tất")
       return
+    }
+
+    if (submitResult) {
+      try {
+        const otherParticipant = sourceMatch.participants.find(
+          (p) => p.registration_id !== registrationId,
+        )
+        const derivedFinishPosition =
+          submitResult.finishPosition ?? (submitResult.isWinner ? 1 : 2)
+        const derivedStatus = submitResult.status ?? "FINISHED"
+        const updatedResults = [
+          {
+            registration_id: registrationId,
+            score: submitResult.score ?? 10,
+            best_lap_seconds: submitResult.bestLapSeconds ?? null,
+            total_time_seconds: submitResult.totalTimeSeconds ?? null,
+            is_winner: submitResult.isWinner ?? true,
+            finish_position: derivedFinishPosition,
+            status: derivedStatus,
+            result_note: submitResult.resultNote ?? null,
+          },
+        ]
+        if (otherParticipant) {
+          updatedResults.push({
+            registration_id: otherParticipant.registration_id,
+            score: otherParticipant.score ?? 0,
+            best_lap_seconds: otherParticipant.best_lap_seconds ?? null,
+            total_time_seconds: otherParticipant.total_time_seconds ?? null,
+            is_winner: !submitResult.isWinner,
+            finish_position: derivedFinishPosition === 1 ? 2 : 1,
+            status: otherParticipant.status ?? "FINISHED",
+            result_note: otherParticipant.result_note ?? null,
+          })
+        }
+        await workspace.runtime.submitResultsMutation.mutateAsync({
+          matchId: sourceMatchId,
+          body: {
+            reason: `Chuyển người thi đấu từ sơ đồ ${formatMatchLabel(sourceMatch)}`,
+            results: updatedResults,
+          },
+        })
+        toast.success(`Đã cập nhật kết quả cho ${formatMatchLabel(sourceMatch)}`)
+      } catch (err) {
+        toast.error("Không thể cập nhật kết quả trận nguồn", {
+          description: getErrorMessage(err).message,
+        })
+      }
     }
 
     setStagedParticipantsByMatch((current) => {
@@ -283,6 +342,10 @@ export function ProviderContestWorkspacePage({
         ],
       }
     })
+
+    toast.success(
+      `Đã xếp ${getMatchParticipantName(participant)} vào ${formatMatchLabel(targetMatch)}`,
+    )
   }
 
   const undoStagedBracket = () => {
