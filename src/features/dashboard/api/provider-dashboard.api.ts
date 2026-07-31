@@ -94,10 +94,18 @@ export const providerDashboardApi = {
     return res.data.data
   },
 
-  getRecentBookings: async (params: { limit?: number }): Promise<RecentBookingItem[]> => {
+  getRecentBookings: async (params: {
+    limit?: number
+    from?: string
+    to?: string
+    cafeId?: string | null
+  }): Promise<RecentBookingItem[]> => {
     const res = await api.get<{ success: boolean; data: RecentBookingItem[] }>("/v1/provider/dashboard/recent-bookings", {
       params: {
         limit: params.limit || undefined,
+        from: params.from || undefined,
+        to: params.to || undefined,
+        cafeId: params.cafeId || undefined,
       },
     })
     return res.data.data

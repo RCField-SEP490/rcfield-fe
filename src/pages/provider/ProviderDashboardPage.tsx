@@ -510,6 +510,21 @@ function RealDashboard({
       return
     }
 
+    const toastId = toast.loading("Đang nạp dữ liệu đơn đặt...")
+    let exportBookings: RecentBookingItem[] = []
+    try {
+      exportBookings = await providerDashboardApi.getRecentBookings({
+        from,
+        to,
+        cafeId: selectedCafeId
+      })
+    } catch (err) {
+      toast.dismiss(toastId)
+      toast.error("Không thể tải danh sách đơn đặt để xuất báo cáo.")
+      return
+    }
+    toast.dismiss(toastId)
+
     // 1. Tạo Workbook mới
     const workbook = new ExcelJS.Workbook()
     workbook.creator = "RCField System"
@@ -807,7 +822,7 @@ function RealDashboard({
 
     wsBookings.mergeCells("A1:G1")
     const bkTitle = wsBookings.getCell("A1")
-    bkTitle.value = "DANH SÁCH ĐƠN ĐẶT GẦN ĐÂY"
+    bkTitle.value = "DANH SÁCH CHI TIẾT ĐƠN ĐẶT TRONG KỲ"
     bkTitle.font = { name: "Calibri", size: 14, bold: true, color: { argb: "FF0F172A" } }
     wsBookings.addRow([]) // Dòng trống
 
@@ -845,8 +860,8 @@ function RealDashboard({
       return map[status] || status
     }
 
-    if (recent && recent.length > 0) {
-      recent.forEach((item: any, index: number) => {
+    if (exportBookings && exportBookings.length > 0) {
+      exportBookings.forEach((item: any, index: number) => {
         const formattedDate = new Date(item.slotStart).toLocaleString("vi-VN")
         const row = wsBookings.addRow([
           item.bookingId,
@@ -894,7 +909,7 @@ function RealDashboard({
     const buffer = await workbook.xlsx.writeBuffer()
     const branchNameSafe = selectedCafeId 
       ? (cafes.find((c: any) => c.id === selectedCafeId)?.name || "branch").replace(/\s+/g, "_") 
-      : "all_branches"
+      : "cac_chi_nhanh"
     const dateStr = new Date().toISOString().substring(0, 10)
     
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
