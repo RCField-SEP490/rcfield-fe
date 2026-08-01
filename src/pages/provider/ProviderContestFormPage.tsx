@@ -1,4 +1,5 @@
-import { ArrowLeft, PlayCircle, Save } from "lucide-react"
+import { useMemo } from "react"
+import { ArrowLeft, ArrowRight, PlayCircle, Save } from "lucide-react"
 import { useNavigate } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
@@ -6,11 +7,30 @@ import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitiv
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Button } from "@/shared/ui/button"
 import { getContestWorkspacePath } from "./contest-runtime/contest-workspace"
-import { ContestBasicInfoSection } from "./contest-form/ContestBasicInfoSection"
-import { ContestBranchesSection } from "./contest-form/ContestBranchesSection"
-import { ContestRulesSection } from "./contest-form/ContestRulesSection"
 import { ContestRuntimePanel } from "./contest-form/ContestRuntimePanel"
+import { ContestWizardNav } from "./contest-form/ContestWizardNav"
+import {
+  CONTEST_WIZARD_STEPS,
+  LAST_STEP_INDEX,
+} from "./contest-form/contest-wizard"
+import { StepBranches } from "./contest-form/steps/StepBranches"
+import { StepFormat } from "./contest-form/steps/StepFormat"
+import { StepIntro, type SummaryRow } from "./contest-form/steps/StepIntro"
+import { StepSchedule } from "./contest-form/steps/StepSchedule"
+import { StepTrack } from "./contest-form/steps/StepTrack"
 import { useContestForm } from "./contest-form/useContestForm"
+
+const VEHICLE_POLICY_LABEL: Record<string, string> = {
+  RENTAL_ONLY: "Thuê xe của quán",
+  MIXED: "Xe thuê hoặc xe cá nhân",
+  BYOC_ONLY: "Khách tự mang xe",
+}
+
+const DEPOSIT_MODE_LABEL: Record<string, string> = {
+  WAIVED: "không thu cọc",
+  REDUCED: "thu cọc một phần",
+  FULL: "thu cọc đầy đủ",
+}
 
 export function ProviderContestFormPage() {
   const navigate = useNavigate()
@@ -31,15 +51,125 @@ export function ProviderContestFormPage() {
     cafesQuery,
     selectedTemplate,
     selectedFormat,
+    runtimeFormat,
     saveMutation,
     handleSubmit,
+    stepIndex,
+    maxUnlockedIndex,
+    goToStep,
+    goNext,
+    goBack,
   } = useContestForm()
+
+  const cafes = useMemo(() => cafesQuery.data?.data ?? [], [cafesQuery.data])
+  const step = CONTEST_WIZARD_STEPS[stepIndex]
+  const isLastStep = stepIndex === LAST_STEP_INDEX
+
+  const summaryRows = useMemo<SummaryRow[]>(() => {
+    const selectedCafes = form.participating_cafe_ids
+      .map((id) => cafes.find((cafe) => cafe.id === id)?.name)
+      .filter((name): name is string => Boolean(name))
+    const trackType = (trackTypesQuery.data ?? []).find(
+      (item) => item.id === form.track_type_id,
+    )
+    const lockSummary = form.participating_cafe_ids
+      .map((cafeId) => {
+        const cafeName = cafes.find((cafe) => cafe.id === cafeId)?.name ?? "--"
+        const lock = resourceLocks[cafeId]
+        if (lock?.scope === "SELECTED_TRACKS") {
+          return `${cafeName}: ${lock.track_config_ids.length} sân`
+        }
+        return `${cafeName}: cả chi nhánh`
+      })
+      .join(" · ")
+
+    return [
+      {
+        label: "Chi nhánh tổ chức",
+        value:
+          selectedCafes.length > 0
+            ? `${selectedCafes[0]} (chủ nhà)${selectedCafes.length > 1 ? ` + ${selectedCafes.length - 1} chi nhánh` : ""}`
+            : "--",
+        stepIndex: 0,
+      },
+      {
+        label: "Loại đường đua",
+        value: trackType?.name ?? "--",
+        stepIndex: 1,
+      },
+      {
+        label: "Phạm vi khoá sân",
+        value: lockSummary || "--",
+        stepIndex: 1,
+      },
+      {
+        label: "Thể thức thi đấu",
+        value: selectedTemplate
+          ? `${selectedTemplate.name}${selectedFormat ? ` · ${selectedFormat.name}` : ""}`
+          : "--",
+        stepIndex: 2,
+      },
+      ...(runtimeFormat === "QUALIFYING_FINAL"
+        ? [
+            {
+              label: "Số VĐV vào chung kết",
+              value: form.finalists,
+              stepIndex: 2,
+            },
+          ]
+        : []),
+      {
+        label: "Xe thi đấu",
+        value: VEHICLE_POLICY_LABEL[form.vehicle_policy] ?? "--",
+        stepIndex: 2,
+      },
+      ...(form.vehicle_policy !== "BYOC_ONLY"
+        ? [
+            {
+              label: "Giá thuê xe trong giải",
+              value: [
+                form.rental_waive_slot_fee
+                  ? "miễn tiền sân"
+                  : "thu tiền sân như booking thường",
+                form.rental_deposit_mode === "REDUCED"
+                  ? `thu cọc ${form.rental_deposit_percent}%`
+                  : (DEPOSIT_MODE_LABEL[form.rental_deposit_mode] ?? "--"),
+              ].join(" · "),
+              stepIndex: 2,
+            },
+          ]
+        : []),
+      {
+        label: "Cổng đăng ký",
+        value: `${formatDateTime(form.registration_opens_at)} → ${formatDateTime(form.registration_closes_at)}`,
+        stepIndex: 3,
+      },
+      {
+        label: "Thời gian thi đấu",
+        value: `${formatDateTime(form.starts_at)} → ${formatDateTime(form.ends_at)}`,
+        stepIndex: 3,
+      },
+      {
+        label: "Quy mô & lệ phí",
+        value: `Tối đa ${form.capacity || "--"} VĐV · ${formatFee(form.entry_fee)}`,
+        stepIndex: 3,
+      },
+    ]
+  }, [
+    cafes,
+    form,
+    resourceLocks,
+    runtimeFormat,
+    selectedFormat,
+    selectedTemplate,
+    trackTypesQuery.data,
+  ])
 
   return (
     <ProviderShell>
       <ProviderPageHeader
         title={isEdit ? "Chỉnh sửa giải đấu" : "Tạo giải đấu"}
-        description="Thiết lập lịch thi đấu, phạm vi khóa sân và luồng vận hành theo đúng nghiệp vụ contest."
+        description="Đi lần lượt từng bước — mỗi bước chỉ hỏi những gì cần cho bước tiếp theo."
         actions={
           <>
             <Button
@@ -49,16 +179,7 @@ export function ProviderContestFormPage() {
               onClick={() => navigate(routePaths.providerContests)}
             >
               <ArrowLeft className="size-4" />
-              Quay lại
-            </Button>
-            <Button
-              type="button"
-              onClick={() => void handleSubmit()}
-              className="h-10 gap-2 rounded-lg bg-[#1c1b1b] font-bold text-white hover:bg-[#313030]"
-              disabled={saveMutation.isPending}
-            >
-              <Save className="size-4" />
-              {saveMutation.isPending ? "Đang lưu..." : "Lưu giải đấu"}
+              Thoát
             </Button>
             {isEdit && contestId ? (
               <Button
@@ -77,43 +198,141 @@ export function ProviderContestFormPage() {
         }
       />
 
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <ContestBasicInfoSection
-          form={form}
-          setForm={setForm}
-          validationErrors={validationErrors}
-          trackTypes={trackTypesQuery.data}
-          trackTypesIntersection={trackTypesIntersection}
-          contestTypes={typesQuery.data}
-          contestFormats={formatsQuery.data}
-          contestTemplates={templatesQuery.data}
-          contestId={contestId}
+      <div className="mt-4 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4 shadow-sm">
+        <ContestWizardNav
+          currentIndex={stepIndex}
+          maxUnlockedIndex={maxUnlockedIndex}
+          onSelect={goToStep}
         />
+      </div>
 
-        <div className="space-y-4">
-          <ContestBranchesSection
+      <div className="mt-4 rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
+        <div className="mb-6">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-orange-600">
+            Bước {stepIndex + 1}/{CONTEST_WIZARD_STEPS.length}
+          </p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-[#1c1b1b]">
+            {step.title}
+          </h2>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-[#5d5f5f]">
+            {step.subtitle}
+          </p>
+        </div>
+
+        {step.id === "branches" ? (
+          <StepBranches
             form={form}
             setForm={setForm}
-            validationErrors={validationErrors}
-            cafes={cafesQuery.data?.data ?? []}
+            errors={validationErrors}
+            cafes={cafes}
+            isLoading={cafesQuery.isLoading}
+          />
+        ) : null}
+
+        {step.id === "track" ? (
+          <StepTrack
+            form={form}
+            setForm={setForm}
+            errors={validationErrors}
+            cafes={cafes}
+            trackTypes={trackTypesQuery.data ?? []}
+            trackTypesIntersection={trackTypesIntersection}
             trackConfigsByCafe={trackConfigsByCafe}
             resourceLocks={resourceLocks}
             setResourceLocks={setResourceLocks}
           />
+        ) : null}
 
-          <ContestRulesSection
+        {step.id === "format" ? (
+          <StepFormat
             form={form}
             setForm={setForm}
-            validationErrors={validationErrors}
-            selectedFormat={selectedFormat}
-            selectedTemplate={selectedTemplate}
+            errors={validationErrors}
+            contestTypes={typesQuery.data ?? []}
+            contestFormats={formatsQuery.data ?? []}
+            contestTemplates={templatesQuery.data ?? []}
+            runtimeFormat={runtimeFormat}
           />
+        ) : null}
 
-          {isEdit && contestId ? (
-            <ContestRuntimePanel contestId={contestId} />
-          ) : null}
+        {step.id === "schedule" ? (
+          <StepSchedule
+            form={form}
+            setForm={setForm}
+            errors={validationErrors}
+            isEdit={isEdit}
+          />
+        ) : null}
+
+        {step.id === "intro" ? (
+          <StepIntro
+            form={form}
+            setForm={setForm}
+            errors={validationErrors}
+            contestId={contestId}
+            summaryRows={summaryRows}
+            onEditStep={goToStep}
+          />
+        ) : null}
+
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-[#e5e2e1] pt-6">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 gap-2 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2]"
+            disabled={stepIndex === 0}
+            onClick={goBack}
+          >
+            <ArrowLeft className="size-4" />
+            Bước trước
+          </Button>
+
+          {isLastStep ? (
+            <Button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={saveMutation.isPending}
+              className="h-11 gap-2 rounded-lg bg-orange-600 px-6 font-bold text-white hover:bg-orange-700"
+            >
+              <Save className="size-4" />
+              {saveMutation.isPending
+                ? "Đang lưu..."
+                : isEdit
+                  ? "Lưu thay đổi"
+                  : "Tạo giải đấu"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={goNext}
+              className="h-11 gap-2 rounded-lg bg-[#1c1b1b] px-6 font-bold text-white hover:bg-[#313030]"
+            >
+              Tiếp tục
+              <ArrowRight className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
+
+      {isEdit && contestId ? (
+        <div className="mt-4">
+          <ContestRuntimePanel contestId={contestId} />
+        </div>
+      ) : null}
     </ProviderShell>
   )
+}
+
+function formatDateTime(value: string) {
+  if (!value) return "--"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "--"
+  return date.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })
+}
+
+function formatFee(value: string) {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return "--"
+  if (amount === 0) return "Miễn phí"
+  return `${new Intl.NumberFormat("vi-VN").format(amount)}đ`
 }

@@ -32,6 +32,9 @@ export function stripManagedContestConfig(
   delete nextConfig.runtime_format
   delete nextConfig.resource_locks
   delete nextConfig.finalists
+  // rental_policy có ô nhập riêng ở bước 3; giữ lại trong extraConfig sẽ khiến
+  // giá trị cũ ghi đè giá trị người dùng vừa chỉnh.
+  delete nextConfig.rental_policy
   return nextConfig
 }
 

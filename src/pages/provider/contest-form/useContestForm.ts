@@ -29,6 +29,39 @@ import type {
   ResourceLockState,
 } from "./contest-form-types"
 import { defaultForm } from "./contest-form-types"
+import {
+  CONTEST_WIZARD_STEPS,
+  LAST_STEP_INDEX,
+  findFirstInvalidStep,
+  validateContestStep,
+  type StepValidationContext,
+} from "./contest-wizard"
+
+/**
+ * Đọc `config.rental_policy` của một giải đã tồn tại.
+ *
+ * Mặc định ở đây khớp `DEFAULT_CONTEST_RENTAL_POLICY` phía backend, KHÔNG phải
+ * mặc định của form. Giải cũ không có rental_policy vốn đang được tính giá theo
+ * mặc định backend; mở form sửa rồi lưu lại phải giữ nguyên giá đó.
+ */
+function readRentalPolicy(config: Record<string, unknown> | null | undefined) {
+  const policy = (config?.rental_policy ?? {}) as Record<string, unknown>
+  const mode = String(policy.deposit_mode ?? "").toUpperCase()
+
+  return {
+    rental_waive_slot_fee: policy.waive_slot_fee === true,
+    rental_deposit_mode: (["FULL", "REDUCED", "WAIVED"].includes(mode)
+      ? mode
+      : "FULL") as ContestFormState["rental_deposit_mode"],
+    rental_deposit_percent: String(policy.deposit_percent ?? 50),
+    rental_window_before: String(
+      (policy.slot_window as Record<string, unknown> | undefined)?.before_min ?? 60,
+    ),
+    rental_window_after: String(
+      (policy.slot_window as Record<string, unknown> | undefined)?.after_min ?? 60,
+    ),
+  }
+}
 
 export function useContestForm() {
   const navigate = useNavigate()
@@ -37,14 +70,23 @@ export function useContestForm() {
   const isEdit = Boolean(contestId)
 
   const [form, setForm] = useState<ContestFormState>(defaultForm)
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({})
+  // Bước nào đã bấm "Tiếp tục" một lần thì từ đó trở đi validate ngay khi gõ.
+  // Trước khi bấm lần đầu thì im lặng — không tô đỏ những ô người dùng chưa đụng tới.
+  const [attemptedSteps, setAttemptedSteps] = useState<number[]>([])
+  // Lỗi từ schema dùng chung với API (lưới an toàn cuối), không gắn với bước nào.
+  const [submitErrors, setSubmitErrors] = useState<Record<string, string>>({})
   const [trackConfigsByCafe, setTrackConfigsByCafe] = useState<
     Record<string, TrackConfig[]>
   >({})
   const [resourceLocks, setResourceLocks] = useState<ResourceLockState>({})
   const [extraConfig, setExtraConfig] = useState<Record<string, unknown>>({})
+
+  // Bước đang xem và bước xa nhất đã mở khoá. Ở chế độ sửa, dữ liệu đã đầy đủ
+  // nên mở hết ngay từ đầu — bắt provider đi lại từ bước 1 chỉ để đổi lệ phí là vô lý.
+  const [stepIndex, setStepIndex] = useState(0)
+  const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(() =>
+    isEdit ? LAST_STEP_INDEX : 0,
+  )
 
   const typesQuery = useQuery({
     queryKey: contestQueryKeys.catalogTypes(),
@@ -54,16 +96,12 @@ export function useContestForm() {
     queryKey: contestQueryKeys.catalogFormats(),
     queryFn: contestApi.listContestFormats,
   })
+  // Tải TOÀN BỘ mẫu vận hành, không lọc theo loại giải/hình thức đã chọn.
+  // Bước 3 giờ cho chọn thẳng mẫu rồi suy ngược ra loại giải + hình thức, nên lọc
+  // ở đây sẽ khiến danh sách rỗng lúc chưa chọn gì.
   const templatesQuery = useQuery({
-    queryKey: contestQueryKeys.catalogTemplates({
-      contest_type_id: form.contest_type_id || undefined,
-      contest_format_id: form.contest_format_id || undefined,
-    }),
-    queryFn: () =>
-      contestApi.listContestTemplates({
-        contest_type_id: form.contest_type_id || undefined,
-        contest_format_id: form.contest_format_id || undefined,
-      }),
+    queryKey: contestQueryKeys.catalogTemplates({}),
+    queryFn: () => contestApi.listContestTemplates(),
   })
   const trackTypesQuery = useQuery({
     queryKey: trackTypeQueryKeys.all,
@@ -91,6 +129,10 @@ export function useContestForm() {
       formatsQuery.data?.find((item) => item.id === form.contest_format_id) ??
       null,
     [form.contest_format_id, formatsQuery.data],
+  )
+  const runtimeFormat = useMemo(
+    () => getRuntimeFormatFromCode(selectedFormat?.code),
+    [selectedFormat?.code],
   )
 
   useEffect(() => {
@@ -127,6 +169,11 @@ export function useContestForm() {
             ?.assignment_policy as ContestFormState["assignment_policy"]) ??
           "AT_CHECK_IN",
         finalists: String(contest.config?.finalists ?? 4),
+        // Giải CŨ: đọc lại đúng chính sách đã lưu. Nếu contest chưa từng có
+        // rental_policy thì rơi về mặc định CỦA BACKEND (thu tiền sân, cọc đầy đủ)
+        // chứ không phải mặc định của form — mở form sửa rồi bấm lưu không được
+        // âm thầm đổi giá của một giải đang mở đăng ký.
+        ...readRentalPolicy(contest.config),
       })
       setExtraConfig(stripManagedContestConfig(contest.config))
 
@@ -155,18 +202,6 @@ export function useContestForm() {
       )
     })
   }, [contestQuery.data])
-
-  useEffect(() => {
-    if (form.contest_template_id) return
-    const firstTemplate = templatesQuery.data?.[0]
-    if (!firstTemplate) return
-    queueMicrotask(() => {
-      setForm((current) => ({
-        ...current,
-        contest_template_id: current.contest_template_id || firstTemplate.id,
-      }))
-    })
-  }, [templatesQuery.data, form.contest_template_id])
 
   useEffect(() => {
     if (form.participating_cafe_ids.length === 0) {
@@ -208,10 +243,21 @@ export function useContestForm() {
           if (!next[cafeId]) {
             next[cafeId] = { scope: "FULL_BRANCH", track_config_ids: [] }
           } else if (next[cafeId].scope === "SELECTED_TRACKS") {
+            // Sân đúng loại đường đua của giải luôn phải nằm trong danh sách khoá:
+            // backend chặn booking trùng loại đường đua dù provider có tick hay không,
+            // nên bỏ nó ra khỏi đây chỉ khiến giao diện nói sai so với thực tế.
+            const requiredIds = configs
+              .filter((item) => item.track_type_id === form.track_type_id)
+              .map((item) => item.id)
             next[cafeId] = {
               ...next[cafeId],
-              track_config_ids: next[cafeId].track_config_ids.filter(
-                (trackId) => configs.some((item) => item.id === trackId),
+              track_config_ids: Array.from(
+                new Set([
+                  ...requiredIds,
+                  ...next[cafeId].track_config_ids.filter((trackId) =>
+                    configs.some((item) => item.id === trackId),
+                  ),
+                ]),
               ),
             }
           }
@@ -226,11 +272,11 @@ export function useContestForm() {
         return next
       }),
     )
-  }, [form.participating_cafe_ids, trackConfigsByCafe])
+  }, [form.participating_cafe_ids, form.track_type_id, trackConfigsByCafe])
 
   // Giao (intersection) loại đường đua mà TẤT CẢ chi nhánh đã chọn đều có
   // (chỉ tính track config ACTIVE). null = chưa chọn chi nhánh hoặc đang tải
-  // cấu hình sân — khi đó hiển thị toàn bộ track type như trước.
+  // cấu hình sân.
   const trackTypesIntersection = useMemo<TrackType[] | null>(() => {
     const cafeIds = form.participating_cafe_ids
     if (cafeIds.length === 0) return null
@@ -260,6 +306,56 @@ export function useContestForm() {
     )
   }, [trackTypesIntersection, form.track_type_id])
 
+  const stepContext = useMemo<StepValidationContext>(
+    () => ({ isEdit, runtimeFormat, resourceLocks, trackConfigsByCafe }),
+    [isEdit, runtimeFormat, resourceLocks, trackConfigsByCafe],
+  )
+
+  /**
+   * Lỗi hiển thị cho bước đang xem — tính lại mỗi lần render nên người dùng sửa
+   * tới đâu là lỗi biến mất tới đó, không phải bấm "Tiếp tục" lần nữa mới biết.
+   */
+  const validationErrors = useMemo<Record<string, string>>(() => {
+    if (!attemptedSteps.includes(stepIndex)) return submitErrors
+    return {
+      ...submitErrors,
+      ...validateContestStep(
+        CONTEST_WIZARD_STEPS[stepIndex].id,
+        form,
+        stepContext,
+      ),
+    }
+  }, [attemptedSteps, stepIndex, submitErrors, form, stepContext])
+
+  const goToStep = (index: number) => {
+    if (index < 0 || index > maxUnlockedIndex) return
+    setSubmitErrors({})
+    setStepIndex(index)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const goBack = () => goToStep(stepIndex - 1)
+
+  const goNext = () => {
+    const errors = validateContestStep(
+      CONTEST_WIZARD_STEPS[stepIndex].id,
+      form,
+      stepContext,
+    )
+    if (Object.keys(errors).length > 0) {
+      setAttemptedSteps((current) =>
+        current.includes(stepIndex) ? current : [...current, stepIndex],
+      )
+      toast.error("Còn thông tin chưa hợp lệ ở bước này")
+      return
+    }
+    setSubmitErrors({})
+    const nextIndex = Math.min(stepIndex + 1, LAST_STEP_INDEX)
+    setMaxUnlockedIndex((current) => Math.max(current, nextIndex))
+    setStepIndex(nextIndex)
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const saveMutation = useMutation({
     mutationFn: async (payload: ContestUpsertBody) =>
       isEdit && contestId
@@ -271,43 +367,27 @@ export function useContestForm() {
   })
 
   const handleSubmit = async () => {
-    const runtimeFormat = getRuntimeFormatFromCode(selectedFormat?.code)
+    // Sửa chi nhánh sau khi đã đi qua các bước sau có thể làm hỏng ngược một
+    // bước trước đó, nên chạy lại toàn bộ và nhảy về đúng chỗ hỏng.
+    const invalid = findFirstInvalidStep(form, stepContext)
+    if (invalid) {
+      setAttemptedSteps((current) =>
+        current.includes(invalid.index) ? current : [...current, invalid.index],
+      )
+      setMaxUnlockedIndex((current) => Math.max(current, invalid.index))
+      setStepIndex(invalid.index)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+      toast.error(
+        `Bước "${CONTEST_WIZARD_STEPS[invalid.index].label}" còn thông tin chưa hợp lệ`,
+      )
+      return
+    }
+
     const derivedLocks = buildResourceLocks(
       form.participating_cafe_ids,
       trackConfigsByCafe,
       resourceLocks,
     )
-
-    if (
-      derivedLocks.some(
-        (item) =>
-          item.scope === "SELECTED_TRACKS" &&
-          item.track_config_ids.length === 0,
-      )
-    ) {
-      setValidationErrors((current) => ({
-        ...current,
-        resource_locks:
-          "Vui lòng chọn ít nhất một sân khi khóa theo sân cụ thể.",
-      }))
-      toast.error("Thiếu cấu hình sân thi đấu")
-      return
-    }
-
-    let startsAt = ""
-    let endsAt = ""
-    let regOpen = ""
-    let regClose = ""
-    try {
-      if (form.starts_at) startsAt = new Date(form.starts_at).toISOString()
-      if (form.ends_at) endsAt = new Date(form.ends_at).toISOString()
-      if (form.registration_opens_at)
-        regOpen = new Date(form.registration_opens_at).toISOString()
-      if (form.registration_closes_at)
-        regClose = new Date(form.registration_closes_at).toISOString()
-    } catch {
-      // keep schema validation below
-    }
 
     const templateDefaults = (selectedTemplate?.defaultConfig ?? {}) as Record<
       string,
@@ -317,20 +397,36 @@ export function useContestForm() {
       16,
       Math.max(2, Number.parseInt(form.finalists, 10) || 4),
     )
+    // `format` và `runtime_format` cố tình KHÔNG gửi: backend tự suy từ mã format
+    // trong catalog rồi ghi đè (`stripRuntimeManagedConfig` + `mergeContestConfig`).
+    // Gửi lên chỉ tạo ảo giác là FE quyết định được.
     const derivedConfig = {
       ...templateDefaults,
       ...extraConfig,
-      format: runtimeFormat,
-      runtime_format: runtimeFormat,
       leaderboard_mode:
-        runtimeFormat === "KNOCKOUT"
-          ? "KNOCKOUT_WINS"
-          : (templateDefaults.leaderboard_mode ?? "BEST_LAP"),
+        runtimeFormat === "TIME_TRIAL"
+          ? (templateDefaults.leaderboard_mode ?? "BEST_LAP")
+          : "KNOCKOUT_WINS",
       drivers_per_match:
-        runtimeFormat === "KNOCKOUT"
-          ? Number(templateDefaults.drivers_per_match ?? 2)
-          : Number(templateDefaults.drivers_per_match ?? 1),
+        runtimeFormat === "TIME_TRIAL"
+          ? Number(templateDefaults.drivers_per_match ?? 1)
+          : Number(templateDefaults.drivers_per_match ?? 2),
       ...(runtimeFormat === "QUALIFYING_FINAL" ? { finalists } : {}),
+      // Chỉ gửi khi giải thật sự cho thuê xe — giải BYOC mang theo rental_policy
+      // chỉ làm config rối thêm mà không ai đọc.
+      ...(form.vehicle_policy !== "BYOC_ONLY"
+        ? {
+            rental_policy: {
+              waive_slot_fee: form.rental_waive_slot_fee,
+              deposit_mode: form.rental_deposit_mode,
+              deposit_percent: Number(form.rental_deposit_percent) || 50,
+              slot_window: {
+                before_min: Number(form.rental_window_before) || 0,
+                after_min: Number(form.rental_window_after) || 0,
+              },
+            },
+          }
+        : {}),
       resource_locks: derivedLocks,
     }
 
@@ -342,12 +438,14 @@ export function useContestForm() {
       contest_template_id: form.contest_template_id,
       track_type_id: form.track_type_id,
       participating_cafe_ids: form.participating_cafe_ids,
-      starts_at: startsAt,
-      ends_at: endsAt,
-      registration_opens_at: regOpen,
-      registration_closes_at: regClose,
-      capacity: form.capacity ? Number(form.capacity) : NaN,
-      entry_fee: form.entry_fee ? Number(form.entry_fee) : NaN,
+      starts_at: new Date(form.starts_at).toISOString(),
+      ends_at: new Date(form.ends_at).toISOString(),
+      registration_opens_at: new Date(form.registration_opens_at).toISOString(),
+      registration_closes_at: new Date(
+        form.registration_closes_at,
+      ).toISOString(),
+      capacity: Number(form.capacity),
+      entry_fee: Number(form.entry_fee),
       banner_image_url: form.banner_image_url.trim() || null,
       vehicle_rule: {
         vehicle_policy: form.vehicle_policy,
@@ -356,20 +454,20 @@ export function useContestForm() {
       config: derivedConfig,
     }
 
+    // Lưới an toàn cuối: schema dùng chung với API, bắt những sai lệch mà
+    // validate theo bước chưa phủ (ví dụ id không đúng dạng uuid).
     const result = contestUpsertSchema.safeParse(rawData)
     if (!result.success) {
       const newErrors: Record<string, string> = {}
-      result.error.issues.forEach((err) => {
-        const path = err.path.join(".")
-        newErrors[path] = err.message
+      result.error.issues.forEach((issue) => {
+        newErrors[issue.path.map(String).join(".")] = issue.message
       })
-      setValidationErrors(newErrors)
-      const firstError = result.error.issues[0]
-      toast.error(`Lỗi validation: ${firstError.message}`)
+      setSubmitErrors(newErrors)
+      toast.error(`Dữ liệu chưa hợp lệ: ${result.error.issues[0].message}`)
       return
     }
+    setSubmitErrors({})
 
-    setValidationErrors({})
     try {
       await saveMutation.mutateAsync(result.data as ContestUpsertBody)
       toast.success(isEdit ? "Đã cập nhật giải đấu" : "Đã tạo giải đấu")
@@ -387,7 +485,6 @@ export function useContestForm() {
     form,
     setForm,
     validationErrors,
-    setValidationErrors,
     trackConfigsByCafe,
     trackTypesIntersection,
     resourceLocks,
@@ -402,7 +499,13 @@ export function useContestForm() {
     contestQuery,
     selectedTemplate,
     selectedFormat,
+    runtimeFormat,
     saveMutation,
     handleSubmit,
+    stepIndex,
+    maxUnlockedIndex,
+    goToStep,
+    goNext,
+    goBack,
   }
 }
