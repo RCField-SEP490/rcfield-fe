@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronDown, ChevronUp, MapPin, RotateCcw } from "lucide-react"
+import { ChevronDown, ChevronUp, Maximize2, RotateCcw } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { trackTypeApi, trackTypeQueryKeys, amenityApi, amenityQueryKeys } from "@/features/cafes/api/cafe.api"
 import { PRICE_SLIDER_MAX, PRICE_SLIDER_MIN, PRICE_SLIDER_STEP } from "../constants"
@@ -28,6 +28,8 @@ interface ExploreLeftSidebarProps {
   onTogglePopularFilter: (filter: string) => void
   activeFilterCount: number
   onClearAll: () => void
+  /** Mở lớp bản đồ toàn màn hình — state do ExplorePage giữ. */
+  onOpenFullMap: () => void
 }
 
 const sidebarVariants = {
@@ -62,6 +64,7 @@ export function ExploreLeftSidebar({
   onTogglePopularFilter,
   activeFilterCount,
   onClearAll,
+  onOpenFullMap,
 }: ExploreLeftSidebarProps) {
   const [showAllPopular, setShowAllPopular] = useState(false)
 
@@ -117,19 +120,36 @@ export function ExploreLeftSidebar({
             onUserLocation={onUserLocation}
             hoveredCafeId={hoveredCafeId}
             onBoundsChange={onBoundsChange}
-            searchOnMove={searchOnMove}
-            onSearchOnMoveChange={onSearchOnMoveChange}
           />
         </div>
+        {/*
+          Nút nhỏ ở góc trái thay cho dải phủ kín đáy bản đồ trước đây: dải đó đè
+          lên dòng ghi công Leaflet/OpenStreetMap (bắt buộc phải đọc được) và chồng
+          lên các control khác trong khung bản đồ chỉ rộng 280px.
+        */}
         <button
           type="button"
-          onClick={() => {/* Parent handles full map */}}
-          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-slate-900/90 via-slate-900/70 to-transparent px-3 py-3 text-xs font-bold text-white transition-all hover:from-slate-900/95"
+          onClick={onOpenFullMap}
+          className="absolute bottom-3 left-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-md backdrop-blur transition hover:bg-white"
         >
-          <MapPin className="h-3.5 w-3.5" />
-          Mở bản đồ toàn màn hình
+          <Maximize2 className="h-3.5 w-3.5" />
+          Toàn màn hình
         </button>
       </motion.div>
+
+      {/* Tách khỏi khung bản đồ — nhãn dài, để trong map thì luôn đè lên nút vị trí */}
+      <motion.label
+        variants={itemVariants}
+        className="flex cursor-pointer select-none items-center gap-2.5 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-xs font-semibold text-slate-700 shadow-sm"
+      >
+        <input
+          type="checkbox"
+          checked={searchOnMove}
+          onChange={(event) => onSearchOnMoveChange(event.target.checked)}
+          className="h-4 w-4 accent-orange-600"
+        />
+        Tìm kiếm khi di chuyển bản đồ
+      </motion.label>
 
       {/* Price range */}
       <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">

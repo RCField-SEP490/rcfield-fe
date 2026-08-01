@@ -5,11 +5,16 @@ import { useNavigate, useParams } from "react-router"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
+import { useTrackConfigs } from "@/features/cafes/hooks/useTrackConfigs"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "@/pages/customer/cafe-detail/components/CafeBookingCard"
-import { CafeDetailContent } from "@/pages/customer/cafe-detail/components/CafeDetailContent"
+import {
+  CafeAboutSection,
+  CafeRulesSection,
+} from "@/pages/customer/cafe-detail/components/CafeDetailContent"
+import { SectionRule } from "@/pages/customer/cafe-detail/components/SectionShell"
 import { CafeDetailHero } from "@/pages/customer/cafe-detail/components/CafeDetailHero"
 import { CafeFnbSection } from "@/pages/customer/cafe-detail/components/CafeFnbSection"
 import { CafeVehiclesSection } from "@/pages/customer/cafe-detail/components/CafeVehiclesSection"
@@ -43,6 +48,12 @@ export function ProviderCafePreviewPage() {
     enabled: !!cafeId,
   })
 
+  const { data: trackConfigs = [] } = useTrackConfigs(cafeId ?? "")
+  const trackImages = useMemo(
+    () => trackConfigs.flatMap((config) => config.images ?? []),
+    [trackConfigs],
+  )
+
   const cafe = useMemo(() => {
     if (!cafeDetail) return undefined
     const mapped = mapCafeToExploreCafe(cafeDetail, images)
@@ -54,9 +65,8 @@ export function ProviderCafePreviewPage() {
 
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
-  const [bookingMode, setBookingMode] = useState<BookingMode>("hourly")
+  const [bookingMode] = useState<BookingMode>("hourly")
   const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString("sv-SE"))
-  const [selectedSlotId, setSelectedSlotId] = useState("")
 
   if (isLoading) {
     return (
@@ -81,6 +91,20 @@ export function ProviderCafePreviewPage() {
     )
   }
 
+  const bookingCard = (
+    <CafeBookingCard
+      cafe={cafe}
+      selectedVehicleId={selectedVehicleId}
+      onClearVehicle={() => setSelectedVehicleId(undefined)}
+      fnbQuantities={fnbQuantities}
+      onClearFnb={() => setFnbQuantities({})}
+      mode={bookingMode}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
+      menuItems={cafeMenu?.data ?? []}
+    />
+  )
+
   return (
     <div className="min-h-screen bg-white pb-10">
       <PreviewBanner onBack={() => navigate(-1)} cafeName={cafe.name} />
@@ -95,55 +119,37 @@ export function ProviderCafePreviewPage() {
 
       <main className="w-full px-4 md:px-6 2xl:px-8">
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0 space-y-8">
-            <CafeDetailHero cafe={cafe} />
-            <div className="lg:hidden">
-              <CafeBookingCard
+          <div className="min-w-0">
+            <CafeDetailHero cafe={cafe} trackImages={trackImages} />
+
+            <div className="mt-6 lg:hidden">{bookingCard}</div>
+
+            {/* Cùng thứ tự với trang khách thấy: giới thiệu → xe → đồ ăn → quy định */}
+            <div className="mt-12 space-y-12">
+              <CafeAboutSection
+                description={cafe.description}
+                amenities={cafeDetail.amenities}
+              />
+              <SectionRule />
+              <CafeVehiclesSection
                 cafe={cafe}
                 selectedVehicleId={selectedVehicleId}
-                fnbQuantities={fnbQuantities}
-                mode={bookingMode}
-                setMode={setBookingMode}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                selectedSlotId={selectedSlotId}
-                setSelectedSlotId={setSelectedSlotId}
-                menuItems={cafeMenu?.data ?? []}
+                onSelectVehicle={setSelectedVehicleId}
               />
+              <SectionRule />
+              <CafeFnbSection
+                menuItems={cafeMenu?.data ?? []}
+                isLoading={menuLoading}
+                isError={menuError}
+                fnbQuantities={fnbQuantities}
+                onChangeFnb={setFnbQuantities}
+              />
+              <SectionRule />
+              <CafeRulesSection rules={cafeDetail.rules} />
             </div>
-            <CafeVehiclesSection
-              cafe={cafe}
-              selectedVehicleId={selectedVehicleId}
-              onSelectVehicle={setSelectedVehicleId}
-            />
-            <CafeFnbSection
-              menuItems={cafeMenu?.data ?? []}
-              isLoading={menuLoading}
-              isError={menuError}
-              fnbQuantities={fnbQuantities}
-              onChangeFnb={setFnbQuantities}
-            />
-            <CafeDetailContent
-              description={cafe.description}
-              amenities={cafeDetail.amenities}
-              rules={cafeDetail.rules}
-            />
           </div>
 
-          <aside className="hidden lg:sticky lg:top-[88px] lg:block">
-            <CafeBookingCard
-              cafe={cafe}
-              selectedVehicleId={selectedVehicleId}
-              fnbQuantities={fnbQuantities}
-              mode={bookingMode}
-              setMode={setBookingMode}
-              selectedDate={selectedDate}
-              setSelectedDate={setSelectedDate}
-              selectedSlotId={selectedSlotId}
-              setSelectedSlotId={setSelectedSlotId}
-              menuItems={cafeMenu?.data ?? []}
-            />
-          </aside>
+          <aside className="hidden lg:sticky lg:top-[88px] lg:block">{bookingCard}</aside>
         </div>
       </main>
     </div>

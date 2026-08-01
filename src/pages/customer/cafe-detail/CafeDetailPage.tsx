@@ -17,13 +17,20 @@ import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
 import { CafeTopDriversSection } from "./components/CafeTopDriversSection"
 import { CafeContestsSection } from "./components/CafeContestsSection"
-import { CafeDetailContent } from "./components/CafeDetailContent"
+import {
+  CafeAboutSection,
+  CafeReviewsSection,
+  CafeRulesSection,
+} from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
 import { CafeFnbSection } from "./components/CafeFnbSection"
 import { CafePackagesSection } from "./components/CafePackagesSection"
 import { CafePromoBanner } from "./components/CafePromoBanner"
 import { CafeVehiclesSection } from "./components/CafeVehiclesSection"
+import { CafeSection } from "./components/SectionShell"
+import { TrackConfigList } from "./components/TrackConfigList"
 import { useCafeConfigurationRefresh } from "@/features/cafes/hooks/useCafeConfigurationRefresh"
+import { useTrackConfigs } from "@/features/cafes/hooks/useTrackConfigs"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 
 export function CafeDetailPage() {
@@ -72,6 +79,14 @@ export function CafeDetailPage() {
     enabled: !!resolvedCafe?.id,
   })
 
+  // Ảnh loại sân cũng là ảnh của cơ sở — gộp vào album ở hero, vì nhiều quán mới
+  // chỉ upload đúng một ảnh đại diện, và album một tấm thì chẳng có gì để xem.
+  const { data: trackConfigs = [] } = useTrackConfigs(resolvedCafe?.id ?? "")
+  const trackImages = useMemo(
+    () => trackConfigs.flatMap((config) => config.images ?? []),
+    [trackConfigs],
+  )
+
   const sourceCafe = cafeDetail ?? resolvedCafe
   const cafe = useMemo(() => {
     if (!sourceCafe) return undefined
@@ -85,9 +100,8 @@ export function CafeDetailPage() {
   // Hoisted Booking Selections
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
-  const [bookingMode, setBookingMode] = useState<BookingMode>("hourly")
+  const [bookingMode] = useState<BookingMode>("hourly")
   const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString("sv-SE"))
-  const [selectedSlotId, setSelectedSlotId] = useState("")
 
   // Cùng bộ biến thể với danh sách ở trang Khám phá, có tôn trọng reduced-motion.
   // Phải gọi trước mọi nhánh return sớm bên dưới (quy tắc hook).
@@ -105,7 +119,7 @@ export function CafeDetailPage() {
         <div className="mb-4 h-4 w-72 animate-pulse rounded bg-slate-100" />
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-5">
-            <div className="h-[360px] animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-[380px] animate-pulse rounded-2xl bg-slate-100" />
             <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />
           </div>
           <div className="hidden h-[420px] animate-pulse rounded-2xl bg-slate-100 lg:block" />
@@ -147,13 +161,64 @@ export function CafeDetailPage() {
     )
   }
 
+  const bookingCard = (
+    <CafeBookingCard
+      cafe={cafe}
+      selectedVehicleId={selectedVehicleId}
+      onClearVehicle={() => setSelectedVehicleId(undefined)}
+      fnbQuantities={fnbQuantities}
+      onClearFnb={() => setFnbQuantities({})}
+      mode={bookingMode}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
+      menuItems={cafeMenu?.data ?? []}
+    />
+  )
+
+  /*
+    Thứ tự phần trên trang đi theo trình tự người ta ra quyết định:
+    sân chạy được gì → chỗ này thế nào → thuê xe gì → có gói/khuyến mãi không →
+    ăn uống → người khác nói gì → cộng đồng ở đây ra sao → luật lệ.
+
+    Bản cũ đặt "Bảng vàng tay đua" và "Giải đấu" ngay dưới ảnh, còn "Loại sân" thì
+    tận cuối trang sau cả menu đồ ăn — khách lần đầu phải cuộn qua bốn khối mới
+    biết sân này chạy được thể loại gì.
+  */
+  const sections = [
+    <TrackSection key="tracks" cafeId={resolvedCafe.id} />,
+    <CafeAboutSection
+      key="about"
+      description={cafe.description}
+      amenities={cafeDetail?.amenities}
+    />,
+    <CafeVehiclesSection
+      key="vehicles"
+      cafe={cafe}
+      selectedVehicleId={selectedVehicleId}
+      onSelectVehicle={setSelectedVehicleId}
+    />,
+    <CafePackagesSection key="packages" cafeId={resolvedCafe.id} />,
+    <CafeFnbSection
+      key="fnb"
+      menuItems={cafeMenu?.data ?? []}
+      isLoading={menuLoading}
+      isError={menuError}
+      fnbQuantities={fnbQuantities}
+      onChangeFnb={setFnbQuantities}
+    />,
+    <CafeReviewsSection key="reviews" cafeId={resolvedCafe.id} />,
+    <CafeTopDriversSection key="drivers" cafeId={resolvedCafe.id} />,
+    <CafeContestsSection key="contests" cafeId={resolvedCafe.id} />,
+    <CafeRulesSection key="rules" rules={cafeDetail?.rules} />,
+  ]
+
   return (
-    <div className="bg-white pb-10">
+    <div className="bg-white pb-16">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pt-3 pb-1 text-xs text-slate-500 md:px-6"
+        className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pb-1 pt-3 text-sm text-slate-500 md:px-6"
       >
         <Link to={routePaths.cafes} className="hover:text-slate-900">Cơ sở</Link>
         <span>/</span>
@@ -163,85 +228,67 @@ export function CafeDetailPage() {
       </motion.div>
 
       <main className="mx-auto w-full max-w-[1440px] px-4 md:px-6">
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0 space-y-8">
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
+          <div className="min-w-0">
             <motion.div {...entranceProps(0)}>
-              <CafeDetailHero cafe={cafe} />
+              <CafeDetailHero cafe={cafe} trackImages={trackImages} />
             </motion.div>
-            <motion.div {...entranceProps(1)}>
+
+            <motion.div {...entranceProps(1)} className="mt-6">
               <CafePromoBanner cafeId={resolvedCafe.id} />
             </motion.div>
-            <motion.div {...entranceProps(2)}>
-              <CafeTopDriversSection cafeId={resolvedCafe.id} />
+
+            {/* Thẻ đặt lịch chèn ngay sau ảnh trên màn hình hẹp, nơi không có cột phải */}
+            <motion.div {...entranceProps(2)} className="mt-6 lg:hidden">
+              {bookingCard}
             </motion.div>
-            <motion.div {...entranceProps(3)}>
-              <CafeContestsSection cafeId={resolvedCafe.id} />
-            </motion.div>
-            <motion.div {...entranceProps(4)} className="lg:hidden">
-              <CafeBookingCard
-                cafe={cafe}
-                selectedVehicleId={selectedVehicleId}
-                fnbQuantities={fnbQuantities}
-                mode={bookingMode}
-                setMode={setBookingMode}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                selectedSlotId={selectedSlotId}
-                setSelectedSlotId={setSelectedSlotId}
-                menuItems={cafeMenu?.data ?? []}
-              />
-            </motion.div>
-            <motion.div {...entranceProps(5)}>
-              <CafeVehiclesSection
-                cafe={cafe}
-                selectedVehicleId={selectedVehicleId}
-                onSelectVehicle={setSelectedVehicleId}
-              />
-            </motion.div>
-            <motion.div {...entranceProps(6)}>
-              <CafePackagesSection cafeId={resolvedCafe.id} />
-            </motion.div>
-            <motion.div {...entranceProps(7)}>
-              <CafeFnbSection
-                menuItems={cafeMenu?.data ?? []}
-                isLoading={menuLoading}
-                isError={menuError}
-                fnbQuantities={fnbQuantities}
-                onChangeFnb={setFnbQuantities}
-              />
-            </motion.div>
-            <motion.div {...entranceProps(8)}>
-              <CafeDetailContent
-                description={cafe.description}
-                amenities={cafeDetail?.amenities}
-                rules={cafeDetail?.rules}
-                cafeId={cafeDetail?.id}
-              />
-            </motion.div>
+
+            {/*
+              `empty:hidden` là bắt buộc, không phải trang trí: gói slot, bảng vàng
+              và giải đấu tự trả về null khi cơ sở chưa có dữ liệu. Không có nó thì
+              mỗi phần vắng mặt vẫn để lại một đường kẻ và 96px khoảng trống.
+            */}
+            <div className="mt-12 space-y-12">
+              {sections.map((section, index) => (
+                <motion.div
+                  key={section.key}
+                  {...entranceProps(Math.min(index + 3, 8))}
+                  className="border-t border-slate-200/80 pt-12 empty:hidden first:border-0 first:pt-0"
+                >
+                  {section}
+                </motion.div>
+              ))}
+            </div>
           </div>
 
           {/* Giữ position:sticky ở chính <aside> - bọc motion.div ra ngoài sẽ tạo
               containing block mới do transform và làm hỏng dính khi cuộn. */}
           <aside className="hidden lg:sticky lg:top-20 lg:block">
-            <motion.div {...entranceProps(4)}>
-              <CafeBookingCard
-                cafe={cafe}
-                selectedVehicleId={selectedVehicleId}
-                fnbQuantities={fnbQuantities}
-                mode={bookingMode}
-                setMode={setBookingMode}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                selectedSlotId={selectedSlotId}
-                setSelectedSlotId={setSelectedSlotId}
-                menuItems={cafeMenu?.data ?? []}
-              />
-            </motion.div>
+            <motion.div {...entranceProps(2)}>{bookingCard}</motion.div>
           </aside>
         </div>
       </main>
 
       <ChatWidget cafeId={resolvedCafe.id} />
     </div>
+  )
+}
+
+/**
+ * Gọi `useTrackConfigs` ngay tại đây thay vì để `TrackConfigList` tự lo, để khi
+ * cơ sở chưa cấu hình sân nào thì cả phần biến mất — chứ không để lại một tiêu đề
+ * lơ lửng không có nội dung bên dưới.
+ */
+function TrackSection({ cafeId }: { cafeId: string }) {
+  const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
+  if (!isLoading && configs.length === 0) return null
+
+  return (
+    <CafeSection
+      title="Loại sân tại cơ sở"
+      lead="Mỗi loại sân có mặt đường và sức chứa riêng — chọn loại phù hợp ở bước đặt lịch."
+    >
+      <TrackConfigList cafeId={cafeId} />
+    </CafeSection>
   )
 }

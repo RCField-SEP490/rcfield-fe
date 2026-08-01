@@ -57,8 +57,6 @@ export function ExploreMapPanel({
   onUserLocation,
   hoveredCafeId,
   onBoundsChange,
-  searchOnMove = true,
-  onSearchOnMoveChange,
 }: {
   cafes: Cafe[]
   onSelectCafe: (cafe: Cafe) => void
@@ -66,8 +64,6 @@ export function ExploreMapPanel({
   onUserLocation: (loc: UserLocation | null) => void
   hoveredCafeId: string | null
   onBoundsChange?: (bounds: MapBounds) => void
-  searchOnMove?: boolean
-  onSearchOnMoveChange?: (v: boolean) => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -223,23 +219,12 @@ export function ExploreMapPanel({
       {/* Leaflet mount point */}
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Search-on-move toggle */}
-      {onSearchOnMoveChange && (
-        <div className="absolute bottom-6 left-1/2 z-[400] -translate-x-1/2">
-          <label className="flex cursor-pointer items-center gap-2 rounded-full border bg-background/95 px-3.5 py-2 text-xs font-medium shadow-md backdrop-blur-sm select-none">
-            <input
-              type="checkbox"
-              checked={searchOnMove}
-              onChange={(e) => onSearchOnMoveChange(e.target.checked)}
-              className="h-3.5 w-3.5 accent-foreground"
-            />
-            Tìm kiếm khi di chuyển bản đồ
-          </label>
-        </div>
-      )}
-
-      {/* Geolocation button */}
-      <div className="absolute bottom-6 right-3 z-[400]">
+      {/*
+        Góc trên bên phải: chỗ duy nhất còn trống trong khung 280px.
+        Zoom control của Leaflet chiếm góc trên trái, nút "Toàn màn hình" ở góc
+        dưới trái, dòng ghi công ở góc dưới phải.
+      */}
+      <div className="absolute right-3 top-3 z-[400]">
         {userLocation ? (
           <button
             type="button"

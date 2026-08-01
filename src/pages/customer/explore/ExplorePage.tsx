@@ -286,6 +286,7 @@ export function ExplorePage() {
                 onTogglePopularFilter={filters.togglePopularFilter}
                 activeFilterCount={filters.activeFilterCount}
                 onClearAll={filters.clearFilters}
+                onOpenFullMap={() => setShowMap(true)}
               />
             </div>
           </div>

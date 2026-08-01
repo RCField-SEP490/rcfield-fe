@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, type ReactNode } from "react"
-import { CarFront, Clock3, Heart, Images, MapPin, Share2, Star, WalletCards } from "lucide-react"
+import { useMemo, useState, useEffect } from "react"
+import { CarFront, Clock3, Heart, MapPin, Share2, Star } from "lucide-react"
 import { toast } from "sonner"
 import type { Cafe } from "@/shared/data/explore-data"
 import { cn } from "@/shared/lib/utils"
@@ -7,8 +7,20 @@ import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { favoriteApi } from "@/features/explore/api/favorite.api"
+import { CAFE_PLACEHOLDER_IMAGE } from "@/features/cafes/lib/cafe.mappers"
 
-export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
+/** Mặc định ổn định — viết `= []` ngay trong tham số sẽ tạo mảng mới mỗi lần
+ *  render và làm `useMemo` tính lại album liên tục. */
+const NO_IMAGES: string[] = []
+
+export function CafeDetailHero({
+  cafe,
+  trackImages = NO_IMAGES,
+}: {
+  cafe: Cafe
+  /** Ảnh chụp từng loại sân — cũng là ảnh của chính cơ sở, xem `images` bên dưới. */
+  trackImages?: string[]
+}) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const [isFavorite, setIsFavorite] = useState(() => {
     try {
@@ -63,7 +75,7 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
       const favs = localStorage.getItem("rcfield_favorite_cafes")
       let list: string[] = favs ? JSON.parse(favs) : []
       if (!Array.isArray(list)) list = []
-      
+
       const isFav = list.includes(cafe.id)
       let updatedList = [...list]
 
@@ -109,11 +121,24 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
       toast.success("Đã sao chép link chi nhánh")
     }
   }
-  const images = useMemo(
-    () => dedupeImages([cafe.image, ...(cafe.images ?? []), ...cafe.availableVehicles.map((vehicle) => vehicle.image)]),
-    [cafe],
-  )
-  const targetFirstImage = images[0] ?? cafe.image
+
+  /**
+   * Album gồm ảnh cơ sở + ảnh từng loại sân — cả hai đều là ảnh chụp tại chỗ.
+   *
+   * KHÔNG lấy ảnh của các mẫu xe cho thuê: phần lớn là ảnh sản phẩm chụp trên nền
+   * trắng, trộn vào làm album "cơ sở" trông như trang bán hàng, mà xe đã có mục
+   * riêng bên dưới. Ảnh placeholder cũng bị loại, chỉ giữ lại khi không còn gì khác.
+   */
+  const images = useMemo(() => {
+    const real = dedupeImages([
+      cafe.image,
+      ...(cafe.images ?? []),
+      ...trackImages,
+    ]).filter((image) => image !== CAFE_PLACEHOLDER_IMAGE)
+    return real.length > 0 ? real : [CAFE_PLACEHOLDER_IMAGE]
+  }, [cafe.image, cafe.images, trackImages])
+
+  const targetFirstImage = images[0]
   const [activeImage, setActiveImage] = useState(targetFirstImage)
   const [prevFirstImage, setPrevFirstImage] = useState(targetFirstImage)
 
@@ -122,23 +147,25 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
     setActiveImage(targetFirstImage)
   }
 
-  const galleryTiles = buildGalleryTiles(images, activeImage)
+  const slotLabel = formatSlotDuration(cafe.slotDurationMinutes)
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {cafe.trackTypes.map((track) => (
-              <Badge key={track} variant="secondary" className="rounded-full px-2.5 py-1 text-[11px]">
+              <Badge key={track} variant="secondary" className="rounded-full px-2.5 py-1 text-xs">
                 {track}
               </Badge>
             ))}
           </div>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">{cafe.name}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-slate-600">
+          <h1 className="mt-2.5 text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+            {cafe.name}
+          </h1>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-slate-600">
             <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {cafe.address}</span>
-            <span className="flex items-center gap-1.5 font-medium text-amber-600">
+            <span className="flex items-center gap-1.5 font-semibold text-amber-600">
               <Star className="h-4 w-4 fill-amber-500" /> {cafe.rating} ({cafe.reviewsCount} đánh giá)
             </span>
           </div>
@@ -160,107 +187,87 @@ export function CafeDetailHero({ cafe }: { cafe: Cafe }) {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-        <div className="grid gap-2 p-2 md:h-[340px] md:grid-cols-[1.35fr_0.9fr] overflow-hidden">
-          <GalleryButton
-            image={activeImage}
-            label={`${cafe.name} ảnh chính`}
-            onClick={() => setActiveImage(activeImage)}
-            className="h-[260px] md:h-full"
-            imageClassName="rounded-xl"
-          />
+      {/*
+        Một khung xem chính + dải chọn ảnh bên dưới.
+        `object-contain` chứ không phải `object-cover`: ảnh do quán tự chụp thường
+        nhỏ và tỉ lệ lung tung, `cover` sẽ cắt rồi phóng to phần còn lại nên nhìn nhoè.
+        `contain` giữ nguyên tỉ lệ và cho thấy trọn tấm ảnh — có viền nền hai bên
+        nhưng sắc nét, đổi lại đúng thứ người xem cần.
+      */}
+      <div className="flex h-[280px] items-center justify-center overflow-hidden rounded-2xl bg-slate-100 md:h-[420px]">
+        <img
+          src={activeImage}
+          alt={`${cafe.name} — ảnh cơ sở`}
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
 
-          <div className="grid grid-cols-2 gap-2 md:grid-rows-2">
-            {galleryTiles.slice(0, 4).map((image, index) => (
-              <GalleryButton
-                key={`${image}-${index}`}
-                image={image}
-                label={`${cafe.name} ảnh ${index + 2}`}
-                onClick={() => setActiveImage(image)}
-                className="h-24 md:h-full"
-              >
-                {index === 3 && images.length > 5 ? (
-                  <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-slate-950/45 text-sm font-semibold text-white">
-                    <Images className="mr-2 h-4 w-4" />
-                    Xem {images.length} ảnh
-                  </span>
-                ) : null}
-              </GalleryButton>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto border-t bg-slate-50/80 p-2">
+      {images.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {images.map((image, index) => (
             <button
-              key={`${image}-${index}`}
+              key={image}
               type="button"
+              aria-label={`Xem ảnh ${index + 1}`}
+              aria-pressed={image === activeImage}
               onClick={() => setActiveImage(image)}
               className={cn(
-                "h-14 w-20 shrink-0 overflow-hidden rounded-lg border bg-muted transition hover:opacity-100",
-                image === activeImage ? "border-slate-950 opacity-100 ring-2 ring-slate-950/10" : "opacity-70",
+                "h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 transition",
+                image === activeImage
+                  ? "ring-2 ring-slate-950 ring-offset-2"
+                  : "opacity-60 hover:opacity-100",
               )}
             >
               <img src={image} alt="" className="h-full w-full object-cover" />
             </button>
           ))}
+          <span className="ml-1 shrink-0 whitespace-nowrap text-sm font-semibold text-slate-400">
+            {images.length} ảnh
+          </span>
         </div>
-      </div>
+      )}
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <QuickFact icon={WalletCards} label="Giá tham khảo" value={cafe.priceRange} />
-        <QuickFact icon={Clock3} label="Slot tiêu chuẩn" value="60 phút/slot" />
-        <QuickFact icon={CarFront} label="Xe thuê" value={`${cafe.availableVehicles.length} mẫu sẵn sàng`} />
-        <QuickFact icon={Star} label="Đánh giá" value={`${cafe.rating}/5 · ${cafe.reviewsCount} lượt`} />
-      </div>
+      {/*
+        Chỉ giữ hai thông tin chưa nói ở đâu khác. "Giá tham khảo" và "Đánh giá"
+        từng nằm ở đây nhưng trùng với thẻ đặt lịch bên phải và dòng sao ngay trên,
+        nên đã bỏ. Trình bày bằng dấu chấm ngăn thay vì bốn ô có viền.
+      */}
+      <dl className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-600">
+        <InlineFact icon={Clock3} label="Slot tiêu chuẩn" value={slotLabel} />
+        <span aria-hidden className="hidden h-4 w-px bg-slate-200 sm:block" />
+        <InlineFact
+          icon={CarFront}
+          label="Xe cho thuê"
+          value={`${cafe.availableVehicles.length} mẫu sẵn sàng`}
+        />
+      </dl>
     </section>
   )
 }
 
-function QuickFact({ icon: Icon, label, value }: { icon: typeof Star; label: string; value: string }) {
+function InlineFact({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Star
+  label: string
+  value: string
+}) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-xl border bg-white px-3 py-2 shadow-sm">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[11px] font-medium text-slate-500">{label}</span>
-        <span className="block truncate text-xs font-bold text-slate-950">{value}</span>
-      </span>
+    <div className="flex items-center gap-2">
+      <Icon className="h-4 w-4 shrink-0 text-slate-400" />
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="font-bold text-slate-950">{value}</dd>
     </div>
   )
 }
 
-function GalleryButton({
-  image,
-  label,
-  onClick,
-  className,
-  imageClassName,
-  children,
-}: {
-  image: string
-  label: string
-  onClick: () => void
-  className?: string
-  imageClassName?: string
-  children?: ReactNode
-}) {
-  return (
-    <button type="button" onClick={onClick} className={cn("group relative overflow-hidden rounded-xl bg-muted", className)}>
-      <img
-        src={image}
-        alt={label}
-        className={cn("h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]", imageClassName)}
-      />
-      {children}
-    </button>
-  )
-}
-
-function buildGalleryTiles(images: string[], activeImage: string) {
-  const rest = images.filter((image) => image !== activeImage)
-  return rest.length >= 4 ? rest : [...rest, ...images].filter(Boolean)
+function formatSlotDuration(minutes: number | undefined) {
+  if (typeof minutes !== "number" || !Number.isInteger(minutes) || minutes <= 0) {
+    return "Chưa cấu hình"
+  }
+  return minutes === 60 ? "60 phút" : `${minutes} phút`
 }
 
 function dedupeImages(images: string[]) {

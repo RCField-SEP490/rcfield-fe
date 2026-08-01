@@ -31,7 +31,7 @@ import { toast } from "sonner"
 
 // Form validation schema with Zod
 const loginSchema = z.object({
-  email: z.string().min(1, { message: "Vui long nhap email" }).email({ message: "Email khong hop le" }),
+  email: z.string().min(1, { message: "Vui lòng nhập Email" }).email({ message: "Email không hợp lệ" }),
   password: z.string().min(6, { message: "Mật khẩu phải chứa ít nhất 6 ký tự" }),
   rememberMe: z.boolean().optional(),
 })

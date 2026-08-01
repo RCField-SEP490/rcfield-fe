@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, ExternalLink, LayoutList, Loader2, Navigation, RouteIcon, X } from "lucide-react"
+import { ArrowLeft, ExternalLink, LayoutList, Loader2, Navigation, RouteIcon, X, ZoomOut } from "lucide-react"
 import type { Cafe } from "@/shared/data/explore-data"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
@@ -46,6 +46,42 @@ const USER_PIN = L.divIcon({
 const DEFAULT_CENTER: L.LatLngTuple = [10.95, 106.82]
 const DEFAULT_ZOOM = 9
 
+/** Bán kính coi là "cùng một vùng" khi chọn cụm để canh khung hình ban đầu. */
+const FOCUS_RADIUS_KM = 150
+
+/**
+ * Chọn cụm cơ sở để canh khung hình mở đầu.
+ *
+ * Fit toàn bộ kết quả nghe hợp lý nhưng hỏng ngay khi danh sách có một điểm lẻ ở
+ * xa: chỉ cần một cơ sở Hà Nội là khung hình bị kéo ra tầm cả nước, các pin còn
+ * lại co thành chấm. Ở đây lấy điểm trung vị (median) làm mốc — trung vị không bị
+ * điểm lẻ kéo lệch như trung bình — rồi giữ những cơ sở nằm trong bán kính quanh nó.
+ * Phần còn lại trả về ở `far` để giao diện mời người dùng thu nhỏ khi cần.
+ */
+function getInitialFocus(cafes: Cafe[]) {
+  const located = cafes.filter((cafe) => cafe.latitude && cafe.longitude)
+  if (located.length <= 1) return { focus: located, far: [] as Cafe[] }
+
+  const lats = located.map((cafe) => cafe.latitude!).sort((a, b) => a - b)
+  const lngs = located.map((cafe) => cafe.longitude!).sort((a, b) => a - b)
+  const midLat = lats[Math.floor(lats.length / 2)]
+  const midLng = lngs[Math.floor(lngs.length / 2)]
+
+  const focus: Cafe[] = []
+  const far: Cafe[] = []
+  located.forEach((cafe) => {
+    const distance = haversineKm(midLat, midLng, cafe.latitude!, cafe.longitude!)
+    if (distance <= FOCUS_RADIUS_KM) focus.push(cafe)
+    else far.push(cafe)
+  })
+
+  return { focus, far }
+}
+
+function toLatLngs(cafes: Cafe[]) {
+  return cafes.map((cafe) => L.latLng(cafe.latitude!, cafe.longitude!))
+}
+
 interface RouteInfo {
   durationSec: number
   distanceM: number
@@ -85,12 +121,15 @@ export function ExploreMapOverlay({
   const routeLayerRef = useRef<L.Polyline | null>(null)
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const locationRequestedRef = useRef(false)
+  const userLocationRef = useRef(userLocation)
 
   const [activeCafeId, setActiveCafeId] = useState<string | null>(null)
   const [geoState, setGeoState] = useState<"idle" | "loading" | "denied">("idle")
   const [showMobileList, setShowMobileList] = useState(false)
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null)
   const [routeLoading, setRouteLoading] = useState(false)
+
+  const focusInfo = useMemo(() => getInitialFocus(cafes), [cafes])
 
   const sortedCafes = useMemo(() => {
     if (!userLocation) return cafes
@@ -109,6 +148,16 @@ export function ExploreMapOverlay({
     document.body.style.overflow = "hidden"
     return () => { document.body.style.overflow = "" }
   }, [])
+
+  // Đóng bằng phím Esc — lớp phủ che kín màn hình nên phải có lối thoát bằng
+  // bàn phím, không chỉ mỗi nút "Quay lại danh sách" ở góc trái.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose])
 
   // Check permission silently
   useEffect(() => {
@@ -183,7 +232,22 @@ export function ExploreMapOverlay({
       markersRef.current.set(cafe.id, marker)
     })
 
-  }, [cafes])
+    // Canh khung hình theo cụm cơ sở chính.
+    //
+    // Trước đây bản đồ luôn mở ở một toạ độ mặc định nên các pin nằm lọt thỏm ở
+    // một góc. Đọc `userLocation` qua ref để effect này không chạy lại khi vị trí
+    // đổi — canh khung theo vị trí người dùng đã có effect riêng bên dưới lo,
+    // hai bên fit chồng nhau sẽ giật.
+    if (userLocationRef.current) return
+
+    const points = toLatLngs(focusInfo.focus)
+    if (points.length === 0) return
+    if (points.length === 1) {
+      map.setView(points[0], 14)
+      return
+    }
+    map.fitBounds(L.latLngBounds(points), { padding: [64, 64], maxZoom: 14 })
+  }, [cafes, focusInfo])
 
   // Update active marker icon + clear route when selection changes
   useEffect(() => {
@@ -204,6 +268,7 @@ export function ExploreMapOverlay({
 
   // Update user marker
   useEffect(() => {
+    userLocationRef.current = userLocation
     const map = mapRef.current
     if (!map) return
 
@@ -299,6 +364,13 @@ export function ExploreMapOverlay({
     } finally {
       setRouteLoading(false)
     }
+  }
+
+  const handleFitAll = () => {
+    const map = mapRef.current
+    const points = toLatLngs([...focusInfo.focus, ...focusInfo.far])
+    if (!map || points.length === 0) return
+    map.fitBounds(L.latLngBounds(points), { padding: [64, 64], maxZoom: 14 })
   }
 
   const handleClearRoute = () => {
@@ -479,7 +551,21 @@ export function ExploreMapOverlay({
         </div>
 
         {/* Map */}
-        <div ref={mapContainerRef} className="flex-1 [isolation:isolate]" />
+        <div className="relative flex-1">
+          <div ref={mapContainerRef} className="absolute inset-0 [isolation:isolate]" />
+
+          {/* Cụm chính đã được canh khung — mời người dùng thu nhỏ nếu còn cơ sở ở xa */}
+          {focusInfo.far.length > 0 && (
+            <button
+              type="button"
+              onClick={handleFitAll}
+              className="absolute bottom-6 left-1/2 z-[500] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full border bg-background/95 px-4 py-2 text-xs font-semibold shadow-lg backdrop-blur transition hover:bg-muted"
+            >
+              <ZoomOut className="h-3.5 w-3.5 text-orange-600" />
+              Thu nhỏ để xem {focusInfo.far.length} cơ sở ở xa
+            </button>
+          )}
+        </div>
 
         {/* Mobile bottom sheet */}
         {showMobileList && (

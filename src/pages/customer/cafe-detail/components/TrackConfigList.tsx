@@ -40,8 +40,8 @@ function TrackCard({ config }: { config: TrackConfig }) {
   }
 
   return (
-    <article className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
+    <article>
+      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-slate-100">
         {config.images.length > 0 ? (
           <>
             <img
@@ -82,11 +82,11 @@ function TrackCard({ config }: { config: TrackConfig }) {
           <div className="flex h-full items-center justify-center text-slate-300 text-xs">Chưa có ảnh</div>
         )}
       </div>
-      <div className="p-3">
-        <p className="text-sm font-bold text-slate-900">{config.track_type?.name ?? "Loại sân"}</p>
-        <p className="mt-0.5 text-xs text-slate-500">Xe tự mang: tối đa {config.byoc_capacity} xe</p>
+      <div className="pt-3">
+        <p className="text-base font-bold text-slate-950">{config.track_type?.name ?? "Loại sân"}</p>
+        <p className="mt-1 text-sm text-slate-500">Xe tự mang: tối đa {config.byoc_capacity} xe</p>
         {config.description && (
-          <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-slate-600">{config.description}</p>
+          <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-600">{config.description}</p>
         )}
       </div>
     </article>

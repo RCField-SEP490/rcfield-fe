@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Info as InfoIcon, ShieldCheck } from "lucide-react"
+import { useReducedMotion } from "framer-motion"
+import { ArrowLeft } from "lucide-react"
 import { Link, useParams } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
@@ -9,37 +10,46 @@ import {
   contestApi,
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
-import { groupMatchesByRound, getContestRuntimeFormat } from "@/features/contests/lib/contest-runtime"
 import {
-  getContestStatusLabel,
+  getContestRuntimeFormat,
+  groupMatchesByRound,
+} from "@/features/contests/lib/contest-runtime"
+import {
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
-  getJourneyStatusLabel,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem, ContestRegistration } from "@/features/contests/types"
-import { Card } from "@/shared/ui/card"
 import { Skeleton } from "@/shared/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 
-import { ContestBracketBoard, ContestRuntimeOverview } from "./components/ContestBracketSection"
+import {
+  ContestBracketBoard,
+  ContestRuntimeOverview,
+} from "./components/ContestBracketSection"
 import { ContestHero } from "./components/ContestHero"
+import {
+  ContestJoinSection,
+  ContestMyJourneySection,
+} from "./components/ContestJoinSection"
 import { ContestLeaderboardSection } from "./components/ContestLeaderboardSection"
 import {
-  ContestPrizeAndBranches,
-  ContestSummaryCards,
-  ContestTimeline,
-} from "./components/ContestOverviewSection"
-import { ContestRegistrationPanel } from "./components/ContestRegistrationPanel"
-import { StatusRow } from "./components/DetailPrimitives"
-import { MyRegistrationMatches } from "./components/MyRegistrationSection"
-
-type DetailTab = "overview" | "matches" | "leaderboard" | "registration"
+  ContestSectionNav,
+  type ContestNavItem,
+} from "./components/ContestSectionNav"
+import {
+  ContestAboutSection,
+  ContestFormatSection,
+  ContestPrizeSection,
+  ContestScheduleSection,
+  ContestVenueSection,
+} from "./components/ContestStorySections"
+import { PageSection, Reveal, SectionHeading } from "./components/SectionShell"
+import { formatCurrency } from "./utils"
 
 export function PublicContestDetailPage() {
   const { contestId } = useParams()
   const role = useAuthStore((state) => state.role)
   const profile = useAuthStore((state) => state.user)
-  const [activeTab, setActiveTab] = useState<DetailTab>("overview")
+  const prefersReducedMotion = useReducedMotion()
 
   const contestQuery = useQuery({
     queryKey: contestQueryKeys.detail(contestId),
@@ -76,183 +86,223 @@ export function PublicContestDetailPage() {
       ),
     [matches],
   )
-  const runtimeSummary = contest?.runtime_summary
-  const highlightRounds = contest?.highlight_rounds ?? runtimeSummary?.highlight_rounds ?? []
-  const leaderboard = contest?.published_leaderboard ?? null
-  const effectiveStatus = contest ? getEffectiveContestStatus(contest) : null
-  const registrationAvailability = contest
-    ? getContestRegistrationAvailability(contest)
-    : null
-  const prizeStructure = contest?.prize_structure
+
+  /**
+   * Cuộn tới một phần. Dùng `scrollIntoView` thay vì để trình duyệt nhảy theo
+   * hash để có thể tắt hiệu ứng mượt khi người dùng bật giảm chuyển động.
+   */
+  const handleJump = useCallback(
+    (sectionId: string) => {
+      const element = document.getElementById(sectionId)
+      if (!element) return
+      element.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      })
+    },
+    [prefersReducedMotion],
+  )
+
+  if (!contest) {
+    return contestQuery.isError ? (
+      <ContestDetailError />
+    ) : (
+      <ContestDetailSkeleton />
+    )
+  }
+
+  const runtimeSummary = contest.runtime_summary
+  const highlightRounds =
+    contest.highlight_rounds ?? runtimeSummary?.highlight_rounds ?? []
+  const leaderboard = contest.published_leaderboard ?? null
+  const effectiveStatus = getEffectiveContestStatus(contest)
+  const registrationAvailability = getContestRegistrationAvailability(contest)
+  const prizeStructure = contest.prize_structure
   const prizeItems = Array.isArray(prizeStructure?.items)
     ? (prizeStructure.items as Array<Record<string, unknown>>)
     : Array.isArray(prizeStructure?.tiers)
       ? (prizeStructure.tiers as Array<Record<string, unknown>>)
       : []
 
+  // Chỉ dựng phần "Diễn biến" khi thật sự có gì để xem — giải mới mở đăng ký mà
+  // hiện một khối rỗng dài sẽ làm loãng mạch giới thiệu.
+  const showProgress =
+    matches.length > 0 ||
+    Boolean(leaderboard) ||
+    effectiveStatus === "RUNNING" ||
+    effectiveStatus === "COMPLETED"
+
+  const navItems: ContestNavItem[] = [
+    { id: "gioi-thieu", label: "Giới thiệu" },
+    ...(existingRegistration
+      ? [{ id: "cua-toi", label: "Hành trình của bạn" }]
+      : []),
+    { id: "the-thuc", label: "Thể thức" },
+    { id: "lich-trinh", label: "Lịch trình" },
+    { id: "giai-thuong", label: "Giải thưởng" },
+    { id: "dia-diem", label: "Địa điểm" },
+    ...(showProgress ? [{ id: "dien-bien", label: "Diễn biến" }] : []),
+    { id: "dang-ky", label: "Đăng ký" },
+  ]
+
   return (
-    <section className="bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <Link
-        to={routePaths.contests}
-        className="mb-5 inline-flex items-center gap-2 text-sm font-bold text-muted-foreground transition hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        <span>Quay lại danh sách giải đấu</span>
-      </Link>
+    <div className="bg-white pb-20 lg:pb-0">
+      <ContestHero
+        contest={contest}
+        effectiveStatus={effectiveStatus}
+        onJump={handleJump}
+      />
 
-      {!contest ? (
-        <Skeleton className="h-96 rounded-3xl" />
-      ) : (
-        <div className="space-y-8">
-          <ContestHero contest={contest} effectiveStatus={effectiveStatus ?? contest.status} />
+      <ContestSectionNav
+        items={navItems}
+        ctaLabel={existingRegistration ? "Đăng ký của bạn" : "Đăng ký ngay"}
+        onJump={handleJump}
+      />
 
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => setActiveTab(value as DetailTab)}
-            className="space-y-6"
-          >
-            <TabsList className="flex w-full flex-wrap gap-2 rounded-2xl border border-border bg-card p-2 shadow-sm">
-              <TabsTrigger value="overview" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Tổng quan
-              </TabsTrigger>
-              <TabsTrigger value="matches" className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Trận đấu
-              </TabsTrigger>
-              <TabsTrigger
-                value="leaderboard"
-                className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                Bảng xếp hạng
-              </TabsTrigger>
-              <TabsTrigger
-                value="registration"
-                className="rounded-xl px-4 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                Đăng ký của tôi
-              </TabsTrigger>
-            </TabsList>
+      <ContestAboutSection contest={contest} />
 
-            <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-6">
-                <TabsContent value="overview" className="mt-0 space-y-6">
-                  <ContestSummaryCards contest={contest} />
-                  <ContestPrizeAndBranches
-                    contest={contest}
-                    prizeItems={prizeItems}
-                  />
-                  <ContestTimeline contest={contest} />
-                </TabsContent>
+      {existingRegistration ? (
+        <ContestMyJourneySection
+          registration={existingRegistration}
+          matches={myMatches}
+          loading={matchesQuery.isLoading}
+          effectiveStatus={effectiveStatus}
+          currentRoundNo={runtimeSummary?.current_round_no ?? null}
+        />
+      ) : null}
 
-                <TabsContent value="matches" className="mt-0 space-y-6">
-                  <ContestRuntimeOverview
-                    effectiveStatus={effectiveStatus ?? contest.status}
-                    runtimeSummary={runtimeSummary}
-                    highlightRounds={highlightRounds}
-                  />
-                  <ContestBracketBoard
-                    matches={matches}
-                    groupedMatches={groupedMatches}
-                    existingRegistration={existingRegistration}
-                    loading={matchesQuery.isLoading}
-                    format={getContestRuntimeFormat(contest)}
-                  />
-                </TabsContent>
+      <ContestFormatSection contest={contest} />
+      <ContestScheduleSection contest={contest} />
+      <ContestPrizeSection prizeItems={prizeItems} />
+      <ContestVenueSection contest={contest} />
 
-                <TabsContent value="leaderboard" className="mt-0 space-y-6">
-                  <ContestLeaderboardSection
-                    leaderboard={leaderboard}
-                    matches={matches}
-                  />
-                </TabsContent>
+      {showProgress ? (
+        <PageSection id="dien-bien" tone="muted">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Diễn biến"
+              title="Đường tới ngôi vô địch"
+              lead="Sơ đồ thi đấu, người đi tiếp và bảng xếp hạng được cập nhật ngay khi ban tổ chức chốt kết quả từng trận."
+            />
+          </Reveal>
+          <div className="mt-12 space-y-6">
+            <ContestRuntimeOverview
+              effectiveStatus={effectiveStatus}
+              runtimeSummary={runtimeSummary}
+              highlightRounds={highlightRounds}
+            />
+            <ContestBracketBoard
+              matches={matches}
+              groupedMatches={groupedMatches}
+              existingRegistration={existingRegistration}
+              loading={matchesQuery.isLoading}
+              format={getContestRuntimeFormat(contest)}
+            />
+            <ContestLeaderboardSection
+              leaderboard={leaderboard}
+              matches={matches}
+            />
+          </div>
+        </PageSection>
+      ) : null}
 
-                <TabsContent value="registration" className="mt-0 space-y-6">
-                  {existingRegistration ? (
-                    <MyRegistrationMatches
-                      registration={existingRegistration}
-                      matches={myMatches}
-                      loading={matchesQuery.isLoading}
-                    />
-                  ) : (
-                    <Card className="rounded-3xl border border-border bg-card p-6 shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <InfoIcon className="mt-0.5 size-5 shrink-0 text-primary" />
-                        <div className="space-y-2">
-                          <h3 className="text-lg font-extrabold text-foreground">
-                            Chưa có đăng ký của bạn
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            Hãy hoàn thành đăng ký ở khung bên phải. Sau khi
-                            được duyệt và được xếp trận, bracket của bạn sẽ hiện
-                            tại đây.
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </TabsContent>
-              </div>
+      <ContestJoinSection
+        contest={contest}
+        registrationAvailability={registrationAvailability}
+        role={role}
+        profileName={profile?.email ?? profile?.fullName ?? "--"}
+        existingRegistration={existingRegistration}
+        onRegistered={() => handleJump("cua-toi")}
+      />
 
-              <div className="space-y-6">
-                <ContestAsideStatus
-                  effectiveStatus={effectiveStatus ?? contest.status}
-                  runtimeSummary={runtimeSummary}
-                  existingRegistration={existingRegistration}
-                />
-                <ContestRegistrationPanel
-                  contest={contest}
-                  registrationAvailability={registrationAvailability ?? "DRAFT"}
-                  role={role}
-                  profileName={profile?.email ?? profile?.fullName ?? "--"}
-                  existingRegistration={existingRegistration}
-                  onRegistered={() => setActiveTab("registration")}
-                />
-              </div>
-            </div>
-          </Tabs>
-        </div>
-      )}
-      </div>
-    </section>
+      <MobileJoinBar
+        contest={contest}
+        existingRegistration={existingRegistration}
+        onJump={handleJump}
+      />
+    </div>
   )
 }
 
-function ContestAsideStatus({
-  effectiveStatus,
-  runtimeSummary,
+/**
+ * Thanh hành động dính đáy màn hình nhỏ — trên mobile phần đăng ký nằm cuối
+ * một trang cuộn dài, nếu không có lối tắt thì khách phải cuộn qua toàn bộ nội dung.
+ */
+function MobileJoinBar({
+  contest,
   existingRegistration,
+  onJump,
 }: {
-  effectiveStatus: ContestItem["status"]
-  runtimeSummary: ContestItem["runtime_summary"]
+  contest: ContestItem
   existingRegistration: ContestRegistration | null
+  onJump: (sectionId: string) => void
 }) {
+  if (existingRegistration) return null
+
   return (
-    <Card className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="size-5 text-emerald-500" />
-        <h3 className="text-lg font-black text-foreground">
-          Trạng thái theo dõi
-        </h3>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-2xs font-black uppercase tracking-[0.16em] text-slate-400">
+            Lệ phí
+          </p>
+          <p className="text-base font-black text-slate-900">
+            {formatCurrency(contest.entry_fee)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onJump("dang-ky")}
+          className="h-11 flex-1 rounded-2xl bg-primary text-sm font-black text-primary-foreground transition active:scale-[0.98]"
+        >
+          Đăng ký tham gia
+        </button>
       </div>
-      <div className="mt-4 space-y-3">
-        <StatusRow label="Giải đấu" value={getContestStatusLabel(effectiveStatus)} />
-        <StatusRow
-          label="Round hiện tại"
-          value={
-            runtimeSummary?.current_round_no
-              ? `Vòng ${runtimeSummary.current_round_no}`
-              : "Chưa có"
-          }
-        />
-        <StatusRow
-          label="Hành trình của bạn"
-          value={
-            existingRegistration?.customerJourneyStatus
-              ? getJourneyStatusLabel(existingRegistration.customerJourneyStatus)
-              : "Chưa đăng ký"
-          }
-        />
+    </div>
+  )
+}
+
+function ContestDetailSkeleton() {
+  return (
+    <div className="bg-white">
+      <div className="bg-brand-dark">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
+          <Skeleton className="h-4 w-48 bg-white/10" />
+          <Skeleton className="mt-10 h-8 w-40 rounded-full bg-white/10" />
+          <Skeleton className="mt-6 h-14 w-3/4 bg-white/10" />
+          <Skeleton className="mt-4 h-4 w-1/2 bg-white/10" />
+          <div className="mt-16 grid gap-4 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-14 bg-white/10" />
+            ))}
+          </div>
+        </div>
       </div>
-    </Card>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-16 sm:px-6">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-40 w-full rounded-3xl" />
+      </div>
+    </div>
+  )
+}
+
+function ContestDetailError() {
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-24 text-center sm:px-6">
+      <h1 className="text-2xl font-black text-slate-900">
+        Không tải được giải đấu này
+      </h1>
+      <p className="mt-3 text-sm font-medium text-slate-500">
+        Giải đấu có thể đã bị gỡ hoặc đường dẫn không còn đúng. Bạn thử quay lại
+        danh sách giải đấu nhé.
+      </p>
+      <Link
+        to={routePaths.contests}
+        className="mt-8 inline-flex h-11 items-center gap-2 rounded-2xl bg-slate-900 px-6 text-sm font-bold text-white transition hover:bg-slate-800"
+      >
+        <ArrowLeft className="size-4" />
+        Quay lại danh sách giải đấu
+      </Link>
+    </div>
   )
 }
