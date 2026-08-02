@@ -8,6 +8,7 @@ import type {
   ContestCatalogType,
   ContestRentalOptions,
   ContestAvailableRentalVehiclesResponse,
+  ContestHandoverUnit,
   ContestItem,
   ContestLeaderboardPayload,
   ContestListParams,
@@ -111,6 +112,7 @@ function mapContestRegistration(raw: any): ContestRegistration {
       raw.participant_role_snapshot ?? raw.participantRoleSnapshot ?? "",
     vehicleSource: raw.vehicle_source ?? raw.vehicleSource,
     vehicleId: raw.vehicle_id ?? raw.vehicleId ?? null,
+    rentalCatalogId: raw.rental_catalog_id ?? raw.rentalCatalogId ?? null,
     bookingId: raw.booking_id ?? raw.bookingId ?? null,
     status: raw.status,
     checkInCode: raw.check_in_code ?? raw.checkInCode ?? null,
@@ -219,6 +221,15 @@ export const contestApi = {
     const res = await api.get<
       ApiEnvelope<ContestAvailableRentalVehiclesResponse>
     >(`/v1/contests/${contestId}/available-rental-vehicles`, { params })
+    return res.data.data
+  },
+
+  listHandoverUnits: async (
+    registrationId: string,
+  ): Promise<ContestHandoverUnit[]> => {
+    const res = await api.get<ApiEnvelope<ContestHandoverUnit[]>>(
+      `/v1/contest-registrations/${registrationId}/handover-units`,
+    )
     return res.data.data
   },
 
@@ -508,6 +519,7 @@ export const contestApi = {
   checkInRegistration: async (
     registrationId: string,
     checkedInCafeId: string,
+    rentalVehicleId?: string | null,
     byocConfirmed?: boolean,
     byocInspection?: {
       photos?: Array<{ url: string; angle?: string; notes?: string }>
@@ -523,6 +535,7 @@ export const contestApi = {
       `/v1/contest-registrations/${registrationId}/check-in`,
       {
         checked_in_cafe_id: checkedInCafeId,
+        rental_vehicle_id: rentalVehicleId ?? undefined,
         byoc_confirmed: byocConfirmed,
         byoc_inspection: byocInspection,
       },

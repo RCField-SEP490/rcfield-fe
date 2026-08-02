@@ -189,6 +189,14 @@ export function validateContestStep(
       const capacity = Number.parseInt(form.capacity, 10)
       if (form.capacity && (!Number.isFinite(capacity) || capacity < 1)) {
         errors.capacity = "Sức chứa phải là số nguyên lớn hơn 0"
+      } else if (
+        form.capacity &&
+        context.runtimeFormat === "KNOCKOUT" &&
+        ![8, 16, 32].includes(capacity)
+      ) {
+        // Sơ đồ đấu loại phải chia đôi được tới tận chung kết.
+        errors.capacity =
+          "Đấu loại trực tiếp chỉ nhận sức chứa 8, 16 hoặc 32 VĐV"
       }
       const entryFee = Number(form.entry_fee)
       if (form.entry_fee && (!Number.isFinite(entryFee) || entryFee < 0)) {

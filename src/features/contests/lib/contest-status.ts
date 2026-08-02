@@ -142,6 +142,44 @@ export function getContestStatusLabel(status: ContestItem["status"]): string {
   }
 }
 
+export type ContestCheckInAvailability =
+  | { canCheckIn: true }
+  | { canCheckIn: false; reason: string }
+
+/**
+ * Nhân viên có điểm danh được lúc này không.
+ *
+ * Soi đúng các điều kiện backend áp trong `checkInRegistration`, để nút được
+ * khoá kèm lý do ngay trên màn hình thay vì cho bấm rồi mới nhận lỗi 400
+ * (`CONTEST_NOT_CHECKIN_READY` / `CONTEST_CHECKIN_NOT_STARTED`).
+ */
+export function getContestCheckInAvailability(
+  contest: Pick<ContestItem, "status" | "starts_at" | "ends_at">,
+  now = new Date(),
+): ContestCheckInAvailability {
+  if (contest.status !== "CLOSED" && contest.status !== "RUNNING") {
+    return {
+      canCheckIn: false,
+      reason:
+        contest.status === "OPEN"
+          ? "Còn đang mở đăng ký — đóng đăng ký rồi mới điểm danh được"
+          : "Giải chưa sẵn sàng để điểm danh",
+    }
+  }
+
+  const startsAt = parseDate(contest.starts_at)
+  if (startsAt && now.getTime() < startsAt.getTime()) {
+    return { canCheckIn: false, reason: "Chưa tới giờ thi đấu" }
+  }
+
+  const endsAt = parseDate(contest.ends_at)
+  if (endsAt && now.getTime() > endsAt.getTime()) {
+    return { canCheckIn: false, reason: "Giải đã kết thúc" }
+  }
+
+  return { canCheckIn: true }
+}
+
 export function getRegistrationStatusClass(status: ContestRegistrationStatus) {
   switch (status) {
     case "CONFIRMED":

@@ -7,6 +7,7 @@ import { Input } from "@/shared/ui/input"
 import { ContestFormField } from "../ContestFormField"
 import { DateTimeField } from "../DateTimeField"
 import type { ContestFormState } from "../contest-form-types"
+import type { ContestRuntimeFormat } from "../contest-form-utils"
 
 /* Lịch chuẩn cho một giải mới, tính XUÔI từ lúc mở đăng ký. */
 const REGISTRATION_WINDOW_DAYS = 7
@@ -27,11 +28,13 @@ export function StepSchedule({
   setForm,
   errors,
   isEdit,
+  runtimeFormat,
 }: {
   form: ContestFormState
   setForm: Dispatch<SetStateAction<ContestFormState>>
   errors: Record<string, string>
   isEdit: boolean
+  runtimeFormat: ContestRuntimeFormat
 }) {
   // Chốt "bây giờ" một lần khi mount: dùng làm chặn dưới cho các ô ngày.
   // Tính lại mỗi render vừa thừa vừa vi phạm quy tắc component thuần khiết.
@@ -116,17 +119,56 @@ export function StepSchedule({
           Quy mô & chi phí
         </h3>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <ContestFormField label="Sức chứa tối đa (VĐV)" error={errors.capacity}>
-            <Input
-              type="number"
-              min={1}
-              className="h-11"
-              value={form.capacity}
-              onChange={(event) => setField("capacity")(event.target.value)}
-            />
-            <p className="text-xs leading-5 text-[#747878]">
-              Hệ thống từ chối đăng ký mới khi đã đủ số này.
-            </p>
+          <ContestFormField
+            label="Sức chứa tối đa (VĐV)"
+            error={errors.capacity}
+          >
+            {runtimeFormat === "KNOCKOUT" ? (
+              <>
+                {/*
+                  Sơ đồ đấu loại chỉ chia đôi đẹp khi số suất là luỹ thừa của 2.
+                  Cho nhập số bất kỳ thì vòng trong sẽ có trận chỉ một người và
+                  nhân viên phải nhập kết quả giả cho trận không có đối thủ.
+                */}
+                <select
+                  className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+                  value={form.capacity}
+                  onChange={(event) => setField("capacity")(event.target.value)}
+                >
+                  {/* Giải cũ đang để số lẻ thì vẫn hiện ra, kèm nhãn, để provider
+                      biết vì sao bước này báo lỗi thay vì thấy ô rỗng khó hiểu. */}
+                  {!["8", "16", "32"].includes(form.capacity) &&
+                  form.capacity ? (
+                    <option value={form.capacity}>
+                      {form.capacity} VĐV (không dùng được cho đấu loại)
+                    </option>
+                  ) : null}
+                  {["8", "16", "32"].map((size) => (
+                    <option key={size} value={size}>
+                      {size} VĐV
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs leading-5 text-[#747878]">
+                  Đấu loại trực tiếp cần số suất chia đôi được đến tận chung
+                  kết. Đăng ký thiếu so với số này thì các suất trống được xử
+                  thắng tự động.
+                </p>
+              </>
+            ) : (
+              <>
+                <Input
+                  type="number"
+                  min={1}
+                  className="h-11"
+                  value={form.capacity}
+                  onChange={(event) => setField("capacity")(event.target.value)}
+                />
+                <p className="text-xs leading-5 text-[#747878]">
+                  Hệ thống từ chối đăng ký mới khi đã đủ số này.
+                </p>
+              </>
+            )}
           </ContestFormField>
           <ContestFormField
             label="Lệ phí tham gia (VND)"
@@ -140,8 +182,8 @@ export function StepSchedule({
               onChange={(event) => setField("entry_fee")(event.target.value)}
             />
             <p className="text-xs leading-5 text-[#747878]">
-              Nhập 0 nếu miễn phí. Với VĐV thuê xe, lệ phí gộp chung vào một giao
-              dịch VNPay với tiền thuê xe.
+              Nhập 0 nếu miễn phí. Đây là khoản duy nhất VĐV phải trả — thuê xe
+              của quán trong giải không tính thêm tiền.
             </p>
           </ContestFormField>
         </div>
@@ -164,7 +206,9 @@ type ScheduleFields = Pick<
 function buildStandardSchedule(): ScheduleFields {
   const opensAt = roundUpToHalfHour(new Date())
 
-  const closesAt = new Date(opensAt.getTime() + REGISTRATION_WINDOW_DAYS * DAY_MS)
+  const closesAt = new Date(
+    opensAt.getTime() + REGISTRATION_WINDOW_DAYS * DAY_MS,
+  )
 
   const startsAt = new Date(closesAt.getTime() + PREPARATION_DAYS * DAY_MS)
   startsAt.setHours(RACE_START_HOUR, 0, 0, 0)
@@ -195,7 +239,8 @@ function buildScheduleFromRaceDate(rawStartsAt: string): ScheduleFields | null {
   const desiredOpensAt = new Date(
     startsAt.getTime() - (REGISTRATION_WINDOW_DAYS + PREPARATION_DAYS) * DAY_MS,
   )
-  const opensAt = desiredOpensAt.getTime() < now.getTime() ? now : desiredOpensAt
+  const opensAt =
+    desiredOpensAt.getTime() < now.getTime() ? now : desiredOpensAt
 
   let closesAt = new Date(startsAt.getTime() - PREPARATION_DAYS * DAY_MS)
   if (closesAt.getTime() <= opensAt.getTime()) {
@@ -308,7 +353,8 @@ function roundUpToHalfHour(date: Date) {
   const rounded = new Date(date)
   rounded.setSeconds(0, 0)
   const remainder = rounded.getMinutes() % 30
-  if (remainder !== 0) rounded.setMinutes(rounded.getMinutes() + (30 - remainder))
+  if (remainder !== 0)
+    rounded.setMinutes(rounded.getMinutes() + (30 - remainder))
   return rounded
 }
 
@@ -323,5 +369,8 @@ function formatMilestone(value: string) {
   if (!value) return "--"
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "--"
-  return date.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })
+  return date.toLocaleString("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  })
 }

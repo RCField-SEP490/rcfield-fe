@@ -301,6 +301,7 @@ export type ContestRegistration = {
   participantRoleSnapshot: string
   vehicleSource: string
   vehicleId: string | null
+  rentalCatalogId: string | null
   bookingId: string | null
   status: ContestRegistrationStatus
   checkInCode: string | null
@@ -642,6 +643,13 @@ export type ContestAvailableRentalCatalogGroup = {
   cover_image_url: string | null
   total_units: number
   remaining_slots: number
+}
+
+/** Chiếc xe cụ thể nhân viên có thể giao cho VĐV lúc điểm danh. */
+export type ContestHandoverUnit = {
+  id: string
+  identifier: string | null
+  color: string | null
 }
 
 export type ContestAvailableRentalVehiclesResponse =

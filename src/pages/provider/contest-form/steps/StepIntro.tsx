@@ -4,6 +4,7 @@ import { Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { contestApi } from "@/features/contests/api/contest.api"
+import { uploadImage } from "@/features/uploads/api/upload.api"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Textarea } from "@/shared/ui/textarea"
@@ -18,7 +19,12 @@ export type SummaryRow = {
 }
 
 const MAX_BANNER_BYTES = 5 * 1024 * 1024
-const ACCEPTED_BANNER_TYPES = ["image/jpeg", "image/png", "image/webp", "image/jpg"]
+const ACCEPTED_BANNER_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/jpg",
+]
 
 /**
  * Bước 5 — phần khách nhìn thấy, kèm bảng kiểm lại toàn bộ cấu hình.
@@ -41,13 +47,24 @@ export function StepIntro({
   summaryRows: SummaryRow[]
   onEditStep: (index: number) => void
 }) {
+  /*
+    Giải CHƯA tạo thì chưa có contestId để gọi POST /contests/:id/banner, nên
+    trước đây nút upload bị khoá và provider phải tự đi tìm link ảnh ở đâu đó.
+    Kho ảnh dùng chung (POST /uploads/images) không cần contestId — đẩy ảnh lên
+    đó lấy URL là xong, còn endpoint riêng của contest chỉ dùng khi sửa giải đã
+    tồn tại để ảnh gắn đúng thư mục của giải.
+  */
   const uploadBannerMutation = useMutation({
     mutationFn: async (file: File) => {
-      if (!contestId) throw new Error("Cần lưu giải đấu trước khi upload banner")
-      return contestApi.uploadBanner(contestId, file)
+      if (contestId) {
+        const result = await contestApi.uploadBanner(contestId, file)
+        return result.banner_image_url
+      }
+      const result = await uploadImage(file, "contest-banner")
+      return result.url
     },
-    onSuccess: (data) => {
-      setForm((current) => ({ ...current, banner_image_url: data.banner_image_url }))
+    onSuccess: (bannerImageUrl) => {
+      setForm((current) => ({ ...current, banner_image_url: bannerImageUrl }))
       toast.success("Upload banner thành công")
     },
     onError: () => {
@@ -55,7 +72,9 @@ export function StepIntro({
     },
   })
 
-  const handleBannerFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerFileChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0]
     if (!file) return
     if (file.size > MAX_BANNER_BYTES) {
@@ -100,7 +119,10 @@ export function StepIntro({
           </p>
         </ContestFormField>
 
-        <ContestFormField label="Banner giải đấu" error={errors.banner_image_url}>
+        <ContestFormField
+          label="Banner giải đấu"
+          error={errors.banner_image_url}
+        >
           <div className="space-y-3">
             <Input
               className="h-11"
@@ -118,13 +140,15 @@ export function StepIntro({
                 type="button"
                 variant="outline"
                 className="h-10 gap-2 rounded-lg"
-                disabled={!contestId || uploadBannerMutation.isPending}
+                disabled={uploadBannerMutation.isPending}
                 onClick={() =>
                   document.getElementById("contest-banner-file")?.click()
                 }
               >
                 <Upload className="size-4" />
-                {uploadBannerMutation.isPending ? "Đang upload..." : "Upload ảnh"}
+                {uploadBannerMutation.isPending
+                  ? "Đang upload..."
+                  : "Upload ảnh"}
               </Button>
               <input
                 id="contest-banner-file"
@@ -133,12 +157,10 @@ export function StepIntro({
                 className="hidden"
                 onChange={handleBannerFileChange}
               />
-              {!contestId ? (
-                <p className="text-sm text-[#747878]">
-                  Tạo giải đấu xong mới upload được ảnh — tạm thời có thể dán
-                  đường dẫn ảnh.
-                </p>
-              ) : null}
+              <p className="text-sm text-[#747878]">
+                Chọn ảnh từ máy, hoặc dán sẵn đường dẫn ảnh vào ô trên. JPG, PNG
+                hoặc WEBP, tối đa 5MB.
+              </p>
             </div>
             {form.banner_image_url ? (
               <div className="overflow-hidden rounded-xl border border-[#e5e2e1]">

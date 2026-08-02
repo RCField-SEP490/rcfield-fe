@@ -2,7 +2,10 @@ import { useEffect, useState } from "react"
 import { useParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import {
+  contestApi,
+  contestQueryKeys,
+} from "@/features/contests/api/contest.api"
 import { useContestEventDay } from "@/features/contests/hooks/useContestEventDay"
 import { getErrorMessage } from "@/features/contests/lib/contest-runtime"
 import { useStaffOperations } from "../context/StaffOperationContext"
@@ -31,18 +34,21 @@ export default function StaffContestCheckInPage() {
     try {
       await eventDay.lookupMutation.mutateAsync(code.trim())
     } catch (error) {
-      toast.error("Không thể tra cứu ngườ đăng ký", { description: getErrorMessage(error).message })
+      toast.error("Không thể tra cứu người đăng ký", {
+        description: getErrorMessage(error).message,
+      })
     }
   }
 
   const handleCheckIn = async (payload: {
+    rentalVehicleId?: string
     byocConfirmed?: boolean
     byocInspection?: {
       photos?: Array<{ url: string; angle?: string; notes?: string }>
       checklist?: Array<{
         itemKey: string
         itemLabel: string
-        status?: 'OK' | 'NOT_OK' | 'NA'
+        status?: "OK" | "NOT_OK" | "NA"
         note?: string
       }>
     }
@@ -53,12 +59,15 @@ export default function StaffContestCheckInPage() {
       await eventDay.checkInMutation.mutateAsync({
         registrationId: registration.id,
         checkedInCafeId: assignedCafeId,
+        rentalVehicleId: payload.rentalVehicleId,
         byocConfirmed: payload.byocConfirmed,
         byocInspection: payload.byocInspection,
       })
-      toast.success("Đã điểm danh ngườ đăng ký")
+      toast.success("Đã điểm danh người đăng ký")
     } catch (error) {
-      toast.error("Không thể điểm danh", { description: getErrorMessage(error).message })
+      toast.error("Không thể điểm danh", {
+        description: getErrorMessage(error).message,
+      })
     }
   }
 

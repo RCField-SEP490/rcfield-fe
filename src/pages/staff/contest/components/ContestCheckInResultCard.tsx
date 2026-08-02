@@ -1,10 +1,23 @@
 import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { contestApi } from "@/features/contests/api/contest.api"
 import type { ContestRegistration } from "@/features/contests/types"
-import { formatContestDateTime, getRegistrationDisplayName, getRegistrationSubtitle } from "@/features/contests/lib/contest-runtime"
-import { getPaymentStatusLabel, getRegistrationStatusLabel } from "@/features/contests/lib/contest-status"
+import {
+  formatContestDateTime,
+  getRegistrationDisplayName,
+  getRegistrationSubtitle,
+} from "@/features/contests/lib/contest-runtime"
+import {
+  getPaymentStatusLabel,
+  getRegistrationStatusLabel,
+} from "@/features/contests/lib/contest-status"
 import { uploadImage } from "@/features/uploads/api/upload.api"
-import { StaffBadge, StaffButton, StaffCard } from "@/pages/staff/components/StaffUI"
+import {
+  StaffBadge,
+  StaffButton,
+  StaffCard,
+} from "@/pages/staff/components/StaffUI"
 
 type ByocInspectionPhoto = { url: string; angle?: string; notes?: string }
 type ByocPhotoSlot = ByocInspectionPhoto & { uploading?: boolean }
@@ -18,7 +31,11 @@ type ByocInspectionChecklistItem = {
 function defaultByocChecklist(): ByocInspectionChecklistItem[] {
   return [
     { itemKey: "body", itemLabel: "Thân xe / vỏ xe", status: "OK" },
-    { itemKey: "power_system", itemLabel: "Hệ thống nguồn / pin / motor", status: "OK" },
+    {
+      itemKey: "power_system",
+      itemLabel: "Hệ thống nguồn / pin / motor",
+      status: "OK",
+    },
     { itemKey: "wheels", itemLabel: "Bánh xe / lốp / trục bánh", status: "OK" },
   ]
 }
@@ -30,6 +47,7 @@ export function ContestCheckInResultCard({
 }: {
   registration: ContestRegistration | null
   onCheckIn: (payload: {
+    rentalVehicleId?: string
     byocConfirmed?: boolean
     byocInspection?: {
       photos: ByocInspectionPhoto[]
@@ -38,15 +56,18 @@ export function ContestCheckInResultCard({
   }) => void
   isPending?: boolean
 }) {
+  const [rentalVehicleId, setRentalVehicleId] = useState<string | null>(null)
   const [byocConfirmed, setByocConfirmed] = useState(false)
   const [byocPhotos, setByocPhotos] = useState<ByocPhotoSlot[]>([])
-  const [byocChecklist, setByocChecklist] = useState<ByocInspectionChecklistItem[]>(defaultByocChecklist)
+  const [byocChecklist, setByocChecklist] =
+    useState<ByocInspectionChecklistItem[]>(defaultByocChecklist)
 
   // Reset trạng thái kiểm tra khi tra cứu sang đăng ký khác để ảnh/checklist
   // của người trước không bị rò rỉ sang người sau.
   const registrationId = registration?.id
   useEffect(() => {
     queueMicrotask(() => {
+      setRentalVehicleId(null)
       setByocConfirmed(false)
       setByocPhotos([])
       setByocChecklist(defaultByocChecklist())
@@ -54,8 +75,22 @@ export function ContestCheckInResultCard({
   }, [registrationId])
 
   const isByoc = registration?.vehicleSource === "BYOC"
+  // VĐV thuê xe của quán thì nhân viên chọn đúng một chiếc để giao ngay tại quầy.
+  // Đăng ký cũ chưa từng chọn dòng xe thì không có gì để giao.
+  const needsHandover = !isByoc && Boolean(registration?.rentalCatalogId)
+
+  const handoverUnitsQuery = useQuery({
+    queryKey: ["contests", "handover-units", registration?.id],
+    queryFn: () => contestApi.listHandoverUnits(registration!.id),
+    enabled:
+      Boolean(registration?.id) &&
+      needsHandover &&
+      registration?.status !== "CHECKED_IN",
+  })
+  const handoverUnits = handoverUnitsQuery.data ?? []
   const isCheckedIn = registration?.status === "CHECKED_IN"
-  const byocDeclaration = (registration?.metadata?.byoc_declaration ?? null) as {
+  const byocDeclaration = (registration?.metadata?.byoc_declaration ??
+    null) as {
     vehicle_name?: string | null
     vehicle_brand?: string | null
     vehicle_class?: string | null
@@ -63,7 +98,9 @@ export function ContestCheckInResultCard({
   } | null
 
   const requiredChecklistKeys = new Set(["body", "power_system", "wheels"])
-  const providedChecklistKeys = new Set(byocChecklist.map((item) => item.itemKey))
+  const providedChecklistKeys = new Set(
+    byocChecklist.map((item) => item.itemKey),
+  )
   const missingChecklistKeys = Array.from(requiredChecklistKeys).filter(
     (key) => !providedChecklistKeys.has(key),
   )
@@ -75,12 +112,13 @@ export function ContestCheckInResultCard({
   // BE từ chối check-in BYOC khi có hạng mục NOT_OK (CONTEST_BYOC_INSPECTION_FAILED).
   const hasNotOkItem = byocChecklist.some((item) => item.status === "NOT_OK")
   const canCheckIn =
-    !isByoc ||
-    (byocConfirmed &&
-      validPhotoCount >= 2 &&
-      missingChecklistKeys.length === 0 &&
-      !anyUploading &&
-      !hasNotOkItem)
+    (!needsHandover || Boolean(rentalVehicleId)) &&
+    (!isByoc ||
+      (byocConfirmed &&
+        validPhotoCount >= 2 &&
+        missingChecklistKeys.length === 0 &&
+        !anyUploading &&
+        !hasNotOkItem))
 
   const handleCheckIn = () => {
     if (!registration) return
@@ -95,7 +133,7 @@ export function ContestCheckInResultCard({
         },
       })
     } else {
-      onCheckIn({})
+      onCheckIn(rentalVehicleId ? { rentalVehicleId } : {})
     }
   }
 
@@ -104,7 +142,9 @@ export function ContestCheckInResultCard({
   }
 
   const updatePhoto = (index: number, patch: Partial<ByocPhotoSlot>) => {
-    setByocPhotos((prev) => prev.map((p, i) => (i === index ? { ...p, ...patch } : p)))
+    setByocPhotos((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, ...patch } : p)),
+    )
   }
 
   const removePhoto = (index: number) => {
@@ -119,26 +159,55 @@ export function ContestCheckInResultCard({
     } catch (error) {
       updatePhoto(index, { uploading: false })
       toast.error("Không thể tải ảnh lên", {
-        description: error instanceof Error ? error.message : "Vui lòng thử lại.",
+        description:
+          error instanceof Error ? error.message : "Vui lòng thử lại.",
       })
     }
   }
 
-  const updateChecklistItem = (index: number, patch: Partial<ByocInspectionChecklistItem>) => {
-    setByocChecklist((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+  const updateChecklistItem = (
+    index: number,
+    patch: Partial<ByocInspectionChecklistItem>,
+  ) => {
+    setByocChecklist((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+    )
   }
 
   return (
     <StaffCard className="space-y-4">
-      <h3 className="text-base font-extrabold text-[#1c1b1b]">Kết quả tra cứu</h3>
+      <h3 className="text-base font-extrabold text-[#1c1b1b]">
+        Kết quả tra cứu
+      </h3>
       {registration ? (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-extrabold text-[#1c1b1b]">{getRegistrationDisplayName(registration)}</p>
-            <StaffBadge variant={registration.status === "CHECKED_IN" ? "info" : registration.status === "CONFIRMED" ? "success" : registration.status === "CANCELLED" ? "error" : "warning"}>
+            <p className="text-sm font-extrabold text-[#1c1b1b]">
+              {getRegistrationDisplayName(registration)}
+            </p>
+            <StaffBadge
+              variant={
+                registration.status === "CHECKED_IN"
+                  ? "info"
+                  : registration.status === "CONFIRMED"
+                    ? "success"
+                    : registration.status === "CANCELLED"
+                      ? "error"
+                      : "warning"
+              }
+            >
               {getRegistrationStatusLabel(registration.status)}
             </StaffBadge>
-            <StaffBadge variant={registration.paymentStatus === "MARKED_PAID" || registration.paymentStatus === "WAIVED" ? "success" : registration.paymentStatus === "PENDING_REVIEW" ? "info" : "warning"}>
+            <StaffBadge
+              variant={
+                registration.paymentStatus === "MARKED_PAID" ||
+                registration.paymentStatus === "WAIVED"
+                  ? "success"
+                  : registration.paymentStatus === "PENDING_REVIEW"
+                    ? "info"
+                    : "warning"
+              }
+            >
               {getPaymentStatusLabel(registration.paymentStatus)}
             </StaffBadge>
             <StaffBadge variant={isByoc ? "warning" : "info"}>
@@ -146,10 +215,20 @@ export function ContestCheckInResultCard({
             </StaffBadge>
           </div>
           <div className="space-y-2 text-sm font-semibold text-[#4c4a49]">
-            <p>Ngườ thi đấu: {getRegistrationSubtitle(registration) ?? `Mã đăng ký ${registration.id.slice(0, 8)}`}</p>
+            <p>
+              Ngườ thi đấu:{" "}
+              {getRegistrationSubtitle(registration) ??
+                `Mã đăng ký ${registration.id.slice(0, 8)}`}
+            </p>
             <p>Mã điểm danh: {registration.checkInCode ?? "--"}</p>
-            <p>Đã điểm danh lúc: {formatContestDateTime(registration.checkedInAt)}</p>
-            <p>Trạng thái thanh toán: {getPaymentStatusLabel(registration.paymentStatus)}</p>
+            <p>
+              Đã điểm danh lúc:{" "}
+              {formatContestDateTime(registration.checkedInAt)}
+            </p>
+            <p>
+              Trạng thái thanh toán:{" "}
+              {getPaymentStatusLabel(registration.paymentStatus)}
+            </p>
           </div>
 
           {isCheckedIn ? (
@@ -163,26 +242,49 @@ export function ContestCheckInResultCard({
             <>
               {isByoc ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-4">
-                  <h4 className="text-sm font-extrabold text-amber-900">Xác nhận xe cá nhân (BYOC)</h4>
+                  <h4 className="text-sm font-extrabold text-amber-900">
+                    Xác nhận xe cá nhân (BYOC)
+                  </h4>
                   <div className="grid gap-2 text-sm text-amber-800">
-                    <p><span className="font-semibold">Tên xe:</span> {byocDeclaration?.vehicle_name ?? "--"}</p>
-                    <p><span className="font-semibold">Hãng:</span> {byocDeclaration?.vehicle_brand ?? "--"}</p>
-                    <p><span className="font-semibold">Class:</span> {byocDeclaration?.vehicle_class ?? "--"}</p>
+                    <p>
+                      <span className="font-semibold">Tên xe:</span>{" "}
+                      {byocDeclaration?.vehicle_name ?? "--"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Hãng:</span>{" "}
+                      {byocDeclaration?.vehicle_brand ?? "--"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Class:</span>{" "}
+                      {byocDeclaration?.vehicle_class ?? "--"}
+                    </p>
                     {byocDeclaration?.notes ? (
-                      <p><span className="font-semibold">Ghi chú:</span> {byocDeclaration.notes}</p>
+                      <p>
+                        <span className="font-semibold">Ghi chú:</span>{" "}
+                        {byocDeclaration.notes}
+                      </p>
                     ) : null}
                   </div>
 
                   <div className="space-y-2">
-                    <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">Checklist kiểm tra xe</h5>
+                    <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+                      Checklist kiểm tra xe
+                    </h5>
                     {byocChecklist.map((item, index) => (
-                      <div key={item.itemKey} className="flex items-start gap-2 text-sm text-amber-900">
-                        <span className="font-semibold min-w-[140px]">{item.itemLabel}</span>
+                      <div
+                        key={item.itemKey}
+                        className="flex items-start gap-2 text-sm text-amber-900"
+                      >
+                        <span className="font-semibold min-w-[140px]">
+                          {item.itemLabel}
+                        </span>
                         <select
                           className="rounded border border-amber-300 bg-white px-2 py-1 text-xs"
                           value={item.status ?? "OK"}
                           onChange={(e) =>
-                            updateChecklistItem(index, { status: e.target.value as "OK" | "NOT_OK" | "NA" })
+                            updateChecklistItem(index, {
+                              status: e.target.value as "OK" | "NOT_OK" | "NA",
+                            })
                           }
                         >
                           <option value="OK">Đạt</option>
@@ -194,7 +296,9 @@ export function ContestCheckInResultCard({
                           placeholder="Ghi chú"
                           className="flex-1 rounded border border-amber-300 bg-white px-2 py-1 text-xs"
                           value={item.note ?? ""}
-                          onChange={(e) => updateChecklistItem(index, { note: e.target.value })}
+                          onChange={(e) =>
+                            updateChecklistItem(index, { note: e.target.value })
+                          }
                         />
                       </div>
                     ))}
@@ -202,7 +306,9 @@ export function ContestCheckInResultCard({
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">Ảnh kiểm tra xe (tối thiểu 2 ảnh)</h5>
+                      <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+                        Ảnh kiểm tra xe (tối thiểu 2 ảnh)
+                      </h5>
                       <button
                         type="button"
                         onClick={addPhoto}
@@ -219,7 +325,9 @@ export function ContestCheckInResultCard({
                           <div key={index} className="flex items-start gap-2">
                             <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-amber-300 bg-white">
                               {photo.uploading ? (
-                                <span className="text-[10px] font-bold text-amber-700">Đang tải...</span>
+                                <span className="text-[10px] font-bold text-amber-700">
+                                  Đang tải...
+                                </span>
                               ) : photo.url ? (
                                 <img
                                   src={photo.url}
@@ -227,7 +335,9 @@ export function ContestCheckInResultCard({
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <span className="text-[10px] font-bold text-amber-500">Chưa có</span>
+                                <span className="text-[10px] font-bold text-amber-500">
+                                  Chưa có
+                                </span>
                               )}
                             </div>
                             <div className="flex-1 space-y-1">
@@ -246,7 +356,9 @@ export function ContestCheckInResultCard({
                                 placeholder="Góc chụp"
                                 className="w-full rounded border border-amber-300 bg-white px-2 py-1 text-xs"
                                 value={photo.angle ?? ""}
-                                onChange={(e) => updatePhoto(index, { angle: e.target.value })}
+                                onChange={(e) =>
+                                  updatePhoto(index, { angle: e.target.value })
+                                }
                               />
                             </div>
                             <button
@@ -271,7 +383,8 @@ export function ContestCheckInResultCard({
                       className="mt-0.5"
                     />
                     <span>
-                      Tôi xác nhận xe cá nhân đã kiểm tra đạt chuẩn thi đấu và đúng như khai báo.
+                      Tôi xác nhận xe cá nhân đã kiểm tra đạt chuẩn thi đấu và
+                      đúng như khai báo.
                     </span>
                   </label>
 
@@ -283,9 +396,49 @@ export function ContestCheckInResultCard({
 
                   {isByoc && !canCheckIn && !hasNotOkItem ? (
                     <p className="text-xs text-amber-700">
-                      Vui lòng hoàn tất checklist, tải lên ít nhất 2 ảnh (chờ tải xong), và xác nhận xe đạt chuẩn trước khi điểm danh.
+                      Vui lòng hoàn tất checklist, tải lên ít nhất 2 ảnh (chờ
+                      tải xong), và xác nhận xe đạt chuẩn trước khi điểm danh.
                     </p>
                   ) : null}
+                </div>
+              ) : null}
+
+              {needsHandover ? (
+                <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 p-4">
+                  <h4 className="text-sm font-extrabold text-sky-900">
+                    Giao xe cho VĐV
+                  </h4>
+                  <p className="text-xs text-sky-800">
+                    Chọn chiếc xe bạn giao tận tay. Hệ thống lưu lại để chụp ảnh
+                    nhận - trả xe và tính hư hỏng khi kết thúc.
+                  </p>
+                  {handoverUnitsQuery.isLoading ? (
+                    <p className="text-sm text-sky-800">
+                      Đang tải danh sách xe...
+                    </p>
+                  ) : handoverUnits.length === 0 ? (
+                    <p className="text-sm font-semibold text-red-700">
+                      Không còn xe rảnh thuộc dòng VĐV đã đặt. Hãy kiểm tra lại
+                      kho xe.
+                    </p>
+                  ) : (
+                    <select
+                      className="h-11 w-full rounded-lg border border-sky-300 bg-white px-3 text-sm"
+                      value={rentalVehicleId ?? ""}
+                      onChange={(event) =>
+                        setRentalVehicleId(event.target.value || null)
+                      }
+                    >
+                      <option value="">-- Chọn xe để giao --</option>
+                      {handoverUnits.map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {[unit.identifier ?? unit.id.slice(0, 8), unit.color]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               ) : null}
 
@@ -299,7 +452,9 @@ export function ContestCheckInResultCard({
           )}
         </>
       ) : (
-        <p className="text-sm font-semibold text-[#6b7280]">Chưa có kết quả tra cứu.</p>
+        <p className="text-sm font-semibold text-[#6b7280]">
+          Chưa có kết quả tra cứu.
+        </p>
       )}
     </StaffCard>
   )

@@ -248,6 +248,7 @@ export function ProviderContestFormPage() {
             setForm={setForm}
             errors={validationErrors}
             isEdit={isEdit}
+            runtimeFormat={runtimeFormat}
           />
         ) : null}
 
