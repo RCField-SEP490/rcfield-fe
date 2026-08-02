@@ -4,6 +4,7 @@ import {
   getRegistrationDisplayName,
   getRegistrationSubtitle,
 } from "@/features/contests/lib/contest-runtime"
+import { journeyStatusAddsDetail } from "@/features/contests/lib/contest-status"
 import {
   JourneyStatusBadge,
   PaymentStatusBadge,
@@ -19,7 +20,10 @@ export function ContestRegistrationTable({
   onAction,
 }: {
   registrations: ContestRegistration[]
-  onAction: (kind: RegistrationActionKind, registration: ContestRegistration) => void
+  onAction: (
+    kind: RegistrationActionKind,
+    registration: ContestRegistration,
+  ) => void
 }) {
   return (
     <div className="space-y-3">
@@ -36,7 +40,7 @@ export function ContestRegistrationTable({
                 </p>
                 <RegistrationStatusBadge status={registration.status} />
                 <PaymentStatusBadge status={registration.paymentStatus} />
-                {registration.customerJourneyStatus ? (
+                {journeyStatusAddsDetail(registration.customerJourneyStatus) ? (
                   <JourneyStatusBadge
                     status={registration.customerJourneyStatus}
                   />

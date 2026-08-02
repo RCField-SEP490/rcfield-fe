@@ -151,16 +151,19 @@ export function validateContestStep(
 
       // Chọn "chỉ khoá sân được chọn" nhưng bỏ trống danh sách sân thì backend
       // sẽ âm thầm rơi về khoá cả chi nhánh — chặn ngay tại đây.
-      const cafesMissingTracks = form.participating_cafe_ids.filter((cafeId) => {
-        const activeConfigs = (context.trackConfigsByCafe[cafeId] ?? []).filter(
-          (item) => item.is_active,
-        )
-        if (activeConfigs.length <= 1) return false
-        const lock = context.resourceLocks[cafeId]
-        return (
-          lock?.scope === "SELECTED_TRACKS" && lock.track_config_ids.length === 0
-        )
-      })
+      const cafesMissingTracks = form.participating_cafe_ids.filter(
+        (cafeId) => {
+          const activeConfigs = (
+            context.trackConfigsByCafe[cafeId] ?? []
+          ).filter((item) => item.is_active)
+          if (activeConfigs.length <= 1) return false
+          const lock = context.resourceLocks[cafeId]
+          return (
+            lock?.scope === "SELECTED_TRACKS" &&
+            lock.track_config_ids.length === 0
+          )
+        },
+      )
       if (cafesMissingTracks.length > 0) {
         errors.resource_locks =
           "Có chi nhánh chọn khoá theo sân nhưng chưa chọn sân nào. Chọn ít nhất một sân hoặc chuyển sang khoá cả chi nhánh."
@@ -174,23 +177,6 @@ export function validateContestStep(
         const finalists = Number.parseInt(form.finalists, 10)
         if (!Number.isFinite(finalists) || finalists < 2 || finalists > 16) {
           errors.finalists = "Số VĐV vào chung kết phải từ 2 đến 16"
-        }
-      }
-
-      if (form.vehicle_policy !== "BYOC_ONLY") {
-        if (form.rental_deposit_mode === "REDUCED") {
-          const percent = Number(form.rental_deposit_percent)
-          if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-            errors.rental_deposit_percent = "Phần trăm cọc phải từ 0 đến 100"
-          }
-        }
-        const before = Number(form.rental_window_before)
-        if (!Number.isFinite(before) || before < 0) {
-          errors.rental_window_before = "Số phút phải là số không âm"
-        }
-        const after = Number(form.rental_window_after)
-        if (!Number.isFinite(after) || after < 0) {
-          errors.rental_window_after = "Số phút phải là số không âm"
         }
       }
 

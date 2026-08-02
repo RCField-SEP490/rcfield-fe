@@ -2,17 +2,29 @@ import { z } from "zod"
 
 export const contestUpsertSchema = z
   .object({
-    name: z.string().trim().min(1, "Tên contest không được để trống").max(100, "Tên contest tối đa 100 ký tự"),
+    name: z
+      .string()
+      .trim()
+      .min(1, "Tên contest không được để trống")
+      .max(100, "Tên contest tối đa 100 ký tự"),
     description: z.string().trim().nullable().optional(),
     contest_type_id: z.string().uuid("Vui lòng chọn loại giải đấu hợp lệ"),
     contest_format_id: z.string().uuid("Vui lòng chọn format giải đấu hợp lệ"),
-    contest_template_id: z.string().uuid("Vui lòng chọn template giải đấu hợp lệ"),
+    contest_template_id: z
+      .string()
+      .uuid("Vui lòng chọn template giải đấu hợp lệ"),
     track_type_id: z.string().uuid("Vui lòng chọn track type hợp lệ"),
-    participating_cafe_ids: z.array(z.string().uuid()).min(1, "Chọn ít nhất một chi nhánh tham gia"),
+    participating_cafe_ids: z
+      .array(z.string().uuid())
+      .min(1, "Chọn ít nhất một chi nhánh tham gia"),
     starts_at: z.string().min(1, "Thời gian bắt đầu không được để trống"),
     ends_at: z.string().min(1, "Thời gian kết thúc không được để trống"),
-    registration_opens_at: z.string().min(1, "Thời gian mở đăng ký không được để trống"),
-    registration_closes_at: z.string().min(1, "Thời gian đóng đăng ký không được để trống"),
+    registration_opens_at: z
+      .string()
+      .min(1, "Thời gian mở đăng ký không được để trống"),
+    registration_closes_at: z
+      .string()
+      .min(1, "Thời gian đóng đăng ký không được để trống"),
     capacity: z
       .number({ message: "Sức chứa phải là một số" })
       .int("Sức chứa phải là số nguyên")
@@ -66,15 +78,22 @@ export const contestUpsertSchema = z
       return regClose <= start
     },
     {
-      message: "Thời gian đóng đăng ký phải trước hoặc bằng thời gian bắt đầu contest",
+      message:
+        "Thời gian đóng đăng ký phải trước hoặc bằng thời gian bắt đầu contest",
       path: ["registration_closes_at"],
     },
   )
 
 export const contestGenerateMatchesSchema = z.object({
   cafe_id: z.string().uuid("Chi nhánh vận hành không hợp lệ"),
-  track_config_id: z.string().uuid("Cấu hình track không hợp lệ").nullable().optional(),
-  registration_ids: z.array(z.string().uuid()).min(1, "Cần chọn ít nhất 1 registration hợp lệ để sinh match"),
+  track_config_id: z
+    .string()
+    .uuid("Cấu hình track không hợp lệ")
+    .nullable()
+    .optional(),
+  registration_ids: z
+    .array(z.string().uuid())
+    .min(1, "Cần chọn ít nhất 1 registration hợp lệ để sinh match"),
   drivers_per_match: z
     .number({ message: "Số lượng driver mỗi trận phải là số" })
     .int()
@@ -118,27 +137,47 @@ export const contestCorrectResultsSchema = contestSubmitResultsSchema.extend({
   force_cascade: z.boolean().optional(),
 })
 
-
 export const contestBannerUploadSchema = z.object({
-  file: z.instanceof(File, { message: "Vui lòng chọn file ảnh" })
+  file: z
+    .instanceof(File, { message: "Vui lòng chọn file ảnh" })
     .refine((file) => file.size <= 5 * 1024 * 1024, "Ảnh tối đa 5MB")
     .refine(
-      (file) => ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(file.type),
+      (file) =>
+        ["image/jpeg", "image/png", "image/webp", "image/jpg"].includes(
+          file.type,
+        ),
       "Chỉ hỗ trợ JPG, PNG, WEBP",
     ),
 })
 
 export const contestByocDeclarationSchema = z.object({
-  byoc_vehicle_name: z.string().trim().min(2, "Tên xe cá nhân tối thiểu 2 ký tự").max(120, "Tên xe cá nhân tối đa 120 ký tự"),
-  byoc_vehicle_brand: z.string().trim().min(1, "Hãng xe không được để trống").max(120, "Hãng xe tối đa 120 ký tự"),
-  byoc_vehicle_class: z.string().trim().min(1, "Class xe không được để trống").max(120, "Class xe tối đa 120 ký tự"),
-  byoc_vehicle_notes: z.string().trim().max(1000, "Ghi chú tối đa 1000 ký tự").optional(),
+  byoc_vehicle_name: z
+    .string()
+    .trim()
+    .min(2, "Tên xe cá nhân tối thiểu 2 ký tự")
+    .max(120, "Tên xe cá nhân tối đa 120 ký tự"),
+  byoc_vehicle_brand: z
+    .string()
+    .trim()
+    .min(1, "Hãng xe không được để trống")
+    .max(120, "Hãng xe tối đa 120 ký tự"),
+  byoc_vehicle_class: z
+    .string()
+    .trim()
+    .min(1, "Class xe không được để trống")
+    .max(120, "Class xe tối đa 120 ký tự"),
+  byoc_vehicle_notes: z
+    .string()
+    .trim()
+    .max(1000, "Ghi chú tối đa 1000 ký tự")
+    .optional(),
 })
 
-export const contestRentalSlotSchema = z.object({
+/**
+ * Đăng ký thuê xe của quán chỉ cần chi nhánh và dòng xe: khung giờ do lịch thi
+ * đấu quyết định và xe được giao đúng lúc check-in.
+ */
+export const contestRentalChoiceSchema = z.object({
   cafe_id: z.string().uuid("Chi nhánh không hợp lệ"),
-  slot_start: z.string().min(1, "Chọn khung giờ bắt đầu"),
-  slot_end: z.string().min(1, "Chọn khung giờ kết thúc"),
-  track_config_id: z.string().uuid("Cấu hình track không hợp lệ").nullable().optional(),
-  vehicle_catalog_id: z.string().uuid("Dòng xe không hợp lệ").nullable().optional(),
+  vehicle_catalog_id: z.string().uuid("Dòng xe không hợp lệ"),
 })

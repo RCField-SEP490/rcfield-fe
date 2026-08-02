@@ -14,7 +14,10 @@ export function getErrorMessage(error: unknown) {
   return maybe.response?.data?.message ?? "Vui lòng kiểm tra lại dữ liệu."
 }
 
-export type ContestRuntimeFormat = "TIME_TRIAL" | "KNOCKOUT" | "QUALIFYING_FINAL"
+export type ContestRuntimeFormat =
+  | "TIME_TRIAL"
+  | "KNOCKOUT"
+  | "QUALIFYING_FINAL"
 
 export function getRuntimeFormatFromCode(
   code?: string | null,
@@ -32,8 +35,9 @@ export function stripManagedContestConfig(
   delete nextConfig.runtime_format
   delete nextConfig.resource_locks
   delete nextConfig.finalists
-  // rental_policy có ô nhập riêng ở bước 3; giữ lại trong extraConfig sẽ khiến
-  // giá trị cũ ghi đè giá trị người dùng vừa chỉnh.
+  // rental_policy là tàn dư của thời thuê xe trong giải còn tính tiền. Giờ thuê
+  // xe miễn phí nên form không còn ô nào ghi nó; xoá đi để giải cũ mở ra sửa
+  // không mang theo một chính sách giá đã hết hiệu lực.
   delete nextConfig.rental_policy
   return nextConfig
 }

@@ -16,17 +16,7 @@ export type ContestFormState = {
   vehicle_policy: "RENTAL_ONLY" | "BYOC_ONLY" | "MIXED"
   assignment_policy: "AT_CHECK_IN" | "PRE_ASSIGNED"
   finalists: string
-  /* Chính sách giá thuê xe trong giải — map sang `contest.config.rental_policy`.
-     Backend đã đọc và áp từ lâu (`getContestRentalPolicy`), nhưng trước đây không
-     có chỗ nào ghi nên mọi giải đều rơi vào mặc định "thu đủ tiền sân + cọc đầy đủ". */
-  rental_waive_slot_fee: boolean
-  rental_deposit_mode: RentalDepositMode
-  rental_deposit_percent: string
-  rental_window_before: string
-  rental_window_after: string
 }
-
-export type RentalDepositMode = "FULL" | "REDUCED" | "WAIVED"
 
 export type ResourceLockScope = "FULL_BRANCH" | "SELECTED_TRACKS"
 
@@ -61,9 +51,4 @@ export const defaultForm: ContestFormState = {
   // Mặc định hợp lý cho giải mới: VĐV đã trả lệ phí nên miễn tiền sân, và xe do
   // quán vận hành trong giải nên không bắt cọc. Giải CŨ đang sửa thì đọc lại
   // giá trị đã lưu, không áp mặc định này (xem useContestForm).
-  rental_waive_slot_fee: true,
-  rental_deposit_mode: "WAIVED",
-  rental_deposit_percent: "50",
-  rental_window_before: "60",
-  rental_window_after: "60",
 }

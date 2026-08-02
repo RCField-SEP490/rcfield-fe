@@ -1,13 +1,14 @@
 import type { Dispatch, SetStateAction } from "react"
 import { AlertTriangle, Route } from "lucide-react"
 
-import type { BackendCafe, TrackConfig, TrackType } from "@/features/cafes/types"
+import type {
+  BackendCafe,
+  TrackConfig,
+  TrackType,
+} from "@/features/cafes/types"
 import { cn } from "@/shared/lib/utils"
 
-import type {
-  ContestFormState,
-  ResourceLockState,
-} from "../contest-form-types"
+import type { ContestFormState, ResourceLockState } from "../contest-form-types"
 
 /**
  * Bước 2 — loại đường đua và phạm vi khoá tài nguyên.
@@ -70,7 +71,9 @@ export function StepTrack({
                 return (
                   <li key={cafe.id}>
                     <strong>{cafe.name}</strong>:{" "}
-                    {names.length > 0 ? names.join(", ") : "chưa có sân nào hoạt động"}
+                    {names.length > 0
+                      ? names.join(", ")
+                      : "chưa có sân nào hoạt động"}
                   </li>
                 )
               })}
@@ -128,8 +131,8 @@ export function StepTrack({
             </div>
             {trackTypes.length > options.length ? (
               <p className="mt-3 text-sm text-[#747878]">
-                {trackTypes.length - options.length} loại đường đua khác bị ẩn vì
-                không phải chi nhánh nào cũng có.
+                {trackTypes.length - options.length} loại đường đua khác bị ẩn
+                vì không phải chi nhánh nào cũng có.
               </p>
             ) : null}
           </>
@@ -147,8 +150,8 @@ export function StepTrack({
           Phạm vi khoá tài nguyên
         </h3>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5d5f5f]">
-          Trong khung giờ giải đấu, hệ thống chặn booking thường trên tài nguyên
-          bị khoá. Khoá càng rộng thì càng mất nhiều doanh thu booking lẻ.
+          Trong khung giờ giải đấu, hệ thống chặn khách đặt sân thường trên tài
+          nguyên bị khoá. Khoá càng rộng thì càng mất nhiều doanh thu khách lẻ.
         </p>
 
         {errors.resource_locks ? (
@@ -171,20 +174,23 @@ export function StepTrack({
                 key={cafe.id}
                 className="rounded-xl border border-[#e5e2e1] bg-white p-4"
               >
-                <p className="text-base font-bold text-[#1c1b1b]">{cafe.name}</p>
+                <p className="text-base font-bold text-[#1c1b1b]">
+                  {cafe.name}
+                </p>
 
                 {!hasChoice ? (
                   <p className="mt-2 text-sm leading-6 text-[#747878]">
                     Chi nhánh này chỉ có{" "}
-                    {activeConfigs.length === 0 ? "chưa có" : "một"} sân đang hoạt
-                    động nên bắt buộc khoá toàn bộ chi nhánh trong khung giờ giải.
+                    {activeConfigs.length === 0 ? "chưa có" : "một"} sân đang
+                    hoạt động nên bắt buộc khoá toàn bộ chi nhánh trong khung
+                    giờ giải.
                   </p>
                 ) : (
                   <div className="mt-3 space-y-3">
                     <div className="grid gap-2 sm:grid-cols-2">
                       <LockOption
                         label="Khoá toàn bộ chi nhánh"
-                        hint="Mọi sân đều ngừng nhận booking thường"
+                        hint="Mọi sân đều ngừng nhận khách đặt thường"
                         selected={lock.scope === "FULL_BRANCH"}
                         tone="warning"
                         onSelect={() =>
@@ -290,7 +296,7 @@ export function StepTrack({
                     ) : (
                       <p className="border-l-2 border-amber-300 bg-amber-50/60 py-2.5 pl-3 text-sm font-medium leading-6 text-amber-900">
                         Toàn bộ {activeConfigs.length} sân của chi nhánh này sẽ
-                        ngừng nhận booking thường trong suốt thời gian giải.
+                        ngừng nhận khách đặt thường trong suốt thời gian giải.
                       </p>
                     )}
                   </div>
@@ -332,7 +338,9 @@ function LockOption({
       )}
     >
       <span className="block text-sm font-bold text-[#1c1b1b]">{label}</span>
-      <span className="mt-0.5 block text-xs leading-5 text-[#747878]">{hint}</span>
+      <span className="mt-0.5 block text-xs leading-5 text-[#747878]">
+        {hint}
+      </span>
     </button>
   )
 }

@@ -15,11 +15,35 @@ export type ContestEntryFeePaymentStatus =
   | "PENDING_REVIEW"
   | "WAIVED"
   | "MARKED_PAID"
-export type ContestRegistrationStatus = "PENDING" | "CONFIRMED" | "CANCELLED" | "CHECKED_IN"
-export type ContestMatchStatus = "DRAFT" | "READY" | "RUNNING" | "COMPLETED" | "CANCELLED"
-export type ContestMatchType = "HEAD_TO_HEAD" | "MULTI_DRIVER" | "TIME_ATTACK" | "FINAL"
-export type ContestParticipantStatus = "READY" | "STARTED" | "FINISHED" | "DNS" | "DNF" | "DQ"
-export type ContestRuntimeTab = "overview" | "event-day" | "matches" | "leaderboard" | "audit"
+export type ContestRegistrationStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "CANCELLED"
+  | "CHECKED_IN"
+export type ContestMatchStatus =
+  | "DRAFT"
+  | "READY"
+  | "RUNNING"
+  | "COMPLETED"
+  | "CANCELLED"
+export type ContestMatchType =
+  | "HEAD_TO_HEAD"
+  | "MULTI_DRIVER"
+  | "TIME_ATTACK"
+  | "FINAL"
+export type ContestParticipantStatus =
+  | "READY"
+  | "STARTED"
+  | "FINISHED"
+  | "DNS"
+  | "DNF"
+  | "DQ"
+export type ContestRuntimeTab =
+  | "overview"
+  | "event-day"
+  | "matches"
+  | "leaderboard"
+  | "audit"
 export type CustomerJourneyStatus =
   | "PENDING_APPROVAL"
   | "APPROVED_WAITING_CHECKIN"
@@ -559,15 +583,14 @@ export type ContestRaceRecordSyncResult = {
 }
 
 export type ContestRegistrationCreateBody = {
-  booking_id?: string
-  vehicle_id?: string
   vehicle_source?: "RENTAL" | "BYOC"
-  rental_slot?: {
+  /**
+   * Thuê xe của quán: chỉ cần chi nhánh và dòng xe. Khung giờ do lịch thi đấu
+   * quyết định và xe được giao đúng lúc check-in, nên không có gì để chọn thêm.
+   */
+  rental?: {
     cafe_id: string
-    slot_start: string
-    slot_end: string
-    track_config_id?: string | null
-    vehicle_catalog_id?: string | null
+    vehicle_catalog_id: string
   }
   byoc_vehicle_name?: string
   byoc_vehicle_brand?: string
@@ -602,23 +625,27 @@ export type ContestRentalVehicleCatalog = {
 export type ContestRentalOptions = {
   cafes: ContestRentalCafeOption[]
   track_configs: ContestRentalTrackConfig[]
-  vehicle_catalogs: ContestRentalVehicleCatalog[]}
-
-export type ContestAvailableRentalVehicleUnit = {
-  id: string
-  identifier: string | null
-  color: string | null
+  vehicle_catalogs: ContestRentalVehicleCatalog[]
 }
 
+/**
+ * Suất còn lại của từng dòng xe trong giải.
+ *
+ * Không còn danh sách từng chiếc vì khách chọn DÒNG xe, chiếc cụ thể do nhân
+ * viên gán lúc giao xe; cũng không còn `hourly_rate` vì thuê xe trong giải là
+ * miễn phí — lệ phí giải là khoản duy nhất.
+ */
 export type ContestAvailableRentalCatalogGroup = {
   catalog_id: string
   catalog_name: string
   tier: string
-  hourly_rate: number
   cover_image_url: string | null
-  available_units: ContestAvailableRentalVehicleUnit[]}
+  total_units: number
+  remaining_slots: number
+}
 
-export type ContestAvailableRentalVehiclesResponse = ContestAvailableRentalCatalogGroup[]
+export type ContestAvailableRentalVehiclesResponse =
+  ContestAvailableRentalCatalogGroup[]
 
 export type ContestRentalBookingCreateBody = {
   contest_id: string

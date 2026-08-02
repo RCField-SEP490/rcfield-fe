@@ -155,7 +155,9 @@ export function getRegistrationStatusClass(status: ContestRegistrationStatus) {
   }
 }
 
-export function getRegistrationStatusLabel(status: ContestRegistrationStatus): string {
+export function getRegistrationStatusLabel(
+  status: ContestRegistrationStatus,
+): string {
   switch (status) {
     case "PENDING":
       return "Chờ duyệt"
@@ -185,7 +187,9 @@ export function getPaymentStatusClass(status: ContestEntryFeePaymentStatus) {
   }
 }
 
-export function getPaymentStatusLabel(status: ContestEntryFeePaymentStatus): string {
+export function getPaymentStatusLabel(
+  status: ContestEntryFeePaymentStatus,
+): string {
   switch (status) {
     case "PENDING_PAYMENT":
       return "Chờ thanh toán"
@@ -290,6 +294,27 @@ export function getJourneyStatusClass(status: CustomerJourneyStatus | null) {
   }
 }
 
+/**
+ * Journey status là bản rút gọn DÀNH CHO KHÁCH của trạng thái đăng ký, nên ở
+ * màn provider nó lặp lại y nguyên badge trạng thái trong suốt giai đoạn đầu —
+ * "Chờ duyệt" hiện hai lần cạnh nhau. Chỉ những giai đoạn thi đấu mới nói thêm
+ * được điều mà trạng thái đăng ký (dừng ở "Đã điểm danh") không nói được.
+ */
+const JOURNEY_STATUSES_BEYOND_REGISTRATION: CustomerJourneyStatus[] = [
+  "IN_BRACKET",
+  "ADVANCED",
+  "ELIMINATED",
+  "FINISHED",
+]
+
+export function journeyStatusAddsDetail(
+  status: CustomerJourneyStatus | null,
+): boolean {
+  return (
+    status !== null && JOURNEY_STATUSES_BEYOND_REGISTRATION.includes(status)
+  )
+}
+
 export function getJourneyStatusLabel(status: CustomerJourneyStatus | null) {
   switch (status) {
     case "PENDING_APPROVAL":
@@ -324,10 +349,7 @@ type ContestTimeWindowPhase = "COMPLETED" | "RUNNING" | "CLOSED" | "OPEN"
 function getContestTimeWindowPhase(
   contest: Pick<
     ContestItem,
-    | "registration_opens_at"
-    | "registration_closes_at"
-    | "starts_at"
-    | "ends_at"
+    "registration_opens_at" | "registration_closes_at" | "starts_at" | "ends_at"
   >,
   now: Date,
 ): ContestTimeWindowPhase | null {

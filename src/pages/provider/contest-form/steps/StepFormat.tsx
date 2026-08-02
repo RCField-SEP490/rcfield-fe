@@ -10,7 +10,7 @@ import { cn } from "@/shared/lib/utils"
 import { Input } from "@/shared/ui/input"
 
 import { ContestFormField } from "../ContestFormField"
-import type { ContestFormState, RentalDepositMode } from "../contest-form-types"
+import type { ContestFormState } from "../contest-form-types"
 import type { ContestRuntimeFormat } from "../contest-form-utils"
 
 const FORMAT_META: Record<
@@ -21,7 +21,7 @@ const FORMAT_META: Record<
     icon: Timer,
     steps: [
       "Mỗi VĐV chạy một lượt tính giờ riêng",
-      "Nhập lap tốt nhất hoặc tổng thời gian cho từng lượt",
+      "Nhập thời gian vòng chạy nhanh nhất hoặc tổng thời gian cho từng lượt",
       "Bảng xếp hạng tính theo thành tích thời gian",
     ],
   },
@@ -36,8 +36,8 @@ const FORMAT_META: Record<
   QUALIFYING_FINAL: {
     icon: Flag,
     steps: [
-      "Vòng loại: mỗi VĐV chạy một lượt tính giờ, xếp hạng theo lap tốt nhất",
-      "Chung kết: top N vào nhánh đấu loại, hạng 1 gặp hạng N",
+      "Vòng loại: mỗi VĐV chạy một lượt tính giờ, xếp hạng theo vòng chạy nhanh nhất",
+      "Chung kết: những người dẫn đầu vào nhánh đấu loại, hạng nhất gặp hạng cuối",
       "Bảng xếp hạng chung cuộc tính theo số trận thắng ở chung kết",
     ],
   },
@@ -58,7 +58,7 @@ const VEHICLE_POLICY_OPTIONS: Array<{
   {
     value: "RENTAL_ONLY",
     label: "Thuê xe của quán",
-    hint: "VĐV chọn khung giờ thuê ngay trong form đăng ký, trả một lần cùng lệ phí.",
+    hint: "VĐV chọn dòng xe khi đăng ký và nhận xe lúc check-in. Không thu thêm tiền thuê.",
   },
 ]
 
@@ -74,26 +74,8 @@ const LEGACY_MIXED_OPTION = {
   hint: "Chế độ cũ — nhân viên phải chạy hai quy trình check-in trong cùng một giải.",
 }
 
-const DEPOSIT_MODE_OPTIONS: Array<{
-  value: RentalDepositMode
-  label: string
-  hint: string
-}> = [
-  {
-    value: "WAIVED",
-    label: "Không thu cọc",
-    hint: "Xe do quán vận hành trong giải",
-  },
-  {
-    value: "REDUCED",
-    label: "Thu cọc một phần",
-    hint: "Theo % mức cọc chuẩn",
-  },
-  { value: "FULL", label: "Thu cọc đầy đủ", hint: "Như booking thường" },
-]
-
 /**
- * Bước 3 — thể thức thi đấu, luật xe và (nếu cho thuê xe) chính sách giá.
+ * Bước 3 — thể thức thi đấu và luật xe.
  *
  * Thể thức trình bày thành MỘT danh sách mẫu vận hành thay vì ba dropdown rời
  * (loại giải / hình thức / mẫu). Ba dropdown cũ cho ra 18 tổ hợp nhưng chỉ 3 tổ
@@ -195,17 +177,26 @@ export function StepFormat({
                   </span>
                 ) : null}
 
+                {/*
+                  Chỉ hiện chip nào nói thêm được điều gì so với tên mẫu. Sau khi
+                  catalog được dịch, tên hình thức trùng luôn tên mẫu ở hai mẫu
+                  đầu và tên loại giải trùng tên mẫu ở mẫu Grand Prix — lặp lại y
+                  nguyên chỉ làm thẻ rối chứ không cho provider thêm thông tin.
+                */}
                 <span className="mt-3 flex flex-wrap gap-1.5">
-                  {type ? (
-                    <span className="rounded-full bg-[#f0eded] px-2 py-0.5 text-[11px] font-bold text-[#5d5f5f]">
-                      {type.name}
-                    </span>
-                  ) : null}
-                  {format ? (
-                    <span className="rounded-full bg-[#f0eded] px-2 py-0.5 text-[11px] font-bold text-[#5d5f5f]">
-                      {format.name}
-                    </span>
-                  ) : null}
+                  {[type?.name, format?.name]
+                    .filter(
+                      (chip): chip is string =>
+                        Boolean(chip) && chip !== template.name,
+                    )
+                    .map((chip) => (
+                      <span
+                        key={chip}
+                        className="rounded-full bg-[#f0eded] px-2 py-0.5 text-[11px] font-bold text-[#5d5f5f]"
+                      >
+                        {chip}
+                      </span>
+                    ))}
                 </span>
               </button>
             )
@@ -229,7 +220,10 @@ export function StepFormat({
 
         {runtimeFormat === "QUALIFYING_FINAL" && form.contest_template_id ? (
           <div className="mt-4 max-w-xs">
-            <ContestFormField label="Số VĐV vào chung kết" error={errors.finalists}>
+            <ContestFormField
+              label="Số VĐV vào chung kết"
+              error={errors.finalists}
+            >
               <Input
                 type="number"
                 min={2}
@@ -264,9 +258,9 @@ export function StepFormat({
 
         {form.vehicle_policy === "MIXED" ? (
           <p className="mt-3 border-l-2 border-amber-300 bg-amber-50/60 py-2.5 pl-4 text-sm leading-6 text-amber-900">
-            Giải này đang dùng chế độ hỗn hợp — chế độ đã ngừng đề xuất. Chọn một
-            trong hai chế độ bên dưới để nhân viên ngày thi đấu chỉ phải chạy một
-            quy trình check-in.
+            Giải này đang dùng chế độ hỗn hợp — chế độ đã ngừng đề xuất. Chọn
+            một trong hai chế độ bên dưới để nhân viên ngày thi đấu chỉ phải
+            chạy một quy trình check-in.
           </p>
         ) : null}
 
@@ -303,161 +297,11 @@ export function StepFormat({
       </section>
 
       {allowsRental ? (
-        <section>
-          <h3 className="text-sm font-black uppercase tracking-[0.14em] text-[#adaaaa]">
-            Giá thuê xe trong giải
-          </h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#5d5f5f]">
-            VĐV thuê xe đã trả lệ phí giải, nên thường không thu thêm tiền sân và
-            không bắt đặt cọc. Đổi ở đây nếu quán bạn làm khác.
-          </p>
-
-          <div className="mt-4 space-y-4">
-            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-4 accent-[#1c1b1b]"
-                checked={form.rental_waive_slot_fee}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    rental_waive_slot_fee: event.target.checked,
-                  }))
-                }
-              />
-              <span>
-                <span className="block text-sm font-bold text-[#1c1b1b]">
-                  Miễn tiền sân cho VĐV thuê xe
-                </span>
-                <span className="mt-0.5 block text-xs leading-5 text-[#747878]">
-                  Bỏ tick nghĩa là VĐV trả cả lệ phí giải lẫn tiền thuê sân theo
-                  giờ như booking thường.
-                </span>
-              </span>
-            </label>
-
-            <div>
-              <p className="text-sm font-bold text-[#1c1b1b]">Đặt cọc xe</p>
-              <div className="mt-2 grid gap-3 md:grid-cols-3">
-                {DEPOSIT_MODE_OPTIONS.map((option) => {
-                  const isSelected = option.value === form.rental_deposit_mode
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() =>
-                        setForm((current) => ({
-                          ...current,
-                          rental_deposit_mode: option.value,
-                        }))
-                      }
-                      className={cn(
-                        "rounded-xl border px-3 py-3 text-left transition",
-                        isSelected
-                          ? "border-[#1c1b1b] bg-[#fcf8f8]"
-                          : "border-[#e5e2e1] bg-white hover:border-[#c4c7c8]",
-                      )}
-                    >
-                      <span className="block text-sm font-bold text-[#1c1b1b]">
-                        {option.label}
-                      </span>
-                      <span className="mt-0.5 block text-xs text-[#747878]">
-                        {option.hint}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {form.rental_deposit_mode === "REDUCED" ? (
-                <div className="mt-3 max-w-xs">
-                  <ContestFormField
-                    label="Thu bao nhiêu % mức cọc chuẩn"
-                    error={errors.rental_deposit_percent}
-                  >
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      className="h-11"
-                      value={form.rental_deposit_percent}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          rental_deposit_percent: event.target.value,
-                        }))
-                      }
-                    />
-                  </ContestFormField>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <ContestFormField
-                label="Cho thuê xe sớm trước giờ thi (phút)"
-                error={errors.rental_window_before}
-              >
-                <Input
-                  type="number"
-                  min={0}
-                  className="h-11"
-                  value={form.rental_window_before}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      rental_window_before: event.target.value,
-                    }))
-                  }
-                />
-                <p className="text-xs leading-5 text-[#747878]">
-                  Để VĐV chạy thử làm quen xe trước khi vào giải.
-                </p>
-              </ContestFormField>
-              <ContestFormField
-                label="Cho trả xe muộn sau giờ thi (phút)"
-                error={errors.rental_window_after}
-              >
-                <Input
-                  type="number"
-                  min={0}
-                  className="h-11"
-                  value={form.rental_window_after}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      rental_window_after: event.target.value,
-                    }))
-                  }
-                />
-              </ContestFormField>
-            </div>
-
-            <ContestFormField
-              label="Thời điểm gán xe thuê"
-              error={errors.assignment_policy}
-            >
-              <select
-                className="h-11 w-full max-w-md rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                value={form.assignment_policy}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    assignment_policy: event.target
-                      .value as ContestFormState["assignment_policy"],
-                  }))
-                }
-              >
-                <option value="AT_CHECK_IN">Gán xe khi VĐV tới check-in</option>
-                <option value="PRE_ASSIGNED">Gán xe sẵn trước ngày thi đấu</option>
-              </select>
-              <p className="text-xs leading-5 text-amber-700">
-                Lựa chọn này được lưu nhưng hệ thống chưa áp dụng — luồng gán xe
-                trước ngày thi chưa được cài đặt.
-              </p>
-            </ContestFormField>
-          </div>
-        </section>
+        <p className="border-l-2 border-emerald-300 bg-emerald-50/60 py-2.5 pl-4 text-sm leading-6 text-emerald-900">
+          VĐV thuê xe của quán không trả thêm đồng nào — lệ phí giải là khoản
+          duy nhất. Khi đăng ký họ chọn dòng xe muốn mượn, và nhận xe đúng lúc
+          check-in vào giờ thi đấu.
+        </p>
       ) : null}
     </div>
   )

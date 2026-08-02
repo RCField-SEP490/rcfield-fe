@@ -24,10 +24,7 @@ import {
   stripManagedContestConfig,
   toInputDateTime,
 } from "./contest-form-utils"
-import type {
-  ContestFormState,
-  ResourceLockState,
-} from "./contest-form-types"
+import type { ContestFormState, ResourceLockState } from "./contest-form-types"
 import { defaultForm } from "./contest-form-types"
 import {
   CONTEST_WIZARD_STEPS,
@@ -36,32 +33,6 @@ import {
   validateContestStep,
   type StepValidationContext,
 } from "./contest-wizard"
-
-/**
- * Đọc `config.rental_policy` của một giải đã tồn tại.
- *
- * Mặc định ở đây khớp `DEFAULT_CONTEST_RENTAL_POLICY` phía backend, KHÔNG phải
- * mặc định của form. Giải cũ không có rental_policy vốn đang được tính giá theo
- * mặc định backend; mở form sửa rồi lưu lại phải giữ nguyên giá đó.
- */
-function readRentalPolicy(config: Record<string, unknown> | null | undefined) {
-  const policy = (config?.rental_policy ?? {}) as Record<string, unknown>
-  const mode = String(policy.deposit_mode ?? "").toUpperCase()
-
-  return {
-    rental_waive_slot_fee: policy.waive_slot_fee === true,
-    rental_deposit_mode: (["FULL", "REDUCED", "WAIVED"].includes(mode)
-      ? mode
-      : "FULL") as ContestFormState["rental_deposit_mode"],
-    rental_deposit_percent: String(policy.deposit_percent ?? 50),
-    rental_window_before: String(
-      (policy.slot_window as Record<string, unknown> | undefined)?.before_min ?? 60,
-    ),
-    rental_window_after: String(
-      (policy.slot_window as Record<string, unknown> | undefined)?.after_min ?? 60,
-    ),
-  }
-}
 
 export function useContestForm() {
   const navigate = useNavigate()
@@ -169,11 +140,6 @@ export function useContestForm() {
             ?.assignment_policy as ContestFormState["assignment_policy"]) ??
           "AT_CHECK_IN",
         finalists: String(contest.config?.finalists ?? 4),
-        // Giải CŨ: đọc lại đúng chính sách đã lưu. Nếu contest chưa từng có
-        // rental_policy thì rơi về mặc định CỦA BACKEND (thu tiền sân, cọc đầy đủ)
-        // chứ không phải mặc định của form — mở form sửa rồi bấm lưu không được
-        // âm thầm đổi giá của một giải đang mở đăng ký.
-        ...readRentalPolicy(contest.config),
       })
       setExtraConfig(stripManagedContestConfig(contest.config))
 
@@ -228,7 +194,8 @@ export function useContestForm() {
   useEffect(() => {
     if (form.participating_cafe_ids.length === 0) return
     queueMicrotask(() =>
-      setResourceLocks((current) => {        const next = { ...current }
+      setResourceLocks((current) => {
+        const next = { ...current }
         for (const cafeId of form.participating_cafe_ids) {
           const configs = (trackConfigsByCafe[cafeId] ?? []).filter(
             (item) => item.is_active,
@@ -412,21 +379,6 @@ export function useContestForm() {
           ? Number(templateDefaults.drivers_per_match ?? 1)
           : Number(templateDefaults.drivers_per_match ?? 2),
       ...(runtimeFormat === "QUALIFYING_FINAL" ? { finalists } : {}),
-      // Chỉ gửi khi giải thật sự cho thuê xe — giải BYOC mang theo rental_policy
-      // chỉ làm config rối thêm mà không ai đọc.
-      ...(form.vehicle_policy !== "BYOC_ONLY"
-        ? {
-            rental_policy: {
-              waive_slot_fee: form.rental_waive_slot_fee,
-              deposit_mode: form.rental_deposit_mode,
-              deposit_percent: Number(form.rental_deposit_percent) || 50,
-              slot_window: {
-                before_min: Number(form.rental_window_before) || 0,
-                after_min: Number(form.rental_window_after) || 0,
-              },
-            },
-          }
-        : {}),
       resource_locks: derivedLocks,
     }
 

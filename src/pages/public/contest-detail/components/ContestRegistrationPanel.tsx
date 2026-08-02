@@ -15,11 +15,11 @@ import {
   getRegistrationStatusLabel,
   type ContestRegistrationAvailability,
 } from "@/features/contests/lib/contest-status"
-import {
-  contestByocDeclarationSchema,
-  contestRentalSlotSchema,
-} from "@/features/contests/schemas/contest.schema"
-import type { ContestItem, ContestRegistration } from "@/features/contests/types"
+import { contestByocDeclarationSchema } from "@/features/contests/schemas/contest.schema"
+import type {
+  ContestItem,
+  ContestRegistration,
+} from "@/features/contests/types"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Card } from "@/shared/ui/card"
@@ -29,9 +29,9 @@ import { Label } from "@/shared/ui/label"
 import { formatCurrency, getErrorMessage } from "../utils"
 import { MiniInfo } from "./DetailPrimitives"
 import {
-  ContestRentalSlotPicker,
-  type RentalSlotValue,
-} from "./ContestRentalSlotPicker"
+  ContestRentalVehiclePicker,
+  type ContestRentalChoice,
+} from "./ContestRentalVehiclePicker"
 
 export function ContestRegistrationPanel({
   contest,
@@ -69,10 +69,8 @@ export function ContestRegistrationPanel({
   const [byocVehicleBrand, setByocVehicleBrand] = useState("")
   const [byocVehicleClass, setByocVehicleClass] = useState("")
   const [byocVehicleNotes, setByocVehicleNotes] = useState("")
-  const [rentalSlotValue, setRentalSlotValue] = useState<RentalSlotValue | null>(
-    null,
-  )
-  const [rentalSlotEstimate, setRentalSlotEstimate] = useState(0)
+  const [rentalChoice, setRentalChoice] =
+    useState<Partial<ContestRentalChoice> | null>(null)
 
   const rentalOptionsQuery = useQuery({
     queryKey: ["contests", "rental-options", contest.id],
@@ -82,25 +80,20 @@ export function ContestRegistrationPanel({
   })
   const rentalOptions = rentalOptionsQuery.data ?? null
   const selectedRentalCafe =
-    rentalOptions?.cafes.find((cafe) => cafe.id === rentalSlotValue?.cafe_id) ??
+    rentalOptions?.cafes.find((cafe) => cafe.id === rentalChoice?.cafe_id) ??
     null
   const selectedRentalCatalog =
     rentalOptions?.vehicle_catalogs.find(
-      (catalog) => catalog.id === rentalSlotValue?.vehicle_catalog_id,
+      (catalog) => catalog.id === rentalChoice?.vehicle_catalog_id,
     ) ?? null
 
   const detailsValid =
     source === "BYOC"
       ? byocVehicleName.trim().length >= 2
-      : Boolean(
-          rentalSlotValue?.cafe_id &&
-            rentalSlotValue.slot_start &&
-            rentalSlotValue.slot_end &&
-            rentalSlotValue.vehicle_catalog_id,
-        )
+      : Boolean(rentalChoice?.cafe_id && rentalChoice?.vehicle_catalog_id)
 
-  const needsPayment =
-    contest.entry_fee > 0 || (source === "RENTAL" && rentalSlotEstimate > 0)
+  // Thuê xe trong giải miễn phí, nên chỉ còn lệ phí giải quyết định có phải trả tiền hay không.
+  const needsPayment = contest.entry_fee > 0
 
   const registerMutation = useMutation({
     mutationFn: async () => {
@@ -113,10 +106,15 @@ export function ContestRegistrationPanel({
           byoc_vehicle_notes: byocVehicleNotes || undefined,
         })
       }
-      if (!rentalSlotValue) throw new Error("Thiếu thông tin thuê xe")
+      if (!rentalChoice?.cafe_id || !rentalChoice?.vehicle_catalog_id) {
+        throw new Error("Chưa chọn chi nhánh và xe thi đấu")
+      }
       return contestApi.registerContest(contest.id, {
         vehicle_source: "RENTAL",
-        rental_slot: rentalSlotValue,
+        rental: {
+          cafe_id: rentalChoice.cafe_id,
+          vehicle_catalog_id: rentalChoice.vehicle_catalog_id,
+        },
       })
     },
     onSuccess: () => {
@@ -163,10 +161,9 @@ export function ContestRegistrationPanel({
           return
         }
       } else {
-        const parsed = contestRentalSlotSchema.safeParse(rentalSlotValue)
-        if (!parsed.success) {
-          toast.error("Thông tin thuê xe chưa hợp lệ", {
-            description: parsed.error.issues[0]?.message,
+        if (!rentalChoice?.cafe_id || !rentalChoice?.vehicle_catalog_id) {
+          toast.error("Chưa chọn xe thi đấu", {
+            description: "Hãy chọn chi nhánh và dòng xe bạn muốn mượn.",
           })
           return
         }
@@ -223,8 +220,12 @@ export function ContestRegistrationPanel({
             Đăng ký tham gia
           </h3>
         </div>
-        <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-black ${registrationClosed ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}>
-          {registrationClosed ? getClosedButtonLabel(registrationAvailability) : "Đang mở"}
+        <span
+          className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-black ${registrationClosed ? "border-amber-200 bg-amber-50 text-amber-800" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}
+        >
+          {registrationClosed
+            ? getClosedButtonLabel(registrationAvailability)
+            : "Đang mở"}
         </span>
       </div>
 
@@ -325,34 +326,12 @@ export function ContestRegistrationPanel({
 
             {source === "RENTAL" ? (
               <div className="space-y-4">
-                <ContestRentalSlotPicker
+                <ContestRentalVehiclePicker
                   contestId={contest.id}
-                  value={rentalSlotValue}
-                  onChange={(value, estimate) => {
-                    setRentalSlotValue(value)
-                    setRentalSlotEstimate(estimate)
-                  }}
-                  disabled={registrationClosed}
+                  options={rentalOptions ?? undefined}
+                  value={rentalChoice}
+                  onChange={setRentalChoice}
                 />
-                {rentalSlotEstimate > 0 ? (
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-emerald-900">
-                        Tiền thuê xe ước tính
-                      </span>
-                      <span className="font-black text-emerald-700">
-                        {formatCurrency(rentalSlotEstimate)}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-emerald-700">
-                      Giá tính theo đơn giá/giờ của dòng xe tại chi nhánh. Phí
-                      thuê chính thức sẽ hiển thị ở bước thanh toán.
-                    </p>
-                    <p className="mt-1 text-xs font-bold text-emerald-800">
-                      Miễn đặt cọc xe
-                    </p>
-                  </div>
-                ) : null}
               </div>
             ) : (
               <div className="space-y-3">
@@ -439,15 +418,11 @@ export function ContestRegistrationPanel({
                   }
                 />
                 <MiniInfo label="Người đăng ký" value={profileName} />
-                {source === "RENTAL" && rentalSlotValue ? (
+                {source === "RENTAL" && rentalChoice ? (
                   <>
                     <MiniInfo
-                      label="Chi nhánh thuê"
+                      label="Chi nhánh thi đấu"
                       value={selectedRentalCafe?.name ?? "--"}
-                    />
-                    <MiniInfo
-                      label="Khung giờ thuê"
-                      value={`${formatContestDateTime(rentalSlotValue.slot_start)} → ${formatContestDateTime(rentalSlotValue.slot_end)}`}
                     />
                     <MiniInfo
                       label="Dòng xe"
@@ -457,14 +432,7 @@ export function ContestRegistrationPanel({
                           : "--"
                       }
                     />
-                    <MiniInfo
-                      label="Đơn giá"
-                      value={
-                        selectedRentalCatalog
-                          ? `${formatCurrency(selectedRentalCatalog.hourly_rate)}/giờ`
-                          : "--"
-                      }
-                    />
+                    <MiniInfo label="Tiền thuê xe" value="Miễn phí" />
                   </>
                 ) : null}
                 {source === "BYOC" ? (
@@ -485,40 +453,20 @@ export function ContestRegistrationPanel({
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-bold text-slate-700">Lệ phí giải đấu</span>
+                <span className="font-bold text-slate-700">
+                  Lệ phí giải đấu
+                </span>
                 <span className="font-black text-slate-900">
                   {formatCurrency(contest.entry_fee)}
                 </span>
               </div>
-              {source === "RENTAL" && rentalSlotEstimate > 0 ? (
-                <>
-                  <div className="my-2 border-t border-slate-200" />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-bold text-slate-700">
-                      Tiền thuê xe (ước tính)
-                    </span>
-                    <span className="font-black text-slate-900">
-                      {formatCurrency(rentalSlotEstimate)}
-                    </span>
-                  </div>
-                  <div className="my-2 border-t border-slate-200" />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-black text-slate-900">
-                      Tổng ước tính
-                    </span>
-                    <span className="font-black text-orange-600">
-                      {formatCurrency(contest.entry_fee + rentalSlotEstimate)}
-                    </span>
-                  </div>
-                </>
-              ) : null}
             </div>
 
             <div className="flex items-start gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
               <CreditCard className="mt-0.5 size-4 shrink-0 text-orange-500" />
               <span>
                 {source === "RENTAL"
-                  ? "Sau khi xác nhận, hệ thống tạo booking thuê xe và chuyển bạn sang cổng thanh toán VNPay — một lần thanh toán duy nhất đã bao gồm phí thuê xe và lệ phí giải (miễn đặt cọc xe)."
+                  ? "Thuê xe của quán không mất thêm tiền — bạn chỉ trả lệ phí giải (nếu có). Xe được giao khi bạn tới check-in đúng giờ thi đấu."
                   : "Xe cá nhân sẽ chờ provider/staff duyệt. Lệ phí giải (nếu có) thanh toán qua VNPay ngay sau khi gửi đăng ký."}
               </span>
             </div>

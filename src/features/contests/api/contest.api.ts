@@ -63,7 +63,8 @@ export const contestQueryKeys = {
     [...contestQueryKeys.all, "leaderboard", contestId] as const,
   staffAssignments: (contestId?: string) =>
     [...contestQueryKeys.all, "staff-assignments", contestId] as const,
-  bans: (contestId?: string) => [...contestQueryKeys.all, "bans", contestId] as const,
+  bans: (contestId?: string) =>
+    [...contestQueryKeys.all, "bans", contestId] as const,
   lookup: (contestId?: string, checkInCode?: string) =>
     [...contestQueryKeys.all, "lookup", contestId, checkInCode] as const,
   myRegistrations: (params?: Record<string, unknown>) =>
@@ -86,7 +87,8 @@ function mapContestItem(raw: any): ContestItem {
     staff_assignments: Array.isArray(raw.staff_assignments)
       ? raw.staff_assignments
       : [],
-    published_leaderboard: raw.published_leaderboard ?? raw.config?.published_leaderboard ?? null,
+    published_leaderboard:
+      raw.published_leaderboard ?? raw.config?.published_leaderboard ?? null,
     runtime_summary: raw.runtime_summary ?? null,
     highlight_rounds: Array.isArray(raw.highlight_rounds)
       ? raw.highlight_rounds
@@ -159,7 +161,9 @@ function mapContestRegistration(raw: any): ContestRegistration {
           id: raw.booking.id,
           status: raw.booking.status,
           paymentExpiresAt:
-            raw.booking.payment_expires_at ?? raw.booking.paymentExpiresAt ?? null,
+            raw.booking.payment_expires_at ??
+            raw.booking.paymentExpiresAt ??
+            null,
           totalAmount: raw.booking.total_amount ?? raw.booking.totalAmount ?? 0,
         }
       : null,
@@ -199,7 +203,9 @@ export function mapContestMatch(raw: any): ContestMatch {
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const contestApi = {
-  getContestRentalOptions: async (contestId: string): Promise<ContestRentalOptions> => {
+  getContestRentalOptions: async (
+    contestId: string,
+  ): Promise<ContestRentalOptions> => {
     const res = await api.get<ApiEnvelope<ContestRentalOptions>>(
       `/v1/contests/${contestId}/rental-options`,
     )
@@ -208,12 +214,11 @@ export const contestApi = {
 
   getContestAvailableRentalVehicles: async (
     contestId: string,
-    params: { cafe_id: string; slot_start: string; slot_end: string; track_config_id?: string | null },
+    params: { cafe_id: string },
   ): Promise<ContestAvailableRentalVehiclesResponse> => {
-    const res = await api.get<ApiEnvelope<ContestAvailableRentalVehiclesResponse>>(
-      `/v1/contests/${contestId}/available-rental-vehicles`,
-      { params },
-    )
+    const res = await api.get<
+      ApiEnvelope<ContestAvailableRentalVehiclesResponse>
+    >(`/v1/contests/${contestId}/available-rental-vehicles`, { params })
     return res.data.data
   },
 
@@ -505,13 +510,13 @@ export const contestApi = {
     checkedInCafeId: string,
     byocConfirmed?: boolean,
     byocInspection?: {
-      photos?: Array<{ url: string; angle?: string; notes?: string }>;
+      photos?: Array<{ url: string; angle?: string; notes?: string }>
       checklist?: Array<{
-        itemKey: string;
-        itemLabel: string;
-        status?: 'OK' | 'NOT_OK' | 'NA';
-        note?: string;
-      }>;
+        itemKey: string
+        itemLabel: string
+        status?: "OK" | "NOT_OK" | "NA"
+        note?: string
+      }>
     },
   ): Promise<ContestRegistration> => {
     const res = await api.post<ApiEnvelope<ContestRegistration>>(
@@ -636,11 +641,11 @@ export const contestApi = {
   ): Promise<{ banner_image_url: string; public_id: string }> => {
     const formData = new FormData()
     formData.append("file", file)
-    const res = await api.post<ApiEnvelope<{ banner_image_url: string; public_id: string }>>(
-      `/v1/contests/${contestId}/banner`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } },
-    )
+    const res = await api.post<
+      ApiEnvelope<{ banner_image_url: string; public_id: string }>
+    >(`/v1/contests/${contestId}/banner`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     return res.data.data
   },
 }

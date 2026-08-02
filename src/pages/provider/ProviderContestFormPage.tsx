@@ -26,12 +26,6 @@ const VEHICLE_POLICY_LABEL: Record<string, string> = {
   BYOC_ONLY: "Khách tự mang xe",
 }
 
-const DEPOSIT_MODE_LABEL: Record<string, string> = {
-  WAIVED: "không thu cọc",
-  REDUCED: "thu cọc một phần",
-  FULL: "thu cọc đầy đủ",
-}
-
 export function ProviderContestFormPage() {
   const navigate = useNavigate()
   const {
@@ -126,15 +120,8 @@ export function ProviderContestFormPage() {
       ...(form.vehicle_policy !== "BYOC_ONLY"
         ? [
             {
-              label: "Giá thuê xe trong giải",
-              value: [
-                form.rental_waive_slot_fee
-                  ? "miễn tiền sân"
-                  : "thu tiền sân như booking thường",
-                form.rental_deposit_mode === "REDUCED"
-                  ? `thu cọc ${form.rental_deposit_percent}%`
-                  : (DEPOSIT_MODE_LABEL[form.rental_deposit_mode] ?? "--"),
-              ].join(" · "),
+              label: "Tiền thuê xe",
+              value: "Miễn phí — lệ phí giải đã bao gồm",
               stepIndex: 2,
             },
           ]
@@ -327,7 +314,10 @@ function formatDateTime(value: string) {
   if (!value) return "--"
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return "--"
-  return date.toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })
+  return date.toLocaleString("vi-VN", {
+    dateStyle: "short",
+    timeStyle: "short",
+  })
 }
 
 function formatFee(value: string) {

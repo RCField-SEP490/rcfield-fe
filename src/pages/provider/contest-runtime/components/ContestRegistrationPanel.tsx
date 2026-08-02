@@ -1,5 +1,8 @@
 import type { ContestRegistration } from "@/features/contests/types"
-import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  Panel,
+  PanelTitle,
+} from "@/pages/provider/components/ProviderPrimitives"
 import type { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import { ContestRegistrationTable } from "./ContestRegistrationTable"
 import { RegistrationActionDialog } from "./registration/RegistrationActionDialog"
@@ -49,10 +52,9 @@ export function ContestRegistrationPanel({
           subtitle="Tách riêng phần duyệt danh sách, xử lý lệ phí tay và trạng thái tham gia."
         />
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-          Lệ phí là phí tham gia contest. Customer có thể thanh toán VNPay nếu
-          registration đang chờ phí; còn nút "Đánh dấu đã thu" dùng khi
-          provider/staff đã thu trực tiếp bên ngoài hệ thống và cần xác nhận lại
-          trên dashboard.
+          Khách tự thanh toán lệ phí qua VNPay khi đăng ký còn đang chờ phí. Nút
+          "Đánh dấu đã thu" chỉ dùng khi bạn đã nhận tiền trực tiếp tại quán và
+          cần ghi nhận lại trên hệ thống.
         </div>
 
         <RegistrationFilters
