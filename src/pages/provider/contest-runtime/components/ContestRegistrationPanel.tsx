@@ -1,8 +1,16 @@
-import type { ContestRegistration } from "@/features/contests/types"
+import { useState } from "react"
+import { QrCode } from "lucide-react"
+import { toast } from "sonner"
+import type { ContestItem, ContestRegistration } from "@/features/contests/types"
+import { getErrorMessage } from "@/features/contests/lib/contest-runtime"
+import { getContestCheckInAvailability } from "@/features/contests/lib/contest-status"
 import {
   Panel,
   PanelTitle,
 } from "@/pages/provider/components/ProviderPrimitives"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
+import { Label } from "@/shared/ui/label"
 import type { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import { ContestRegistrationTable } from "./ContestRegistrationTable"
 import { RegistrationActionDialog } from "./registration/RegistrationActionDialog"
@@ -15,13 +23,38 @@ import { useRegistrationFilters } from "./registration/useRegistrationFilters"
 
 type WorkspaceHook = ReturnType<typeof useContestWorkspace>
 
+/**
+ * Vì sao có đăng ký không điểm danh được từ màn này.
+ *
+ * Xe cá nhân phải chụp tối thiểu 2 ảnh và kiểm ba hạng mục; thuê xe của quán
+ * phải chọn đúng chiếc để lập phiếu mượn. Cả hai đều là việc tại quầy nên chỉ
+ * màn nhân viên mới thu đủ dữ liệu — bấm ở đây chắc chắn nhận lỗi 400.
+ */
+function getRowCheckInBlock(registration: ContestRegistration): string | undefined {
+  if (registration.vehicleSource === "BYOC") {
+    return "Xe cá nhân phải kiểm tra kèm ảnh — điểm danh ở màn nhân viên"
+  }
+  if (registration.rentalCatalogId) {
+    return "Phải chọn xe để giao — điểm danh ở màn nhân viên"
+  }
+  return undefined
+}
+
 export function ContestRegistrationPanel({
+  contest,
   registrations,
   workspace,
+  selectedCafeId,
+  onChangeSelectedCafeId,
 }: {
+  contest: ContestItem
   registrations: ContestRegistration[]
   workspace: WorkspaceHook
+  selectedCafeId: string
+  onChangeSelectedCafeId: (cafeId: string) => void
 }) {
+  const [lookupCode, setLookupCode] = useState("")
+
   const {
     search,
     setSearch,
@@ -42,20 +75,113 @@ export function ContestRegistrationPanel({
     handleDialogAction,
   } = useRegistrationActionDialog(workspace)
 
+  const eventDay = workspace.eventDay
+  const checkInAvailability = getContestCheckInAvailability(contest)
+  const contestCheckInBlock = checkInAvailability.canCheckIn
+    ? undefined
+    : checkInAvailability.reason
+
+  const handleLookup = async () => {
+    const code = lookupCode.trim()
+    if (!code) {
+      toast.error("Nhập mã điểm danh trước đã.")
+      return
+    }
+    try {
+      const found = await eventDay.lookupMutation.mutateAsync(code)
+      setSearch(found.checkInCode ?? code)
+      toast.success(`Đã tìm thấy ${found.checkInCode ?? code}`)
+    } catch (error) {
+      toast.error("Không tìm thấy mã này", {
+        description: getErrorMessage(error).message,
+      })
+    }
+  }
+
+  const handleCheckIn = async (registration: ContestRegistration) => {
+    if (!selectedCafeId) {
+      toast.error("Chọn chi nhánh điểm danh trước đã.")
+      return
+    }
+    try {
+      await eventDay.checkInMutation.mutateAsync({
+        registrationId: registration.id,
+        checkedInCafeId: selectedCafeId,
+      })
+      toast.success("Đã điểm danh")
+    } catch (error) {
+      toast.error("Không thể điểm danh", {
+        description: getErrorMessage(error).message,
+      })
+    }
+  }
+
   return (
     <div className="space-y-4">
       <RegistrationSummary summary={summary} />
 
       <Panel>
         <PanelTitle
-          title="Quản lý người chơi và đăng ký"
-          subtitle="Tách riêng phần duyệt danh sách, xử lý lệ phí tay và trạng thái tham gia."
+          title="Tra mã điểm danh"
+          subtitle="Nhập mã trên vé của người chơi để lọc nhanh tới đúng người trong danh sách bên dưới."
+        />
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,18rem)_1fr_auto] lg:items-end">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+              Chi nhánh điểm danh
+            </Label>
+            <select
+              className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+              value={selectedCafeId}
+              onChange={(event) => onChangeSelectedCafeId(event.target.value)}
+            >
+              {contest.participating_branches.map((branch) => (
+                <option key={branch.id} value={branch.cafe_id}>
+                  {branch.cafe?.name ?? branch.cafe_id}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+              Mã điểm danh
+            </Label>
+            <Input
+              value={lookupCode}
+              onChange={(event) => setLookupCode(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void handleLookup()
+              }}
+              placeholder="Ví dụ: AAF24F7B"
+            />
+          </div>
+          <Button
+            className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+            disabled={eventDay.lookupMutation.isPending}
+            onClick={() => void handleLookup()}
+          >
+            <QrCode className="size-4" />
+            Tra cứu
+          </Button>
+        </div>
+      </Panel>
+
+      <Panel>
+        <PanelTitle
+          title="Danh sách người chơi"
+          subtitle="Duyệt tham gia, xử lý lệ phí và điểm danh — tất cả trên cùng một danh sách."
         />
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
           Khách tự thanh toán lệ phí qua VNPay khi đăng ký còn đang chờ phí. Nút
           "Đánh dấu đã thu" chỉ dùng khi bạn đã nhận tiền trực tiếp tại quán và
           cần ghi nhận lại trên hệ thống.
         </div>
+        {contestCheckInBlock ? (
+          <div className="mb-4 rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] px-4 py-3 text-sm font-semibold text-[#5d5f5f]">
+            Chưa điểm danh được: {contestCheckInBlock}. Các thao tác duyệt đăng ký
+            và lệ phí vẫn dùng bình thường.
+          </div>
+        ) : null}
 
         <RegistrationFilters
           search={search}
@@ -69,6 +195,10 @@ export function ContestRegistrationPanel({
         <ContestRegistrationTable
           registrations={filteredRegistrations}
           onAction={openDialog}
+          onCheckIn={(registration) => void handleCheckIn(registration)}
+          resolveCheckInBlock={(registration) =>
+            contestCheckInBlock ?? getRowCheckInBlock(registration)
+          }
         />
       </Panel>
 

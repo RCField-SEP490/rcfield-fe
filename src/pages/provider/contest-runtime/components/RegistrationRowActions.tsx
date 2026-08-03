@@ -32,9 +32,14 @@ function getRegistrationActions(registration: ContestRegistration) {
 export function RegistrationRowActions({
   registration,
   onAction,
+  onCheckIn,
+  checkInBlockedReason,
 }: {
   registration: ContestRegistration
   onAction: (kind: RegistrationActionKind, registration: ContestRegistration) => void
+  onCheckIn?: (registration: ContestRegistration) => void
+  /** Lý do giải chưa cho điểm danh; có giá trị nghĩa là khoá nút kèm giải thích. */
+  checkInBlockedReason?: string
 }) {
   const actions = getRegistrationActions(registration)
 
@@ -73,6 +78,17 @@ export function RegistrationRowActions({
       >
         Hủy đăng ký
       </Button>
+      {onCheckIn ? (
+        <Button
+          variant="outline"
+          className="h-8 rounded-lg border-blue-200 bg-blue-50 px-3 text-xs font-bold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={registration.status !== "CONFIRMED" || Boolean(checkInBlockedReason)}
+          title={checkInBlockedReason}
+          onClick={() => onCheckIn(registration)}
+        >
+          Điểm danh
+        </Button>
+      ) : null}
     </div>
   )
 }

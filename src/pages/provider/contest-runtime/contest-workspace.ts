@@ -1,7 +1,9 @@
 export const contestWorkspaceSections = [
   { key: "overview", label: "Tổng quan" },
-  { key: "registrations", label: "Người chơi / Đăng ký" },
-  { key: "operations", label: "Check-in / Vận hành" },
+  // Một danh sách người duy nhất: duyệt, lệ phí và điểm danh cùng một chỗ.
+  // Trước đây tách thêm tab "Check-in / Vận hành" nhưng 4/5 nút bị lặp lại y
+  // hệt, provider không biết chỗ nào mới là chỗ đúng để thao tác.
+  { key: "registrations", label: "Người chơi" },
   { key: "bracket", label: "Nhánh đấu" },
   { key: "leaderboard", label: "Bảng xếp hạng" },
   { key: "audit", label: "Nhật ký" },

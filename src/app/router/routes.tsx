@@ -272,7 +272,9 @@ export const router = createBrowserRouter([
           { path: routePaths.providerContestEdit, element: providerGuardRoute(<ProviderContestFormPage />) },
           { path: routePaths.providerContestOverview, element: providerGuardRoute(<ProviderContestWorkspacePage section="overview" />) },
           { path: routePaths.providerContestRegistrations, element: providerGuardRoute(<ProviderContestWorkspacePage section="registrations" />) },
-          { path: routePaths.providerContestOperations, element: providerGuardRoute(<ProviderContestWorkspacePage section="operations" />) },
+          // Tab "Check-in / Vận hành" đã gộp vào "Người chơi"; giữ đường dẫn cũ
+          // để link đã gửi cho provider không rơi vào trang trắng.
+          { path: routePaths.providerContestOperations, element: providerGuardRoute(<ProviderContestWorkspacePage section="registrations" />) },
           { path: routePaths.providerContestBracket, element: providerGuardRoute(<ProviderContestWorkspacePage section="bracket" />) },
           { path: routePaths.providerContestLeaderboard, element: providerGuardRoute(<ProviderContestWorkspacePage section="leaderboard" />) },
           { path: routePaths.providerContestAudit, element: providerGuardRoute(<ProviderContestWorkspacePage section="audit" />) },

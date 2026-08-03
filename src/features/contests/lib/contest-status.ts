@@ -180,6 +180,104 @@ export function getContestCheckInAvailability(
   return { canCheckIn: true }
 }
 
+export type ContestActionAvailability =
+  | { allowed: true }
+  | { allowed: false; reason: string }
+
+const ALLOWED: ContestActionAvailability = { allowed: true }
+
+/**
+ * Sửa thông tin giải.
+ *
+ * Backend `updateContest` chỉ nhận DRAFT/OPEN — đã đóng đăng ký rồi thì giờ
+ * giấc, sức chứa, lệ phí đều đã là căn cứ để khách sắp lịch, đổi là sai lệch.
+ */
+export function getContestEditAvailability(
+  contest: Pick<ContestItem, "status">,
+): ContestActionAvailability {
+  if (contest.status === "DRAFT" || contest.status === "OPEN") return ALLOWED
+  return {
+    allowed: false,
+    reason:
+      contest.status === "COMPLETED" || contest.status === "CANCELLED"
+        ? "Giải đã kết thúc — không sửa được nữa"
+        : "Đã đóng đăng ký — không sửa được thông tin giải nữa",
+  }
+}
+
+/**
+ * Bốc thăm sơ đồ đấu.
+ *
+ * Backend `ensureContestRuntimeEditable` cần OPEN/CLOSED/RUNNING, và chặn bốc
+ * lại khi đã có trận thi đấu xong hoặc đang diễn ra (`CONTEST_RUNTIME_LOCKED`).
+ * Trận thắng do gặp ô trống không tính là đã thi đấu nên vẫn bốc lại được.
+ */
+export function getContestDrawAvailability(
+  contest: Pick<ContestItem, "status">,
+  options: { eligibleCount: number; hasPlayedMatch: boolean },
+): ContestActionAvailability {
+  if (
+    contest.status !== "OPEN" &&
+    contest.status !== "CLOSED" &&
+    contest.status !== "RUNNING"
+  ) {
+    return {
+      allowed: false,
+      reason:
+        contest.status === "DRAFT"
+          ? "Giải còn là bản nháp — mở đăng ký trước đã"
+          : "Giải đã kết thúc — không bốc thăm được nữa",
+    }
+  }
+  if (options.hasPlayedMatch) {
+    return {
+      allowed: false,
+      reason: "Đã có trận thi đấu — không bốc thăm lại được nữa",
+    }
+  }
+  if (options.eligibleCount < 2) {
+    return {
+      allowed: false,
+      reason: "Cần ít nhất 2 người đã được duyệt để bốc thăm",
+    }
+  }
+  return ALLOWED
+}
+
+/**
+ * Công bố bảng xếp hạng.
+ *
+ * Backend `publishContestLeaderboard` cần RUNNING/CLOSED, phải có match, và
+ * không còn match nào ở DRAFT/READY/RUNNING.
+ */
+export function getContestPublishAvailability(
+  contest: Pick<ContestItem, "status">,
+  options: { totalMatches: number; unfinishedMatches: number },
+): ContestActionAvailability {
+  if (contest.status === "COMPLETED") {
+    return { allowed: false, reason: "Bảng xếp hạng đã được công bố" }
+  }
+  if (contest.status !== "CLOSED" && contest.status !== "RUNNING") {
+    return {
+      allowed: false,
+      reason:
+        contest.status === "OPEN"
+          ? "Còn đang mở đăng ký — chưa có gì để công bố"
+          : "Giải chưa sẵn sàng để công bố kết quả",
+    }
+  }
+  if (options.totalMatches === 0) {
+    return { allowed: false, reason: "Chưa bốc thăm nên chưa có trận nào" }
+  }
+  if (options.unfinishedMatches > 0) {
+    return {
+      allowed: false,
+      reason: `Còn ${options.unfinishedMatches} trận chưa có kết quả`,
+    }
+  }
+  return ALLOWED
+}
+
 export function getRegistrationStatusClass(status: ContestRegistrationStatus) {
   switch (status) {
     case "CONFIRMED":

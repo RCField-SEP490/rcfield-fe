@@ -11,7 +11,6 @@ import {
   X,
   AlertTriangle,
   Wrench,
-  ShieldCheck,
   Search,
   Flag,
   UserRound,

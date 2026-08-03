@@ -13,7 +13,9 @@ import {
   splitMatchesByPhase,
 } from "@/features/contests/lib/contest-runtime"
 import {
+  getContestEditAvailability,
   getContestFormatLabel,
+  getContestPublishAvailability,
   getContestStatusClass,
   getContestStatusLabel,
 } from "@/features/contests/lib/contest-status"
@@ -39,7 +41,6 @@ import {
 } from "@/shared/ui/dropdown-menu"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
 import { ContestDisciplinePanel } from "./components/ContestDisciplinePanel"
-import { ContestEventDayPanel } from "./components/ContestEventDayPanel"
 import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
 import { ContestMatchBoard } from "./components/ContestMatchBoard"
@@ -55,9 +56,7 @@ import {
 const sectionSummaries: Record<ContestWorkspaceSectionKey, string> = {
   overview: "Tổng quan điều hành, trạng thái giải và các chỉ số sẵn sàng.",
   registrations:
-    "Quản lý người chơi, duyệt đăng ký và xử lý lệ phí thủ công.",
-  operations:
-    "Điểm danh, tra cứu mã check-in và xử lý vận hành tại hiện trường.",
+    "Duyệt đăng ký, xử lý lệ phí và điểm danh người chơi.",
   bracket:
     "Điều phối nhánh đấu, kéo người đi tiếp và nhập kết quả theo match.",
   leaderboard: "Theo dõi bản nháp, công bố và đồng bộ bảng xếp hạng.",
@@ -88,7 +87,6 @@ export function ProviderContestWorkspacePage({
   const needsRegistrations =
     section === "overview" ||
     section === "registrations" ||
-    section === "operations" ||
     section === "bracket" ||
     section === "discipline"
   const needsMatches = section === "overview" || section === "bracket"
@@ -411,6 +409,20 @@ export function ProviderContestWorkspacePage({
     )
   }
 
+  // Khoá thao tác theo đúng luật backend áp, kèm lý do — thay vì cho bấm rồi
+  // mới nhận lỗi 400 mà người dùng không hiểu vì sao.
+  const unfinishedMatches = matches.filter(
+    (match) =>
+      match.status === "DRAFT" ||
+      match.status === "READY" ||
+      match.status === "RUNNING",
+  ).length
+  const publishAvailability = getContestPublishAvailability(contest, {
+    totalMatches: matches.length,
+    unfinishedMatches,
+  })
+  const editAvailability = getContestEditAvailability(contest)
+
   return (
     <ProviderShell contentClassName="max-w-none">
       <ProviderPageHeader
@@ -468,7 +480,11 @@ export function ProviderContestWorkspacePage({
             </Button>
             <Button
               type="button"
-              className="h-8 gap-1.5 rounded-lg bg-[#1c1b1b] px-3 text-xs font-bold text-white hover:bg-[#313030]"
+              disabled={!publishAvailability.allowed}
+              title={
+                publishAvailability.allowed ? undefined : publishAvailability.reason
+              }
+              className="h-8 gap-1.5 rounded-lg bg-[#1c1b1b] px-3 text-xs font-bold text-white hover:bg-[#313030] disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => void handlePublishLeaderboard()}
             >
               <BarChart3 className="size-3.5" />
@@ -488,7 +504,9 @@ export function ProviderContestWorkspacePage({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 border border-[#c4c7c8] bg-white shadow-md z-50">
                 <DropdownMenuItem
-                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] transition-colors"
+                  disabled={!editAvailability.allowed}
+                  title={editAvailability.allowed ? undefined : editAvailability.reason}
+                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   onClick={() =>
                     navigate(routePaths.providerContestEdit.replace(":contestId", contest.id))
                   }
@@ -578,18 +596,11 @@ export function ProviderContestWorkspacePage({
 
       {section === "registrations" ? (
         <ContestRegistrationPanel
-          registrations={registrations}
-          workspace={workspace}
-        />
-      ) : null}
-
-      {section === "operations" ? (
-        <ContestEventDayPanel
           contest={contest}
           registrations={registrations}
+          workspace={workspace}
           selectedCafeId={selectedCafeId}
           onChangeSelectedCafeId={setSelectedCafeId}
-          eventDay={workspace.eventDay}
         />
       ) : null}
 

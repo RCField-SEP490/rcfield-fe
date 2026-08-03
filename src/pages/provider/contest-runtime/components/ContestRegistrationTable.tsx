@@ -18,12 +18,17 @@ import {
 export function ContestRegistrationTable({
   registrations,
   onAction,
+  onCheckIn,
+  resolveCheckInBlock,
 }: {
   registrations: ContestRegistration[]
   onAction: (
     kind: RegistrationActionKind,
     registration: ContestRegistration,
   ) => void
+  onCheckIn?: (registration: ContestRegistration) => void
+  /** Trả về lý do khoá nút điểm danh của riêng hàng đó, hoặc undefined nếu cho bấm. */
+  resolveCheckInBlock?: (registration: ContestRegistration) => string | undefined
 }) {
   return (
     <div className="space-y-3">
@@ -84,6 +89,8 @@ export function ContestRegistrationTable({
             <RegistrationRowActions
               registration={registration}
               onAction={onAction}
+              onCheckIn={onCheckIn}
+              checkInBlockedReason={resolveCheckInBlock?.(registration)}
             />
           </div>
         </article>

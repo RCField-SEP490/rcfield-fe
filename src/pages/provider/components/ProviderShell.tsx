@@ -437,10 +437,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     const context = parseContestWorkspaceContext(location.pathname)
     const contestId = context?.contestId ?? ""
     const isContestContext = Boolean(contestId)
-    const generalLinks = [
-      { label: "Danh sách contest", to: routePaths.providerContests },
-      { label: "Tạo contest", to: routePaths.providerContestCreate },
-    ]
+    // Tạo giải đã có nút ngay trong danh sách nên không nhân đôi ở sidebar.
+    const generalLinks = [{ label: "Danh sách contest", to: routePaths.providerContests }]
 
     return (
       <div className="mt-1.5 ml-6 space-y-1 border-l border-[#e5e2e1] pl-3">

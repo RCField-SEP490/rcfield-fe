@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   getContestCheckInAvailability,
+  getContestDrawAvailability,
+  getContestEditAvailability,
+  getContestPublishAvailability,
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
   getRegistrationAvailabilityLabel,
@@ -147,5 +150,101 @@ describe("getContestCheckInAvailability", () => {
         new Date("2026-08-11T03:59:00.000Z"),
       ),
     ).toEqual({ canCheckIn: true })
+  })
+})
+
+describe("getContestEditAvailability", () => {
+  it("cho sửa khi còn bản nháp hoặc đang mở đăng ký", () => {
+    expect(getContestEditAvailability({ status: "DRAFT" })).toEqual({ allowed: true })
+    expect(getContestEditAvailability({ status: "OPEN" })).toEqual({ allowed: true })
+  })
+
+  it("chặn sau khi đóng đăng ký vì khách đã sắp lịch theo thông tin cũ", () => {
+    expect(getContestEditAvailability({ status: "CLOSED" })).toMatchObject({
+      allowed: false,
+      reason: "Đã đóng đăng ký — không sửa được thông tin giải nữa",
+    })
+    expect(getContestEditAvailability({ status: "COMPLETED" })).toMatchObject({
+      allowed: false,
+      reason: "Giải đã kết thúc — không sửa được nữa",
+    })
+  })
+})
+
+describe("getContestDrawAvailability", () => {
+  const drawable = { eligibleCount: 6, hasPlayedMatch: false }
+
+  it("cho bốc thăm khi giải đã mở và đủ người", () => {
+    expect(getContestDrawAvailability({ status: "OPEN" }, drawable)).toEqual({ allowed: true })
+    expect(getContestDrawAvailability({ status: "CLOSED" }, drawable)).toEqual({ allowed: true })
+  })
+
+  it("chặn khi giải còn là bản nháp", () => {
+    expect(getContestDrawAvailability({ status: "DRAFT" }, drawable)).toMatchObject({
+      allowed: false,
+      reason: "Giải còn là bản nháp — mở đăng ký trước đã",
+    })
+  })
+
+  it("chặn bốc lại khi đã có trận thi đấu", () => {
+    expect(
+      getContestDrawAvailability({ status: "RUNNING" }, { ...drawable, hasPlayedMatch: true }),
+    ).toMatchObject({
+      allowed: false,
+      reason: "Đã có trận thi đấu — không bốc thăm lại được nữa",
+    })
+  })
+
+  it("chặn khi chưa đủ 2 người được duyệt", () => {
+    expect(
+      getContestDrawAvailability({ status: "OPEN" }, { ...drawable, eligibleCount: 1 }),
+    ).toMatchObject({
+      allowed: false,
+      reason: "Cần ít nhất 2 người đã được duyệt để bốc thăm",
+    })
+  })
+})
+
+describe("getContestPublishAvailability", () => {
+  const finished = { totalMatches: 7, unfinishedMatches: 0 }
+
+  it("cho công bố khi mọi trận đã xong", () => {
+    expect(getContestPublishAvailability({ status: "RUNNING" }, finished)).toEqual({
+      allowed: true,
+    })
+  })
+
+  it("chặn khi còn đang mở đăng ký", () => {
+    expect(
+      getContestPublishAvailability({ status: "OPEN" }, { totalMatches: 0, unfinishedMatches: 0 }),
+    ).toMatchObject({
+      allowed: false,
+      reason: "Còn đang mở đăng ký — chưa có gì để công bố",
+    })
+  })
+
+  it("chặn khi chưa bốc thăm", () => {
+    expect(
+      getContestPublishAvailability({ status: "CLOSED" }, { totalMatches: 0, unfinishedMatches: 0 }),
+    ).toMatchObject({
+      allowed: false,
+      reason: "Chưa bốc thăm nên chưa có trận nào",
+    })
+  })
+
+  it("nói rõ còn bao nhiêu trận chưa có kết quả", () => {
+    expect(
+      getContestPublishAvailability({ status: "RUNNING" }, { totalMatches: 7, unfinishedMatches: 3 }),
+    ).toMatchObject({
+      allowed: false,
+      reason: "Còn 3 trận chưa có kết quả",
+    })
+  })
+
+  it("chặn công bố lần hai khi giải đã hoàn thành", () => {
+    expect(getContestPublishAvailability({ status: "COMPLETED" }, finished)).toMatchObject({
+      allowed: false,
+      reason: "Bảng xếp hạng đã được công bố",
+    })
   })
 })
