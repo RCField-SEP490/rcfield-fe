@@ -1,11 +1,5 @@
 import type { ContestRegistration } from "@/features/contests/types"
-import {
-  AlertTriangle,
-  BadgeCheck,
-  CircleDollarSign,
-  Search,
-  TicketSlash,
-} from "lucide-react"
+import { Search } from "lucide-react"
 import { Input } from "@/shared/ui/input"
 
 export function RegistrationFilters({
@@ -65,6 +59,13 @@ export function RegistrationFilters({
   )
 }
 
+/**
+ * Một dải số thay cho tám thẻ.
+ *
+ * Bốn con số đếm người là thứ provider liếc mỗi lần mở màn; bốn con số tiền chỉ
+ * để đối chiếu cuối buổi nên rút thành một dòng chữ bên phải thay vì bốn thẻ
+ * to ngang hàng, khiến phần quan trọng bị chìm.
+ */
 export function RegistrationSummary({
   summary,
 }: {
@@ -81,87 +82,55 @@ export function RegistrationSummary({
     }
   }
 }) {
+  const counts = [
+    { label: "Tổng đăng ký", value: summary.total },
+    { label: "Chờ duyệt", value: summary.pending },
+    { label: "Đã xác nhận", value: summary.confirmed },
+    { label: "Đã điểm danh", value: summary.checkedIn },
+  ]
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-4">
-        <SummaryCard
-          label="Tổng đăng ký"
-          value={String(summary.total)}
-          icon={<BadgeCheck className="size-4" />}
-        />
-        <SummaryCard
-          label="Chờ duyệt"
-          value={String(summary.pending)}
-          icon={<AlertTriangle className="size-4" />}
-        />
-        <SummaryCard
-          label="Đã xác nhận"
-          value={String(summary.confirmed)}
-          icon={<CircleDollarSign className="size-4" />}
-        />
-        <SummaryCard
-          label="Đã check-in"
-          value={String(summary.checkedIn)}
-          icon={<TicketSlash className="size-4" />}
-        />
+    <div className="flex flex-col gap-4 rounded-xl border border-[#e5e2e1] bg-white px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-wrap gap-x-8 gap-y-3">
+        {counts.map((item) => (
+          <div key={item.label}>
+            <p className="text-2xl font-extrabold leading-none text-[#1c1b1b]">
+              {item.value}
+            </p>
+            <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
+              {item.label}
+            </p>
+          </div>
+        ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        <SummaryCard
-          label="Dự kiến thu"
-          value={formatCurrency(summary.revenue.expected)}
-          icon={<CircleDollarSign className="size-4 text-emerald-600" />}
-          tone="emerald"
-        />
-        <SummaryCard
-          label="Đã thu"
-          value={formatCurrency(summary.revenue.paid)}
-          icon={<BadgeCheck className="size-4 text-blue-600" />}
-          tone="blue"
-        />
-        <SummaryCard
-          label="Chờ thu"
-          value={formatCurrency(summary.revenue.pending)}
-          icon={<AlertTriangle className="size-4 text-amber-600" />}
-          tone="amber"
-        />
-        <SummaryCard
-          label="Miễn phí"
-          value={formatCurrency(summary.revenue.waived)}
-          icon={<TicketSlash className="size-4 text-purple-600" />}
-          tone="purple"
-        />
+      <div className="text-xs font-semibold text-[#5d5f5f] xl:text-right">
+        <p>
+          Đã thu{" "}
+          <span className="font-extrabold text-emerald-700">
+            {formatCurrency(summary.revenue.paid)}
+          </span>
+          {summary.revenue.pending > 0 ? (
+            <>
+              {"  ·  Chờ thu "}
+              <span className="font-extrabold text-amber-700">
+                {formatCurrency(summary.revenue.pending)}
+              </span>
+            </>
+          ) : null}
+          {summary.revenue.waived > 0 ? (
+            <>
+              {"  ·  Miễn "}
+              <span className="font-extrabold text-[#1c1b1b]">
+                {formatCurrency(summary.revenue.waived)}
+              </span>
+            </>
+          ) : null}
+        </p>
+        <p className="mt-0.5 text-[#747878]">
+          Dự kiến thu {formatCurrency(summary.revenue.expected)}
+        </p>
       </div>
-    </div>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon,
-  tone,
-}: {
-  label: string
-  value: string
-  icon: React.ReactNode
-  tone?: "emerald" | "blue" | "amber" | "purple"
-}) {
-  const toneClasses = {
-    emerald: "border-emerald-200 bg-emerald-50/40",
-    blue: "border-blue-200 bg-blue-50/40",
-    amber: "border-amber-200 bg-amber-50/40",
-    purple: "border-purple-200 bg-purple-50/40",
-  }
-  return (
-    <div className={`rounded-xl border p-4 shadow-sm ${tone ? toneClasses[tone] : "border-[#c4c7c8] bg-white"}`}>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-          {label}
-        </span>
-        <span className="text-[#5d5f5f]">{icon}</span>
-      </div>
-      <div className="text-lg font-extrabold text-[#1c1b1b]">{value}</div>
     </div>
   )
 }

@@ -597,6 +597,7 @@ export type ContestRegistrationCreateBody = {
   byoc_vehicle_brand?: string
   byoc_vehicle_class?: string
   byoc_vehicle_notes?: string
+  byoc_vehicle_photos?: string[]
 }
 export type ContestRentalCafeOption = {
   id: string

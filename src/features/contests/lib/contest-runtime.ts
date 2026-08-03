@@ -188,3 +188,40 @@ export function getQualifyingStandings(
     return a.bestLapSeconds - b.bestLapSeconds
   })
 }
+
+export type ByocDeclaration = {
+  vehicle_name: string | null
+  vehicle_brand: string | null
+  vehicle_class: string | null
+  notes: string | null
+  photos: string[]
+}
+
+/**
+ * Bản khai xe cá nhân mà VĐV nộp lúc đăng ký.
+ *
+ * Ảnh là căn cứ duy nhất để ban tổ chức nói xe đạt hay không đạt, nên luôn trả
+ * về mảng — đăng ký cũ tạo trước khi có phần tải ảnh sẽ ra mảng rỗng thay vì
+ * undefined, chỗ hiển thị khỏi phải phòng thủ thêm.
+ */
+export function getByocDeclaration(
+  registration: ContestRegistration,
+): ByocDeclaration | null {
+  const raw = registration.metadata?.byoc_declaration
+  if (!raw || typeof raw !== "object") return null
+  const source = raw as Record<string, unknown>
+  const asText = (value: unknown) =>
+    typeof value === "string" && value.trim() ? value.trim() : null
+
+  return {
+    vehicle_name: asText(source.vehicle_name),
+    vehicle_brand: asText(source.vehicle_brand),
+    vehicle_class: asText(source.vehicle_class),
+    notes: asText(source.notes),
+    photos: Array.isArray(source.photos)
+      ? source.photos.filter(
+          (item): item is string => typeof item === "string" && item.length > 0,
+        )
+      : [],
+  }
+}

@@ -171,6 +171,11 @@ export const contestByocDeclarationSchema = z.object({
     .trim()
     .max(1000, "Ghi chú tối đa 1000 ký tự")
     .optional(),
+  // Ban tổ chức duyệt xe cá nhân dựa vào ảnh, nên bắt buộc ít nhất một tấm.
+  byoc_vehicle_photos: z
+    .array(z.string().url())
+    .min(1, "Cần ít nhất 1 ảnh xe để ban tổ chức duyệt")
+    .max(6, "Tối đa 6 ảnh xe"),
 })
 
 /**

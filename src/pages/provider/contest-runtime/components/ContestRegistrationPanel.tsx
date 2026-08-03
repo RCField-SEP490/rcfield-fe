@@ -169,18 +169,12 @@ export function ContestRegistrationPanel({
       <Panel>
         <PanelTitle
           title="Danh sách người chơi"
-          subtitle="Duyệt tham gia, xử lý lệ phí và điểm danh — tất cả trên cùng một danh sách."
+          subtitle="Duyệt xe, điểm danh và xử lý lệ phí trên cùng một danh sách. Thao tác ít dùng nằm trong nút ⋯ ở cuối mỗi hàng."
         />
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
-          Khách tự thanh toán lệ phí qua VNPay khi đăng ký còn đang chờ phí. Nút
-          "Đánh dấu đã thu" chỉ dùng khi bạn đã nhận tiền trực tiếp tại quán và
-          cần ghi nhận lại trên hệ thống.
-        </div>
         {contestCheckInBlock ? (
-          <div className="mb-4 rounded-xl border border-[#e5e2e1] bg-[#f6f3f2] px-4 py-3 text-sm font-semibold text-[#5d5f5f]">
-            Chưa điểm danh được: {contestCheckInBlock}. Các thao tác duyệt đăng ký
-            và lệ phí vẫn dùng bình thường.
-          </div>
+          <p className="mb-3 text-xs font-semibold text-amber-700">
+            Chưa điểm danh được: {contestCheckInBlock}.
+          </p>
         ) : null}
 
         <RegistrationFilters

@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Car, CreditCard, KeyRound, ShieldCheck } from "lucide-react"
+import { Car, CreditCard, ImagePlus, KeyRound, ShieldCheck, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { bookingApi } from "@/features/booking/api/booking.api"
+import { uploadImage } from "@/features/uploads/api/upload.api"
 import {
   contestApi,
   contestQueryKeys,
@@ -32,6 +33,9 @@ import {
   ContestRentalVehiclePicker,
   type ContestRentalChoice,
 } from "./ContestRentalVehiclePicker"
+
+/** Đủ để nhìn toàn thân, khung gầm và vài góc cận; nhiều hơn thì duyệt mỏi mắt. */
+const BYOC_PHOTO_LIMIT = 6
 
 export function ContestRegistrationPanel({
   contest,
@@ -69,6 +73,8 @@ export function ContestRegistrationPanel({
   const [byocVehicleBrand, setByocVehicleBrand] = useState("")
   const [byocVehicleClass, setByocVehicleClass] = useState("")
   const [byocVehicleNotes, setByocVehicleNotes] = useState("")
+  const [byocPhotos, setByocPhotos] = useState<string[]>([])
+  const [byocPhotoUploading, setByocPhotoUploading] = useState(false)
   const [rentalChoice, setRentalChoice] =
     useState<Partial<ContestRentalChoice> | null>(null)
 
@@ -89,11 +95,36 @@ export function ContestRegistrationPanel({
 
   const detailsValid =
     source === "BYOC"
-      ? byocVehicleName.trim().length >= 2
+      ? byocVehicleName.trim().length >= 2 && byocPhotos.length > 0
       : Boolean(rentalChoice?.cafe_id && rentalChoice?.vehicle_catalog_id)
 
   // Thuê xe trong giải miễn phí, nên chỉ còn lệ phí giải quyết định có phải trả tiền hay không.
   const needsPayment = contest.entry_fee > 0
+
+  const handleUploadByocPhotos = async (files: FileList | null) => {
+    if (!files?.length) return
+    const room = BYOC_PHOTO_LIMIT - byocPhotos.length
+    const picked = Array.from(files).slice(0, room)
+    if (picked.length < files.length) {
+      toast.warning(`Chỉ nhận tối đa ${BYOC_PHOTO_LIMIT} ảnh`)
+    }
+    setByocPhotoUploading(true)
+    try {
+      const uploaded = await Promise.all(
+        picked.map((file) => uploadImage(file, "contest-byoc")),
+      )
+      setByocPhotos((current) => [
+        ...current,
+        ...uploaded.map((item) => item.url),
+      ])
+    } catch (error) {
+      toast.error("Không tải được ảnh xe", {
+        description: getErrorMessage(error),
+      })
+    } finally {
+      setByocPhotoUploading(false)
+    }
+  }
 
   const registerMutation = useMutation({
     mutationFn: async () => {
@@ -104,6 +135,7 @@ export function ContestRegistrationPanel({
           byoc_vehicle_brand: byocVehicleBrand || undefined,
           byoc_vehicle_class: byocVehicleClass || undefined,
           byoc_vehicle_notes: byocVehicleNotes || undefined,
+          byoc_vehicle_photos: byocPhotos.length ? byocPhotos : undefined,
         })
       }
       if (!rentalChoice?.cafe_id || !rentalChoice?.vehicle_catalog_id) {
@@ -153,6 +185,7 @@ export function ContestRegistrationPanel({
           byoc_vehicle_brand: byocVehicleBrand,
           byoc_vehicle_class: byocVehicleClass,
           byoc_vehicle_notes: byocVehicleNotes || undefined,
+          byoc_vehicle_photos: byocPhotos,
         })
         if (!parsed.success) {
           toast.error("Thông tin xe cá nhân chưa hợp lệ", {
@@ -397,9 +430,67 @@ export function ContestRegistrationPanel({
                     placeholder="Phụ kiện, setup, lưu ý kỹ thuật..."
                   />
                 </div>
+                <div>
+                  <Label className="mb-2 block text-xs font-bold text-slate-700">
+                    Ảnh xe của bạn
+                  </Label>
+                  <p className="mb-2 text-xs text-slate-500">
+                    Ban tổ chức duyệt xe dựa vào ảnh này. Chụp rõ toàn thân xe và
+                    phần khung gầm — tối đa {BYOC_PHOTO_LIMIT} ảnh.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {byocPhotos.map((url) => (
+                      <div
+                        key={url}
+                        className="relative size-20 overflow-hidden rounded-xl border border-slate-200"
+                      >
+                        <img
+                          src={url}
+                          alt="Ảnh xe cá nhân"
+                          className="size-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          disabled={registrationClosed}
+                          onClick={() =>
+                            setByocPhotos((current) =>
+                              current.filter((item) => item !== url),
+                            )
+                          }
+                          className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white hover:bg-black/80 disabled:opacity-50"
+                          aria-label="Xoá ảnh"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {byocPhotos.length < BYOC_PHOTO_LIMIT ? (
+                      <label
+                        className={`flex size-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-slate-300 text-[10px] font-bold text-slate-500 hover:border-slate-400 ${
+                          registrationClosed || byocPhotoUploading
+                            ? "pointer-events-none opacity-50"
+                            : ""
+                        }`}
+                      >
+                        <ImagePlus className="size-4" />
+                        {byocPhotoUploading ? "Đang tải..." : "Thêm ảnh"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(event) => {
+                            void handleUploadByocPhotos(event.target.files)
+                            event.target.value = ""
+                          }}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                </div>
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-                  Xe cá nhân sẽ đi theo luồng khai báo thủ công và chờ
-                  provider/staff duyệt trước khi được xếp thi đấu.
+                  Xe cá nhân cần ban tổ chức duyệt trước khi được xếp thi đấu —
+                  khai báo càng rõ thì duyệt càng nhanh.
                 </div>
               </div>
             )}

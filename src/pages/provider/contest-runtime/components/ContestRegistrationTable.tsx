@@ -1,6 +1,7 @@
 import type { ContestRegistration } from "@/features/contests/types"
 import {
   formatContestDateTime,
+  getByocDeclaration,
   getRegistrationDisplayName,
   getRegistrationSubtitle,
 } from "@/features/contests/lib/contest-runtime"
@@ -31,73 +32,19 @@ export function ContestRegistrationTable({
   resolveCheckInBlock?: (registration: ContestRegistration) => string | undefined
 }) {
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-[#e5e2e1] rounded-xl border border-[#e5e2e1]">
       {registrations.map((registration) => (
-        <article
+        <RegistrationRow
           key={registration.id}
-          className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4"
-        >
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-extrabold text-[#1c1b1b]">
-                  {getRegistrationDisplayName(registration)}
-                </p>
-                <RegistrationStatusBadge status={registration.status} />
-                <PaymentStatusBadge status={registration.paymentStatus} />
-                {journeyStatusAddsDetail(registration.customerJourneyStatus) ? (
-                  <JourneyStatusBadge
-                    status={registration.customerJourneyStatus}
-                  />
-                ) : null}
-              </div>
-
-              <p className="mt-1 text-xs font-semibold text-[#747878]">
-                {getRegistrationSubtitle(registration) ??
-                  `Mã đăng ký ${registration.id.slice(0, 8)}`}
-              </p>
-
-              <div className="mt-3 grid gap-2 text-xs font-semibold text-[#5d5f5f] md:grid-cols-2 xl:grid-cols-4">
-                <MetaRow
-                  label="Mã điểm danh"
-                  value={registration.checkInCode ?? "--"}
-                />
-                <MetaRow
-                  label="Lệ phí"
-                  value={
-                    registration.entryFeeAmount
-                      ? formatCurrency(registration.entryFeeAmount)
-                      : "--"
-                  }
-                />
-                <MetaRow
-                  label="Điểm danh"
-                  value={formatContestDateTime(registration.checkedInAt)}
-                />
-                <MetaRow
-                  label="Trận gần nhất"
-                  value={
-                    registration.latestMatch?.name ??
-                    (registration.latestMatch
-                      ? `Vòng ${registration.latestMatch.roundNo} · Lượt ${registration.latestMatch.matchNo}`
-                      : "--")
-                  }
-                />
-              </div>
-            </div>
-
-            <RegistrationRowActions
-              registration={registration}
-              onAction={onAction}
-              onCheckIn={onCheckIn}
-              checkInBlockedReason={resolveCheckInBlock?.(registration)}
-            />
-          </div>
-        </article>
+          registration={registration}
+          onAction={onAction}
+          onCheckIn={onCheckIn}
+          checkInBlockedReason={resolveCheckInBlock?.(registration)}
+        />
       ))}
 
       {registrations.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
+        <div className="p-8 text-center text-sm font-semibold text-[#747878]">
           Không có đăng ký phù hợp bộ lọc.
         </div>
       ) : null}
@@ -105,21 +52,124 @@ export function ContestRegistrationTable({
   )
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
+function RegistrationRow({
+  registration,
+  onAction,
+  onCheckIn,
+  checkInBlockedReason,
+}: {
+  registration: ContestRegistration
+  onAction: (
+    kind: RegistrationActionKind,
+    registration: ContestRegistration,
+  ) => void
+  onCheckIn?: (registration: ContestRegistration) => void
+  checkInBlockedReason?: string
+}) {
+  const declaration =
+    registration.vehicleSource === "BYOC"
+      ? getByocDeclaration(registration)
+      : null
+
+  // Một dòng thông tin thay cho bốn thẻ lồng nhau. Lệ phí bỏ hẳn: huy hiệu
+  // thanh toán đã nói xong chuyện, còn con số thì giải nào cũng như nhau và đã
+  // nằm ở phần tổng quan.
+  const facts = [
+    registration.checkInCode ? `Mã ${registration.checkInCode}` : null,
+    declaration
+      ? [
+          declaration.vehicle_name,
+          declaration.vehicle_brand,
+          declaration.vehicle_class,
+        ]
+          .filter(Boolean)
+          .join(" · ") || "Chưa khai báo xe"
+      : "Thuê xe của quán",
+    registration.checkedInAt
+      ? `Điểm danh ${formatContestDateTime(registration.checkedInAt)}`
+      : null,
+  ].filter(Boolean) as string[]
+
   return (
-    <div className="rounded-lg border border-[#e5e2e1] bg-white px-3 py-2">
-      <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-bold text-[#1c1b1b]">{value}</p>
-    </div>
+    <article className="flex flex-col gap-3 p-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-extrabold text-[#1c1b1b]">
+            {getRegistrationDisplayName(registration)}
+          </p>
+          <RegistrationStatusBadge status={registration.status} />
+          <PaymentStatusBadge status={registration.paymentStatus} />
+          {journeyStatusAddsDetail(registration.customerJourneyStatus) ? (
+            <JourneyStatusBadge status={registration.customerJourneyStatus} />
+          ) : null}
+        </div>
+
+        <p className="mt-0.5 text-xs font-semibold text-[#747878]">
+          {getRegistrationSubtitle(registration) ??
+            `Mã đăng ký ${registration.id.slice(0, 8)}`}
+        </p>
+
+        <p className="mt-1.5 text-xs font-semibold text-[#5d5f5f]">
+          {facts.join("  ·  ")}
+        </p>
+
+        {declaration ? (
+          <ByocPhotoStrip photos={declaration.photos} notes={declaration.notes} />
+        ) : null}
+      </div>
+
+      <RegistrationRowActions
+        registration={registration}
+        onAction={onAction}
+        onCheckIn={onCheckIn}
+        checkInBlockedReason={checkInBlockedReason}
+      />
+    </article>
   )
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value)
+/**
+ * Ảnh xe VĐV nộp — căn cứ duy nhất để nói xe đạt hay không đạt chuẩn, nên phải
+ * nhìn thấy ngay trên hàng chứ không giấu sau một cú bấm.
+ */
+function ByocPhotoStrip({
+  photos,
+  notes,
+}: {
+  photos: string[]
+  notes: string | null
+}) {
+  if (photos.length === 0) {
+    return (
+      <p className="mt-2 text-xs font-semibold text-amber-700">
+        Không có ảnh xe — không đủ căn cứ để duyệt đạt chuẩn.
+      </p>
+    )
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="flex flex-wrap gap-1.5">
+        {photos.map((url) => (
+          <a
+            key={url}
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            title="Mở ảnh kích thước đầy đủ"
+            className="block size-14 overflow-hidden rounded-lg border border-[#e5e2e1] hover:border-[#1c1b1b]"
+          >
+            <img
+              src={url}
+              alt="Ảnh xe cá nhân do VĐV nộp"
+              className="size-full object-cover"
+            />
+          </a>
+        ))}
+      </div>
+      {notes ? (
+        <p className="text-xs font-semibold text-[#747878]">{notes}</p>
+      ) : null}
+    </div>
+  )
 }
