@@ -19,6 +19,7 @@ import {
   Users,
   X,
   Zap,
+  Trophy,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -38,7 +39,11 @@ const adminNavGroups: NavGroup[] = [
   {
     heading: "Tổng quan",
     items: [
-      { label: "Bảng điều khiển", icon: LayoutDashboard, to: routePaths.adminDashboard },
+      {
+        label: "Bảng điều khiển",
+        icon: LayoutDashboard,
+        to: routePaths.adminDashboard,
+      },
     ],
   },
   {
@@ -46,11 +51,36 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { label: "Duyệt đối tác", icon: Building2, to: routePaths.adminCafes },
       { label: "Quản lý Provider", icon: Users, to: routePaths.adminProviders },
-      { label: "Yêu cầu thanh toán", icon: CreditCard, to: routePaths.adminPaymentRequests },
-      { label: "Cấu hình gói", icon: Package, to: routePaths.adminSubscriptionPlans },
-      { label: "Tiện ích cơ sở", icon: Settings2, to: routePaths.adminAmenities },
-      { label: "Loại đường chạy", icon: Compass, to: routePaths.adminTrackTypes },
-      { label: "Thanh toán SaaS", icon: CreditCard, to: routePaths.adminPayments },
+      {
+        label: "Yêu cầu thanh toán",
+        icon: CreditCard,
+        to: routePaths.adminPaymentRequests,
+      },
+      {
+        label: "Phí tổ chức giải",
+        icon: Trophy,
+        to: routePaths.adminContestFeeOrders,
+      },
+      {
+        label: "Cấu hình gói",
+        icon: Package,
+        to: routePaths.adminSubscriptionPlans,
+      },
+      {
+        label: "Tiện ích cơ sở",
+        icon: Settings2,
+        to: routePaths.adminAmenities,
+      },
+      {
+        label: "Loại đường chạy",
+        icon: Compass,
+        to: routePaths.adminTrackTypes,
+      },
+      {
+        label: "Thanh toán SaaS",
+        icon: CreditCard,
+        to: routePaths.adminPayments,
+      },
     ],
   },
   // {
@@ -64,32 +94,59 @@ const adminNavGroups: NavGroup[] = [
   {
     heading: "AI & Kênh",
     items: [
-      { label: "Chat Widget", icon: MessageCircle, to: routePaths.adminSystemChat },
+      {
+        label: "Chat Widget",
+        icon: MessageCircle,
+        to: routePaths.adminSystemChat,
+      },
       { label: "Kênh Messenger", icon: Share2, to: routePaths.adminChannels },
-      { label: "Knowledge Base", icon: BookOpen, to: routePaths.adminKnowledgeBase },
+      {
+        label: "Knowledge Base",
+        icon: BookOpen,
+        to: routePaths.adminKnowledgeBase,
+      },
     ],
   },
   {
     heading: "Hệ thống",
     items: [
-      { label: "Featured popup", icon: Image, to: routePaths.adminFeaturedPopups },
-      { label: "Cấu hình hệ thống", icon: Settings2, to: routePaths.adminFeatureFlags },
+      {
+        label: "Featured popup",
+        icon: Image,
+        to: routePaths.adminFeaturedPopups,
+      },
+      {
+        label: "Cấu hình hệ thống",
+        icon: Settings2,
+        to: routePaths.adminFeatureFlags,
+      },
     ],
   },
 ]
 
-export function AdminShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
+export function AdminShell({
+  children,
+  contentClassName,
+}: {
+  children: ReactNode
+  contentClassName?: string
+}) {
   const navigate = useNavigate()
   const location = useLocation()
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = async () => {
-    const storedAuth = localStorage.getItem(storageKeys.auth) ?? sessionStorage.getItem(storageKeys.auth)
+    const storedAuth =
+      localStorage.getItem(storageKeys.auth) ??
+      sessionStorage.getItem(storageKeys.auth)
 
     if (storedAuth) {
       try {
-        const auth = JSON.parse(storedAuth) as { accessToken?: string; refreshToken?: string }
+        const auth = JSON.parse(storedAuth) as {
+          accessToken?: string
+          refreshToken?: string
+        }
 
         if (auth.accessToken && auth.refreshToken) {
           await logoutSession(auth.accessToken, auth.refreshToken)
@@ -108,23 +165,30 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
 
   const childList = Children.toArray(children)
   const headerChildren = childList.filter(
-    (child) => isValidElement(child) && child.type === AdminHeader
+    (child) => isValidElement(child) && child.type === AdminHeader,
   )
   const contentChildren = childList.filter(
-    (child) => !(isValidElement(child) && child.type === AdminHeader)
+    (child) => !(isValidElement(child) && child.type === AdminHeader),
   )
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#fcf8f8] text-[#1c1b1b] font-sans">
       {/* Desktop Sidebar */}
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col rounded-r-xl border-r border-[#e5e2e1] bg-white p-4 md:flex shadow-sm">
-        <Link to={routePaths.adminDashboard} className="mb-8 px-4 flex items-center gap-2.5">
+        <Link
+          to={routePaths.adminDashboard}
+          className="mb-8 px-4 flex items-center gap-2.5"
+        >
           <div className="flex size-9 items-center justify-center rounded-lg bg-[#primary] text-white bg-orange-600 shadow-md">
             <Zap className="size-4 fill-current" />
           </div>
           <div>
-            <h1 className="text-xl font-bold leading-tight tracking-tight text-[#1c1b1b]">RCField Admin</h1>
-            <p className="text-[10px] font-semibold text-[#747878] uppercase tracking-wider">Hệ thống quản trị</p>
+            <h1 className="text-xl font-bold leading-tight tracking-tight text-[#1c1b1b]">
+              RCField Admin
+            </h1>
+            <p className="text-[10px] font-semibold text-[#747878] uppercase tracking-wider">
+              Hệ thống quản trị
+            </p>
           </div>
         </Link>
 
@@ -137,7 +201,10 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
               <div className="flex flex-col gap-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
-                  const active = location.pathname === item.to || (item.to !== routePaths.adminDashboard && location.pathname.startsWith(item.to))
+                  const active =
+                    location.pathname === item.to ||
+                    (item.to !== routePaths.adminDashboard &&
+                      location.pathname.startsWith(item.to))
                   return (
                     <Link
                       key={item.to}
@@ -146,10 +213,15 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
                         "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all duration-150",
                         active
                           ? "bg-orange-50 text-orange-700 shadow-sm border border-orange-100/50"
-                          : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
+                          : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]",
                       )}
                     >
-                      <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                      <Icon
+                        className={cn(
+                          "size-4.5",
+                          active ? "text-orange-600" : "text-[#747878]",
+                        )}
+                      />
                       {item.label}
                     </Link>
                   )
@@ -160,7 +232,10 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
         </nav>
 
         <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
-          <Link to={routePaths.profile} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]">
+          <Link
+            to={routePaths.profile}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
+          >
             <UserRound className="size-5 text-[#747878]" />
             Hồ sơ cá nhân
           </Link>
@@ -170,13 +245,23 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
               "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all duration-150",
               location.pathname === routePaths.adminGuide
                 ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]"
+                : "text-[#444748] hover:bg-[#f6f3f2] hover:text-[#1c1b1b]",
             )}
           >
-            <CircleHelp className={cn("size-5", location.pathname === routePaths.adminGuide ? "text-orange-600" : "text-[#747878]")} />
+            <CircleHelp
+              className={cn(
+                "size-5",
+                location.pathname === routePaths.adminGuide
+                  ? "text-orange-600"
+                  : "text-[#747878]",
+              )}
+            />
             Hướng dẫn quản trị
           </Link>
-          <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700 text-left">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-[#444748] hover:bg-red-50 hover:text-red-700 text-left"
+          >
             <LogOut className="size-5 text-[#747878] group-hover:text-red-600" />
             Đăng xuất
           </button>
@@ -185,15 +270,25 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
 
       {/* Mobile Header */}
       <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-[#e5e2e1] bg-white px-4 md:hidden shadow-sm">
-        <Link to={routePaths.adminDashboard} className="flex items-center gap-2">
+        <Link
+          to={routePaths.adminDashboard}
+          className="flex items-center gap-2"
+        >
           <div className="flex size-8 items-center justify-center rounded-lg bg-orange-600 text-white">
             <Zap className="size-4 fill-current" />
           </div>
-          <span className="text-lg font-bold text-[#1c1b1b]">RCField Admin</span>
+          <span className="text-lg font-bold text-[#1c1b1b]">
+            RCField Admin
+          </span>
         </Link>
         <div className="flex items-center gap-2">
           <NotificationBell />
-          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(true)} className="text-[#444748] hover:bg-[#f6f3f2]">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(true)}
+            className="text-[#444748] hover:bg-[#f6f3f2]"
+          >
             <Menu className="size-5" />
           </Button>
         </div>
@@ -202,11 +297,20 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+          <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm"
+            onClick={() => setMobileMenuOpen(false)}
+          />
           <div className="relative flex w-full max-w-xs flex-col bg-white p-4 shadow-xl">
             <div className="flex items-center justify-between mb-8 px-2">
-              <span className="text-lg font-bold text-[#1c1b1b]">Menu Quản trị</span>
-              <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)}>
+              <span className="text-lg font-bold text-[#1c1b1b]">
+                Menu Quản trị
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 <X className="size-5" />
               </Button>
             </div>
@@ -220,7 +324,10 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
                   <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => {
                       const Icon = item.icon
-                      const active = location.pathname === item.to || (item.to !== routePaths.adminDashboard && location.pathname.startsWith(item.to))
+                      const active =
+                        location.pathname === item.to ||
+                        (item.to !== routePaths.adminDashboard &&
+                          location.pathname.startsWith(item.to))
                       return (
                         <Link
                           key={item.to}
@@ -230,10 +337,15 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
                             "flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-bold transition-all",
                             active
                               ? "bg-orange-50 text-orange-700 shadow-sm border border-orange-100"
-                              : "text-[#444748] hover:bg-[#f6f3f2]"
+                              : "text-[#444748] hover:bg-[#f6f3f2]",
                           )}
                         >
-                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                          <Icon
+                            className={cn(
+                              "size-4.5",
+                              active ? "text-orange-600" : "text-[#747878]",
+                            )}
+                          />
                           {item.label}
                         </Link>
                       )
@@ -244,7 +356,11 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
             </nav>
 
             <div className="mt-3 flex flex-col gap-1 border-t border-[#e5e2e1] pt-3">
-              <Link to={routePaths.profile} onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2]">
+              <Link
+                to={routePaths.profile}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold text-[#444748] hover:bg-[#f6f3f2]"
+              >
                 <UserRound className="size-5" />
                 Hồ sơ cá nhân
               </Link>
@@ -255,13 +371,23 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
                   "flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-bold transition-all",
                   location.pathname === routePaths.adminGuide
                     ? "border border-orange-100 bg-orange-50 text-orange-700 shadow-sm"
-                    : "text-[#444748] hover:bg-[#f6f3f2]"
+                    : "text-[#444748] hover:bg-[#f6f3f2]",
                 )}
               >
-                <CircleHelp className={cn("size-5", location.pathname === routePaths.adminGuide ? "text-orange-600" : "text-[#747878]")} />
+                <CircleHelp
+                  className={cn(
+                    "size-5",
+                    location.pathname === routePaths.adminGuide
+                      ? "text-orange-600"
+                      : "text-[#747878]",
+                  )}
+                />
                 Hướng dẫn quản trị
               </Link>
-              <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 text-left">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-bold text-red-600 hover:bg-red-50 text-left"
+              >
                 <LogOut className="size-5" />
                 Đăng xuất
               </button>
@@ -273,7 +399,14 @@ export function AdminShell({ children, contentClassName }: { children: ReactNode
       {/* Main Content Pane */}
       <main className="h-full w-full flex-1 overflow-y-auto bg-[#fcf8f8] pb-24 pt-16 md:ml-64 md:pb-0 md:pt-0">
         {headerChildren}
-        <div className={cn("mx-auto max-w-7xl px-4 py-8 md:px-6", contentClassName)}>{contentChildren}</div>
+        <div
+          className={cn(
+            "mx-auto max-w-7xl px-4 py-8 md:px-6",
+            contentClassName,
+          )}
+        >
+          {contentChildren}
+        </div>
       </main>
     </div>
   )

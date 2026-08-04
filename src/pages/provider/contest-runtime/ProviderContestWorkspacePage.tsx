@@ -52,6 +52,7 @@ import {
 } from "@/shared/ui/dropdown-menu"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
 import { ContestDisciplinePanel } from "./components/ContestDisciplinePanel"
+import { ContestFeePanel } from "./components/ContestFeePanel"
 import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
 import { ContestMatchBoard } from "./components/ContestMatchBoard"
@@ -502,6 +503,12 @@ export function ProviderContestWorkspacePage({
           </div>
         }
       />
+
+      {section === "overview" ? (
+        <div className="mb-4">
+          <ContestFeePanel contest={contest} />
+        </div>
+      ) : null}
 
       {section === "overview" ? (
         <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">

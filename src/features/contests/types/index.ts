@@ -524,6 +524,64 @@ export type ContestMatchStats = {
   has_live_matches: boolean
 }
 
+export type ContestFeePlan = {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  price: number
+  /** Số ngày giải được hiển thị trên trang chủ; 0 nghĩa là gói không kèm quảng bá. */
+  featured_days: number
+}
+
+export type ContestFeeOrderStatus =
+  | "PENDING_PAYMENT"
+  | "PENDING_REVIEW"
+  | "PAID"
+  | "REJECTED"
+  | "CANCELLED"
+
+export type ContestFeeOrder = {
+  id: string
+  contest_id: string
+  provider_id: string
+  plan: ContestFeePlan | null
+  status: ContestFeeOrderStatus
+  amount: number
+  featured_days: number
+  transfer_reference: string | null
+  transfer_date: string | null
+  transfer_amount: number | null
+  admin_notes: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
+export type AdminContestFeeOrder = ContestFeeOrder & {
+  contest_name: string | null
+}
+
+export type PendingFeaturedPopup = {
+  id: string
+  title: string
+  subtitle: string | null
+  image_url: string | null
+  cta_label: string
+  cta_url: string | null
+  contest_id: string | null
+  starts_at: string
+  ends_at: string
+  is_active: boolean
+  review_status: "PENDING" | "APPROVED" | "REJECTED"
+  review_notes: string | null
+  contest_fee_order_id: string | null
+}
+
+export type ContestFeeStatus = {
+  order: ContestFeeOrder | null
+  plans: ContestFeePlan[]
+}
+
 export type ContestWalkoverStatus = "DNS" | "DNF" | "DQ"
 
 export type ContestMatchWalkoverBody = {

@@ -1,5 +1,10 @@
 import { api } from "@/shared/lib/axios"
 import type {
+  AdminContestFeeOrder,
+  ContestFeeOrder,
+  PendingFeaturedPopup,
+  ContestFeePlan,
+  ContestFeeStatus,
   ContestMatchWalkoverBody,
   ContestAuditLogItem,
   ContestBanItem,
@@ -57,6 +62,8 @@ export const contestQueryKeys = {
       : ([...contestQueryKeys.all, "matches", contestId] as const),
   metrics: (contestId?: string) =>
     [...contestQueryKeys.all, "metrics", contestId] as const,
+  feePlans: () => ["contests", "fee-plans"] as const,
+  fee: (contestId?: string) => ["contests", contestId, "fee"] as const,
   auditLogs: (contestId?: string, params?: Record<string, unknown>) =>
     params
       ? ([...contestQueryKeys.all, "audit-logs", contestId, params] as const)
@@ -243,6 +250,107 @@ export const contestApi = {
       { params },
     )
     return res.data
+  },
+
+  listContestFeePlans: async (): Promise<ContestFeePlan[]> => {
+    const res = await api.get<ApiEnvelope<ContestFeePlan[]>>(
+      "/v1/contest-fee-plans",
+    )
+    return res.data.data
+  },
+
+  getContestFeeStatus: async (contestId: string): Promise<ContestFeeStatus> => {
+    const res = await api.get<ApiEnvelope<ContestFeeStatus>>(
+      `/v1/contests/${contestId}/fee`,
+    )
+    return res.data.data
+  },
+
+  createContestFeeOrder: async (
+    contestId: string,
+    planId: string,
+  ): Promise<ContestFeeOrder> => {
+    const res = await api.post<ApiEnvelope<ContestFeeOrder>>(
+      `/v1/contests/${contestId}/fee/order`,
+      { plan_id: planId },
+    )
+    return res.data.data
+  },
+
+  cancelContestFeeOrder: async (
+    contestId: string,
+  ): Promise<ContestFeeOrder> => {
+    const res = await api.delete<ApiEnvelope<ContestFeeOrder>>(
+      `/v1/contests/${contestId}/fee/order`,
+    )
+    return res.data.data
+  },
+
+  submitContestFeeTransfer: async (
+    contestId: string,
+    body: {
+      transfer_reference: string
+      transfer_date: string
+      transfer_amount: number
+    },
+  ): Promise<ContestFeeOrder> => {
+    const res = await api.post<ApiEnvelope<ContestFeeOrder>>(
+      `/v1/contests/${contestId}/fee/transfer`,
+      body,
+    )
+    return res.data.data
+  },
+
+  listContestFeeOrdersForAdmin: async (params?: {
+    status?: string
+    page?: number
+    limit?: number
+  }): Promise<PaginatedResponse<AdminContestFeeOrder>> => {
+    const res = await api.get<PaginatedResponse<AdminContestFeeOrder>>(
+      "/v1/admin/contest-fee-orders",
+      { params },
+    )
+    return res.data
+  },
+
+  confirmContestFeeOrder: async (
+    orderId: string,
+    notes?: string,
+  ): Promise<ContestFeeOrder> => {
+    const res = await api.post<ApiEnvelope<ContestFeeOrder>>(
+      `/v1/admin/contest-fee-orders/${orderId}/confirm`,
+      { notes },
+    )
+    return res.data.data
+  },
+
+  rejectContestFeeOrder: async (
+    orderId: string,
+    reason: string,
+  ): Promise<ContestFeeOrder> => {
+    const res = await api.post<ApiEnvelope<ContestFeeOrder>>(
+      `/v1/admin/contest-fee-orders/${orderId}/reject`,
+      { reason },
+    )
+    return res.data.data
+  },
+
+  listPendingFeaturedPopups: async (): Promise<PendingFeaturedPopup[]> => {
+    const res = await api.get<ApiEnvelope<PendingFeaturedPopup[]>>(
+      "/v1/admin/featured-popups/pending",
+    )
+    return res.data.data
+  },
+
+  reviewFeaturedPopup: async (
+    popupId: string,
+    body: { approve: boolean; notes?: string },
+  ): Promise<PendingFeaturedPopup> => {
+    const res = await api.post<ApiEnvelope<PendingFeaturedPopup>>(
+      `/v1/admin/featured-popups/${popupId}/review`,
+      body,
+    )
+    return res.data.data
   },
 
   listContestTypes: async (): Promise<ContestCatalogType[]> => {

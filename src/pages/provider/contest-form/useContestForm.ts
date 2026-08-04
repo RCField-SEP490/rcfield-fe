@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import {
@@ -16,6 +16,7 @@ import {
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
 import { contestUpsertSchema } from "@/features/contests/schemas/contest.schema"
+import { getContestWorkspacePath } from "@/pages/provider/contest-runtime/contest-workspace"
 import type { ContestUpsertBody } from "@/features/contests/types"
 import {
   buildResourceLocks,
@@ -70,7 +71,10 @@ export function useContestForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { contestId } = useParams()
+  const [searchParams] = useSearchParams()
   const isEdit = Boolean(contestId)
+  // Gói do màn giới thiệu chọn, mang sang qua query param.
+  const selectedFeePlanId = searchParams.get("plan")
 
   const [form, setForm] = useState<ContestFormState>(defaultForm)
   // Bước nào đã bấm "Tiếp tục" một lần thì từ đó trở đi validate ngay khi gõ.
@@ -468,8 +472,25 @@ export function useContestForm() {
     setSubmitErrors({})
 
     try {
-      await saveMutation.mutateAsync(result.data as ContestUpsertBody)
+      const saved = await saveMutation.mutateAsync(
+        result.data as ContestUpsertBody,
+      )
       toast.success(isEdit ? "Đã cập nhật giải đấu" : "Đã tạo giải đấu")
+
+      // Gói đã chọn ở màn giới thiệu được đặt luôn thành đơn phí, để provider
+      // không phải chọn lại lần hai. Đặt đơn hỏng thì giải vẫn tạo xong — họ
+      // chọn lại được ở màn vận hành, không mất công điền năm bước.
+      if (!isEdit && selectedFeePlanId && saved?.id) {
+        try {
+          await contestApi.createContestFeeOrder(saved.id, selectedFeePlanId)
+        } catch (error) {
+          toast.warning("Chưa đặt được gói tổ chức", {
+            description: `${getErrorMessage(error)} Bạn chọn lại gói ở màn giải đấu.`,
+          })
+        }
+        navigate(getContestWorkspacePath(saved.id, "overview"))
+        return
+      }
       navigate(routePaths.providerContests)
     } catch (error) {
       toast.error("Không thể lưu giải đấu", {
