@@ -51,9 +51,10 @@ export function useRegistrationActionDialog(workspace: WorkspaceHook) {
           reason: reason || undefined,
         })
       } else if (dialogState.kind === "reject") {
+        // Backend bắt buộc lý do vì nó được gửi thẳng cho VĐV bị loại.
         await workspace.eventDay.rejectMutation.mutateAsync({
           registrationId: registration.id,
-          reason: reason || undefined,
+          reason: reason.trim(),
         })
       } else {
         await workspace.eventDay.cancelRegistrationMutation.mutateAsync(

@@ -498,7 +498,7 @@ export type ContestAuditLogItem = {
 export type ContestGenerateMatchesBody = {
   cafe_id: string
   track_config_id?: string | null
-  registration_ids: string[]
+  registration_ids?: string[]
   drivers_per_match?: number
   seeding_mode?: "MANUAL" | "CHECK_IN_ORDER"
 }

@@ -1,13 +1,49 @@
 import { useMemo, useState } from "react"
-import { GripVertical, Trophy } from "lucide-react"
+import { Trophy } from "lucide-react"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
-import { formatMatchLabel, formatContestDateTime, getMatchParticipantName, groupMatchesByRound } from "@/features/contests/lib/contest-runtime"
-import { getMatchStatusClass, getMatchStatusLabel } from "@/features/contests/lib/contest-status"
-import type { ContestMatch, ContestMatchParticipant } from "@/features/contests/types"
-import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  formatContestDateTime,
+  getMatchParticipantName,
+  groupMatchesByRound,
+} from "@/features/contests/lib/contest-runtime"
+import type {
+  ContestMatch,
+  ContestMatchParticipant,
+} from "@/features/contests/types"
+import {
+  Panel,
+  PanelTitle,
+} from "@/pages/provider/components/ProviderPrimitives"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
-import { ContestBracketAdvanceModal, type AdvanceModalPayload, type AdvanceSubmitData } from "./ContestBracketAdvanceModal"
+import {
+  ContestBracketAdvanceModal,
+  type AdvanceModalPayload,
+  type AdvanceSubmitData,
+} from "./ContestBracketAdvanceModal"
+
+/**
+ * Nửa khoảng cách giữa hai cột vòng — cũng là nơi đặt đường dọc nối cặp đấu.
+ * Đoạn ngang bên trái và bên phải đều dài đúng bằng số này nên ba nét gặp nhau
+ * thành chữ T cân, không lệch.
+ */
+const CONNECTOR = 28
+const COLUMN_WIDTH = 236
+const LINE = "#c4c7c8"
+
+/** Tên vòng đếm ngược từ chung kết, khớp cách backend đặt tên trận. */
+function getRoundName(roundIndex: number, totalRounds: number): string {
+  const fromFinal = totalRounds - 1 - roundIndex
+  if (fromFinal === 0) return "Chung kết"
+  if (fromFinal === 1) return "Bán kết"
+  if (fromFinal === 2) return "Tứ kết"
+  if (fromFinal === 3) return "Vòng 1/8"
+  return `Vòng ${roundIndex + 1}`
+}
+
+function isThirdPlaceMatch(match: ContestMatch): boolean {
+  return match.metadata?.third_place === true
+}
 
 export function ContestKnockoutBracket({
   matches,
@@ -33,13 +69,25 @@ export function ContestKnockoutBracket({
   canUndo: boolean
   hasChanges: boolean
 }) {
-  const groups = useMemo(() => groupMatchesByRound(matches), [matches])
+  // Trận tranh hạng 3 nằm cùng vòng với chung kết nhưng không nhận người thắng
+  // từ đâu cả, để chung vào cây sẽ làm lệch toàn bộ đường nối.
+  const thirdPlaceMatch = useMemo(
+    () => matches.find(isThirdPlaceMatch) ?? null,
+    [matches],
+  )
+  const groups = useMemo(
+    () =>
+      groupMatchesByRound(matches.filter((match) => !isThirdPlaceMatch(match))),
+    [matches],
+  )
+
   const [draggingPayload, setDraggingPayload] = useState<{
     sourceMatchId: string
     registrationId: string
   } | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
-  const [advanceModalPayload, setAdvanceModalPayload] = useState<AdvanceModalPayload | null>(null)
+  const [advanceModalPayload, setAdvanceModalPayload] =
+    useState<AdvanceModalPayload | null>(null)
 
   const handleDrop = (targetMatch: ContestMatch, payloadRaw: string) => {
     setDropTargetId(null)
@@ -58,36 +106,35 @@ export function ContestKnockoutBracket({
         (p) => p.registration_id === parsed.registrationId,
       )
       if (!participant) return
+      if (targetMatch.round_no <= sourceMatch.round_no) return
 
-      if (targetMatch.round_no <= sourceMatch.round_no) {
-        return
-      }
-
-      // Open popup modal for user confirmation & optional quick result entry
-      setAdvanceModalPayload({
-        sourceMatch,
-        targetMatch,
-        participant,
-      })
+      setAdvanceModalPayload({ sourceMatch, targetMatch, participant })
     } catch {
       return
     }
   }
 
-  const handleModalConfirm = (data: AdvanceSubmitData) => {
-    onStageAdvance(
-      data.sourceMatchId,
-      data.targetMatchId,
-      data.registrationId,
-      data.submitResult,
-    )
-  }
+  const totalRounds = groups.length
+
+  const renderCard = (match: ContestMatch) => (
+    <BracketMatchCard
+      match={match}
+      selected={selectedMatchId === match.id}
+      onSelect={() => onSelectMatch(match.id)}
+      dropTargetId={dropTargetId}
+      onDropTargetChange={setDropTargetId}
+      onDrop={handleDrop}
+      draggingPayload={draggingPayload}
+      onDragStart={setDraggingPayload}
+      onDragEnd={() => setDraggingPayload(null)}
+    />
+  )
 
   return (
     <Panel>
       <PanelTitle
-        title="Sơ đồ nhánh đấu"
-        subtitle="Kéo giữ tay đua từ trận hiện tại thả sang trận vòng sâu hơn (sẽ hiển thị popup xác nhận). Nhấp vào trận để nhập kết quả thủ công."
+        title="Sơ đồ đấu"
+        subtitle="Người thắng mỗi trận đi sang trận nối bên phải. Nhấp vào trận để nhập kết quả; kéo tay đua sang vòng sau chỉ dùng khi cần sửa sai."
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -101,7 +148,7 @@ export function ContestKnockoutBracket({
             </Button>
             <Button
               type="button"
-              className="rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] text-xs font-bold"
+              className="rounded-lg bg-[#1c1b1b] text-xs font-bold text-white hover:bg-[#313030]"
               disabled={!hasChanges}
               onClick={onCommit}
             >
@@ -113,116 +160,257 @@ export function ContestKnockoutBracket({
 
       {groups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
-          Chưa có nhánh đấu nào được tạo.
+          Chưa bốc thăm nên chưa có sơ đồ.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <div className="flex min-w-max gap-4 pb-2">
-            {groups.map((group) => (
-              <section key={group.roundNo} className="w-[320px] shrink-0 space-y-3">
-                <div className="flex items-center justify-between">
+        <div className="overflow-x-auto pb-2">
+          <div className="min-w-max">
+            <div className="mb-2 flex" style={{ gap: CONNECTOR * 2 }}>
+              {groups.map((group, roundIndex) => (
+                <div
+                  key={group.roundNo}
+                  className="shrink-0 text-center"
+                  style={{ width: COLUMN_WIDTH }}
+                >
                   <p className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-                    Vòng {group.roundNo}
+                    {getRoundName(roundIndex, totalRounds)}
                   </p>
-                  <span className="text-[10px] font-bold text-[#b0b4b4]">
+                  <p className="text-[10px] font-bold text-[#b0b4b4]">
                     {group.matches.length} trận
-                  </span>
+                  </p>
                 </div>
-                {group.matches.map((match) => (
+              ))}
+            </div>
+
+            <div className="flex items-stretch" style={{ gap: CONNECTOR * 2 }}>
+              {groups.map((group, roundIndex) => {
+                const isLastRound = roundIndex === groups.length - 1
+                return (
                   <div
-                    key={match.id}
-                    onClick={() => onSelectMatch(match.id)}
-                    className={`group relative w-full rounded-xl border p-4 text-left transition-all duration-150 cursor-pointer ${
-                      selectedMatchId === match.id
-                        ? "border-orange-300 bg-orange-50/60 shadow-sm"
-                        : "border-[#e5e2e1] bg-white hover:bg-[#fcf8f8]"
-                    }`}
+                    key={group.roundNo}
+                    className="flex shrink-0 flex-col"
+                    style={{ width: COLUMN_WIDTH }}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-extrabold text-[#1c1b1b]">
-                          {formatMatchLabel(match)}
-                        </p>
-                        <p className="mt-0.5 text-xs font-semibold text-[#747878]">
-                          {formatContestDateTime(match.scheduled_at)}
-                        </p>
+                    {group.matches.map((match, matchIndex) => (
+                      <div
+                        key={match.id}
+                        className="relative flex flex-1 items-center"
+                      >
+                        {renderCard(match)}
+
+                        {/* Đoạn ngang chạy ra khỏi trận, dừng ở trục dọc. */}
+                        {isLastRound ? null : (
+                          <span
+                            aria-hidden
+                            className="absolute top-1/2"
+                            style={{
+                              right: -CONNECTOR,
+                              width: CONNECTOR,
+                              borderTop: `2px solid ${LINE}`,
+                            }}
+                          />
+                        )}
+
+                        {/* Trục dọc gộp cặp: vẽ từ trận trên xuống đúng một ô,
+                            tức chạm chính giữa trận dưới của cặp. */}
+                        {isLastRound || matchIndex % 2 === 1 ? null : (
+                          <span
+                            aria-hidden
+                            className="absolute top-1/2 h-full"
+                            style={{
+                              right: -CONNECTOR,
+                              borderLeft: `2px solid ${LINE}`,
+                            }}
+                          />
+                        )}
+
+                        {/* Đoạn ngang đi vào trận, nối tiếp trục dọc bên trái. */}
+                        {roundIndex === 0 ? null : (
+                          <span
+                            aria-hidden
+                            className="absolute top-1/2"
+                            style={{
+                              left: -CONNECTOR,
+                              width: CONNECTOR,
+                              borderTop: `2px solid ${LINE}`,
+                            }}
+                          />
+                        )}
                       </div>
-                      <Badge className={`border text-[10px] font-bold ${getMatchStatusClass(match.status)}`}>
-                        {getMatchStatusLabel(match.status)}
-                      </Badge>
-                    </div>
-
-                    <div className="mt-3 space-y-2">
-                      {[0, 1].map((index) => {
-                        const participant = match.participants[index]
-                        const isDropTarget = dropTargetId === `${match.id}-${index}`
-
-                        return (
-                          <div
-                            key={index}
-                            className={`rounded-lg border px-3 py-2 transition-colors ${
-                              isDropTarget
-                                ? "border-orange-400 bg-orange-100/70 ring-2 ring-orange-400/30"
-                                : "border-[#e5e2e1] bg-[#fcf8f8]"
-                            }`}
-                            onDragOver={(event) => {
-                              event.preventDefault()
-                              event.dataTransfer.dropEffect = "move"
-                              setDropTargetId(`${match.id}-${index}`)
-                            }}
-                            onDragLeave={() => setDropTargetId(null)}
-                            onDrop={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              const payload = event.dataTransfer.getData("text/plain")
-                              handleDrop(match, payload)
-                            }}
-                          >
-                            {participant ? (
-                              <ParticipantRow
-                                participant={participant}
-                                match={match}
-                                isDragging={
-                                  draggingPayload?.sourceMatchId === match.id &&
-                                  draggingPayload?.registrationId === participant.registration_id
-                                }
-                                onDragStart={() =>
-                                  setDraggingPayload({
-                                    sourceMatchId: match.id,
-                                    registrationId: participant.registration_id,
-                                  })
-                                }
-                                onDragEnd={() => setDraggingPayload(null)}
-                              />
-                            ) : (
-                              <p className="text-xs font-semibold text-[#747878] italic">
-                                Drop người thi đấu vào đây
-                              </p>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </section>
-            ))}
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Popup Modal hiển thị khi kéo thả tay đua */}
+      {thirdPlaceMatch ? (
+        <div className="mt-6 border-t border-[#e5e2e1] pt-4">
+          <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+            Tranh hạng 3
+          </p>
+          <div className="max-w-[236px]">{renderCard(thirdPlaceMatch)}</div>
+        </div>
+      ) : null}
+
       <ContestBracketAdvanceModal
         isOpen={Boolean(advanceModalPayload)}
         onClose={() => setAdvanceModalPayload(null)}
         payload={advanceModalPayload}
-        onConfirm={handleModalConfirm}
+        onConfirm={(data: AdvanceSubmitData) =>
+          onStageAdvance(
+            data.sourceMatchId,
+            data.targetMatchId,
+            data.registrationId,
+            data.submitResult,
+          )
+        }
       />
     </Panel>
   )
 }
 
-function ParticipantRow({
+function BracketMatchCard({
+  match,
+  selected,
+  onSelect,
+  dropTargetId,
+  onDropTargetChange,
+  onDrop,
+  draggingPayload,
+  onDragStart,
+  onDragEnd,
+}: {
+  match: ContestMatch
+  selected: boolean
+  onSelect: () => void
+  dropTargetId: string | null
+  onDropTargetChange: (id: string | null) => void
+  onDrop: (match: ContestMatch, payload: string) => void
+  draggingPayload: { sourceMatchId: string; registrationId: string } | null
+  onDragStart: (payload: {
+    sourceMatchId: string
+    registrationId: string
+  }) => void
+  onDragEnd: () => void
+}) {
+  const isBye = match.metadata?.bye === true
+  const isEmpty = match.metadata?.empty_slot === true
+  const isDone = match.status === "COMPLETED"
+  const isLive = match.status === "RUNNING"
+
+  return (
+    <div
+      onClick={onSelect}
+      className={`w-full cursor-pointer rounded-lg border bg-white transition-colors ${
+        selected
+          ? "border-orange-400 ring-2 ring-orange-200"
+          : isLive
+            ? "border-blue-300"
+            : "border-[#e5e2e1] hover:border-[#b0b4b4]"
+      } ${isEmpty ? "opacity-60" : ""}`}
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-[#f0edec] px-2.5 py-1.5">
+        <p className="truncate text-[11px] font-extrabold text-[#1c1b1b]">
+          {match.name ?? `Trận ${match.match_no}`}
+        </p>
+        <span className="shrink-0 text-[10px] font-bold text-[#b0b4b4]">
+          {isEmpty
+            ? "—"
+            : isLive
+              ? "Đang đấu"
+              : formatContestDateTime(match.scheduled_at)}
+        </span>
+      </div>
+
+      <div className="divide-y divide-[#f0edec]">
+        {[0, 1].map((slotIndex) => {
+          const participant = match.participants[slotIndex]
+          const slotId = `${match.id}-${slotIndex}`
+          const isDropTarget = dropTargetId === slotId
+
+          return (
+            <div
+              key={slotIndex}
+              className={`px-2.5 py-1.5 transition-colors ${
+                isDropTarget ? "bg-orange-100" : ""
+              } ${participant?.is_winner ? "bg-emerald-50/70" : ""}`}
+              onDragOver={(event) => {
+                event.preventDefault()
+                event.dataTransfer.dropEffect = "move"
+                onDropTargetChange(slotId)
+              }}
+              onDragLeave={() => onDropTargetChange(null)}
+              onDrop={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onDrop(match, event.dataTransfer.getData("text/plain"))
+              }}
+            >
+              {participant ? (
+                <ParticipantSlot
+                  participant={participant}
+                  match={match}
+                  isDragging={
+                    draggingPayload?.sourceMatchId === match.id &&
+                    draggingPayload?.registrationId ===
+                      participant.registration_id
+                  }
+                  onDragStart={() =>
+                    onDragStart({
+                      sourceMatchId: match.id,
+                      registrationId: participant.registration_id,
+                    })
+                  }
+                  onDragEnd={onDragEnd}
+                />
+              ) : (
+                <EmptySlot bye={isBye} empty={isEmpty} done={isDone} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Ô không có người: phân biệt rõ ba trường hợp khác hẳn nhau — đối thủ là ô
+ * trống nên người kia được đi tiếp, cả hai ô đều trống, và đang chờ người thắng
+ * vòng trước. Gọi hết là "trống" thì ban tổ chức không biết trận nào cần làm gì.
+ */
+function EmptySlot({
+  bye,
+  empty,
+  done,
+}: {
+  bye: boolean
+  empty: boolean
+  done: boolean
+}) {
+  if (empty) {
+    return (
+      <p className="text-[11px] font-semibold italic text-[#b0b4b4]">Ô trống</p>
+    )
+  }
+  if (bye) {
+    return (
+      <p className="text-[11px] font-semibold italic text-[#b0b4b4]">
+        Không có đối thủ
+      </p>
+    )
+  }
+  return (
+    <p className="text-[11px] font-semibold italic text-[#b0b4b4]">
+      {done ? "—" : "Chờ vòng trước"}
+    </p>
+  )
+}
+
+function ParticipantSlot({
   participant,
   match,
   isDragging,
@@ -239,8 +427,8 @@ function ParticipantRow({
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-2 transition-opacity ${
-        isDragging ? "opacity-40" : "opacity-100"
+      className={`flex items-center gap-1.5 transition-opacity ${
+        isDragging ? "opacity-40" : ""
       } ${canDrag ? "cursor-grab active:cursor-grabbing" : ""}`}
       draggable={canDrag}
       onDragStart={(event) => {
@@ -259,17 +447,25 @@ function ParticipantRow({
       }}
       onDragEnd={onDragEnd}
     >
-      {canDrag ? (
-        <GripVertical className="size-4 shrink-0 text-[#747878] hover:text-orange-600 transition-colors" />
-      ) : null}
-      <p className={`text-xs font-extrabold ${participant.is_winner ? "text-emerald-700" : "text-[#1c1b1b]"}`}>
+      <p
+        className={`min-w-0 flex-1 truncate text-[11px] ${
+          participant.is_winner
+            ? "font-extrabold text-emerald-800"
+            : "font-semibold text-[#1c1b1b]"
+        }`}
+      >
         {getMatchParticipantName(participant)}
       </p>
-      <DriverTitleChip label={participant.registration?.driver_title_label} className="px-1.5 py-0 text-[9px]" />
+      <DriverTitleChip
+        label={participant.registration?.driver_title_label}
+        className="px-1 py-0 text-[9px]"
+      />
       {participant.is_winner ? (
-        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 text-[9px] font-bold gap-1 px-1.5">
+        <Badge
+          variant="outline"
+          className="shrink-0 gap-0.5 border-emerald-200 bg-emerald-50 px-1 text-[9px] font-bold text-emerald-700"
+        >
           <Trophy className="size-2.5" />
-          Winner
         </Badge>
       ) : null}
     </div>

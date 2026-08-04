@@ -22,6 +22,7 @@ import {
   splitMatchesByPhase,
 } from "@/features/contests/lib/contest-runtime"
 import {
+  getContestDrawAvailability,
   getMatchStatusClass,
   getMatchStatusLabel,
   getMatchTypeLabel,
@@ -49,6 +50,7 @@ export function ContestMatchBoard({
   onSelectMatch,
   runtime,
   showGenerate = true,
+  showMatchList = true,
 }: {
   contest: ContestItem
   registrations: ContestRegistration[]
@@ -57,10 +59,19 @@ export function ContestMatchBoard({
   onSelectMatch: (matchId: string) => void
   runtime: RuntimeHook
   showGenerate?: boolean
+  /** Đấu loại đã có sơ đồ cây vẽ đúng những trận này nên tắt danh sách đi cho khỏi trùng. */
+  showMatchList?: boolean
 }) {
+  const runtimeFormat = getContestRuntimeFormat(contest)
+  // Đấu loại bốc thăm ngẫu nhiên từ toàn bộ người đã duyệt; các thể thức khác
+  // vẫn xếp lượt tại chỗ theo người đã điểm danh.
+  const isKnockoutDraw = runtimeFormat === "KNOCKOUT"
   const eligibleRegistrations = useMemo(
-    () => getEligibleRuntimeRegistrations(registrations),
-    [registrations],
+    () =>
+      getEligibleRuntimeRegistrations(registrations, {
+        includeConfirmed: isKnockoutDraw,
+      }),
+    [registrations, isKnockoutDraw],
   )
   const [selectedRegistrationIds, setSelectedRegistrationIds] = useState<
     string[]
@@ -89,9 +100,7 @@ export function ContestMatchBoard({
 
   const matchGroups = useMemo(() => groupMatchesByRound(matches), [matches])
 
-  const isQualifyingFinal = isQualifyingFinalFormat(
-    getContestRuntimeFormat(contest),
-  )
+  const isQualifyingFinal = isQualifyingFinalFormat(runtimeFormat)
   const { qualifying: qualifyingMatches, final: finalMatches } = useMemo(
     () => splitMatchesByPhase(matches),
     [matches],
@@ -126,13 +135,31 @@ export function ContestMatchBoard({
     }
   }
 
+  // Trận thắng do gặp ô trống không tính là đã thi đấu, nên vẫn bốc lại được
+  // chừng nào chưa ai thật sự chạy — đúng luật `isDecidedByPlay` ở backend.
+  const hasPlayedMatch = matches.some(
+    (match) =>
+      match.status === "RUNNING" ||
+      (match.status === "COMPLETED" &&
+        match.metadata?.bye !== true &&
+        match.metadata?.empty_slot !== true),
+  )
+  const drawAvailability = getContestDrawAvailability(contest, {
+    eligibleCount: eligibleRegistrations.length,
+    hasPlayedMatch,
+  })
+
   const handleGenerate = async () => {
-    const rawData = {
-      cafe_id: selectedCafeId,
-      registration_ids: selectedRegistrationIds,
-      drivers_per_match: driversPerMatch,
-      seeding_mode: seedingMode,
-    }
+    // Bốc thăm không gửi danh sách người: backend tự lấy toàn bộ người đã duyệt
+    // rồi xáo bằng seed lưu lại được, nên không ai can thiệp được vào lá thăm.
+    const rawData = isKnockoutDraw
+      ? { cafe_id: selectedCafeId, drivers_per_match: 2 }
+      : {
+          cafe_id: selectedCafeId,
+          registration_ids: selectedRegistrationIds,
+          drivers_per_match: driversPerMatch,
+          seeding_mode: seedingMode,
+        }
 
     const result = contestGenerateMatchesSchema.safeParse(rawData)
     if (!result.success) {
@@ -143,23 +170,34 @@ export function ContestMatchBoard({
 
     try {
       await runtime.generateMatchesMutation.mutateAsync(result.data)
-      toast.success("Đã tạo các lượt đấu")
+      toast.success(
+        isKnockoutDraw ? "Đã bốc thăm xong sơ đồ đấu" : "Đã tạo các lượt đấu",
+      )
     } catch (error) {
-      toast.error("Không thể tạo lượt đấu", {
-        description: getErrorMessage(error).message,
-      })
+      toast.error(
+        isKnockoutDraw ? "Không thể bốc thăm" : "Không thể tạo lượt đấu",
+        {
+          description: getErrorMessage(error).message,
+        },
+      )
     }
   }
 
   return (
     <div
-      className={`grid gap-4 ${showGenerate ? "xl:grid-cols-[0.9fr_1.1fr]" : ""}`}
+      className={`grid gap-4 ${
+        showGenerate && showMatchList ? "xl:grid-cols-[0.9fr_1.1fr]" : ""
+      }`}
     >
       {showGenerate ? (
         <Panel>
           <PanelTitle
-            title="Tạo nhánh thi đấu"
-            subtitle="Chỉ người chơi đã điểm danh mới được đưa vào thi đấu."
+            title={isKnockoutDraw ? "Bốc thăm sơ đồ đấu" : "Tạo lượt thi đấu"}
+            subtitle={
+              isKnockoutDraw
+                ? "Xáo ngẫu nhiên toàn bộ người đã duyệt rồi xếp vào sơ đồ. Bốc xong đăng ký đóng lại và sơ đồ công khai cho khách xem."
+                : "Chỉ người chơi đã điểm danh mới được đưa vào thi đấu."
+            }
           />
           <div className="space-y-4">
             <Field label="Chi nhánh vận hành">
@@ -176,36 +214,42 @@ export function ContestMatchBoard({
               </select>
             </Field>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Số người mỗi trận/lượt">
-                <input
-                  type="number"
-                  min={1}
-                  max={64}
-                  className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                  value={driversPerMatch}
-                  onChange={(event) =>
-                    setDriversPerMatch(Number(event.target.value))
-                  }
-                />
-              </Field>
-              <Field label="Cách xếp thứ tự">
-                <select
-                  className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                  value={seedingMode}
-                  onChange={(event) =>
-                    setSeedingMode(event.target.value as typeof seedingMode)
-                  }
-                >
-                  <option value="CHECK_IN_ORDER">Theo thứ tự điểm danh</option>
-                  <option value="MANUAL">Theo danh sách đã chọn</option>
-                </select>
-              </Field>
-            </div>
+            {isKnockoutDraw ? null : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Số người mỗi trận/lượt">
+                  <input
+                    type="number"
+                    min={1}
+                    max={64}
+                    className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+                    value={driversPerMatch}
+                    onChange={(event) =>
+                      setDriversPerMatch(Number(event.target.value))
+                    }
+                  />
+                </Field>
+                <Field label="Cách xếp thứ tự">
+                  <select
+                    className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
+                    value={seedingMode}
+                    onChange={(event) =>
+                      setSeedingMode(event.target.value as typeof seedingMode)
+                    }
+                  >
+                    <option value="CHECK_IN_ORDER">
+                      Theo thứ tự điểm danh
+                    </option>
+                    <option value="MANUAL">Theo danh sách đã chọn</option>
+                  </select>
+                </Field>
+              </div>
+            )}
 
             <div>
               <p className="mb-2 text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-                Người chơi đủ điều kiện vào thi đấu
+                {isKnockoutDraw
+                  ? `${eligibleRegistrations.length} người sẽ vào sơ đồ`
+                  : "Người chơi đủ điều kiện vào thi đấu"}
               </p>
               <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
                 {eligibleRegistrations.map((registration) => {
@@ -218,19 +262,22 @@ export function ContestMatchBoard({
                       className="flex items-center justify-between gap-3 rounded-lg border border-[#e5e2e1] bg-white px-3 py-2"
                     >
                       <span className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) =>
-                            setSelectedRegistrationIds((current) =>
-                              event.target.checked
-                                ? [...current, registration.id]
-                                : current.filter(
-                                    (item) => item !== registration.id,
-                                  ),
-                            )
-                          }
-                        />
+                        {/* Bốc thăm lấy cả giải nên không có gì để tick chọn. */}
+                        {isKnockoutDraw ? null : (
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) =>
+                              setSelectedRegistrationIds((current) =>
+                                event.target.checked
+                                  ? [...current, registration.id]
+                                  : current.filter(
+                                      (item) => item !== registration.id,
+                                    ),
+                              )
+                            }
+                          />
+                        )}
                         <span>
                           <span className="flex flex-wrap items-center gap-2 text-sm font-bold text-[#1c1b1b]">
                             <span>
@@ -256,200 +303,229 @@ export function ContestMatchBoard({
                 })}
                 {eligibleRegistrations.length === 0 ? (
                   <p className="text-sm font-semibold text-[#747878]">
-                    Chưa có người đăng ký đủ điều kiện thi đấu.
+                    {isKnockoutDraw
+                      ? "Chưa có người nào được duyệt vào giải."
+                      : "Chưa có người đăng ký đủ điều kiện thi đấu."}
                   </p>
                 ) : null}
               </div>
             </div>
 
-            <Button
-              className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
-              onClick={() => void handleGenerate()}
-            >
-              <PlayCircle className="size-4" />
-              Tạo nhánh thi đấu
-            </Button>
+            <div className="space-y-2">
+              <Button
+                className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={
+                  !drawAvailability.allowed ||
+                  runtime.generateMatchesMutation.isPending
+                }
+                onClick={() => void handleGenerate()}
+              >
+                <PlayCircle className="size-4" />
+                {isKnockoutDraw
+                  ? matches.length > 0
+                    ? "Bốc thăm lại"
+                    : "Bốc thăm"
+                  : "Tạo lượt thi đấu"}
+              </Button>
+              {drawAvailability.allowed ? null : (
+                <p className="text-xs font-semibold text-amber-700">
+                  {drawAvailability.reason}
+                </p>
+              )}
+              {isKnockoutDraw &&
+              drawAvailability.allowed &&
+              matches.length > 0 ? (
+                <p className="text-xs font-semibold text-[#747878]">
+                  Bốc lại sẽ xoá sơ đồ hiện tại và xáo lại từ đầu.
+                </p>
+              ) : null}
+            </div>
           </div>
         </Panel>
       ) : null}
 
-      <Panel>
-        <PanelTitle
-          title="Danh sách trận/lượt"
-          subtitle={
-            isQualifyingFinal
-              ? "Vòng loại tính giờ trước, sau đó sinh bracket chung kết từ bảng xếp hạng."
-              : "Theo dõi theo từng vòng và chọn để nhập kết quả."
-          }
-          action={
-            isQualifyingFinal ? (
-              <div className="flex flex-col items-end gap-1">
-                <ConfirmDialog
-                  title="Sinh bracket chung kết?"
-                  description={`Hệ thống sẽ lấy top ${finalistsCount} VĐV theo hạng vòng loại (lap tốt nhất) để xếp nhánh knockout chung kết.`}
-                  confirmLabel="Sinh bracket"
-                  trigger={
-                    <Button
-                      type="button"
-                      className="h-9 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
-                      disabled={!canGenerateFinalBracket}
-                    >
-                      <Trophy className="size-4" />
-                      Sinh bracket chung kết
-                    </Button>
-                  }
-                  onConfirm={handleGenerateFinalBracket}
-                />
-                {generateFinalHint ? (
-                  <p className="text-xs font-semibold text-[#747878]">
-                    {generateFinalHint}
-                  </p>
-                ) : null}
-              </div>
-            ) : undefined
-          }
-        />
-        {matches.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-[#c4c7c8] p-10 text-center">
-            <Flag className="mx-auto size-8 text-[#c4c7c8]" />
-            <p className="mt-3 text-sm font-semibold text-[#747878]">
-              Chưa có lượt đấu nào.
-            </p>
-          </div>
-        ) : isQualifyingFinal ? (
-          <div className="space-y-4">
-            {qualifyingStandings.length > 0 ? (
-              <div>
-                <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
-                  Bảng xếp hạng vòng loại
-                </h4>
-                <div className="overflow-x-auto rounded-lg border border-[#e5e2e1]">
-                  <table className="w-full min-w-[520px] text-sm">
-                    <thead>
-                      <tr className="border-b border-[#e5e2e1] bg-[#fcf8f8] text-left text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-                        <th className="px-3 py-2">Hạng</th>
-                        <th className="px-3 py-2">Người chơi</th>
-                        <th className="px-3 py-2">Lap tốt nhất</th>
-                        <th className="px-3 py-2">Tổng thời gian</th>
-                        <th className="px-3 py-2">Ghi chú</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#f0eeee]">
-                      {qualifyingStandings.map((standing, index) => (
-                        <tr key={standing.registrationId}>
-                          <td className="px-3 py-2 font-bold text-[#1c1b1b]">
-                            {index + 1}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span className="flex flex-wrap items-center gap-2 font-semibold text-[#1c1b1b]">
-                              {getMatchParticipantName(standing.participant)}
+      {showMatchList ? (
+        <Panel>
+          <PanelTitle
+            title="Danh sách trận/lượt"
+            subtitle={
+              isQualifyingFinal
+                ? "Vòng loại tính giờ trước, sau đó sinh bracket chung kết từ bảng xếp hạng."
+                : "Theo dõi theo từng vòng và chọn để nhập kết quả."
+            }
+            action={
+              isQualifyingFinal ? (
+                <div className="flex flex-col items-end gap-1">
+                  <ConfirmDialog
+                    title="Sinh bracket chung kết?"
+                    description={`Hệ thống sẽ lấy top ${finalistsCount} VĐV theo hạng vòng loại (lap tốt nhất) để xếp nhánh knockout chung kết.`}
+                    confirmLabel="Sinh bracket"
+                    trigger={
+                      <Button
+                        type="button"
+                        className="h-9 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+                        disabled={!canGenerateFinalBracket}
+                      >
+                        <Trophy className="size-4" />
+                        Sinh bracket chung kết
+                      </Button>
+                    }
+                    onConfirm={handleGenerateFinalBracket}
+                  />
+                  {generateFinalHint ? (
+                    <p className="text-xs font-semibold text-[#747878]">
+                      {generateFinalHint}
+                    </p>
+                  ) : null}
+                </div>
+              ) : undefined
+            }
+          />
+          {matches.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-[#c4c7c8] p-10 text-center">
+              <Flag className="mx-auto size-8 text-[#c4c7c8]" />
+              <p className="mt-3 text-sm font-semibold text-[#747878]">
+                Chưa có lượt đấu nào.
+              </p>
+            </div>
+          ) : isQualifyingFinal ? (
+            <div className="space-y-4">
+              {qualifyingStandings.length > 0 ? (
+                <div>
+                  <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
+                    Bảng xếp hạng vòng loại
+                  </h4>
+                  <div className="overflow-x-auto rounded-lg border border-[#e5e2e1]">
+                    <table className="w-full min-w-[520px] text-sm">
+                      <thead>
+                        <tr className="border-b border-[#e5e2e1] bg-[#fcf8f8] text-left text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+                          <th className="px-3 py-2">Hạng</th>
+                          <th className="px-3 py-2">Người chơi</th>
+                          <th className="px-3 py-2">Lap tốt nhất</th>
+                          <th className="px-3 py-2">Tổng thời gian</th>
+                          <th className="px-3 py-2">Ghi chú</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f0eeee]">
+                        {qualifyingStandings.map((standing, index) => (
+                          <tr key={standing.registrationId}>
+                            <td className="px-3 py-2 font-bold text-[#1c1b1b]">
+                              {index + 1}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span className="flex flex-wrap items-center gap-2 font-semibold text-[#1c1b1b]">
+                                {getMatchParticipantName(standing.participant)}
+                                <DriverTitleChip
+                                  label={
+                                    standing.participant.registration
+                                      ?.driver_title_label
+                                  }
+                                  className="px-2 py-0 text-[10px]"
+                                />
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
+                              {formatDurationSeconds(standing.bestLapSeconds)}
+                            </td>
+                            <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
+                              {formatDurationSeconds(standing.totalTimeSeconds)}
+                            </td>
+                            <td className="px-3 py-2">
+                              {index < finalistsCount ? (
+                                <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
+                                  Vào chung kết
+                                </Badge>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              <MatchPhaseSection
+                title="Vòng loại (Qualifying)"
+                matches={qualifyingMatches}
+                selectedMatchId={selectedMatchId}
+                onSelectMatch={onSelectMatch}
+              />
+              <MatchPhaseSection
+                title="Chung kết (Final)"
+                matches={finalMatches}
+                emptyLabel="Chưa có nhánh chung kết. Hoàn tất vòng loại rồi bấm “Sinh bracket chung kết”."
+                selectedMatchId={selectedMatchId}
+                onSelectMatch={onSelectMatch}
+              />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {matchGroups.map((group) => (
+                <div key={group.roundNo}>
+                  <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
+                    Vòng {group.roundNo}
+                  </h4>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {group.matches.map((match) => (
+                      <button
+                        key={match.id}
+                        type="button"
+                        onClick={() => onSelectMatch(match.id)}
+                        className={`rounded-lg border p-4 text-left transition-colors ${
+                          selectedMatchId === match.id
+                            ? "border-orange-200 bg-orange-50"
+                            : "border-[#e5e2e1] bg-white hover:bg-[#fcf8f8]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-extrabold text-[#1c1b1b]">
+                              {formatMatchLabel(match)}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-[#747878]">
+                              Dự kiến:{" "}
+                              {formatContestDateTime(match.scheduled_at)}
+                            </p>
+                          </div>
+                          <Badge
+                            className={`border ${getMatchStatusClass(match.status)}`}
+                          >
+                            {getMatchStatusLabel(match.status)}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#5d5f5f]">
+                          <span>{getMatchTypeLabel(match.match_type)}</span>
+                          <span>{match.participants.length} người thi đấu</span>
+                          <span>Trận #{match.match_no}</span>
+                        </div>
+                        <div className="mt-3 space-y-1">
+                          {match.participants.slice(0, 3).map((participant) => (
+                            <div
+                              key={participant.id}
+                              className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#5d5f5f]"
+                            >
+                              <span>
+                                {getMatchParticipantName(participant)}
+                              </span>
                               <DriverTitleChip
                                 label={
-                                  standing.participant.registration
-                                    ?.driver_title_label
+                                  participant.registration?.driver_title_label
                                 }
                                 className="px-2 py-0 text-[10px]"
                               />
-                            </span>
-                          </td>
-                          <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
-                            {formatDurationSeconds(standing.bestLapSeconds)}
-                          </td>
-                          <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
-                            {formatDurationSeconds(standing.totalTimeSeconds)}
-                          </td>
-                          <td className="px-3 py-2">
-                            {index < finalistsCount ? (
-                              <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
-                                Vào chung kết
-                              </Badge>
-                            ) : null}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ) : null}
-
-            <MatchPhaseSection
-              title="Vòng loại (Qualifying)"
-              matches={qualifyingMatches}
-              selectedMatchId={selectedMatchId}
-              onSelectMatch={onSelectMatch}
-            />
-            <MatchPhaseSection
-              title="Chung kết (Final)"
-              matches={finalMatches}
-              emptyLabel="Chưa có nhánh chung kết. Hoàn tất vòng loại rồi bấm “Sinh bracket chung kết”."
-              selectedMatchId={selectedMatchId}
-              onSelectMatch={onSelectMatch}
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {matchGroups.map((group) => (
-              <div key={group.roundNo}>
-                <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
-                  Vòng {group.roundNo}
-                </h4>
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {group.matches.map((match) => (
-                    <button
-                      key={match.id}
-                      type="button"
-                      onClick={() => onSelectMatch(match.id)}
-                      className={`rounded-lg border p-4 text-left transition-colors ${
-                        selectedMatchId === match.id
-                          ? "border-orange-200 bg-orange-50"
-                          : "border-[#e5e2e1] bg-white hover:bg-[#fcf8f8]"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-extrabold text-[#1c1b1b]">
-                            {formatMatchLabel(match)}
-                          </p>
-                          <p className="mt-1 text-xs font-semibold text-[#747878]">
-                            Dự kiến: {formatContestDateTime(match.scheduled_at)}
-                          </p>
+                            </div>
+                          ))}
                         </div>
-                        <Badge
-                          className={`border ${getMatchStatusClass(match.status)}`}
-                        >
-                          {getMatchStatusLabel(match.status)}
-                        </Badge>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#5d5f5f]">
-                        <span>{getMatchTypeLabel(match.match_type)}</span>
-                        <span>{match.participants.length} người thi đấu</span>
-                        <span>Trận #{match.match_no}</span>
-                      </div>
-                      <div className="mt-3 space-y-1">
-                        {match.participants.slice(0, 3).map((participant) => (
-                          <div
-                            key={participant.id}
-                            className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#5d5f5f]"
-                          >
-                            <span>{getMatchParticipantName(participant)}</span>
-                            <DriverTitleChip
-                              label={
-                                participant.registration?.driver_title_label
-                              }
-                              className="px-2 py-0 text-[10px]"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
+              ))}
+            </div>
+          )}
+        </Panel>
+      ) : null}
     </div>
   )
 }

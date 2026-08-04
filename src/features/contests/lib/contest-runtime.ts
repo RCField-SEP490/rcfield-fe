@@ -7,8 +7,23 @@ import type {
   ContestRegistration,
 } from "../types"
 
-export function getEligibleRuntimeRegistrations(registrations: ContestRegistration[]) {
-  return registrations.filter((registration) => registration.status === "CHECKED_IN")
+/**
+ * Ai được đưa vào lượt thi đấu.
+ *
+ * Đấu loại bốc thăm SAU khi đóng đăng ký và TRƯỚC ngày thi, nên lấy người đã
+ * được duyệt — chờ tới lúc điểm danh mới bốc thì khách không biết trước đối thủ
+ * và giờ đấu của mình. Các thể thức còn lại vẫn xếp lượt tại chỗ theo người có
+ * mặt, nên chỉ nhận người đã điểm danh.
+ */
+export function getEligibleRuntimeRegistrations(
+  registrations: ContestRegistration[],
+  options?: { includeConfirmed?: boolean },
+) {
+  return registrations.filter((registration) =>
+    options?.includeConfirmed
+      ? registration.status === "CONFIRMED" || registration.status === "CHECKED_IN"
+      : registration.status === "CHECKED_IN",
+  )
 }
 
 export function groupMatchesByRound(matches: ContestMatch[]) {

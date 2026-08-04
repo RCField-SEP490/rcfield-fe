@@ -91,9 +91,9 @@ export const contestGenerateMatchesSchema = z.object({
     .uuid("Cấu hình track không hợp lệ")
     .nullable()
     .optional(),
-  registration_ids: z
-    .array(z.string().uuid())
-    .min(1, "Cần chọn ít nhất 1 registration hợp lệ để sinh match"),
+  // Bỏ trống nghĩa là "lấy cả giải" — đấu loại bốc thăm toàn bộ người đã duyệt
+  // chứ ban tổ chức không nhặt ai vào ai ra, nên không ép phải chọn tay.
+  registration_ids: z.array(z.string().uuid()).optional(),
   drivers_per_match: z
     .number({ message: "Số lượng driver mỗi trận phải là số" })
     .int()

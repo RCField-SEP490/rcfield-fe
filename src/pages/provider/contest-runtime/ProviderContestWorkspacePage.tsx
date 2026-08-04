@@ -58,7 +58,7 @@ const sectionSummaries: Record<ContestWorkspaceSectionKey, string> = {
   registrations:
     "Duyệt đăng ký, xử lý lệ phí và điểm danh người chơi.",
   bracket:
-    "Điều phối nhánh đấu, kéo người đi tiếp và nhập kết quả theo match.",
+    "Bốc thăm sơ đồ, theo dõi từng trận và nhập kết quả.",
   leaderboard: "Theo dõi bản nháp, công bố và đồng bộ bảng xếp hạng.",
   audit: "Xem lại toàn bộ nhật ký thao tác phát sinh trong contest.",
   discipline:
@@ -647,6 +647,7 @@ export function ProviderContestWorkspacePage({
 
           {isKnockoutRuntime ? (
             <div className="space-y-4">
+              {/* Sơ đồ cây đã vẽ đúng những trận này rồi nên không liệt kê lại. */}
               <ContestMatchBoard
                 contest={contest}
                 registrations={registrations}
@@ -655,6 +656,7 @@ export function ProviderContestWorkspacePage({
                 onSelectMatch={setSelectedMatchId}
                 runtime={workspace.runtime}
                 showGenerate
+                showMatchList={false}
               />
               <ContestKnockoutBracket
                 matches={matches}
