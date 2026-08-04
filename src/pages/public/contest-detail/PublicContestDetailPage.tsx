@@ -119,6 +119,8 @@ export function PublicContestDetailPage() {
     contest.highlight_rounds ?? runtimeSummary?.highlight_rounds ?? []
   const leaderboard = contest.published_leaderboard ?? null
   const effectiveStatus = getEffectiveContestStatus(contest)
+  const contestOver =
+    effectiveStatus === "COMPLETED" || effectiveStatus === "CANCELLED"
   const registrationAvailability = getContestRegistrationAvailability(contest)
   const prizeStructure = contest.prize_structure
   const prizeItems = Array.isArray(prizeStructure?.items)
@@ -145,7 +147,8 @@ export function PublicContestDetailPage() {
     { id: "giai-thuong", label: "Giải thưởng" },
     { id: "dia-diem", label: "Địa điểm" },
     ...(showProgress ? [{ id: "dien-bien", label: "Diễn biến" }] : []),
-    { id: "dang-ky", label: "Đăng ký" },
+    // Giải khép lại rồi thì mục Đăng ký chỉ dẫn tới một khối báo "đã kết thúc".
+    ...(contestOver ? [] : [{ id: "dang-ky", label: "Đăng ký" }]),
   ]
 
   return (
@@ -158,8 +161,15 @@ export function PublicContestDetailPage() {
 
       <ContestSectionNav
         items={navItems}
-        ctaLabel={existingRegistration ? "Đăng ký của bạn" : "Đăng ký ngay"}
-        onJump={handleJump}
+        // Giải đã khép lại thì mời đăng ký là sai; dẫn khách sang phần kết quả.
+        ctaLabel={
+          contestOver
+            ? "Xem kết quả"
+            : existingRegistration
+              ? "Đăng ký của bạn"
+              : "Đăng ký ngay"
+        }
+        onJump={() => handleJump(contestOver ? "dien-bien" : "dang-ky")}
       />
 
       <ContestAboutSection contest={contest} />

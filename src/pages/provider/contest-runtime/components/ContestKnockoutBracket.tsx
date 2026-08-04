@@ -54,6 +54,7 @@ export function ContestKnockoutBracket({
   onCommit,
   canUndo,
   hasChanges,
+  readOnly = false,
 }: {
   matches: ContestMatch[]
   selectedMatchId: string | null
@@ -68,6 +69,8 @@ export function ContestKnockoutBracket({
   onCommit: () => void
   canUndo: boolean
   hasChanges: boolean
+  /** Nhân viên chỉ xem và chọn trận; sắp lại cặp đấu là việc của ban tổ chức. */
+  readOnly?: boolean
 }) {
   // Trận tranh hạng 3 nằm cùng vòng với chung kết nhưng không nhận người thắng
   // từ đâu cả, để chung vào cây sẽ làm lệch toàn bộ đường nối.
@@ -127,6 +130,7 @@ export function ContestKnockoutBracket({
       draggingPayload={draggingPayload}
       onDragStart={setDraggingPayload}
       onDragEnd={() => setDraggingPayload(null)}
+      readOnly={readOnly}
     />
   )
 
@@ -134,31 +138,37 @@ export function ContestKnockoutBracket({
     <Panel>
       <PanelTitle
         title="Sơ đồ đấu"
-        subtitle="Người thắng mỗi trận đi sang trận nối bên phải. Nhấp vào trận để nhập kết quả; kéo tay đua sang vòng sau chỉ dùng khi cần sửa sai."
+        subtitle={
+          readOnly
+            ? "Người thắng mỗi trận đi sang trận nối bên phải. Nhấp vào trận để nhập kết quả."
+            : "Người thắng mỗi trận đi sang trận nối bên phải. Nhấp vào trận để nhập kết quả; kéo tay đua sang vòng sau chỉ dùng khi cần sửa sai."
+        }
         action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-lg text-xs font-bold"
-              disabled={!canUndo}
-              onClick={onUndo}
-            >
-              Hoàn tác
-            </Button>
-            <Button
-              type="button"
-              className="rounded-lg bg-[#1c1b1b] text-xs font-bold text-white hover:bg-[#313030]"
-              disabled={!hasChanges}
-              onClick={onCommit}
-            >
-              Lưu sơ đồ
-            </Button>
-          </div>
+          readOnly ? null : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-lg text-xs font-bold"
+                disabled={!canUndo}
+                onClick={onUndo}
+              >
+                Hoàn tác
+              </Button>
+              <Button
+                type="button"
+                className="rounded-lg bg-[#1c1b1b] text-xs font-bold text-white hover:bg-[#313030]"
+                disabled={!hasChanges}
+                onClick={onCommit}
+              >
+                Lưu sơ đồ
+              </Button>
+            </div>
+          )
         }
       />
 
-      {hasChanges ? (
+      {hasChanges && !readOnly ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
           <AlertTriangle className="size-4 shrink-0 text-amber-700" />
           <p className="text-xs font-bold text-amber-900">
@@ -298,6 +308,7 @@ function BracketMatchCard({
   draggingPayload,
   onDragStart,
   onDragEnd,
+  readOnly = false,
 }: {
   match: ContestMatch
   selected: boolean
@@ -311,6 +322,7 @@ function BracketMatchCard({
     registrationId: string
   }) => void
   onDragEnd: () => void
+  readOnly?: boolean
 }) {
   const isBye = match.metadata?.bye === true
   const isEmpty = match.metadata?.empty_slot === true
@@ -357,17 +369,27 @@ function BracketMatchCard({
                   ? "border-l-2 border-amber-500 bg-amber-50/70"
                   : ""
               }`}
-              onDragOver={(event) => {
-                event.preventDefault()
-                event.dataTransfer.dropEffect = "move"
-                onDropTargetChange(slotId)
-              }}
-              onDragLeave={() => onDropTargetChange(null)}
-              onDrop={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                onDrop(match, event.dataTransfer.getData("text/plain"))
-              }}
+              onDragOver={
+                readOnly
+                  ? undefined
+                  : (event) => {
+                      event.preventDefault()
+                      event.dataTransfer.dropEffect = "move"
+                      onDropTargetChange(slotId)
+                    }
+              }
+              onDragLeave={
+                readOnly ? undefined : () => onDropTargetChange(null)
+              }
+              onDrop={
+                readOnly
+                  ? undefined
+                  : (event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      onDrop(match, event.dataTransfer.getData("text/plain"))
+                    }
+              }
             >
               {participant ? (
                 <ParticipantSlot
@@ -385,6 +407,7 @@ function BracketMatchCard({
                     })
                   }
                   onDragEnd={onDragEnd}
+                  readOnly={readOnly}
                 />
               ) : (
                 <EmptySlot bye={isBye} empty={isEmpty} done={isDone} />
@@ -436,14 +459,16 @@ function ParticipantSlot({
   isDragging,
   onDragStart,
   onDragEnd,
+  readOnly = false,
 }: {
   participant: ContestMatchParticipant
   match: ContestMatch
   isDragging: boolean
   onDragStart: () => void
   onDragEnd: () => void
+  readOnly?: boolean
 }) {
-  const canDrag = Boolean(participant.registration_id)
+  const canDrag = !readOnly && Boolean(participant.registration_id)
 
   return (
     <div

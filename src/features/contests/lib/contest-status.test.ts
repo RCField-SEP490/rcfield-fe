@@ -300,3 +300,53 @@ describe("getLeaderboardModeLabel", () => {
     expect(getLeaderboardModeLabel(null)).toBe("--")
   })
 })
+
+describe("giải đã công bố kết quả", () => {
+  // Giải xong sớm hơn lịch là chuyện thường: bấm công bố lúc 04/08 trong khi
+  // hạn đăng ký ghi 09/08. Suy trạng thái từ đồng hồ sẽ kéo nó về "đang mở đăng
+  // ký" và trang công khai mời khách vào một giải đã trao giải xong.
+  const finished = {
+    status: "COMPLETED" as const,
+    registration_opens_at: "2026-08-02T10:00:00.000Z",
+    registration_closes_at: "2026-08-09T10:00:00.000Z",
+    starts_at: "2026-08-11T01:00:00.000Z",
+    ends_at: "2026-08-11T04:00:00.000Z",
+  }
+  const beforeSchedule = new Date("2026-08-04T08:00:00.000Z")
+
+  it("không bị đồng hồ kéo ngược về đang mở đăng ký", () => {
+    expect(getEffectiveContestStatus(finished, beforeSchedule)).toBe(
+      "COMPLETED",
+    )
+  })
+
+  it("không cho đăng ký nữa", () => {
+    expect(getContestRegistrationAvailability(finished, beforeSchedule)).toBe(
+      "COMPLETED",
+    )
+  })
+
+  it("giải đã đóng đăng ký hoặc đang thi cũng vậy", () => {
+    expect(
+      getContestRegistrationAvailability(
+        { ...finished, status: "CLOSED" },
+        beforeSchedule,
+      ),
+    ).toBe("CLOSED")
+    expect(
+      getContestRegistrationAvailability(
+        { ...finished, status: "RUNNING" },
+        beforeSchedule,
+      ),
+    ).toBe("RUNNING")
+  })
+
+  it("giải còn OPEN thì vẫn suy theo đồng hồ như cũ", () => {
+    expect(
+      getContestRegistrationAvailability(
+        { ...finished, status: "OPEN" },
+        beforeSchedule,
+      ),
+    ).toBe("AVAILABLE")
+  })
+})

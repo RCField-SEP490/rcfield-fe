@@ -8,6 +8,19 @@ import type {
   ContestRegistrationStatus,
 } from "../types"
 
+/**
+ * Trạng thái ban tổ chức tự quyết định, không suy ra được từ đồng hồ.
+ *
+ * COMPLETED là kết quả của việc bấm công bố bảng xếp hạng — giải xong sớm hơn
+ * lịch là chuyện thường. Suy từ mốc thời gian sẽ kéo nó ngược về "đang mở đăng
+ * ký" và trang công khai mời khách đăng ký vào một giải đã trao giải xong.
+ */
+const OPERATOR_DECIDED_STATUSES: ContestItem["status"][] = [
+  "DRAFT",
+  "CANCELLED",
+  "COMPLETED",
+]
+
 export function getEffectiveContestStatus(
   contest: Pick<
     ContestItem,
@@ -19,7 +32,7 @@ export function getEffectiveContestStatus(
   >,
   now = new Date(),
 ): ContestItem["status"] {
-  if (contest.status === "DRAFT" || contest.status === "CANCELLED") {
+  if (OPERATOR_DECIDED_STATUSES.includes(contest.status)) {
     return contest.status
   }
 
@@ -48,6 +61,16 @@ export function getContestRegistrationAvailability(
 ): ContestRegistrationAvailability {
   if (contest.status === "DRAFT") return "DRAFT"
   if (contest.status === "CANCELLED") return "CANCELLED"
+
+  // Backend đã rời khỏi OPEN nghĩa là đăng ký đã chốt — bốc thăm xong, đang thi,
+  // hoặc đã trao giải. Đồng hồ không được kéo ngược lại thành "còn nhận đăng ký".
+  if (
+    contest.status === "CLOSED" ||
+    contest.status === "RUNNING" ||
+    contest.status === "COMPLETED"
+  ) {
+    return contest.status
+  }
 
   const phase = getContestTimeWindowPhase(contest, now)
   if (phase === "COMPLETED" || phase === "RUNNING" || phase === "CLOSED") {
@@ -153,10 +176,22 @@ export type ContestCheckInAvailability =
  * khoá kèm lý do ngay trên màn hình thay vì cho bấm rồi mới nhận lỗi 400
  * (`CONTEST_NOT_CHECKIN_READY` / `CONTEST_CHECKIN_NOT_STARTED`).
  */
+/**
+ * Cờ TẠM THỜI để thử luồng ngày thi mà không phải chờ tới đúng giờ giải.
+ *
+ * Phải bật kèm `DEV_BYPASS_CONTEST_CHECKIN` ở backend, vì cửa chặn nằm ở cả hai
+ * phía — mở mỗi giao diện thì bấm vào vẫn nhận lỗi 400. `import.meta.env.DEV`
+ * là false khi build production nên cờ này không thể lọt lên bản thật.
+ */
+const BYPASS_CHECK_IN_WINDOW =
+  import.meta.env.DEV && import.meta.env.VITE_BYPASS_CONTEST_CHECKIN === "true"
+
 export function getContestCheckInAvailability(
   contest: Pick<ContestItem, "status" | "starts_at" | "ends_at">,
   now = new Date(),
 ): ContestCheckInAvailability {
+  if (BYPASS_CHECK_IN_WINDOW) return { canCheckIn: true }
+
   if (contest.status !== "CLOSED" && contest.status !== "RUNNING") {
     return {
       canCheckIn: false,

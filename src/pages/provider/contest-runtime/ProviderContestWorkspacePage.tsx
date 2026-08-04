@@ -589,44 +589,48 @@ export function ProviderContestWorkspacePage({
 
       {section === "bracket" ? (
         <div className="space-y-4">
-          <section className="grid gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4 lg:grid-cols-3">
-            <input
-              value={participantQuery}
-              onChange={(event) =>
-                updateWorkspaceSearchParams(searchParams, setSearchParams, {
-                  participantQuery: event.target.value,
-                })
-              }
-              placeholder="Tìm theo tên người thi đấu"
-              className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
-            />
-            <select
-              value={matchStatus}
-              onChange={(event) =>
-                updateWorkspaceSearchParams(searchParams, setSearchParams, {
-                  matchStatus: event.target.value,
-                })
-              }
-              className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
-            >
-              <option value="">Tất cả trạng thái trận</option>
-              <option value="DRAFT">DRAFT</option>
-              <option value="READY">READY</option>
-              <option value="RUNNING">RUNNING</option>
-              <option value="COMPLETED">COMPLETED</option>
-              <option value="CANCELLED">CANCELLED</option>
-            </select>
-            <input
-              value={roundNo}
-              onChange={(event) =>
-                updateWorkspaceSearchParams(searchParams, setSearchParams, {
-                  roundNo: event.target.value.replace(/[^\d]/g, ""),
-                })
-              }
-              placeholder="Lọc theo vòng"
-              className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
-            />
-          </section>
+          {/* Lọc bớt trận sẽ làm khuyết cây nhánh — sơ đồ chỉ đúng khi có đủ
+              mọi trận. Các thể thức dạng danh sách thì vẫn cần lọc. */}
+          {isKnockoutRuntime ? null : (
+            <section className="grid gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4 lg:grid-cols-3">
+              <input
+                value={participantQuery}
+                onChange={(event) =>
+                  updateWorkspaceSearchParams(searchParams, setSearchParams, {
+                    participantQuery: event.target.value,
+                  })
+                }
+                placeholder="Tìm theo tên người thi đấu"
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              />
+              <select
+                value={matchStatus}
+                onChange={(event) =>
+                  updateWorkspaceSearchParams(searchParams, setSearchParams, {
+                    matchStatus: event.target.value,
+                  })
+                }
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              >
+                <option value="">Tất cả trạng thái trận</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="READY">READY</option>
+                <option value="RUNNING">RUNNING</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+              <input
+                value={roundNo}
+                onChange={(event) =>
+                  updateWorkspaceSearchParams(searchParams, setSearchParams, {
+                    roundNo: event.target.value.replace(/[^\d]/g, ""),
+                  })
+                }
+                placeholder="Lọc theo vòng"
+                className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
+              />
+            </section>
+          )}
 
           {isKnockoutRuntime ? (
             <div className="space-y-4">

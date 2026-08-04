@@ -228,6 +228,12 @@ export function ContestScheduleSection({ contest }: { contest: ContestItem }) {
   // Chốt mốc "bây giờ" một lần khi mount — lịch trình tính theo ngày nên không
   // cần chạy lại mỗi lần render, và giữ nó ổn định giúp component thuần khiết.
   const [now] = useState(() => Date.now())
+  // Giải kết thúc hoặc bị huỷ thì mọi cột mốc đều đã thuộc về quá khứ, kể cả khi
+  // đồng hồ chưa chạy tới: ban tổ chức xong sớm hơn lịch là chuyện thường. Không
+  // xét trạng thái thì trang vẫn đếm ngược tới ngày khởi tranh của một giải đã
+  // trao cúp.
+  const contestOver =
+    contest.status === "COMPLETED" || contest.status === "CANCELLED"
   const milestones = [
     { label: "Mở đăng ký", at: contest.registration_opens_at },
     { label: "Đóng đăng ký", at: contest.registration_closes_at },
@@ -237,7 +243,8 @@ export function ContestScheduleSection({ contest }: { contest: ContestItem }) {
     const time = milestone.at ? new Date(milestone.at).getTime() : null
     return {
       ...milestone,
-      passed: time !== null && !Number.isNaN(time) && time <= now,
+      passed:
+        contestOver || (time !== null && !Number.isNaN(time) && time <= now),
     }
   })
   const nextIndex = milestones.findIndex((milestone) => !milestone.passed)
@@ -248,7 +255,11 @@ export function ContestScheduleSection({ contest }: { contest: ContestItem }) {
         <SectionHeading
           eyebrow="Lịch trình"
           title="Hành trình của giải"
-          lead="Bốn cột mốc để bạn canh thời gian — từ lúc mở cổng ghi danh đến khi trao cúp."
+          lead={
+            contestOver
+              ? "Giải đã khép lại — đây là các mốc thời gian đã diễn ra."
+              : "Bốn cột mốc để bạn canh thời gian — từ lúc mở cổng ghi danh đến khi trao cúp."
+          }
         />
       </Reveal>
 
@@ -296,7 +307,9 @@ export function ContestScheduleSection({ contest }: { contest: ContestItem }) {
                   )}
                 >
                   {milestone.passed
-                    ? "Đã qua"
+                    ? contestOver
+                      ? "Đã xong"
+                      : "Đã qua"
                     : isNext
                       ? "Cột mốc kế tiếp"
                       : "Sắp tới"}
