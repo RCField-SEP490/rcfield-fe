@@ -32,6 +32,10 @@ export function ContestAboutSection({ contest }: { contest: ContestItem }) {
   const remaining = stats?.capacity_remaining ?? null
   const fillRatio =
     capacity && capacity > 0 ? Math.min(1, registered / capacity) : null
+  // Giải khép lại thì "suất còn lại" chẳng còn nghĩa gì — không ai vào được
+  // nữa. Tô cam con số đó là mời gọi vào một cánh cửa đã đóng.
+  const contestOver =
+    contest.status === "COMPLETED" || contest.status === "CANCELLED"
 
   return (
     <PageSection id="gioi-thieu" tone="light">
@@ -39,7 +43,11 @@ export function ContestAboutSection({ contest }: { contest: ContestItem }) {
         <SectionHeading
           eyebrow="Về giải đấu"
           title="Đôi nét về giải đấu"
-          lead="Trước khi ghi danh, đây là những gì ban tổ chức muốn bạn biết."
+          lead={
+            contestOver
+              ? "Giải đã khép lại — đây là những gì ban tổ chức đã công bố."
+              : "Trước khi ghi danh, đây là những gì ban tổ chức muốn bạn biết."
+          }
         />
       </Reveal>
 
@@ -63,14 +71,22 @@ export function ContestAboutSection({ contest }: { contest: ContestItem }) {
               label="Đã xác nhận suất"
               icon={<CheckCircle2 className="size-4" />}
             />
-            <BigStat
-              value={remaining === null ? "∞" : String(remaining)}
-              label={
-                remaining === null ? "Không giới hạn suất" : "Suất còn lại"
-              }
-              icon={<Flag className="size-4" />}
-              highlight={remaining !== null && remaining <= 5}
-            />
+            {contestOver ? (
+              <BigStat
+                value={capacity ? String(capacity) : "∞"}
+                label="Sức chứa của giải"
+                icon={<Flag className="size-4" />}
+              />
+            ) : (
+              <BigStat
+                value={remaining === null ? "∞" : String(remaining)}
+                label={
+                  remaining === null ? "Không giới hạn suất" : "Suất còn lại"
+                }
+                icon={<Flag className="size-4" />}
+                highlight={remaining !== null && remaining <= 5}
+              />
+            )}
             <BigStat
               value={formatCurrency(contest.entry_fee)}
               label="Lệ phí tham dự"
@@ -82,7 +98,9 @@ export function ContestAboutSection({ contest }: { contest: ContestItem }) {
             <div className="mt-10">
               <div className="flex items-baseline justify-between text-sm font-bold">
                 <span className="text-slate-500">
-                  Đã lấp đầy {Math.round(fillRatio * 100)}% sức chứa
+                  {contestOver
+                    ? `Chốt ở ${Math.round(fillRatio * 100)}% sức chứa`
+                    : `Đã lấp đầy ${Math.round(fillRatio * 100)}% sức chứa`}
                 </span>
                 <span className="text-slate-900">
                   {registered}/{capacity} tay đua
@@ -90,7 +108,12 @@ export function ContestAboutSection({ contest }: { contest: ContestItem }) {
               </div>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-orange-500 to-brand-amber transition-[width] duration-700 ease-out"
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-700 ease-out",
+                    contestOver
+                      ? "bg-slate-400"
+                      : "bg-gradient-to-r from-orange-500 to-brand-amber",
+                  )}
                   style={{ width: `${Math.max(fillRatio * 100, 3)}%` }}
                 />
               </div>

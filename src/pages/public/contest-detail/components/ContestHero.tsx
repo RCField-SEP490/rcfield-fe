@@ -12,13 +12,18 @@ import { formatCurrency } from "../utils"
 export function ContestHero({
   contest,
   effectiveStatus,
+  ctaTarget,
   onJump,
 }: {
   contest: ContestItem
   effectiveStatus: ContestItem["status"]
+  /** Mục mà nút chính dẫn tới — trang cha biết phần Diễn biến có tồn tại không. */
+  ctaTarget: string
   onJump: (sectionId: string) => void
 }) {
   const milestone = getHeroMilestone(contest, effectiveStatus)
+  const contestOver =
+    effectiveStatus === "COMPLETED" || effectiveStatus === "CANCELLED"
   const countdown = useCountdown(milestone?.at)
 
   return (
@@ -64,7 +69,9 @@ export function ContestHero({
             <p className="mt-5 max-w-2xl text-base font-medium leading-8 text-white/75">
               {contest.description?.trim()
                 ? truncate(contest.description, 180)
-                : "Một cuộc tranh tài mở cho mọi tay lái — xem thể thức, lịch trình, giải thưởng và giữ suất của bạn ngay bên dưới."}
+                : contestOver
+                  ? "Giải đã khép lại — xem lại thể thức, sơ đồ đấu và bảng xếp hạng chung cuộc bên dưới."
+                  : "Một cuộc tranh tài mở cho mọi tay lái — xem thể thức, lịch trình, giải thưởng và giữ suất của bạn ngay bên dưới."}
             </p>
           </div>
 
@@ -83,12 +90,18 @@ export function ContestHero({
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Giải đã khép lại thì mời đăng ký là mất công người xem: bấm vào
+                chỉ tới một khối báo "đã kết thúc". Dẫn thẳng sang kết quả. */}
             <button
               type="button"
-              onClick={() => onJump("dang-ky")}
+              onClick={() => onJump(ctaTarget)}
               className="inline-flex h-12 items-center gap-2 rounded-2xl bg-primary px-7 text-sm font-black text-primary-foreground shadow-lg shadow-primary/25 transition hover:bg-brand-amber hover:text-accent-foreground active:scale-[0.98]"
             >
-              Đăng ký tham gia
+              {contestOver
+                ? ctaTarget === "dien-bien"
+                  ? "Xem kết quả"
+                  : "Xem chi tiết"
+                : "Đăng ký tham gia"}
             </button>
             <button
               type="button"

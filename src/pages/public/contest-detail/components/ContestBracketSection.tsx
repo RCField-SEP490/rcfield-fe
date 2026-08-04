@@ -9,7 +9,6 @@ import {
   isQualifyingFinalFormat,
   splitMatchesByPhase,
 } from "@/features/contests/lib/contest-runtime"
-import { MatchStatusBadge } from "@/features/contests/components"
 import { getContestStatusLabel } from "@/features/contests/lib/contest-status"
 import type {
   ContestHighlightRound,
@@ -19,6 +18,7 @@ import type {
   ContestRegistration,
 } from "@/features/contests/types"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
+import { cn } from "@/shared/lib/utils"
 import { Card } from "@/shared/ui/card"
 import { EmptyState } from "@/shared/ui/empty-state"
 import { CardListSkeleton } from "@/shared/ui/loading-state"
@@ -165,8 +165,8 @@ export function ContestBracketBoard({
         <h3 className="text-lg font-extrabold">Sơ đồ thi đấu</h3>
       </div>
       <p className="mt-2 text-sm text-slate-500">
-        Hiển thị theo từng vòng, đồng thời tô nổi các trận có bạn tham gia nếu
-        bạn đã đăng ký vào giải.
+        Người thắng mỗi trận đi tiếp sang nhánh bên phải. Trận có bạn thi đấu
+        được viền cam để dễ lần theo đường mình đã đi.
       </p>
 
       <div className="mt-5">
@@ -329,6 +329,26 @@ function groupMatchesByRoundLocal(matches: ContestMatch[]) {
   )
 }
 
+/**
+ * Sơ đồ đấu cho khách xem.
+ *
+ * Khác bản của ban tổ chức ở mục đích: bên đó là bàn làm việc — thẻ nhỏ, dày
+ * đặc, bấm để nhập kết quả. Bên này là thứ để khoe: người thắng nổi bật bằng
+ * nền chuyển sắc, người thua mờ đi, và trận của chính bạn được viền cam để
+ * lướt mắt là thấy ngay đường mình đã đi.
+ */
+const CONNECTOR = 26
+const COLUMN_WIDTH = 268
+
+function getPublicRoundName(roundIndex: number, totalRounds: number): string {
+  const fromFinal = totalRounds - 1 - roundIndex
+  if (fromFinal === 0) return "Chung kết"
+  if (fromFinal === 1) return "Bán kết"
+  if (fromFinal === 2) return "Tứ kết"
+  if (fromFinal === 3) return "Vòng 1/8"
+  return `Vòng ${roundIndex + 1}`
+}
+
 function BracketRoundColumns({
   groups,
   existingRegistration,
@@ -336,26 +356,108 @@ function BracketRoundColumns({
   groups: Array<{ roundNo: number; matches: ContestMatch[] }>
   existingRegistration: ContestRegistration | null
 }) {
+  const bracketGroups = groups
+    .map((group) => ({
+      ...group,
+      matches: group.matches.filter(
+        (match) => match.metadata?.third_place !== true,
+      ),
+    }))
+    .filter((group) => group.matches.length > 0)
+  const thirdPlaceMatch = groups
+    .flatMap((group) => group.matches)
+    .find((match) => match.metadata?.third_place === true)
+  const totalRounds = bracketGroups.length
+
   return (
-    <div className="overflow-x-auto">
-      <div className="flex min-w-max gap-4 pb-2">
-        {groups.map((group) => (
-          <section key={group.roundNo} className="w-[320px] shrink-0 space-y-3">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                Vòng {group.roundNo}
-              </p>
-            </div>
-            {group.matches.map((match) => (
-              <BracketMatchCard
-                key={match.id}
-                match={match}
-                existingRegistration={existingRegistration}
-              />
-            ))}
-          </section>
-        ))}
+    <div className="space-y-6">
+      <div className="overflow-x-auto pb-2">
+        <div className="min-w-max">
+          <div className="mb-3 flex" style={{ gap: CONNECTOR * 2 }}>
+            {bracketGroups.map((group, roundIndex) => {
+              const isFinal = roundIndex === totalRounds - 1
+              return (
+                <div
+                  key={group.roundNo}
+                  className="shrink-0 text-center"
+                  style={{ width: COLUMN_WIDTH }}
+                >
+                  <p
+                    className={cn(
+                      "text-xs font-black uppercase tracking-[0.18em]",
+                      isFinal ? "text-orange-600" : "text-slate-400",
+                    )}
+                  >
+                    {getPublicRoundName(roundIndex, totalRounds)}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="flex items-stretch" style={{ gap: CONNECTOR * 2 }}>
+            {bracketGroups.map((group, roundIndex) => {
+              const isLastRound = roundIndex === bracketGroups.length - 1
+              return (
+                <div
+                  key={group.roundNo}
+                  className="flex shrink-0 flex-col"
+                  style={{ width: COLUMN_WIDTH }}
+                >
+                  {group.matches.map((match, matchIndex) => (
+                    <div
+                      key={match.id}
+                      className="relative flex flex-1 items-center"
+                    >
+                      <BracketMatchCard
+                        match={match}
+                        existingRegistration={existingRegistration}
+                        isFinal={isLastRound}
+                      />
+
+                      {isLastRound ? null : (
+                        <span
+                          aria-hidden
+                          className="absolute top-1/2 border-t-2 border-slate-200"
+                          style={{ right: -CONNECTOR, width: CONNECTOR }}
+                        />
+                      )}
+                      {isLastRound || matchIndex % 2 === 1 ? null : (
+                        <span
+                          aria-hidden
+                          className="absolute top-1/2 h-full border-l-2 border-slate-200"
+                          style={{ right: -CONNECTOR }}
+                        />
+                      )}
+                      {roundIndex === 0 ? null : (
+                        <span
+                          aria-hidden
+                          className="absolute top-1/2 border-t-2 border-slate-200"
+                          style={{ left: -CONNECTOR, width: CONNECTOR }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
+
+      {thirdPlaceMatch ? (
+        <div className="border-t border-slate-200 pt-5">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+            Tranh hạng 3
+          </p>
+          <div className="max-w-[268px]">
+            <BracketMatchCard
+              match={thirdPlaceMatch}
+              existingRegistration={existingRegistration}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -363,54 +465,80 @@ function BracketRoundColumns({
 function BracketMatchCard({
   match,
   existingRegistration,
+  isFinal = false,
 }: {
   match: ContestMatch
   existingRegistration: ContestRegistration | null
+  isFinal?: boolean
 }) {
   const hasMyParticipant = match.participants.some(
     (participant) =>
       participant.registration?.is_my_registration ||
       participant.registration_id === existingRegistration?.id,
   )
+  const isBye = match.metadata?.bye === true
+  const isEmpty = match.metadata?.empty_slot === true
+
   return (
     <article
-      className={`rounded-2xl border p-4 ${
+      className={cn(
+        "w-full overflow-hidden rounded-2xl border shadow-sm transition",
         hasMyParticipant
-          ? "border-orange-200 bg-orange-50/60"
-          : "border-slate-200 bg-white"
-      }`}
+          ? "border-orange-300 ring-2 ring-orange-100"
+          : isFinal
+            ? "border-amber-200"
+            : "border-slate-200",
+        isEmpty ? "opacity-55" : "",
+      )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-extrabold text-slate-900">
-            {formatMatchLabel(match)}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            {formatContestDateTime(match.scheduled_at)}
-          </p>
-        </div>
-        <MatchStatusBadge
-          status={match.status}
-          className="h-auto px-2.5 py-1 text-[11px] font-bold"
-        />
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 px-3.5 py-2",
+          isFinal
+            ? "bg-gradient-to-r from-amber-50 to-orange-50"
+            : "bg-slate-50/80",
+        )}
+      >
+        <p className="truncate text-xs font-black text-slate-900">
+          {isFinal ? (
+            <Trophy className="mr-1 inline size-3.5 text-amber-500" />
+          ) : null}
+          {formatMatchLabel(match)}
+        </p>
+        <span className="shrink-0 text-[11px] font-bold text-slate-400">
+          {isEmpty ? "—" : formatContestDateTime(match.scheduled_at)}
+        </span>
       </div>
-      <div className="mt-3 space-y-2">
-        {match.participants.length > 0 ? (
-          match.participants.map((participant) => (
+
+      <div className="divide-y divide-slate-100 bg-white">
+        {[0, 1].map((slotIndex) => {
+          const participant = match.participants[slotIndex]
+          if (!participant) {
+            return (
+              <p
+                key={slotIndex}
+                className="px-3.5 py-2.5 text-xs font-semibold italic text-slate-300"
+              >
+                {isEmpty
+                  ? "Ô trống"
+                  : isBye
+                    ? "Không có đối thủ"
+                    : "Chờ vòng trước"}
+              </p>
+            )
+          }
+          return (
             <BracketParticipantRow
               key={participant.id}
               participant={participant}
+              decided={match.status === "COMPLETED"}
               highlight={
                 participant.registration?.is_my_registration ||
                 participant.registration_id === existingRegistration?.id
               }
             />
-          ))
-        ) : (
-          <div className="rounded-xl border border-dashed border-slate-200 px-3 py-3 text-sm text-slate-500">
-            Chưa chốt người thi đấu cho trận này.
-          </div>
-        )}
+          )
+        })}
       </div>
     </article>
   )
@@ -419,35 +547,51 @@ function BracketMatchCard({
 function BracketParticipantRow({
   participant,
   highlight = false,
+  decided = false,
 }: {
   participant: ContestMatchParticipant
   highlight?: boolean
+  decided?: boolean
 }) {
+  const won = participant.is_winner === true
+  // Chỉ làm mờ người thua khi trận đã ngã ngũ; trận chưa đấu mà đã mờ một bên
+  // thì trông như đã có kết quả.
+  const lost = decided && !won
+
   return (
     <div
-      className={`rounded-xl border px-3 py-3 ${
-        highlight
-          ? "border-orange-200 bg-white"
-          : "border-slate-200 bg-slate-50/60"
-      }`}
+      className={cn(
+        "flex items-center gap-2 px-3.5 py-2.5",
+        won ? "bg-gradient-to-r from-emerald-50 to-transparent" : "",
+        highlight && !won ? "bg-orange-50/60" : "",
+      )}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm font-bold text-slate-900">
-          {getMatchParticipantName(participant)}
-        </p>
-        <DriverTitleChip label={participant.registration?.driver_title_label} />
-        {participant.is_winner ? (
-          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-            Winner
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-1 text-xs font-semibold text-slate-500">
-        {participant.status}
-        {participant.finish_position
-          ? ` · Về ${participant.finish_position}`
-          : ""}
+      {won ? (
+        <Trophy className="size-3.5 shrink-0 text-emerald-600" />
+      ) : (
+        <span className="size-3.5 shrink-0" />
+      )}
+      <p
+        className={cn(
+          "min-w-0 flex-1 truncate text-sm",
+          won
+            ? "font-black text-emerald-900"
+            : lost
+              ? "font-semibold text-slate-400"
+              : "font-bold text-slate-800",
+        )}
+      >
+        {getMatchParticipantName(participant)}
       </p>
+      <DriverTitleChip
+        label={participant.registration?.driver_title_label}
+        className="shrink-0 px-1.5 py-0 text-[9px]"
+      />
+      {highlight ? (
+        <span className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-black text-orange-700">
+          Bạn
+        </span>
+      ) : null}
     </div>
   )
 }

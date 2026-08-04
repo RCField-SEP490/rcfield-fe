@@ -137,6 +137,10 @@ export function PublicContestDetailPage() {
     effectiveStatus === "RUNNING" ||
     effectiveStatus === "COMPLETED"
 
+  // Giải khép lại thì dẫn sang kết quả, trừ khi chẳng có gì để xem (giải huỷ
+  // trước khi bốc thăm) — lúc đó phần Đăng ký ít ra còn nói rõ giải đã huỷ.
+  const primaryCtaTarget = contestOver && showProgress ? "dien-bien" : "dang-ky"
+
   const navItems: ContestNavItem[] = [
     { id: "gioi-thieu", label: "Giới thiệu" },
     ...(existingRegistration
@@ -156,6 +160,7 @@ export function PublicContestDetailPage() {
       <ContestHero
         contest={contest}
         effectiveStatus={effectiveStatus}
+        ctaTarget={primaryCtaTarget}
         onJump={handleJump}
       />
 
@@ -164,12 +169,14 @@ export function PublicContestDetailPage() {
         // Giải đã khép lại thì mời đăng ký là sai; dẫn khách sang phần kết quả.
         ctaLabel={
           contestOver
-            ? "Xem kết quả"
+            ? showProgress
+              ? "Xem kết quả"
+              : "Xem chi tiết"
             : existingRegistration
               ? "Đăng ký của bạn"
               : "Đăng ký ngay"
         }
-        onJump={() => handleJump(contestOver ? "dien-bien" : "dang-ky")}
+        onJump={() => handleJump(primaryCtaTarget)}
       />
 
       <ContestAboutSection contest={contest} />

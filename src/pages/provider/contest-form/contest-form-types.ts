@@ -16,7 +16,23 @@ export type ContestFormState = {
   vehicle_policy: "RENTAL_ONLY" | "BYOC_ONLY" | "MIXED"
   assignment_policy: "AT_CHECK_IN" | "PRE_ASSIGNED"
   finalists: string
+  /** Cơ cấu giải thưởng hiện trên trang công khai; để trống thì phần đó báo "sẽ công bố sau". */
+  prizes: PrizeTierState[]
 }
+
+export type PrizeTierState = {
+  /** Hạng, ví dụ "Vô địch" hoặc "Hạng 3". */
+  position: string
+  /** Phần thưởng, ví dụ "2.000.000đ + cúp". */
+  reward: string
+  note: string
+}
+
+export const defaultPrizeTiers: PrizeTierState[] = [
+  { position: "Vô địch", reward: "", note: "" },
+  { position: "Á quân", reward: "", note: "" },
+  { position: "Hạng 3", reward: "", note: "" },
+]
 
 export type ResourceLockScope = "FULL_BRANCH" | "SELECTED_TRACKS"
 
@@ -43,6 +59,7 @@ export const defaultForm: ContestFormState = {
   capacity: "16",
   entry_fee: "0",
   banner_image_url: "",
+  prizes: defaultPrizeTiers.map((tier) => ({ ...tier })),
   // Mặc định cho giải MỚI: khách tự mang xe. Trước đây mặc định là "chỉ dùng xe
   // thuê" nên phần lớn giải vô tình đi vào luồng phức tạp nhất.
   vehicle_policy: "BYOC_ONLY",

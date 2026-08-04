@@ -24,8 +24,12 @@ import {
   stripManagedContestConfig,
   toInputDateTime,
 } from "./contest-form-utils"
-import type { ContestFormState, ResourceLockState } from "./contest-form-types"
-import { defaultForm } from "./contest-form-types"
+import type {
+  ContestFormState,
+  PrizeTierState,
+  ResourceLockState,
+} from "./contest-form-types"
+import { defaultForm, defaultPrizeTiers } from "./contest-form-types"
 import {
   CONTEST_WIZARD_STEPS,
   LAST_STEP_INDEX,
@@ -33,6 +37,34 @@ import {
   validateContestStep,
   type StepValidationContext,
 } from "./contest-wizard"
+
+/**
+ * Đọc cơ cấu giải thưởng đã lưu về dạng form.
+ *
+ * Dữ liệu cũ có thể nằm dưới khoá `items` hoặc `tiers` — trang công khai chấp
+ * nhận cả hai nên phần nhập cũng phải đọc được cả hai, nếu không mở giải cũ ra
+ * sửa là mất sạch giải thưởng đã nhập.
+ */
+function readPrizeTiers(
+  config: Record<string, unknown> | null | undefined,
+): PrizeTierState[] {
+  const structure = config?.prize_structure as
+    | { items?: unknown; tiers?: unknown }
+    | undefined
+  const raw = Array.isArray(structure?.items)
+    ? structure.items
+    : Array.isArray(structure?.tiers)
+      ? structure.tiers
+      : null
+  if (!raw || raw.length === 0) {
+    return defaultPrizeTiers.map((tier) => ({ ...tier }))
+  }
+  return (raw as Array<Record<string, unknown>>).map((item) => ({
+    position: String(item.position ?? item.rank ?? ""),
+    reward: String(item.label ?? item.reward ?? item.prize ?? ""),
+    note: item.note ? String(item.note) : "",
+  }))
+}
 
 export function useContestForm() {
   const navigate = useNavigate()
@@ -140,6 +172,7 @@ export function useContestForm() {
             ?.assignment_policy as ContestFormState["assignment_policy"]) ??
           "AT_CHECK_IN",
         finalists: String(contest.config?.finalists ?? 4),
+        prizes: readPrizeTiers(contest.config),
       })
       setExtraConfig(stripManagedContestConfig(contest.config))
 
@@ -367,6 +400,15 @@ export function useContestForm() {
     // `format` và `runtime_format` cố tình KHÔNG gửi: backend tự suy từ mã format
     // trong catalog rồi ghi đè (`stripRuntimeManagedConfig` + `mergeContestConfig`).
     // Gửi lên chỉ tạo ảo giác là FE quyết định được.
+    // Chỉ gửi hạng đã điền phần thưởng; hạng bỏ trống là ban tổ chức chưa quyết.
+    const prizeItems = form.prizes
+      .map((tier) => ({
+        position: tier.position.trim(),
+        label: tier.reward.trim(),
+        note: tier.note.trim() || undefined,
+      }))
+      .filter((tier) => tier.position && tier.label)
+
     const derivedConfig = {
       ...templateDefaults,
       ...extraConfig,
@@ -379,6 +421,11 @@ export function useContestForm() {
           ? Number(templateDefaults.drivers_per_match ?? 1)
           : Number(templateDefaults.drivers_per_match ?? 2),
       ...(runtimeFormat === "QUALIFYING_FINAL" ? { finalists } : {}),
+      // Bỏ hẳn khoá khi chưa nhập gì, để trang công khai hiện dòng "sẽ công bố
+      // trong điều lệ" thay vì một danh sách rỗng.
+      ...(prizeItems.length > 0
+        ? { prize_structure: { items: prizeItems } }
+        : { prize_structure: null }),
       resource_locks: derivedLocks,
     }
 

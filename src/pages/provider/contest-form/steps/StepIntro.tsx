@@ -12,6 +12,19 @@ import { Textarea } from "@/shared/ui/textarea"
 import { ContestFormField } from "../ContestFormField"
 import type { ContestFormState } from "../contest-form-types"
 
+function updatePrizeTier(
+  setForm: Dispatch<SetStateAction<ContestFormState>>,
+  index: number,
+  patch: Partial<ContestFormState["prizes"][number]>,
+) {
+  setForm((current) => ({
+    ...current,
+    prizes: current.prizes.map((tier, tierIndex) =>
+      tierIndex === index ? { ...tier, ...patch } : tier,
+    ),
+  }))
+}
+
 export type SummaryRow = {
   label: string
   value: string
@@ -116,6 +129,86 @@ export function StepIntro({
           />
           <p className="text-xs leading-5 text-[#747878]">
             Hiển thị ở phần "Đôi nét về giải đấu" trên trang công khai.
+          </p>
+        </ContestFormField>
+
+        <ContestFormField label="Cơ cấu giải thưởng">
+          <div className="space-y-2">
+            {form.prizes.map((tier, index) => (
+              <div
+                key={index}
+                className="grid gap-2 md:grid-cols-[minmax(0,9rem)_minmax(0,1fr)_minmax(0,12rem)]"
+              >
+                <Input
+                  className="h-11"
+                  placeholder="Hạng"
+                  value={tier.position}
+                  onChange={(event) =>
+                    updatePrizeTier(setForm, index, {
+                      position: event.target.value,
+                    })
+                  }
+                />
+                <Input
+                  className="h-11"
+                  placeholder="Phần thưởng, ví dụ: 2.000.000đ + cúp"
+                  value={tier.reward}
+                  onChange={(event) =>
+                    updatePrizeTier(setForm, index, {
+                      reward: event.target.value,
+                    })
+                  }
+                />
+                <Input
+                  className="h-11"
+                  placeholder="Ghi chú (không bắt buộc)"
+                  value={tier.note}
+                  onChange={(event) =>
+                    updatePrizeTier(setForm, index, {
+                      note: event.target.value,
+                    })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9 rounded-lg text-xs font-bold"
+              onClick={() =>
+                setForm((current) => ({
+                  ...current,
+                  prizes: [
+                    ...current.prizes,
+                    { position: "", reward: "", note: "" },
+                  ],
+                }))
+              }
+            >
+              Thêm hạng
+            </Button>
+            {form.prizes.length > 1 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 rounded-lg text-xs font-bold text-[#747878]"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    prizes: current.prizes.slice(0, -1),
+                  }))
+                }
+              >
+                Bớt một hạng
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-xs leading-5 text-[#747878]">
+            Hiện ở phần "Vinh danh người về đích". Hạng nào bỏ trống phần thưởng
+            thì không hiển thị; để trống hết thì trang công khai báo "sẽ công bố
+            trong điều lệ giải".
           </p>
         </ContestFormField>
 
