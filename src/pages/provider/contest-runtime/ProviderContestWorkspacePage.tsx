@@ -1,10 +1,25 @@
-import { useEffect, useMemo, useState } from "react"
-import { BarChart3, CalendarCheck2, Flag, PlayCircle, MoreHorizontal, CircleDollarSign } from "lucide-react"
-import { Navigate, useNavigate, useParams, useSearchParams } from "react-router"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  BarChart3,
+  CalendarCheck2,
+  Flag,
+  PlayCircle,
+  MoreHorizontal,
+  CircleDollarSign,
+} from "lucide-react"
+import {
+  Navigate,
+  useBeforeUnload,
+  useBlocker,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router"
 import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import {
+  applyStagedParticipants,
   formatMatchLabel,
   getErrorMessage,
   getMatchParticipantName,
@@ -21,17 +36,19 @@ import {
 } from "@/features/contests/lib/contest-status"
 import type {
   ContestEntryFeePaymentStatus,
-  ContestMatch,
-  ContestMatchParticipant,
   ContestMatchStatus,
   ContestParticipantStatus,
   ContestRegistrationStatus,
   ContestUpdateMatchParticipantsBody,
   ContestAuditLogsQuery,
 } from "@/features/contests/types"
-import { ProviderPageHeader, MetricCard } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  ProviderPageHeader,
+  MetricCard,
+} from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 import { Button } from "@/shared/ui/button"
 import {
   DropdownMenu,
@@ -55,14 +72,11 @@ import {
 
 const sectionSummaries: Record<ContestWorkspaceSectionKey, string> = {
   overview: "Tổng quan điều hành, trạng thái giải và các chỉ số sẵn sàng.",
-  registrations:
-    "Duyệt đăng ký, xử lý lệ phí và điểm danh người chơi.",
-  bracket:
-    "Bốc thăm sơ đồ, theo dõi từng trận và nhập kết quả.",
+  registrations: "Duyệt đăng ký, xử lý lệ phí và điểm danh người chơi.",
+  bracket: "Bốc thăm sơ đồ, theo dõi từng trận và nhập kết quả.",
   leaderboard: "Theo dõi bản nháp, công bố và đồng bộ bảng xếp hạng.",
   audit: "Xem lại toàn bộ nhật ký thao tác phát sinh trong contest.",
-  discipline:
-    "Phân công staff, disqualify người chơi và xử lý ban contest.",
+  discipline: "Phân công staff, disqualify người chơi và xử lý ban contest.",
 }
 
 export function ProviderContestWorkspacePage({
@@ -80,7 +94,9 @@ export function ProviderContestWorkspacePage({
   const participantQuery = searchParams.get("participantQuery") ?? ""
   const roundNo = searchParams.get("roundNo") ?? ""
   const auditPage = Math.max(1, Number(searchParams.get("auditPage") || "1"))
-  const auditLimit = [10, 20, 50, 100].includes(Number(searchParams.get("auditLimit")))
+  const auditLimit = [10, 20, 50, 100].includes(
+    Number(searchParams.get("auditLimit")),
+  )
     ? Number(searchParams.get("auditLimit"))
     : 20
 
@@ -172,6 +188,25 @@ export function ProviderContestWorkspacePage({
   const hasStagedBracketChanges =
     Object.keys(stagedParticipantsByMatch).length > 0
 
+  // Sơ đồ kéo thả chỉ nằm trong bộ nhớ tới khi bấm Lưu. Chặn cả ba đường làm
+  // mất nó: đóng/tải lại tab, chuyển sang mục khác của workspace, và bấm sang
+  // trang khác trong ứng dụng.
+  useBeforeUnload(
+    useCallback(
+      (event: BeforeUnloadEvent) => {
+        if (!hasStagedBracketChanges) return
+        event.preventDefault()
+      },
+      [hasStagedBracketChanges],
+    ),
+  )
+
+  const bracketBlocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasStagedBracketChanges &&
+      currentLocation.pathname !== nextLocation.pathname,
+  )
+
   useEffect(() => {
     if (contest && !selectedCafeId) {
       queueMicrotask(() => {
@@ -217,7 +252,8 @@ export function ProviderContestWorkspacePage({
 
   const handleSyncRaceRecords = async () => {
     try {
-      const result = await workspace.runtime.syncRaceRecordsMutation.mutateAsync()
+      const result =
+        await workspace.runtime.syncRaceRecordsMutation.mutateAsync()
       toast.success("Đã đồng bộ thành tích toàn hệ thống", {
         description: `${result.synced_count} record mới, ${result.superseded_count} record bị thay thế.`,
       })
@@ -297,7 +333,9 @@ export function ProviderContestWorkspacePage({
             results: updatedResults,
           },
         })
-        toast.success(`Đã cập nhật kết quả cho ${formatMatchLabel(sourceMatch)}`)
+        toast.success(
+          `Đã cập nhật kết quả cho ${formatMatchLabel(sourceMatch)}`,
+        )
       } catch (err) {
         toast.error("Không thể cập nhật kết quả trận nguồn", {
           description: getErrorMessage(err).message,
@@ -434,7 +472,9 @@ export function ProviderContestWorkspacePage({
             >
               {contest.name}
             </span>
-            <Badge className={`border text-[10px] font-bold px-2 py-0.5 ${getContestStatusClass(contest.status)}`}>
+            <Badge
+              className={`border text-[10px] font-bold px-2 py-0.5 ${getContestStatusClass(contest.status)}`}
+            >
               {getContestStatusLabel(contest.status)}
             </Badge>
             <Badge
@@ -447,13 +487,19 @@ export function ProviderContestWorkspacePage({
               variant="outline"
               className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
             >
-              Thời gian: {formatShortDate(contest.starts_at)} - {formatShortDate(contest.ends_at)}
+              Thời gian: {formatShortDate(contest.starts_at)} -{" "}
+              {formatShortDate(contest.ends_at)}
             </Badge>
             <Badge
               variant="outline"
               className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
             >
-              Đăng ký: {metrics?.registration_counts.total ?? (workspace.runtime.registrationsQuery.isSuccess ? registrations.length : "--")} người
+              Đăng ký:{" "}
+              {metrics?.registration_counts.total ??
+                (workspace.runtime.registrationsQuery.isSuccess
+                  ? registrations.length
+                  : "--")}{" "}
+              người
             </Badge>
           </div>
         }
@@ -482,7 +528,9 @@ export function ProviderContestWorkspacePage({
               type="button"
               disabled={!publishAvailability.allowed}
               title={
-                publishAvailability.allowed ? undefined : publishAvailability.reason
+                publishAvailability.allowed
+                  ? undefined
+                  : publishAvailability.reason
               }
               className="h-8 gap-1.5 rounded-lg bg-[#1c1b1b] px-3 text-xs font-bold text-white hover:bg-[#313030] disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => void handlePublishLeaderboard()}
@@ -502,13 +550,25 @@ export function ProviderContestWorkspacePage({
                   <span className="sr-only">Thao tác khác</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 border border-[#c4c7c8] bg-white shadow-md z-50">
+              <DropdownMenuContent
+                align="end"
+                className="w-52 rounded-xl p-1.5 border border-[#c4c7c8] bg-white shadow-md z-50"
+              >
                 <DropdownMenuItem
                   disabled={!editAvailability.allowed}
-                  title={editAvailability.allowed ? undefined : editAvailability.reason}
+                  title={
+                    editAvailability.allowed
+                      ? undefined
+                      : editAvailability.reason
+                  }
                   className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   onClick={() =>
-                    navigate(routePaths.providerContestEdit.replace(":contestId", contest.id))
+                    navigate(
+                      routePaths.providerContestEdit.replace(
+                        ":contestId",
+                        contest.id,
+                      ),
+                    )
                   }
                 >
                   Chỉnh sửa giải đấu
@@ -530,7 +590,9 @@ export function ProviderContestWorkspacePage({
         <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <MetricCard
             label="Đăng ký"
-            value={String(metrics?.registration_counts.total ?? registrations.length)}
+            value={String(
+              metrics?.registration_counts.total ?? registrations.length,
+            )}
             helper={`${metrics?.registration_counts.confirmed ?? 0} đã duyệt / ${metrics?.registration_counts.checked_in ?? 0} đã check-in`}
             icon={<Flag />}
             tone="info"
@@ -549,7 +611,9 @@ export function ProviderContestWorkspacePage({
             value={metrics?.leaderboard.published ? "Đã công bố" : "Bản nháp"}
             helper={
               metrics?.leaderboard.published_at
-                ? new Date(metrics.leaderboard.published_at).toLocaleString("vi-VN")
+                ? new Date(metrics.leaderboard.published_at).toLocaleString(
+                    "vi-VN",
+                  )
                 : "Chưa công bố"
             }
             icon={<BarChart3 />}
@@ -561,7 +625,9 @@ export function ProviderContestWorkspacePage({
             value={metrics?.global_sync.synced ? "Đã đồng bộ" : "Chưa đồng bộ"}
             helper={
               metrics?.global_sync.synced_at
-                ? new Date(metrics.global_sync.synced_at).toLocaleString("vi-VN")
+                ? new Date(metrics.global_sync.synced_at).toLocaleString(
+                    "vi-VN",
+                  )
                 : "Chưa đồng bộ thành tích"
             }
             icon={<CalendarCheck2 />}
@@ -736,66 +802,28 @@ export function ProviderContestWorkspacePage({
           workspace={workspace}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={bracketBlocker.state === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) bracketBlocker.reset?.()
+        }}
+        title="Sơ đồ chưa được lưu"
+        description="Bạn đã kéo người sang trận khác nhưng chưa bấm Lưu sơ đồ. Rời khỏi đây là mất hết thay đổi đó."
+        confirmLabel="Rời đi, bỏ thay đổi"
+        cancelLabel="Ở lại để lưu"
+        destructive
+        onConfirm={() => bracketBlocker.proceed?.()}
+      />
     </ProviderShell>
   )
 }
-
-
 
 function formatShortDate(value: string | null) {
   if (!value) return "--"
   return new Date(value).toLocaleString("vi-VN", {
     dateStyle: "short",
     timeStyle: "short",
-  })
-}
-
-function applyStagedParticipants(
-  matches: ContestMatch[],
-  staged: Record<string, ContestUpdateMatchParticipantsBody["participants"]>,
-) {
-  if (Object.keys(staged).length === 0) return matches
-  return matches.map((match) => {
-    const nextParticipants = staged[match.id]
-    if (!nextParticipants) return match
-    const currentByRegistration = new Map(
-      match.participants.map((participant) => [
-        participant.registration_id,
-        participant,
-      ]),
-    )
-    return {
-      ...match,
-      participants: nextParticipants.map((item) => {
-        const current = currentByRegistration.get(item.registration_id)
-        if (!current) {
-          return {
-            id: `staged-${match.id}-${item.registration_id}`,
-            registration_id: item.registration_id,
-            slot_no: item.slot_no,
-            lane: item.lane ?? null,
-            grid_position: item.grid_position ?? null,
-            seed_no: item.seed_no ?? null,
-            status: "READY" as ContestMatchParticipant["status"],
-            score: null,
-            finish_position: null,
-            best_lap_seconds: null,
-            total_time_seconds: null,
-            is_winner: false,
-            result_note: null,
-            metadata: { staged: true },
-            registration: null,
-          }
-        }
-        return {
-          ...current,
-          slot_no: item.slot_no,
-          lane: item.lane ?? null,
-          grid_position: item.grid_position ?? null,
-          seed_no: item.seed_no ?? null,
-        }
-      }),
-    }
   })
 }
 

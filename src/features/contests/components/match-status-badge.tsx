@@ -1,9 +1,6 @@
 import { cn } from "@/shared/lib/utils"
 import { StatusBadge } from "@/shared/ui/status-badge"
-import {
-  getMatchStatusClass,
-  getMatchStatusLabel,
-} from "../lib/contest-status"
+import { getMatchStatusClass, getMatchStatusLabel } from "../lib/contest-status"
 import type { ContestMatchStatus } from "../types"
 
 export interface MatchStatusBadgeProps {

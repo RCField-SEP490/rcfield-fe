@@ -5,6 +5,7 @@ import type {
   ContestMatch,
   ContestMatchParticipant,
   ContestRegistration,
+  ContestUpdateMatchParticipantsBody,
 } from "../types"
 
 /**
@@ -21,21 +22,25 @@ export function getEligibleRuntimeRegistrations(
 ) {
   return registrations.filter((registration) =>
     options?.includeConfirmed
-      ? registration.status === "CONFIRMED" || registration.status === "CHECKED_IN"
+      ? registration.status === "CONFIRMED" ||
+        registration.status === "CHECKED_IN"
       : registration.status === "CHECKED_IN",
   )
 }
 
 export function groupMatchesByRound(matches: ContestMatch[]) {
-  return matches.reduce<Array<{ roundNo: number; matches: ContestMatch[] }>>((groups, match) => {
-    const group = groups.find((item) => item.roundNo === match.round_no)
-    if (group) {
-      group.matches.push(match)
+  return matches.reduce<Array<{ roundNo: number; matches: ContestMatch[] }>>(
+    (groups, match) => {
+      const group = groups.find((item) => item.roundNo === match.round_no)
+      if (group) {
+        group.matches.push(match)
+        return groups
+      }
+      groups.push({ roundNo: match.round_no, matches: [match] })
       return groups
-    }
-    groups.push({ roundNo: match.round_no, matches: [match] })
-    return groups
-  }, [])
+    },
+    [],
+  )
 }
 
 export function formatContestDateTime(value?: string | null) {
@@ -55,23 +60,37 @@ export function formatDurationSeconds(value?: number | null) {
 }
 
 export function formatMatchLabel(match: ContestMatch) {
-  return match.name?.trim() || `Vòng ${match.round_no} · Lượt đấu ${match.match_no}`
+  return (
+    match.name?.trim() || `Vòng ${match.round_no} · Lượt đấu ${match.match_no}`
+  )
 }
 
-export function getRegistrationDisplayName(registration?: ContestRegistration | null) {
+export function getRegistrationDisplayName(
+  registration?: ContestRegistration | null,
+) {
   return (
     registration?.participant?.fullName?.trim() ||
     registration?.participant?.email?.trim() ||
     registration?.checkInCode?.trim() ||
-    (registration?.id ? `Mã đăng ký ${registration.id.slice(0, 8)}` : "Người chơi chưa xác định")
+    (registration?.id
+      ? `Mã đăng ký ${registration.id.slice(0, 8)}`
+      : "Người chơi chưa xác định")
   )
 }
 
-export function getRegistrationSubtitle(registration?: ContestRegistration | null) {
-  return registration?.participant?.email?.trim() || registration?.checkInCode?.trim() || null
+export function getRegistrationSubtitle(
+  registration?: ContestRegistration | null,
+) {
+  return (
+    registration?.participant?.email?.trim() ||
+    registration?.checkInCode?.trim() ||
+    null
+  )
 }
 
-export function getMatchParticipantName(participant?: ContestMatchParticipant | null) {
+export function getMatchParticipantName(
+  participant?: ContestMatchParticipant | null,
+) {
   return (
     participant?.registration?.participant_name?.trim() ||
     participant?.registration?.participant_email?.trim() ||
@@ -79,17 +98,29 @@ export function getMatchParticipantName(participant?: ContestMatchParticipant | 
   )
 }
 
-export function getMatchParticipantSubtitle(participant?: ContestMatchParticipant | null) {
-  return participant?.registration?.participant_email?.trim() || participant?.registration?.check_in_code?.trim() || null
+export function getMatchParticipantSubtitle(
+  participant?: ContestMatchParticipant | null,
+) {
+  return (
+    participant?.registration?.participant_email?.trim() ||
+    participant?.registration?.check_in_code?.trim() ||
+    null
+  )
 }
 
-export function getOpponentsForRegistration(match: ContestMatch | null | undefined, registrationId: string) {
+export function getOpponentsForRegistration(
+  match: ContestMatch | null | undefined,
+  registrationId: string,
+) {
   if (!match) return []
-  return match.participants.filter((participant) => participant.registration_id !== registrationId)
+  return match.participants.filter(
+    (participant) => participant.registration_id !== registrationId,
+  )
 }
 
 export function getPublishedLeaderboard(contest?: ContestItem | null) {
-  return (contest?.config?.published_leaderboard ?? null) as ContestLeaderboardPayload | null
+  return (contest?.config?.published_leaderboard ??
+    null) as ContestLeaderboardPayload | null
 }
 
 export function getAuditGroup(log: ContestAuditLogItem) {
@@ -110,7 +141,8 @@ export function getErrorMessage(error: unknown) {
     message?: string
   }
   return {
-    message: maybe.response?.data?.message ?? maybe.message ?? "Vui lòng thử lại.",
+    message:
+      maybe.response?.data?.message ?? maybe.message ?? "Vui lòng thử lại.",
     code: maybe.response?.data?.code,
   }
 }
@@ -151,8 +183,7 @@ export function splitMatchesByPhase(matches: ContestMatch[]) {
 
 export function areAllMatchesCompleted(matches: ContestMatch[]) {
   return (
-    matches.length > 0 &&
-    matches.every((match) => match.status === "COMPLETED")
+    matches.length > 0 && matches.every((match) => match.status === "COMPLETED")
   )
 }
 
@@ -239,4 +270,68 @@ export function getByocDeclaration(
         )
       : [],
   }
+}
+
+export function applyStagedParticipants(
+  matches: ContestMatch[],
+  staged: Record<string, ContestUpdateMatchParticipantsBody["participants"]>,
+) {
+  if (Object.keys(staged).length === 0) return matches
+
+  // Người được kéo sang vòng sau vẫn phải hiện đúng tên. Thông tin đó nằm ở
+  // trận nguồn nên gom sẵn một lượt; thiếu bước này thì ô mới chỉ có
+  // registration_id và sơ đồ hiện "Mã đăng ký e4c7c97f".
+  const snapshotByRegistration = new Map(
+    matches
+      .flatMap((match) => match.participants)
+      .filter((participant) => participant.registration !== null)
+      .map((participant) => [
+        participant.registration_id,
+        participant.registration,
+      ]),
+  )
+
+  return matches.map((match) => {
+    const nextParticipants = staged[match.id]
+    if (!nextParticipants) return match
+    const currentByRegistration = new Map(
+      match.participants.map((participant) => [
+        participant.registration_id,
+        participant,
+      ]),
+    )
+    return {
+      ...match,
+      participants: nextParticipants.map((item) => {
+        const current = currentByRegistration.get(item.registration_id)
+        if (!current) {
+          return {
+            id: `staged-${match.id}-${item.registration_id}`,
+            registration_id: item.registration_id,
+            slot_no: item.slot_no,
+            lane: item.lane ?? null,
+            grid_position: item.grid_position ?? null,
+            seed_no: item.seed_no ?? null,
+            status: "READY" as ContestMatchParticipant["status"],
+            score: null,
+            finish_position: null,
+            best_lap_seconds: null,
+            total_time_seconds: null,
+            is_winner: false,
+            result_note: null,
+            metadata: { staged: true },
+            registration:
+              snapshotByRegistration.get(item.registration_id) ?? null,
+          }
+        }
+        return {
+          ...current,
+          slot_no: item.slot_no,
+          lane: item.lane ?? null,
+          grid_position: item.grid_position ?? null,
+          seed_no: item.seed_no ?? null,
+        }
+      }),
+    }
+  })
 }

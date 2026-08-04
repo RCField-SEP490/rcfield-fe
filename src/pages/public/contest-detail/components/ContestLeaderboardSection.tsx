@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { Trophy } from "lucide-react"
 
+import { getLeaderboardModeLabel } from "@/features/contests/lib/contest-status"
+
 import {
   formatContestDateTime,
   formatDurationSeconds,
@@ -56,7 +58,10 @@ export function ContestLeaderboardSection({
       ) : (
         <>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <Info label="Chế độ xếp hạng" value={leaderboard.mode} />
+            <Info
+              label="Chế độ xếp hạng"
+              value={getLeaderboardModeLabel(leaderboard.mode)}
+            />
             <Info
               label="Số người trên bảng"
               value={String(leaderboard.entries.length)}

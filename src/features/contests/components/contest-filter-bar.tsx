@@ -61,7 +61,10 @@ export function ContestFilterBar({
     }
   }, [])
 
-  const applyUpdates = (updates: Record<string, string>, allValues: Record<string, string>) => {
+  const applyUpdates = (
+    updates: Record<string, string>,
+    allValues: Record<string, string>,
+  ) => {
     const next = new URLSearchParams(searchParams)
     for (const [key, value] of Object.entries(updates)) {
       if (!value || value === allValues[key]) next.delete(key)

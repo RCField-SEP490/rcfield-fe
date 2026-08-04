@@ -39,6 +39,7 @@ export function ContestMatchDetailPanel({
     handleSubmitResults,
     handleCorrectResults,
     handleAdvance,
+    handleWalkover,
   } = useMatchDetailState(match, runtime)
 
   if (!match) {
@@ -61,7 +62,7 @@ export function ContestMatchDetailPanel({
         title={match.name ?? `Vòng ${match.round_no} · Trận ${match.match_no}`}
         subtitle={
           isKnockoutRuntime
-            ? "Kéo thả người vào sơ đồ bên trái, lưu sơ đồ, rồi mới nhập kết quả."
+            ? "Chọn người thắng rồi lưu — người đó tự sang trận vòng sau."
             : "Sắp thứ tự thi đấu, nhập kết quả và chỉnh sửa khi cần."
         }
       />
@@ -92,6 +93,7 @@ export function ContestMatchDetailPanel({
           isKnockoutRuntime={isKnockoutRuntime}
           hasPendingBracketChanges={hasPendingBracketChanges}
           onUpdateResult={updateResultValue}
+          onWalkover={handleWalkover}
         />
 
         <MatchActions

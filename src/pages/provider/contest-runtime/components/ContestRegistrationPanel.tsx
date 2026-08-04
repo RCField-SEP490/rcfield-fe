@@ -1,7 +1,10 @@
 import { useState } from "react"
 import { QrCode } from "lucide-react"
 import { toast } from "sonner"
-import type { ContestItem, ContestRegistration } from "@/features/contests/types"
+import type {
+  ContestItem,
+  ContestRegistration,
+} from "@/features/contests/types"
 import { getErrorMessage } from "@/features/contests/lib/contest-runtime"
 import { getContestCheckInAvailability } from "@/features/contests/lib/contest-status"
 import {
@@ -30,7 +33,9 @@ type WorkspaceHook = ReturnType<typeof useContestWorkspace>
  * phải chọn đúng chiếc để lập phiếu mượn. Cả hai đều là việc tại quầy nên chỉ
  * màn nhân viên mới thu đủ dữ liệu — bấm ở đây chắc chắn nhận lỗi 400.
  */
-function getRowCheckInBlock(registration: ContestRegistration): string | undefined {
+function getRowCheckInBlock(
+  registration: ContestRegistration,
+): string | undefined {
   if (registration.vehicleSource === "BYOC") {
     return "Xe cá nhân phải kiểm tra kèm ảnh — điểm danh ở màn nhân viên"
   }

@@ -15,7 +15,9 @@ export function RegistrationFilters({
   statusFilter: "ALL" | ContestRegistration["status"]
   onStatusFilterChange: (value: "ALL" | ContestRegistration["status"]) => void
   paymentFilter: "ALL" | ContestRegistration["paymentStatus"]
-  onPaymentFilterChange: (value: "ALL" | ContestRegistration["paymentStatus"]) => void
+  onPaymentFilterChange: (
+    value: "ALL" | ContestRegistration["paymentStatus"],
+  ) => void
 }) {
   return (
     <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_220px_220px]">
@@ -136,5 +138,9 @@ export function RegistrationSummary({
 }
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(value)
 }

@@ -1,6 +1,13 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Car, CreditCard, ImagePlus, KeyRound, ShieldCheck, X } from "lucide-react"
+import {
+  Car,
+  CreditCard,
+  ImagePlus,
+  KeyRound,
+  ShieldCheck,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { bookingApi } from "@/features/booking/api/booking.api"
@@ -435,8 +442,8 @@ export function ContestRegistrationPanel({
                     Ảnh xe của bạn
                   </Label>
                   <p className="mb-2 text-xs text-slate-500">
-                    Ban tổ chức duyệt xe dựa vào ảnh này. Chụp rõ toàn thân xe và
-                    phần khung gầm — tối đa {BYOC_PHOTO_LIMIT} ảnh.
+                    Ban tổ chức duyệt xe dựa vào ảnh này. Chụp rõ toàn thân xe
+                    và phần khung gầm — tối đa {BYOC_PHOTO_LIMIT} ảnh.
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     {byocPhotos.map((url) => (

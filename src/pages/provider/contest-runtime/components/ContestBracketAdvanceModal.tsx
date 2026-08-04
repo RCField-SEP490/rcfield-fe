@@ -1,5 +1,9 @@
 import { useState, useEffect, useId } from "react"
-import type { ContestMatch, ContestMatchParticipant, ContestParticipantStatus } from "@/features/contests/types"
+import type {
+  ContestMatch,
+  ContestMatchParticipant,
+  ContestParticipantStatus,
+} from "@/features/contests/types"
 import {
   formatDurationSeconds,
   formatMatchLabel,
@@ -19,7 +23,15 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
-import { Trophy, ArrowRight, UserCheck, Timer, Flag, Award, NotebookPen } from "lucide-react"
+import {
+  Trophy,
+  ArrowRight,
+  UserCheck,
+  Timer,
+  Flag,
+  Award,
+  NotebookPen,
+} from "lucide-react"
 
 export type AdvanceModalPayload = {
   sourceMatch: ContestMatch
@@ -88,10 +100,16 @@ export function ContestBracketAdvanceModal({
   useEffect(() => {
     if (payload?.participant) {
       const p = payload.participant
-      setFinishPosition(p.finish_position !== null ? String(p.finish_position) : "")
+      setFinishPosition(
+        p.finish_position !== null ? String(p.finish_position) : "",
+      )
       setScore(p.score !== null ? String(p.score) : "10")
-      setBestLapSeconds(p.best_lap_seconds !== null ? String(p.best_lap_seconds) : "")
-      setTotalTimeSeconds(p.total_time_seconds !== null ? String(p.total_time_seconds) : "")
+      setBestLapSeconds(
+        p.best_lap_seconds !== null ? String(p.best_lap_seconds) : "",
+      )
+      setTotalTimeSeconds(
+        p.total_time_seconds !== null ? String(p.total_time_seconds) : "",
+      )
       setStatus(p.status ?? "FINISHED")
       setResultNote(p.result_note ?? "")
       setIsWinner(p.is_winner ?? true)
@@ -138,8 +156,10 @@ export function ContestBracketAdvanceModal({
             Chuyển {participantName} vào {formatMatchLabel(targetMatch)}
           </DialogTitle>
           <DialogDescription className="text-xs text-[#747878] font-medium leading-relaxed">
-            Bạn đang kéo thả tay đua từ <strong>{formatMatchLabel(sourceMatch)}</strong> sang{" "}
-            <strong>{formatMatchLabel(targetMatch)}</strong> (Vòng {targetMatch.round_no}).
+            Bạn đang kéo thả tay đua từ{" "}
+            <strong>{formatMatchLabel(sourceMatch)}</strong> sang{" "}
+            <strong>{formatMatchLabel(targetMatch)}</strong> (Vòng{" "}
+            {targetMatch.round_no}).
           </DialogDescription>
         </DialogHeader>
 
@@ -147,23 +167,37 @@ export function ContestBracketAdvanceModal({
           {/* Card thông tin chuyển trận */}
           <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4 flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">Trận nguồn</p>
-              <p className="text-sm font-extrabold text-[#1c1b1b] truncate">{formatMatchLabel(sourceMatch)}</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
+                Trận nguồn
+              </p>
+              <p className="text-sm font-extrabold text-[#1c1b1b] truncate">
+                {formatMatchLabel(sourceMatch)}
+              </p>
               <div className="mt-2 flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <UserCheck className="size-3.5 shrink-0 text-orange-600" />
-                  <span className="text-sm font-bold text-[#1c1b1b] truncate">{participantName}</span>
+                  <span className="text-sm font-bold text-[#1c1b1b] truncate">
+                    {participantName}
+                  </span>
                 </div>
                 {participantSubtitle ? (
-                  <p className="text-xs text-[#747878] truncate pl-5">{participantSubtitle}</p>
+                  <p className="text-xs text-[#747878] truncate pl-5">
+                    {participantSubtitle}
+                  </p>
                 ) : null}
               </div>
             </div>
             <ArrowRight className="size-6 shrink-0 text-orange-500" />
             <div className="min-w-0 text-right">
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">Trận đích</p>
-              <p className="text-sm font-extrabold text-[#1c1b1b] truncate">{formatMatchLabel(targetMatch)}</p>
-              <p className="mt-2 text-xs font-semibold text-emerald-700">Vòng {targetMatch.round_no}</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#747878]">
+                Trận đích
+              </p>
+              <p className="text-sm font-extrabold text-[#1c1b1b] truncate">
+                {formatMatchLabel(targetMatch)}
+              </p>
+              <p className="mt-2 text-xs font-semibold text-emerald-700">
+                Vòng {targetMatch.round_no}
+              </p>
             </div>
           </div>
 
@@ -176,7 +210,10 @@ export function ContestBracketAdvanceModal({
                 onChange={(e) => setQuickUpdateResult(e.target.checked)}
                 className="size-4 rounded border-[#c4c7c8] text-orange-600 focus:ring-orange-500"
               />
-              <span>Cập nhật nhanh kết quả trận nguồn ({formatMatchLabel(sourceMatch)})</span>
+              <span>
+                Cập nhật nhanh kết quả trận nguồn (
+                {formatMatchLabel(sourceMatch)})
+              </span>
             </label>
 
             {quickUpdateResult && (
@@ -192,7 +229,10 @@ export function ContestBracketAdvanceModal({
 
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor={finishPositionId} className="flex items-center gap-1.5 text-xs font-bold text-[#444748]">
+                    <Label
+                      htmlFor={finishPositionId}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#444748]"
+                    >
                       <Flag className="size-3.5 text-[#747878]" />
                       Về đích
                     </Label>
@@ -208,7 +248,10 @@ export function ContestBracketAdvanceModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor={scoreId} className="flex items-center gap-1.5 text-xs font-bold text-[#444748]">
+                    <Label
+                      htmlFor={scoreId}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#444748]"
+                    >
                       <Award className="size-3.5 text-[#747878]" />
                       Điểm
                     </Label>
@@ -223,7 +266,10 @@ export function ContestBracketAdvanceModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor={bestLapId} className="flex items-center gap-1.5 text-xs font-bold text-[#444748]">
+                    <Label
+                      htmlFor={bestLapId}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#444748]"
+                    >
                       <Timer className="size-3.5 text-[#747878]" />
                       Lap tốt nhất (giây)
                     </Label>
@@ -239,7 +285,10 @@ export function ContestBracketAdvanceModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor={totalTimeId} className="flex items-center gap-1.5 text-xs font-bold text-[#444748]">
+                    <Label
+                      htmlFor={totalTimeId}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#444748]"
+                    >
                       <Timer className="size-3.5 text-[#747878]" />
                       Tổng thời gian (giây)
                     </Label>
@@ -257,14 +306,19 @@ export function ContestBracketAdvanceModal({
 
                 <div className="grid gap-4 sm:grid-cols-[220px_minmax(0,1fr)]">
                   <div className="space-y-1.5">
-                    <Label htmlFor={statusId} className="flex items-center gap-1.5 text-xs font-bold text-[#444748]">
+                    <Label
+                      htmlFor={statusId}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#444748]"
+                    >
                       <UserCheck className="size-3.5 text-[#747878]" />
                       Trạng thái người chơi
                     </Label>
                     <select
                       id={statusId}
                       value={status}
-                      onChange={(e) => setStatus(e.target.value as ContestParticipantStatus)}
+                      onChange={(e) =>
+                        setStatus(e.target.value as ContestParticipantStatus)
+                      }
                       className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-medium text-[#1c1b1b] focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                     >
                       {participantStatuses.map((s) => (
@@ -276,7 +330,10 @@ export function ContestBracketAdvanceModal({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor={noteId} className="flex items-center gap-1.5 text-xs font-bold text-[#444748]">
+                    <Label
+                      htmlFor={noteId}
+                      className="flex items-center gap-1.5 text-xs font-bold text-[#444748]"
+                    >
                       <NotebookPen className="size-3.5 text-[#747878]" />
                       Ghi chú kết quả
                     </Label>
@@ -302,7 +359,9 @@ export function ContestBracketAdvanceModal({
                 </label>
 
                 <div className="text-xs font-semibold text-[#747878]">
-                  Lap tốt nhất: {formatDurationSeconds(parseNumberInput(bestLapSeconds))} · Tổng thời gian:{" "}
+                  Lap tốt nhất:{" "}
+                  {formatDurationSeconds(parseNumberInput(bestLapSeconds))} ·
+                  Tổng thời gian:{" "}
                   {formatDurationSeconds(parseNumberInput(totalTimeSeconds))}
                 </div>
               </div>

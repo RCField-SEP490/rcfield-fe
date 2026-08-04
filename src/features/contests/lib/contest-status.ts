@@ -278,6 +278,21 @@ export function getContestPublishAvailability(
   return ALLOWED
 }
 
+/** Nhãn tiếng Việt cho cách xếp hạng; đừng in mã nội bộ ra cho người dùng đọc. */
+export function getLeaderboardModeLabel(mode?: string | null): string {
+  switch (mode) {
+    case "KNOCKOUT_BRACKET":
+    case "KNOCKOUT_WINS":
+      return "Theo vòng bị loại"
+    case "TOTAL_TIME":
+      return "Theo tổng thời gian"
+    case "BEST_LAP":
+      return "Theo vòng chạy nhanh nhất"
+    default:
+      return "--"
+  }
+}
+
 export function getRegistrationStatusClass(status: ContestRegistrationStatus) {
   switch (status) {
     case "CONFIRMED":

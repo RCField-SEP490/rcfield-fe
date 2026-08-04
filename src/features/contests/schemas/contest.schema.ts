@@ -98,8 +98,15 @@ export const contestGenerateMatchesSchema = z.object({
     .number({ message: "Số lượng driver mỗi trận phải là số" })
     .int()
     .min(1, "Số lượng driver mỗi trận phải lớn hơn 0")
-    .max(64, "Số lượng driver tối đa là 64"),
-  seeding_mode: z.enum(["MANUAL", "CHECK_IN_ORDER"]),
+    .max(64, "Số lượng driver tối đa là 64")
+    .optional(),
+  // Đấu loại bốc ngẫu nhiên nên không gửi cách xếp thứ tự; backend cũng để
+  // trường này optional, ép ở đây chỉ chặn nhầm chính mình.
+  seeding_mode: z
+    .enum(["MANUAL", "CHECK_IN_ORDER"], {
+      message: "Cách xếp thứ tự không hợp lệ",
+    })
+    .optional(),
 })
 
 export const contestMatchResultInputSchema = z.object({

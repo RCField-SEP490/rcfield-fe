@@ -18,7 +18,10 @@ import {
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
 } from "@/features/contests/lib/contest-status"
-import type { ContestItem, ContestRegistration } from "@/features/contests/types"
+import type {
+  ContestItem,
+  ContestRegistration,
+} from "@/features/contests/types"
 import { Skeleton } from "@/shared/ui/skeleton"
 
 import {

@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { contestBookingApi, contestBookingQueryKeys } from "../api/contest-booking.api"
+import {
+  contestBookingApi,
+  contestBookingQueryKeys,
+} from "../api/contest-booking.api"
 import { contestQueryKeys } from "../api/contest.api"
 
 export function useContestBookings(contestId?: string) {

@@ -1,7 +1,5 @@
 import type { ContestMatch } from "@/features/contests/types"
-import {
-  getMatchParticipantName,
-} from "@/features/contests/lib/contest-runtime"
+import { getMatchParticipantName } from "@/features/contests/lib/contest-runtime"
 import { getParticipantStatusLabel } from "@/features/contests/lib/contest-status"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 
@@ -28,7 +26,8 @@ export function MatchParticipantView({ match }: { match: ContestMatch }) {
                 />
               </div>
               <p className="mt-1 text-xs font-semibold text-[#747878]">
-                Vị trí {participant.slot_no} · {getParticipantStatusLabel(participant.status)}
+                Vị trí {participant.slot_no} ·{" "}
+                {getParticipantStatusLabel(participant.status)}
               </p>
             </div>
           ))

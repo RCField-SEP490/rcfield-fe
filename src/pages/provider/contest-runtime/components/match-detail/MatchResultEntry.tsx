@@ -1,5 +1,11 @@
-import type { ContestMatch, ContestMatchParticipant } from "@/features/contests/types"
+import type {
+  ContestMatch,
+  ContestMatchParticipant,
+  ContestWalkoverStatus,
+} from "@/features/contests/types"
 import type { MatchResultDraft } from "./match-detail-types"
+import { MatchKnockoutResultForm } from "./MatchKnockoutResultForm"
+import { MatchWalkoverDialog } from "./MatchWalkoverDialog"
 import { MatchSubmitResultsForm } from "./MatchSubmitResultsForm"
 
 type EditableResultField =
@@ -18,6 +24,7 @@ export function MatchResultEntry({
   isKnockoutRuntime,
   hasPendingBracketChanges,
   onUpdateResult,
+  onWalkover,
 }: {
   match: ContestMatch
   results: MatchResultDraft[]
@@ -29,6 +36,10 @@ export function MatchResultEntry({
     field: EditableResultField,
     value: number | string | boolean | null,
   ) => void
+  onWalkover: (body: {
+    absent: Array<{ registration_id: string; status: ContestWalkoverStatus }>
+    reason: string
+  }) => Promise<unknown>
 }) {
   const readyForResultEntry =
     match.match_type === "TIME_ATTACK"
@@ -43,7 +54,7 @@ export function MatchResultEntry({
         </h4>
         <p className="mt-2 text-sm font-semibold text-[#747878]">
           {isKnockoutRuntime
-            ? "Hãy kéo thả đủ 2 người vào trận này từ sơ đồ nhánh đấu rồi lưu sơ đồ trước."
+            ? "Trận này còn chờ người thắng của vòng trước. Nhập kết quả các trận vòng trước là đối thủ tự hiện ra đây."
             : "Trận này chưa có đủ người thi đấu để nhập kết quả."}
         </p>
         {hasPendingBracketChanges ? (
@@ -52,6 +63,29 @@ export function MatchResultEntry({
           </p>
         ) : null}
       </section>
+    )
+  }
+
+  // Đấu loại chỉ cần biết ai thắng; các thể thức khác vẫn nhập đầy đủ số liệu.
+  if (isKnockoutRuntime) {
+    return (
+      <div className="space-y-3">
+        <MatchKnockoutResultForm
+          results={results}
+          participantMap={participantMap}
+          onUpdateResult={onUpdateResult}
+        />
+        <div className="flex flex-wrap items-center gap-2 border-t border-[#e5e2e1] pt-3">
+          <p className="text-xs font-semibold text-[#747878]">
+            Có người không tới hoặc bỏ cuộc?
+          </p>
+          <MatchWalkoverDialog
+            participants={match.participants}
+            onSubmit={onWalkover}
+            disabled={match.status === "COMPLETED"}
+          />
+        </div>
+      </div>
     )
   }
 

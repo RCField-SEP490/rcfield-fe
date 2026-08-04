@@ -65,7 +65,9 @@ export function ContestAboutSection({ contest }: { contest: ContestItem }) {
             />
             <BigStat
               value={remaining === null ? "∞" : String(remaining)}
-              label={remaining === null ? "Không giới hạn suất" : "Suất còn lại"}
+              label={
+                remaining === null ? "Không giới hạn suất" : "Suất còn lại"
+              }
               icon={<Flag className="size-4" />}
               highlight={remaining !== null && remaining <= 5}
             />
@@ -191,7 +193,11 @@ export function ContestFormatSection({ contest }: { contest: ContestItem }) {
 
         <div className="mt-14 grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-white/10">
           {rules.map((rule, index) => (
-            <Reveal key={rule.caption} index={index} className="lg:px-8 lg:first:pl-0">
+            <Reveal
+              key={rule.caption}
+              index={index}
+              className="lg:px-8 lg:first:pl-0"
+            >
               <div className="flex items-center gap-3">
                 <span className="flex size-10 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 text-primary">
                   {rule.icon}
@@ -424,7 +430,9 @@ function PodiumColumn({ entry, place }: { entry: PrizeEntry; place: number }) {
         {entry.reward}
       </p>
       {entry.note ? (
-        <p className="mt-1 text-xs font-semibold text-slate-500">{entry.note}</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">
+          {entry.note}
+        </p>
       ) : null}
       <div
         className={cn(
@@ -439,9 +447,7 @@ function PodiumColumn({ entry, place }: { entry: PrizeEntry; place: number }) {
   )
 }
 
-function toPrizeEntries(
-  items: Array<Record<string, unknown>>,
-): PrizeEntry[] {
+function toPrizeEntries(items: Array<Record<string, unknown>>): PrizeEntry[] {
   return items.map((item, index) => ({
     rank: String(item.position ?? item.rank ?? `Top ${index + 1}`),
     reward: String(

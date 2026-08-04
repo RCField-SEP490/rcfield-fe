@@ -63,7 +63,9 @@ export function ContestJoinSection({
             <SectionHeading
               eyebrow="Tham gia"
               title={
-                existingRegistration ? "Bạn đã có mặt trong giải" : "Sẵn sàng vào cuộc?"
+                existingRegistration
+                  ? "Bạn đã có mặt trong giải"
+                  : "Sẵn sàng vào cuộc?"
               }
               lead={
                 existingRegistration

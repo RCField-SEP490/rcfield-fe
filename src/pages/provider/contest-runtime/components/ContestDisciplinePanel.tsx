@@ -2,7 +2,10 @@ import { useMemo, useState } from "react"
 import { ShieldBan, UserCog, UserX } from "lucide-react"
 import type { ContestRegistration } from "@/features/contests/types"
 import { getRegistrationDisplayName } from "@/features/contests/lib/contest-runtime"
-import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  Panel,
+  PanelTitle,
+} from "@/pages/provider/components/ProviderPrimitives"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
@@ -31,7 +34,9 @@ export function ContestDisciplinePanel({
   const activeStaffIds = useMemo(
     () =>
       new Set(
-        (workspace.staffAssignmentsQuery.data ?? []).map((item) => item.staff_id),
+        (workspace.staffAssignmentsQuery.data ?? []).map(
+          (item) => item.staff_id,
+        ),
       ),
     [workspace.staffAssignmentsQuery.data],
   )
@@ -164,7 +169,8 @@ export function ContestDisciplinePanel({
                       {assignment.staff?.full_name ?? assignment.staff_id}
                     </p>
                     <p className="text-xs font-semibold text-[#747878]">
-                      Staff ID: {assignment.staff_id} · {assignment.staff?.email ?? "Chưa có email"}
+                      Staff ID: {assignment.staff_id} ·{" "}
+                      {assignment.staff?.email ?? "Chưa có email"}
                     </p>
                   </div>
                 </div>
@@ -203,12 +209,15 @@ export function ContestDisciplinePanel({
               <select
                 className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
                 value={selectedRegistrationId}
-                onChange={(event) => setSelectedRegistrationId(event.target.value)}
+                onChange={(event) =>
+                  setSelectedRegistrationId(event.target.value)
+                }
               >
                 <option value="">Chọn người chơi cần disqualify</option>
                 {eligibleForDisqualify.map((registration) => (
                   <option key={registration.id} value={registration.id}>
-                    {getRegistrationDisplayName(registration)} · {registration.status}
+                    {getRegistrationDisplayName(registration)} ·{" "}
+                    {registration.status}
                   </option>
                 ))}
               </select>
@@ -302,7 +311,8 @@ export function ContestDisciplinePanel({
                     {ban.user?.full_name ?? ban.user_id}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-[#747878]">
-                    {ban.user?.email ?? "Không có email"} · scope {ban.scope_type}
+                    {ban.user?.email ?? "Không có email"} · scope{" "}
+                    {ban.scope_type}
                   </p>
                   <p className="mt-3 text-sm font-semibold text-[#444748]">
                     {ban.reason}
@@ -313,8 +323,16 @@ export function ContestDisciplinePanel({
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[#747878]">
-                    <span>Tạo lúc: {new Date(ban.created_at).toLocaleString("vi-VN")}</span>
-                    <span>Hết hạn: {ban.expires_at ? new Date(ban.expires_at).toLocaleString("vi-VN") : "Không đặt"}</span>
+                    <span>
+                      Tạo lúc:{" "}
+                      {new Date(ban.created_at).toLocaleString("vi-VN")}
+                    </span>
+                    <span>
+                      Hết hạn:{" "}
+                      {ban.expires_at
+                        ? new Date(ban.expires_at).toLocaleString("vi-VN")
+                        : "Không đặt"}
+                    </span>
                     <span>{ban.lifted_at ? "Đã gỡ ban" : "Đang hiệu lực"}</span>
                   </div>
                 </div>

@@ -29,7 +29,9 @@ export function ContestRegistrationTable({
   ) => void
   onCheckIn?: (registration: ContestRegistration) => void
   /** Trả về lý do khoá nút điểm danh của riêng hàng đó, hoặc undefined nếu cho bấm. */
-  resolveCheckInBlock?: (registration: ContestRegistration) => string | undefined
+  resolveCheckInBlock?: (
+    registration: ContestRegistration,
+  ) => string | undefined
 }) {
   return (
     <div className="divide-y divide-[#e5e2e1] rounded-xl border border-[#e5e2e1]">
@@ -114,7 +116,10 @@ function RegistrationRow({
         </p>
 
         {declaration ? (
-          <ByocPhotoStrip photos={declaration.photos} notes={declaration.notes} />
+          <ByocPhotoStrip
+            photos={declaration.photos}
+            notes={declaration.notes}
+          />
         ) : null}
       </div>
 

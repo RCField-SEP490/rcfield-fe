@@ -4,8 +4,12 @@ import { getRegistrationDisplayName } from "@/features/contests/lib/contest-runt
 
 export function useRegistrationFilters(registrations: ContestRegistration[]) {
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"ALL" | ContestRegistration["status"]>("ALL")
-  const [paymentFilter, setPaymentFilter] = useState<"ALL" | ContestRegistration["paymentStatus"]>("ALL")
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | ContestRegistration["status"]
+  >("ALL")
+  const [paymentFilter, setPaymentFilter] = useState<
+    "ALL" | ContestRegistration["paymentStatus"]
+  >("ALL")
 
   const filteredRegistrations = useMemo(() => {
     const normalized = search.trim().toLowerCase()
@@ -14,8 +18,12 @@ export function useRegistrationFilters(registrations: ContestRegistration[]) {
         normalized.length === 0 ||
         registration.id.toLowerCase().includes(normalized) ||
         (registration.checkInCode ?? "").toLowerCase().includes(normalized) ||
-        getRegistrationDisplayName(registration).toLowerCase().includes(normalized) ||
-        (registration.participant?.email ?? "").toLowerCase().includes(normalized)
+        getRegistrationDisplayName(registration)
+          .toLowerCase()
+          .includes(normalized) ||
+        (registration.participant?.email ?? "")
+          .toLowerCase()
+          .includes(normalized)
       const matchesStatus =
         statusFilter === "ALL" || registration.status === statusFilter
       const matchesPayment =
@@ -28,8 +36,10 @@ export function useRegistrationFilters(registrations: ContestRegistration[]) {
     () => ({
       total: registrations.length,
       pending: registrations.filter((item) => item.status === "PENDING").length,
-      confirmed: registrations.filter((item) => item.status === "CONFIRMED").length,
-      checkedIn: registrations.filter((item) => item.status === "CHECKED_IN").length,
+      confirmed: registrations.filter((item) => item.status === "CONFIRMED")
+        .length,
+      checkedIn: registrations.filter((item) => item.status === "CHECKED_IN")
+        .length,
       revenue: {
         expected: registrations
           .filter((item) => item.status !== "CANCELLED")
@@ -38,7 +48,9 @@ export function useRegistrationFilters(registrations: ContestRegistration[]) {
           .filter((item) => item.paymentStatus === "MARKED_PAID")
           .reduce((sum, item) => sum + (item.entryFeeAmount ?? 0), 0),
         pending: registrations
-          .filter((item) => ["PENDING_PAYMENT", "PENDING_REVIEW"].includes(item.paymentStatus))
+          .filter((item) =>
+            ["PENDING_PAYMENT", "PENDING_REVIEW"].includes(item.paymentStatus),
+          )
           .reduce((sum, item) => sum + (item.entryFeeAmount ?? 0), 0),
         waived: registrations
           .filter((item) => item.paymentStatus === "WAIVED")

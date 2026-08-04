@@ -61,9 +61,7 @@ export function MatchParticipantReorderList({
                   ) : null}
                 </div>
                 <p className="text-xs font-semibold text-[#747878]">
-                  {snapshot
-                    ? getParticipantStatusLabel(snapshot.status)
-                    : "--"}
+                  {snapshot ? getParticipantStatusLabel(snapshot.status) : "--"}
                 </p>
               </div>
               <div className="grid gap-3 md:grid-cols-4">
@@ -100,9 +98,7 @@ export function MatchParticipantReorderList({
                       onUpdateParticipant(
                         participant.registration_id,
                         "grid_position",
-                        event.target.value
-                          ? Number(event.target.value)
-                          : null,
+                        event.target.value ? Number(event.target.value) : null,
                       )
                     }
                   />

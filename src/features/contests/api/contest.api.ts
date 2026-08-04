@@ -1,5 +1,6 @@
 import { api } from "@/shared/lib/axios"
 import type {
+  ContestMatchWalkoverBody,
   ContestAuditLogItem,
   ContestBanItem,
   ContestCorrectResultsBody,
@@ -413,6 +414,17 @@ export const contestApi = {
   ): Promise<ContestMatch[]> => {
     const res = await api.post<ApiEnvelope<ContestMatch[]>>(
       `/v1/contest-matches/${matchId}/results/correct`,
+      body,
+    )
+    return (res.data.data ?? []).map(mapContestMatch)
+  },
+
+  recordMatchWalkover: async (
+    matchId: string,
+    body: ContestMatchWalkoverBody,
+  ): Promise<ContestMatch[]> => {
+    const res = await api.post<ApiEnvelope<ContestMatch[]>>(
+      `/v1/contest-matches/${matchId}/walkover`,
       body,
     )
     return (res.data.data ?? []).map(mapContestMatch)

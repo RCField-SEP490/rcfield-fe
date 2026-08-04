@@ -163,8 +163,10 @@ export function ContestMatchBoard({
 
     const result = contestGenerateMatchesSchema.safeParse(rawData)
     if (!result.success) {
-      const firstError = result.error.issues[0]
-      toast.error(`Lỗi: ${firstError.message}`)
+      toast.error(
+        isKnockoutDraw ? "Không thể bốc thăm" : "Không thể tạo lượt thi đấu",
+        { description: result.error.issues[0]?.message },
+      )
       return
     }
 

@@ -73,13 +73,16 @@ export function MatchActions({
           destructive
           onConfirm={onCorrectResults}
         />
+        {/* Người thắng tự sang vòng sau ngay khi lưu kết quả. Nút này chỉ còn
+            để chữa cháy khi dữ liệu lệch, nên đặt nhẹ và nói rõ công dụng. */}
         <Button
-          variant="outline"
-          className="rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+          variant="ghost"
+          className="rounded-lg text-xs font-semibold text-[#747878] hover:bg-[#f6f3f2]"
           disabled={actionsDisabled}
+          title="Chỉ dùng khi vòng sau thiếu người dù trận này đã có kết quả"
           onClick={() => void onAdvance()}
         >
-          Đẩy người thắng vào vòng sau
+          Đồng bộ lại vòng sau
         </Button>
       </div>
     </section>

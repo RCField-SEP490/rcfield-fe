@@ -77,9 +77,7 @@ export function MatchSubmitResultsForm({
                     onUpdateResult(
                       result.registration_id,
                       "finish_position",
-                      event.target.value
-                        ? Number(event.target.value)
-                        : null,
+                      event.target.value ? Number(event.target.value) : null,
                     )
                   }
                 />
@@ -92,9 +90,7 @@ export function MatchSubmitResultsForm({
                     onUpdateResult(
                       result.registration_id,
                       "score",
-                      event.target.value
-                        ? Number(event.target.value)
-                        : null,
+                      event.target.value ? Number(event.target.value) : null,
                     )
                   }
                 />
@@ -108,9 +104,7 @@ export function MatchSubmitResultsForm({
                     onUpdateResult(
                       result.registration_id,
                       "best_lap_seconds",
-                      event.target.value
-                        ? Number(event.target.value)
-                        : null,
+                      event.target.value ? Number(event.target.value) : null,
                     )
                   }
                 />
@@ -124,9 +118,7 @@ export function MatchSubmitResultsForm({
                     onUpdateResult(
                       result.registration_id,
                       "total_time_seconds",
-                      event.target.value
-                        ? Number(event.target.value)
-                        : null,
+                      event.target.value ? Number(event.target.value) : null,
                     )
                   }
                 />
@@ -145,11 +137,21 @@ export function MatchSubmitResultsForm({
                     )
                   }
                 >
-                  <option value="READY">{getParticipantStatusLabel("READY")}</option>
-                  <option value="STARTED">{getParticipantStatusLabel("STARTED")}</option>
-                  <option value="FINISHED">{getParticipantStatusLabel("FINISHED")}</option>
-                  <option value="DNS">{getParticipantStatusLabel("DNS")}</option>
-                  <option value="DNF">{getParticipantStatusLabel("DNF")}</option>
+                  <option value="READY">
+                    {getParticipantStatusLabel("READY")}
+                  </option>
+                  <option value="STARTED">
+                    {getParticipantStatusLabel("STARTED")}
+                  </option>
+                  <option value="FINISHED">
+                    {getParticipantStatusLabel("FINISHED")}
+                  </option>
+                  <option value="DNS">
+                    {getParticipantStatusLabel("DNS")}
+                  </option>
+                  <option value="DNF">
+                    {getParticipantStatusLabel("DNF")}
+                  </option>
                   <option value="DQ">{getParticipantStatusLabel("DQ")}</option>
                 </select>
               </MatchDetailField>
@@ -181,9 +183,8 @@ export function MatchSubmitResultsForm({
               Đánh dấu người thắng
             </label>
             <div className="mt-2 text-xs font-semibold text-[#747878]">
-              Lap tốt nhất: {formatDurationSeconds(result.best_lap_seconds)}{" "}
-              · Tổng thời gian:{" "}
-              {formatDurationSeconds(result.total_time_seconds)}
+              Lap tốt nhất: {formatDurationSeconds(result.best_lap_seconds)} ·
+              Tổng thời gian: {formatDurationSeconds(result.total_time_seconds)}
             </div>
           </div>
         ))}

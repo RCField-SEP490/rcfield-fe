@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import type { ContestMatch, ContestSubmitResultsBody } from "@/features/contests/types"
+import type {
+  ContestMatch,
+  ContestSubmitResultsBody,
+} from "@/features/contests/types"
 import {
   contestCorrectResultsSchema,
   contestSubmitResultsSchema,
@@ -203,6 +206,14 @@ export function useMatchDetailState(
     }
   }
 
+  const handleWalkover = async (body: {
+    absent: Array<{ registration_id: string; status: "DNS" | "DNF" | "DQ" }>
+    reason: string
+  }) => {
+    if (!match) return
+    await runtime.walkoverMutation.mutateAsync({ matchId: match.id, body })
+  }
+
   const handleAdvance = async () => {
     if (!match) return
     const hasWinner = results.some((result) => result.is_winner)
@@ -236,5 +247,6 @@ export function useMatchDetailState(
     handleSubmitResults,
     handleCorrectResults,
     handleAdvance,
+    handleWalkover,
   }
 }

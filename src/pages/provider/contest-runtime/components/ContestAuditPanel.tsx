@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react"
 import type { ContestAuditLogItem } from "@/features/contests/types"
 import { getAuditGroup } from "@/features/contests/lib/contest-runtime"
-import { Panel, PanelTitle } from "@/pages/provider/components/ProviderPrimitives"
+import {
+  Panel,
+  PanelTitle,
+} from "@/pages/provider/components/ProviderPrimitives"
 import { Button } from "@/shared/ui/button"
 
 const ACTOR_ROLE_LABEL: Record<string, string> = {
@@ -15,7 +18,8 @@ const ACTOR_ROLE_LABEL: Record<string, string> = {
 function formatFieldValue(value: unknown): string {
   if (value === null || value === undefined) return "--"
   if (typeof value === "boolean") return value ? "Có" : "Không"
-  if (typeof value === "number" || typeof value === "string") return String(value)
+  if (typeof value === "number" || typeof value === "string")
+    return String(value)
   return JSON.stringify(value)
 }
 
@@ -26,13 +30,16 @@ function buildAuditDiff(
 ) {
   const before = beforeJson ?? {}
   const after = afterJson ?? {}
-  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
+  const keys = Array.from(
+    new Set([...Object.keys(before), ...Object.keys(after)]),
+  )
   return keys
     .map((field) => ({
       field,
       before: formatFieldValue(before[field]),
       after: formatFieldValue(after[field]),
-      changed: formatFieldValue(before[field]) !== formatFieldValue(after[field]),
+      changed:
+        formatFieldValue(before[field]) !== formatFieldValue(after[field]),
     }))
     .filter((row) => row.changed || row.after !== "--")
 }
@@ -50,11 +57,15 @@ export function ContestAuditPanel({
   total: number
   onPageChange: (page: number) => void
 }) {
-  const [filter, setFilter] = useState<"all" | "contest" | "registration" | "match">("all")
+  const [filter, setFilter] = useState<
+    "all" | "contest" | "registration" | "match"
+  >("all")
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null)
 
   const filteredLogs = useMemo(() => {
-    return filter === "all" ? logs : logs.filter((log) => getAuditGroup(log) === filter)
+    return filter === "all"
+      ? logs
+      : logs.filter((log) => getAuditGroup(log) === filter)
   }, [filter, logs])
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
@@ -63,7 +74,10 @@ export function ContestAuditPanel({
 
   return (
     <Panel>
-      <PanelTitle title="Nhật ký thao tác" subtitle="Theo dõi mọi thay đổi phát sinh trong quá trình vận hành giải đấu." />
+      <PanelTitle
+        title="Nhật ký thao tác"
+        subtitle="Theo dõi mọi thay đổi phát sinh trong quá trình vận hành giải đấu."
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         {(["all", "contest", "registration", "match"] as const).map((value) => (
@@ -77,44 +91,64 @@ export function ContestAuditPanel({
                 : "border-[#e5e2e1] bg-white text-[#5d5f5f] hover:bg-[#fcf8f8]"
             }`}
           >
-            {value === "all" ? "Tất cả" : value === "contest" ? "Giải đấu" : value === "registration" ? "Đăng ký" : "Trận đấu"}
+            {value === "all"
+              ? "Tất cả"
+              : value === "contest"
+                ? "Giải đấu"
+                : value === "registration"
+                  ? "Đăng ký"
+                  : "Trận đấu"}
           </button>
         ))}
       </div>
 
       <div className="space-y-3">
         {filteredLogs.map((log) => {
-          const actorRoleLabel = ACTOR_ROLE_LABEL[log.actorRole ?? ""] ?? log.actorRole ?? "--"
+          const actorRoleLabel =
+            ACTOR_ROLE_LABEL[log.actorRole ?? ""] ?? log.actorRole ?? "--"
           const actorDisplay = log.actorName
             ? `${log.actorName} · ${actorRoleLabel}`
             : actorRoleLabel
           const diff = buildAuditDiff(log.beforeJson, log.afterJson)
           const expanded = expandedLogId === log.id
           return (
-            <article key={log.id} className="rounded-lg border border-[#e5e2e1] p-4">
+            <article
+              key={log.id}
+              className="rounded-lg border border-[#e5e2e1] p-4"
+            >
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-extrabold text-[#1c1b1b]">
                     {log.actionSummary ?? log.eventType}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[#747878]">
-                    <span>{new Date(log.createdAt).toLocaleString("vi-VN")}</span>
+                    <span>
+                      {new Date(log.createdAt).toLocaleString("vi-VN")}
+                    </span>
                     <span>{actorDisplay}</span>
                     <span className="rounded bg-[#fcf8f8] px-1.5 py-0.5 font-mono text-[11px]">
                       {log.eventType}
                     </span>
-                    {log.matchId ? <span>match {log.matchId.slice(0, 8)}</span> : null}
+                    {log.matchId ? (
+                      <span>match {log.matchId.slice(0, 8)}</span>
+                    ) : null}
                     {log.registrationId ? (
                       <span>registration {log.registrationId.slice(0, 8)}</span>
                     ) : null}
                   </div>
                   {log.reason ? (
-                    <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">Lý do: {log.reason}</p>
+                    <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">
+                      Lý do: {log.reason}
+                    </p>
                   ) : null}
                 </div>
                 <button
                   type="button"
-                  onClick={() => setExpandedLogId((current) => (current === log.id ? null : log.id))}
+                  onClick={() =>
+                    setExpandedLogId((current) =>
+                      current === log.id ? null : log.id,
+                    )
+                  }
                   className="text-sm font-bold text-orange-700"
                 >
                   {expanded ? "Ẩn chi tiết" : "Xem chi tiết"}
@@ -138,8 +172,12 @@ export function ContestAuditPanel({
                               <td className="px-3 py-2 font-mono font-semibold text-[#444748]">
                                 {row.field}
                               </td>
-                              <td className="px-3 py-2 text-[#747878]">{row.before}</td>
-                              <td className="px-3 py-2 font-bold text-[#1c1b1b]">{row.after}</td>
+                              <td className="px-3 py-2 text-[#747878]">
+                                {row.before}
+                              </td>
+                              <td className="px-3 py-2 font-bold text-[#1c1b1b]">
+                                {row.after}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -165,7 +203,9 @@ export function ContestAuditPanel({
           )
         })}
         {filteredLogs.length === 0 ? (
-          <p className="text-sm font-semibold text-[#747878]">Chưa có audit log nào.</p>
+          <p className="text-sm font-semibold text-[#747878]">
+            Chưa có audit log nào.
+          </p>
         ) : null}
       </div>
 

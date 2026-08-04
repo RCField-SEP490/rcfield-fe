@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { contestApi, contestQueryKeys } from "../api/contest.api"
 import type {
   ContestMatchesQuery,
+  ContestMatchWalkoverBody,
   ContestCorrectResultsBody,
   ContestGenerateMatchesBody,
   ContestRegistrationsQuery,
@@ -40,7 +41,8 @@ export function useContestRuntime(
 
   const registrationsQuery = useQuery({
     queryKey: contestQueryKeys.registrations(contestId, options?.registrations),
-    queryFn: () => contestApi.listContestRegistrations(contestId!, options?.registrations),
+    queryFn: () =>
+      contestApi.listContestRegistrations(contestId!, options?.registrations),
     enabled: Boolean(contestId) && enabled.registrations,
   })
 
@@ -65,16 +67,27 @@ export function useContestRuntime(
   const invalidateRuntime = async () => {
     if (!contestId) return
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.registrations(contestId) }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.matches(contestId) }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.metrics(contestId) }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.auditLogs(contestId) }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.detail(contestId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.registrations(contestId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.matches(contestId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.metrics(contestId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.auditLogs(contestId),
+      }),
     ])
   }
 
   const generateMatchesMutation = useMutation({
-    mutationFn: (body: ContestGenerateMatchesBody) => contestApi.generateMatches(contestId!, body),
+    mutationFn: (body: ContestGenerateMatchesBody) =>
+      contestApi.generateMatches(contestId!, body),
     onSuccess: invalidateRuntime,
   })
 
@@ -89,20 +102,46 @@ export function useContestRuntime(
   })
 
   const updateParticipantsMutation = useMutation({
-    mutationFn: ({ matchId, body }: { matchId: string; body: ContestUpdateMatchParticipantsBody }) =>
-      contestApi.updateMatchParticipants(matchId, body),
+    mutationFn: ({
+      matchId,
+      body,
+    }: {
+      matchId: string
+      body: ContestUpdateMatchParticipantsBody
+    }) => contestApi.updateMatchParticipants(matchId, body),
     onSuccess: invalidateRuntime,
   })
 
   const submitResultsMutation = useMutation({
-    mutationFn: ({ matchId, body }: { matchId: string; body: ContestSubmitResultsBody }) =>
-      contestApi.submitMatchResults(matchId, body),
+    mutationFn: ({
+      matchId,
+      body,
+    }: {
+      matchId: string
+      body: ContestSubmitResultsBody
+    }) => contestApi.submitMatchResults(matchId, body),
     onSuccess: invalidateRuntime,
   })
 
   const correctResultsMutation = useMutation({
-    mutationFn: ({ matchId, body }: { matchId: string; body: ContestCorrectResultsBody }) =>
-      contestApi.correctMatchResults(matchId, body),
+    mutationFn: ({
+      matchId,
+      body,
+    }: {
+      matchId: string
+      body: ContestCorrectResultsBody
+    }) => contestApi.correctMatchResults(matchId, body),
+    onSuccess: invalidateRuntime,
+  })
+
+  const walkoverMutation = useMutation({
+    mutationFn: ({
+      matchId,
+      body,
+    }: {
+      matchId: string
+      body: ContestMatchWalkoverBody
+    }) => contestApi.recordMatchWalkover(matchId, body),
     onSuccess: invalidateRuntime,
   })
 
@@ -124,5 +163,6 @@ export function useContestRuntime(
     submitResultsMutation,
     correctResultsMutation,
     advanceMatchMutation,
+    walkoverMutation,
   }
 }

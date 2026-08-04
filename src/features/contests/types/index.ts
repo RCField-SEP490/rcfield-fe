@@ -435,7 +435,7 @@ export type ContestMetrics = {
     published: boolean
     published_at: string | null
     entry_count: number
-    mode: "BEST_LAP" | "TOTAL_TIME" | "KNOCKOUT_WINS"
+    mode: ContestLeaderboardMode
   }
   global_sync: {
     synced: boolean
@@ -466,10 +466,21 @@ export type ContestLeaderboardEntry = {
   latest_finish_position: number | null
   matches_completed: number
   progressed_round: number
+  last_played_round?: number
+  won_last_match?: boolean
+  /** Trận thắng bằng thi đấu thật, không tính thắng do gặp ô trống. */
+  real_wins?: number
 }
 
+/** KNOCKOUT_WINS là giá trị cũ còn sót trong dữ liệu đã công bố trước đây. */
+export type ContestLeaderboardMode =
+  | "BEST_LAP"
+  | "TOTAL_TIME"
+  | "KNOCKOUT_BRACKET"
+  | "KNOCKOUT_WINS"
+
 export type ContestLeaderboardPayload = {
-  mode: "BEST_LAP" | "TOTAL_TIME" | "KNOCKOUT_WINS"
+  mode: ContestLeaderboardMode
   entries: ContestLeaderboardEntry[]
   match_count: number
   published_at: string
@@ -501,6 +512,13 @@ export type ContestGenerateMatchesBody = {
   registration_ids?: string[]
   drivers_per_match?: number
   seeding_mode?: "MANUAL" | "CHECK_IN_ORDER"
+}
+
+export type ContestWalkoverStatus = "DNS" | "DNF" | "DQ"
+
+export type ContestMatchWalkoverBody = {
+  absent: Array<{ registration_id: string; status: ContestWalkoverStatus }>
+  reason: string
 }
 
 export type ContestListParams = {

@@ -59,23 +59,30 @@ export function useContestWorkspace(
       queryClient.invalidateQueries({
         queryKey: contestQueryKeys.staffAssignments(contestId),
       }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.bans(contestId) }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.bans(contestId),
+      }),
       queryClient.invalidateQueries({
         queryKey: contestQueryKeys.registrations(contestId),
       }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.matches(contestId) }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.matches(contestId),
+      }),
       queryClient.invalidateQueries({
         queryKey: contestQueryKeys.auditLogs(contestId),
       }),
       queryClient.invalidateQueries({
         queryKey: contestQueryKeys.metrics(contestId),
       }),
-      queryClient.invalidateQueries({ queryKey: contestQueryKeys.detail(contestId) }),
+      queryClient.invalidateQueries({
+        queryKey: contestQueryKeys.detail(contestId),
+      }),
     ])
   }
 
   const assignStaffMutation = useMutation({
-    mutationFn: (staffId: string) => contestApi.assignStaff(contestId!, staffId),
+    mutationFn: (staffId: string) =>
+      contestApi.assignStaff(contestId!, staffId),
     onSuccess: invalidateGovernance,
   })
 
@@ -92,13 +99,8 @@ export function useContestWorkspace(
   })
 
   const liftBanMutation = useMutation({
-    mutationFn: ({
-      banId,
-      reason,
-    }: {
-      banId: string
-      reason?: string
-    }) => contestApi.liftBan(contestId!, banId, { reason }),
+    mutationFn: ({ banId, reason }: { banId: string; reason?: string }) =>
+      contestApi.liftBan(contestId!, banId, { reason }),
     onSuccess: invalidateGovernance,
   })
 

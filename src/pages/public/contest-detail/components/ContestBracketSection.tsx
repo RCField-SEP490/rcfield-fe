@@ -62,7 +62,11 @@ export function ContestRuntimeOverview({
           />
           <Info
             label="Vòng hiện tại"
-            value={runtimeSummary?.current_round_no ? `Vòng ${runtimeSummary.current_round_no}` : "--"}
+            value={
+              runtimeSummary?.current_round_no
+                ? `Vòng ${runtimeSummary.current_round_no}`
+                : "--"
+            }
           />
           <Info
             label="Đã hoàn thành"
@@ -116,7 +120,8 @@ export function ContestRuntimeOverview({
                           `Registration ${winner.registration_id.slice(0, 8)}`}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Đi tiếp từ {winner.source_match_name ?? "trận đã hoàn thành"}
+                        Đi tiếp từ{" "}
+                        {winner.source_match_name ?? "trận đã hoàn thành"}
                       </p>
                     </div>
                   ))}
@@ -281,8 +286,8 @@ function QualifyingFinalBracketBoard({
           <h3 className="text-lg font-extrabold">Chung kết (Final)</h3>
         </div>
         <p className="mt-2 text-sm text-slate-500">
-          Nhánh knockout dành cho các VĐV vượt qua vòng loại, xếp seed theo
-          hạng qualifying.
+          Nhánh knockout dành cho các VĐV vượt qua vòng loại, xếp seed theo hạng
+          qualifying.
         </p>
 
         <div className="mt-5">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Trophy } from "lucide-react"
+import { AlertTriangle, Trophy } from "lucide-react"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import {
   formatContestDateTime,
@@ -157,6 +157,22 @@ export function ContestKnockoutBracket({
           </div>
         }
       />
+
+      {hasChanges ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
+          <AlertTriangle className="size-4 shrink-0 text-amber-700" />
+          <p className="text-xs font-bold text-amber-900">
+            Sơ đồ đang có thay đổi chưa lưu — rời khỏi trang là mất.
+          </p>
+          <Button
+            type="button"
+            className="ml-auto h-7 rounded-lg bg-amber-700 px-3 text-xs font-bold text-white hover:bg-amber-800"
+            onClick={onCommit}
+          >
+            Lưu ngay
+          </Button>
+        </div>
+      ) : null}
 
       {groups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
@@ -336,7 +352,11 @@ function BracketMatchCard({
               key={slotIndex}
               className={`px-2.5 py-1.5 transition-colors ${
                 isDropTarget ? "bg-orange-100" : ""
-              } ${participant?.is_winner ? "bg-emerald-50/70" : ""}`}
+              } ${participant?.is_winner ? "bg-emerald-50/70" : ""} ${
+                participant?.metadata?.staged === true
+                  ? "border-l-2 border-amber-500 bg-amber-50/70"
+                  : ""
+              }`}
               onDragOver={(event) => {
                 event.preventDefault()
                 event.dataTransfer.dropEffect = "move"
