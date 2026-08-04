@@ -73,6 +73,12 @@ export type ContestCatalogFormat = {
   supportsTimeAttack?: boolean
   supportsMultiRound?: boolean
   isActive?: boolean
+  /**
+   * Thể thức đã hoàn thiện và chọn được để tạo giải. `false` nghĩa là còn đang
+   * làm: vẫn hiện trong catalog kèm nhãn "Sắp có" nhưng không chọn được. Backend
+   * chặn bằng `CONTEST_FORMAT_NOT_RELEASED` nên đây chỉ là lớp hiển thị.
+   */
+  isReleased?: boolean
   sortOrder?: number
   metadata?: Record<string, unknown>
 }

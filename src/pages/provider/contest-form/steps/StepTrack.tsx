@@ -13,10 +13,9 @@ import type { ContestFormState, ResourceLockState } from "../contest-form-types"
 /**
  * Bước 2 — loại đường đua và phạm vi khoá tài nguyên.
  *
- * Danh sách loại đường đua là GIAO của các chi nhánh đã chọn: chỉ loại nào mọi
- * chi nhánh đều có sân đang hoạt động mới hợp lệ. Khi giao rỗng, thay vì chỉ báo
- * "không có đường đua chung", ở đây liệt kê đích danh chi nhánh nào đang thiếu
- * loại nào để provider biết phải bỏ chi nhánh nào hoặc thêm sân ở đâu.
+ * Chỉ hiện loại đường đua mà chi nhánh đã chọn thật sự có sân đang hoạt động.
+ * Khi chi nhánh chưa có sân nào, liệt kê đích danh thay vì chỉ báo "không có
+ * loại nào" — provider cần biết phải thêm sân ở đâu.
  */
 export function StepTrack({
   form,
@@ -61,7 +60,7 @@ export function StepTrack({
           <div className="mt-4 border-l-2 border-red-400 bg-red-50/60 py-4 pl-4">
             <p className="flex items-center gap-2 text-sm font-bold text-red-700">
               <AlertTriangle className="size-4 shrink-0" />
-              Các chi nhánh đã chọn không có loại đường đua nào chung
+              Chi nhánh đã chọn chưa có sân nào dùng được cho giải
             </p>
             <ul className="mt-3 space-y-1.5 text-sm text-red-900">
               {selectedCafes.map((cafe) => {
@@ -79,8 +78,8 @@ export function StepTrack({
               })}
             </ul>
             <p className="mt-3 text-sm font-medium text-red-900">
-              Quay lại bước 1 để bỏ bớt chi nhánh, hoặc thêm sân phù hợp ở phần
-              quản lý chi nhánh.
+              Quay lại bước 1 để chọn chi nhánh khác, hoặc thêm sân ở phần quản
+              lý chi nhánh.
             </p>
           </div>
         ) : (
@@ -132,7 +131,7 @@ export function StepTrack({
             {trackTypes.length > options.length ? (
               <p className="mt-3 text-sm text-[#747878]">
                 {trackTypes.length - options.length} loại đường đua khác bị ẩn
-                vì không phải chi nhánh nào cũng có.
+                vì chi nhánh này chưa có sân loại đó.
               </p>
             ) : null}
           </>

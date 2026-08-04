@@ -66,9 +66,11 @@ export type StepValidationContext = {
 export type StepErrors = Record<string, string>
 
 const branchesSchema = z.object({
+  // Giải chạy ở đúng một chi nhánh; bước chọn đã là radio nên đây chỉ là lưới
+  // an toàn cho dữ liệu cũ hoặc giải nhiều chi nhánh tạo từ trước.
   participating_cafe_ids: z
     .array(z.string())
-    .min(1, "Chọn ít nhất một chi nhánh tổ chức giải"),
+    .min(1, "Chọn chi nhánh tổ chức giải"),
 })
 
 const trackSchema = z.object({

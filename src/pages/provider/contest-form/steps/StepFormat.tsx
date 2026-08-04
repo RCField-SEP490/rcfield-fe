@@ -28,9 +28,9 @@ const FORMAT_META: Record<
   KNOCKOUT: {
     icon: Swords,
     steps: [
-      "Hệ thống sinh nhánh đấu loại từ danh sách VĐV đã check-in",
-      "Mỗi trận chốt người thắng, người thắng đi tiếp",
-      "Bảng xếp hạng tính theo số trận thắng",
+      "Đóng đăng ký xong, hệ thống bốc thăm sơ đồ đấu và công bố cho khách xem trước",
+      "Mỗi trận chốt người thắng, người thắng tự vào vòng trong",
+      "Xếp hạng theo vòng bị loại: vô địch, á quân, rồi tới các vòng trước đó",
     ],
   },
   QUALIFYING_FINAL: {
@@ -144,36 +144,69 @@ export function StepFormat({
               ] ?? FORMAT_META.KNOCKOUT
             const Icon = meta.icon
             const isSelected = template.id === form.contest_template_id
+            // Mẫu gắn cứng vào một thể thức, nên thể thức chưa mở thì mẫu của nó
+            // cũng chưa chạy được. Vẫn bày ra để provider biết đang có gì trên
+            // đường tới, nhưng bấm không ăn — backend cũng chặn bằng
+            // CONTEST_FORMAT_NOT_RELEASED nên đây chỉ là lớp hiển thị.
+            const isComingSoon = format?.isReleased === false
 
             return (
               <button
                 key={template.id}
                 type="button"
+                disabled={isComingSoon}
+                aria-disabled={isComingSoon}
                 onClick={() => selectTemplate(template)}
                 className={cn(
                   "flex flex-col rounded-xl border p-4 text-left transition",
-                  isSelected
-                    ? "border-[#1c1b1b] bg-[#fcf8f8] ring-1 ring-[#1c1b1b]"
-                    : "border-[#e5e2e1] bg-white hover:border-[#c4c7c8]",
+                  isComingSoon
+                    ? "cursor-not-allowed border-dashed border-[#e5e2e1] bg-[#faf9f9]"
+                    : isSelected
+                      ? "border-[#1c1b1b] bg-[#fcf8f8] ring-1 ring-[#1c1b1b]"
+                      : "border-[#e5e2e1] bg-white hover:border-[#c4c7c8]",
                 )}
               >
-                <span
-                  className={cn(
-                    "flex size-10 items-center justify-center rounded-xl",
-                    isSelected
-                      ? "bg-[#1c1b1b] text-white"
-                      : "bg-[#f0eded] text-[#5d5f5f]",
-                  )}
-                >
-                  <Icon className="size-5" />
+                <span className="flex items-start justify-between gap-2">
+                  <span
+                    className={cn(
+                      "flex size-10 items-center justify-center rounded-xl",
+                      isComingSoon
+                        ? "bg-[#f0eded] text-[#adaaaa]"
+                        : isSelected
+                          ? "bg-[#1c1b1b] text-white"
+                          : "bg-[#f0eded] text-[#5d5f5f]",
+                    )}
+                  >
+                    <Icon className="size-5" />
+                  </span>
+                  {isComingSoon ? (
+                    <span className="rounded-full bg-[#f0eded] px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#747878]">
+                      Sắp có
+                    </span>
+                  ) : null}
                 </span>
 
-                <span className="mt-3 block text-base font-bold text-[#1c1b1b]">
+                <span
+                  className={cn(
+                    "mt-3 block text-base font-bold",
+                    isComingSoon ? "text-[#8a8d8d]" : "text-[#1c1b1b]",
+                  )}
+                >
                   {template.name}
                 </span>
                 {template.description ? (
-                  <span className="mt-1 block text-xs leading-5 text-[#747878]">
+                  <span
+                    className={cn(
+                      "mt-1 block text-xs leading-5",
+                      isComingSoon ? "text-[#adaaaa]" : "text-[#747878]",
+                    )}
+                  >
                     {template.description}
+                  </span>
+                ) : null}
+                {isComingSoon ? (
+                  <span className="mt-2 block text-xs font-semibold leading-5 text-[#8a8d8d]">
+                    Thể thức này đang được hoàn thiện, chưa mở để tạo giải.
                   </span>
                 ) : null}
 

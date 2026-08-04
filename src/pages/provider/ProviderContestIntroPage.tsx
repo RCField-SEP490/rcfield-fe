@@ -17,19 +17,21 @@ import { Button } from "@/shared/ui/button"
 /**
  * So sánh việc-phải-làm-tay với việc-hệ-thống-làm.
  *
- * Thuyết phục bằng công việc cụ thể mà chủ sân nào cũng từng vật lộn, thay vì
- * liệt kê tính năng. Người đọc tự nhận ra mình đang mất thời gian ở đâu.
+ * Cố ý viết trung tính với mọi thể thức: nền tảng có nhiều mẫu giải (tính giờ,
+ * đấu loại, vòng loại + chung kết) nên không được nói riêng cho một thể thức.
+ * Thứ chung của cả ba là xếp lượt, ghi kết quả, điểm danh, giao xe, thu tiền và
+ * tìm người tham gia.
  */
 const COMPARISON = [
   {
-    job: "Xếp cặp đấu",
-    manual: "Kẻ bảng trên giấy, bốc thăm bằng tay, sai một ô là kẻ lại",
-    withUs: "Bốc ngẫu nhiên có lưu lá thăm, sơ đồ dựng tự động",
+    job: "Xếp lượt thi đấu",
+    manual: "Kẻ bảng trên giấy, xếp bằng tay, sai một ô là kẻ lại",
+    withUs: "Hệ thống dựng lịch thi theo đúng thể thức bạn chọn",
   },
   {
-    job: "Vào vòng trong",
-    manual: "Nhớ ai thắng trận nào, quên một trận là cả nhánh đứng",
-    withUs: "Nhập kết quả xong người thắng tự sang vòng sau",
+    job: "Ghi kết quả",
+    manual: "Ghi sổ rồi nhập lại, sai một lượt là tính hạng sai theo",
+    withUs: "Nhập một lần, thứ hạng và vòng kế tiếp tự cập nhật",
   },
   {
     job: "Điểm danh ngày thi",
@@ -63,6 +65,14 @@ export default function ProviderContestIntroPage() {
     staleTime: 5 * 60_000,
   })
   const plans = plansQuery.data ?? []
+  // Lấy từ catalog thay vì viết cứng: thêm thể thức mới là trang này tự cập
+  // nhật, không phải sửa hai nơi rồi quên một nơi.
+  const formatsQuery = useQuery({
+    queryKey: ["contests", "catalog", "formats"],
+    queryFn: contestApi.listContestFormats,
+    staleTime: 5 * 60_000,
+  })
+  const formats = formatsQuery.data ?? []
   const selectedPlan =
     plans.find((plan) => plan.id === selectedPlanId) ?? plans[0] ?? null
 
@@ -91,13 +101,13 @@ export default function ProviderContestIntroPage() {
             !important, nên trên nền tối phải dùng biến thể important của
             Tailwind mới thắng được. */}
         <h2 className="max-w-3xl text-2xl font-black leading-tight text-white! sm:text-3xl">
-          Một giải 16 tay đua ngốn cả buổi để xếp bảng và ghi kết quả. Ở đây là
-          vài cú bấm.
+          Một giải vài chục tay đua ngốn cả buổi để xếp lượt và ghi kết quả. Ở
+          đây là vài cú bấm.
         </h2>
         <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-white/70">
-          Bạn lo phần sân bãi và tay đua. Bốc thăm, điểm danh, giao xe, tính
-          hạng — hệ thống làm, và mọi thao tác đều lưu lại để không ai tranh cãi
-          được kết quả.
+          Bạn lo phần sân bãi và tay đua. Xếp lượt, điểm danh, giao xe, tính
+          hạng — hệ thống làm theo đúng thể thức bạn chọn, và mọi thao tác đều
+          lưu lại để không ai tranh cãi được kết quả.
         </p>
 
         <div className="mt-7 flex flex-wrap gap-x-10 gap-y-4">
@@ -138,6 +148,66 @@ export default function ProviderContestIntroPage() {
             </span>
           </div>
         ))}
+      </section>
+
+      <section className="mt-6">
+        <h3 className="text-base font-extrabold text-[#1c1b1b]">
+          Thể thức bạn chọn được
+        </h3>
+        <p className="mt-1 text-xs font-semibold text-[#747878]">
+          Gói nào cũng dùng được mọi thể thức đã mở — bạn chọn ở bước Thể thức
+          khi tạo giải.
+        </p>
+
+        {formatsQuery.isLoading ? (
+          <div className="mt-3 h-24 animate-pulse rounded-xl bg-[#f6f3f2]" />
+        ) : (
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            {formats.map((format) => {
+              // Thể thức chưa mở vẫn bày ra để provider thấy lộ trình, nhưng
+              // phải nhạt đi và nói thẳng — trang này đứng ngay trước nút trả
+              // tiền, hứa thừa một chế độ là bán thứ chưa giao được.
+              const isComingSoon = format.isReleased === false
+              return (
+                <div
+                  key={format.id}
+                  className={cn(
+                    "rounded-xl border p-4",
+                    isComingSoon
+                      ? "border-dashed border-[#e5e2e1] bg-[#faf9f9]"
+                      : "border-[#e5e2e1] bg-white",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p
+                      className={cn(
+                        "text-sm font-extrabold",
+                        isComingSoon ? "text-[#8a8d8d]" : "text-[#1c1b1b]",
+                      )}
+                    >
+                      {format.name}
+                    </p>
+                    {isComingSoon ? (
+                      <span className="shrink-0 rounded-full bg-[#f0eded] px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#747878]">
+                        Sắp có
+                      </span>
+                    ) : null}
+                  </div>
+                  {format.description ? (
+                    <p
+                      className={cn(
+                        "mt-1.5 text-xs font-semibold leading-6",
+                        isComingSoon ? "text-[#8a8d8d]" : "text-[#5d5f5f]",
+                      )}
+                    >
+                      {format.description}
+                    </p>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <section className="mt-6">
@@ -242,7 +312,8 @@ function PlanCard({
       ) : null}
 
       <div className="mt-4 space-y-2">
-        <Perk label="Bốc thăm, sơ đồ đấu, điểm danh, bảng xếp hạng" />
+        <Perk label="Đủ ba thể thức: tính giờ, đấu loại, vòng loại + chung kết" />
+        <Perk label="Xếp lượt, điểm danh, ghi kết quả, bảng xếp hạng" />
         <Perk label="Trang giải công khai cho khách tự đăng ký" />
         <Perk label="Phiếu mượn xe kèm ảnh khi giao nhận" />
         {hasPromotion ? (
