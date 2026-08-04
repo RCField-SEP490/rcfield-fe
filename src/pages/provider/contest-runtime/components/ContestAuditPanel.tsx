@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react"
 import type { ContestAuditLogItem } from "@/features/contests/types"
-import { getAuditGroup } from "@/features/contests/lib/contest-runtime"
+import {
+  getAuditEventLabel,
+  getAuditGroup,
+} from "@/features/contests/lib/contest-runtime"
 import {
   Panel,
   PanelTitle,
@@ -13,6 +16,37 @@ const ACTOR_ROLE_LABEL: Record<string, string> = {
   CUSTOMER: "Khách hàng",
   ADMIN: "Admin",
   SYSTEM: "Hệ thống",
+}
+
+/** Tên trường trong nhật ký, viết cho người vận hành chứ không phải lập trình viên. */
+const AUDIT_FIELD_LABEL: Record<string, string> = {
+  status: "Trạng thái",
+  paymentStatus: "Trạng thái lệ phí",
+  payment_status: "Trạng thái lệ phí",
+  result_summary: "Tóm tắt kết quả",
+  winner_registration_id: "Người thắng",
+  participants_count: "Số người thi đấu",
+  participants: "Danh sách người thi đấu",
+  next_match_id: "Trận kế tiếp",
+  winners: "Người đi tiếp",
+  absent: "Người vắng mặt",
+  loser_count: "Số người thua bán kết",
+  registration_ids: "Danh sách đăng ký",
+  generated_match_count: "Số trận đã sinh",
+  registration_count: "Số người vào sơ đồ",
+  draw_seed: "Mã lá thăm",
+  format: "Thể thức",
+  name: "Tên giải",
+  checkedInCafeId: "Chi nhánh điểm danh",
+  booking_id: "Phiếu mượn xe",
+  vehicle_id: "Xe",
+  byoc_declaration: "Khai báo xe cá nhân",
+  entry_fee_amount: "Lệ phí",
+  participant_count: "Số người",
+}
+
+function getAuditFieldLabel(field: string): string {
+  return AUDIT_FIELD_LABEL[field] ?? field
 }
 
 function formatFieldValue(value: unknown): string {
@@ -119,22 +153,19 @@ export function ContestAuditPanel({
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-extrabold text-[#1c1b1b]">
-                    {log.actionSummary ?? log.eventType}
+                    {log.actionSummary ?? getAuditEventLabel(log.eventType)}
+                    {log.matchName ? (
+                      <span className="font-bold text-[#747878]">
+                        {" · "}
+                        {log.matchName}
+                      </span>
+                    ) : null}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[#747878]">
                     <span>
                       {new Date(log.createdAt).toLocaleString("vi-VN")}
                     </span>
                     <span>{actorDisplay}</span>
-                    <span className="rounded bg-[#fcf8f8] px-1.5 py-0.5 font-mono text-[11px]">
-                      {log.eventType}
-                    </span>
-                    {log.matchId ? (
-                      <span>match {log.matchId.slice(0, 8)}</span>
-                    ) : null}
-                    {log.registrationId ? (
-                      <span>registration {log.registrationId.slice(0, 8)}</span>
-                    ) : null}
                   </div>
                   {log.reason ? (
                     <p className="mt-2 text-sm font-semibold text-[#5d5f5f]">
@@ -169,8 +200,8 @@ export function ContestAuditPanel({
                         <tbody className="divide-y divide-[#f0eeee]">
                           {diff.map((row) => (
                             <tr key={row.field}>
-                              <td className="px-3 py-2 font-mono font-semibold text-[#444748]">
-                                {row.field}
+                              <td className="px-3 py-2 font-semibold text-[#444748]">
+                                {getAuditFieldLabel(row.field)}
                               </td>
                               <td className="px-3 py-2 text-[#747878]">
                                 {row.before}
@@ -186,8 +217,17 @@ export function ContestAuditPanel({
                   ) : null}
                   <details className="rounded-lg bg-[#fcf8f8] p-3">
                     <summary className="cursor-pointer text-xs font-bold text-[#747878]">
-                      Chi tiết kỹ thuật (JSON)
+                      Chi tiết kỹ thuật
                     </summary>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-[#747878]">
+                      <span>{log.eventType}</span>
+                      {log.matchId ? (
+                        <span>match {log.matchId.slice(0, 8)}</span>
+                      ) : null}
+                      {log.registrationId ? (
+                        <span>reg {log.registrationId.slice(0, 8)}</span>
+                      ) : null}
+                    </div>
                     <div className="mt-2 grid gap-3 xl:grid-cols-2">
                       <pre className="overflow-x-auto rounded-lg bg-white p-3 text-xs text-[#444748]">
                         {JSON.stringify(log.beforeJson ?? {}, null, 2)}

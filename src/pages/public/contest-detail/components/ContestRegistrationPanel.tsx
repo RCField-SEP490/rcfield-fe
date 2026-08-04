@@ -630,11 +630,11 @@ function getRegistrationBlockedMessage(
     case "NOT_OPEN_YET":
       return `Giải sẽ mở đăng ký từ ${formatContestDateTime(contest.registration_opens_at)}. Bạn có thể xem trước thể thức, chi nhánh và chuẩn bị booking phù hợp.`
     case "CLOSED":
-      return `Giải đã đóng đăng ký từ ${formatContestDateTime(contest.registration_closes_at)}. Bạn vẫn có thể vào tab Trận đấu để theo dõi bracket và các vòng đã vào trong.`
+      return `Giải đã đóng đăng ký từ ${formatContestDateTime(contest.registration_closes_at)}. Bạn vẫn có thể vào tab Trận đấu để theo dõi sơ đồ đấu và các vòng đã vào trong.`
     case "RUNNING":
-      return "Giải đang diễn ra nên hệ thống không nhận thêm đăng ký mới. Bạn vẫn có thể theo dõi trận live, bracket và kết quả từng vòng."
+      return "Giải đang diễn ra nên hệ thống không nhận thêm đăng ký mới. Bạn vẫn có thể theo dõi trận đang đấu, sơ đồ đấu và kết quả từng vòng."
     case "COMPLETED":
-      return "Giải đã kết thúc. Bạn vẫn có thể xem bracket lịch sử và bảng xếp hạng đã công bố."
+      return "Giải đã kết thúc. Bạn vẫn có thể xem lại sơ đồ đấu và bảng xếp hạng đã công bố."
     case "CANCELLED":
       return "Giải đấu này đã bị hủy và hiện không nhận đăng ký."
     default:

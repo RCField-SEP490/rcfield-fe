@@ -52,7 +52,7 @@ export function ContestLeaderboardSection({
 
       {!leaderboard?.entries?.length ? (
         <EmptyState
-          title="Chưa có leaderboard được công bố cho giải đấu này."
+          title="Giải đấu này chưa công bố bảng xếp hạng."
           className="mt-5 rounded-2xl border-slate-200 p-6"
         />
       ) : (

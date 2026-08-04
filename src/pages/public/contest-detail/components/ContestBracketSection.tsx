@@ -43,7 +43,7 @@ export function ContestRuntimeOverview({
               Theo dõi các vòng đấu
             </h3>
             <p className="mt-1 text-sm text-slate-500">
-              Public có thể xem bracket, danh sách người đi tiếp và lịch sử thi
+              Ai cũng xem được sơ đồ đấu, danh sách người đi tiếp và lịch sử thi
               đấu khi giải đang diễn ra hoặc đã hoàn thành.
             </p>
           </div>
@@ -178,7 +178,7 @@ export function ContestBracketBoard({
           />
         ) : matches.length === 0 ? (
           <EmptyState
-            title="Chưa có trận nào được công bố trên bracket của giải đấu này."
+            title="Giải đấu này chưa công bố trận nào trên sơ đồ đấu."
             className="rounded-2xl border-slate-200 p-6"
           />
         ) : (

@@ -89,8 +89,8 @@ export function getContestCtaLabel(
 ): string {
   if (availability === "AVAILABLE") return "Xem chi tiết và đăng ký"
   if (availability === "NOT_OPEN_YET") return "Xem lịch mở đăng ký"
-  if (status === "RUNNING") return "Xem bracket live"
-  if (status === "COMPLETED") return "Xem leaderboard"
+  if (status === "RUNNING") return "Xem sơ đồ đấu"
+  if (status === "COMPLETED") return "Xem bảng xếp hạng"
   return "Xem chi tiết"
 }
 

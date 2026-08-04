@@ -26,7 +26,7 @@ export function RegistrationFilters({
         <Input
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Tìm theo tên, email, mã check-in hoặc registration id"
+          placeholder="Tìm theo tên, email hoặc mã điểm danh"
           className="pl-9"
         />
       </div>

@@ -121,15 +121,15 @@ export function ContestMatchBoard({
       : qualifyingMatches.length === 0
         ? "Chưa có trận vòng loại nào."
         : !allQualifyingCompleted
-          ? "Hoàn tất tất cả trận vòng loại để sinh bracket chung kết."
+          ? "Hoàn tất tất cả trận vòng loại để sinh nhánh chung kết."
           : null
 
   const handleGenerateFinalBracket = async () => {
     try {
       await generateFinalBracketMutation.mutateAsync(contest.id)
-      toast.success("Đã sinh bracket chung kết")
+      toast.success("Đã sinh nhánh chung kết")
     } catch (error) {
-      toast.error("Không thể sinh bracket chung kết", {
+      toast.error("Không thể sinh nhánh chung kết", {
         description: getErrorMessage(error).message,
       })
     }
@@ -352,16 +352,16 @@ export function ContestMatchBoard({
             title="Danh sách trận/lượt"
             subtitle={
               isQualifyingFinal
-                ? "Vòng loại tính giờ trước, sau đó sinh bracket chung kết từ bảng xếp hạng."
+                ? "Vòng loại tính giờ trước, sau đó sinh nhánh chung kết từ bảng xếp hạng."
                 : "Theo dõi theo từng vòng và chọn để nhập kết quả."
             }
             action={
               isQualifyingFinal ? (
                 <div className="flex flex-col items-end gap-1">
                   <ConfirmDialog
-                    title="Sinh bracket chung kết?"
+                    title="Sinh nhánh chung kết?"
                     description={`Hệ thống sẽ lấy top ${finalistsCount} VĐV theo hạng vòng loại (lap tốt nhất) để xếp nhánh knockout chung kết.`}
-                    confirmLabel="Sinh bracket"
+                    confirmLabel="Sinh nhánh chung kết"
                     trigger={
                       <Button
                         type="button"
@@ -456,7 +456,7 @@ export function ContestMatchBoard({
               <MatchPhaseSection
                 title="Chung kết (Final)"
                 matches={finalMatches}
-                emptyLabel="Chưa có nhánh chung kết. Hoàn tất vòng loại rồi bấm “Sinh bracket chung kết”."
+                emptyLabel="Chưa có nhánh chung kết. Hoàn tất vòng loại rồi bấm “Sinh nhánh chung kết”."
                 selectedMatchId={selectedMatchId}
                 onSelectMatch={onSelectMatch}
               />

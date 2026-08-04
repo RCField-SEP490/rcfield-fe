@@ -9,7 +9,10 @@ import {
   getContestRuntimeFormat,
   getEligibleRuntimeRegistrations,
 } from "@/features/contests/lib/contest-runtime"
-import { getContestFormatLabel } from "@/features/contests/lib/contest-status"
+import {
+  getContestFormatLabel,
+  getContestStatusLabel,
+} from "@/features/contests/lib/contest-status"
 import {
   Panel,
   PanelTitle,
@@ -39,6 +42,12 @@ export function ContestRuntimeOverview({
           subtitle="Thông tin giải đấu và các tham số vận hành đang áp dụng."
         />
         <div className="grid gap-4 md:grid-cols-2">
+          {/* Trạng thái chuyển về đây từ header: nó thuộc về phần thông tin
+              giải, không phải một nhãn treo cạnh tên. */}
+          <Info
+            label="Trạng thái"
+            value={getContestStatusLabel(contest.status)}
+          />
           <Info label="Loại giải" value={contest.contest_type?.name ?? "--"} />
           <Info
             label="Hình thức thi đấu"

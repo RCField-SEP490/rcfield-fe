@@ -14,7 +14,10 @@ import {
 import { Link } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
-import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import {
+  contestApi,
+  contestQueryKeys,
+} from "@/features/contests/api/contest.api"
 import { ContestAvailabilityBadge } from "@/features/contests/components"
 import {
   getContestCtaLabel,
@@ -80,7 +83,8 @@ export function PublicContestsPage() {
   const secondaryContests = rankedContests.slice(1)
 
   const formatOptions = useMemo(
-    () => (formatsQuery.data ?? []).map((f) => ({ value: f.id, label: f.name })),
+    () =>
+      (formatsQuery.data ?? []).map((f) => ({ value: f.id, label: f.name })),
     [formatsQuery.data],
   )
 
@@ -111,7 +115,8 @@ export function PublicContestsPage() {
                   Đấu Trường RC Field
                 </h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-7 text-white/80">
-                  Chọn giải phù hợp, xem bracket và leaderboard công khai, rồi đăng ký thi đấu tại chi nhánh gần bạn.
+                  Chọn giải phù hợp, xem bracket và leaderboard công khai, rồi
+                  đăng ký thi đấu tại chi nhánh gần bạn.
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
@@ -193,7 +198,8 @@ export function PublicContestsPage() {
                       Tất cả giải đấu
                     </h2>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Ưu tiên giải đang live, đang mở đăng ký và sắp mở để người chơi không bỏ lỡ mốc quan trọng.
+                      Ưu tiên giải đang live, đang mở đăng ký và sắp mở để người
+                      chơi không bỏ lỡ mốc quan trọng.
                     </p>
                   </div>
                 </div>
@@ -272,14 +278,15 @@ function FeaturedContestShowcase({ contest }: { contest: ContestItem }) {
           </div>
           <div className="max-w-2xl">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-amber">
-              {contest.contest_format?.name ?? "RC Contest"} · {contest.track_type?.name ?? "Track"}
+              {contest.contest_format?.name ?? "RC Contest"} ·{" "}
+              {contest.track_type?.name ?? "Track"}
             </p>
             <h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
               {contest.name}
             </h2>
             <p className="mt-4 line-clamp-2 text-sm font-medium leading-7 text-slate-200">
               {contest.description ??
-                "Theo dõi lịch thi đấu, bracket và bảng xếp hạng của cộng đồng RCField."}
+                "Theo dõi lịch thi đấu, sơ đồ đấu và bảng xếp hạng của cộng đồng RCField."}
             </p>
           </div>
         </div>
@@ -287,7 +294,10 @@ function FeaturedContestShowcase({ contest }: { contest: ContestItem }) {
 
       <div className="flex flex-col justify-between gap-5 p-6">
         <div className="grid grid-cols-2 gap-3">
-          <InfoTile label="Đăng ký" value={String(contest.public_stats?.registration_count ?? 0)} />
+          <InfoTile
+            label="Đăng ký"
+            value={String(contest.public_stats?.registration_count ?? 0)}
+          />
           <InfoTile label="Còn chỗ" value={capacityLabel} />
           <InfoTile label="Bắt đầu" value={formatDateTime(contest.starts_at)} />
           <InfoTile label="Lệ phí" value={formatCurrency(contest.entry_fee)} />
@@ -347,7 +357,8 @@ function ContestListCard({ contest }: { contest: ContestItem }) {
           {contest.name}
         </h3>
         <p className="mt-2 line-clamp-2 min-h-10 text-sm font-medium leading-5 text-muted-foreground">
-          {contest.description || "Xem thể thức, lịch thi đấu, bracket và kết quả công bố."}
+          {contest.description ||
+            "Xem thể thức, lịch thi đấu, sơ đồ đấu và kết quả công bố."}
         </p>
 
         <div className="mt-5 grid gap-2 text-xs font-bold text-muted-foreground">
@@ -369,7 +380,9 @@ function ContestListCard({ contest }: { contest: ContestItem }) {
           <div className="mt-4">
             <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
               <span>Chỗ còn</span>
-              <span>{remaining}/{contest.capacity}</span>
+              <span>
+                {remaining}/{contest.capacity}
+              </span>
             </div>
             <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
@@ -403,7 +416,9 @@ function ContestListCard({ contest }: { contest: ContestItem }) {
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-muted p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
       <p className="mt-1 text-sm font-black text-foreground">{value}</p>
     </div>
   )
@@ -431,7 +446,9 @@ function SummaryStat({
     <div className="min-w-20 rounded-xl border border-white/10 bg-white/10 px-3 py-2 backdrop-blur-sm">
       <p className="text-base font-black text-white">{value}</p>
       <p className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-wide text-white/70">
-        {accent === "emerald" && <CheckCircle2 className="size-3 text-emerald-400" />}
+        {accent === "emerald" && (
+          <CheckCircle2 className="size-3 text-emerald-400" />
+        )}
         {accent === "orange" && <Flame className="size-3 text-orange-400" />}
         {label}
       </p>
@@ -504,10 +521,10 @@ function getContestHint(
     return "Sắp mở đăng ký. Xem trước thể thức, chi nhánh và chuẩn bị booking phù hợp."
   }
   if (status === "RUNNING") {
-    return "Giải đang diễn ra. Vào chi tiết để xem bracket live và người đã vào vòng trong."
+    return "Giải đang diễn ra. Vào chi tiết để xem sơ đồ đấu và người đã vào vòng trong."
   }
   if (status === "COMPLETED") {
-    return "Giải đã kết thúc. Xem leaderboard và hành trình thi đấu đã công bố."
+    return "Giải đã kết thúc. Xem bảng xếp hạng và hành trình thi đấu đã công bố."
   }
   return "Xem thông tin chi tiết và các mốc vận hành của giải."
 }

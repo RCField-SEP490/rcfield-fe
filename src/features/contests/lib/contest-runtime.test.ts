@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   applyStagedParticipants,
+  getAuditEventLabel,
   formatDurationSeconds,
   getAuditGroup,
   getEligibleRuntimeRegistrations,
@@ -103,5 +104,22 @@ describe("applyStagedParticipants", () => {
       { "match-2": [{ registration_id: "reg-1", slot_no: 1 }] } as never,
     )
     expect(result[0]).toBe(sourceMatch)
+  })
+})
+
+describe("getAuditEventLabel", () => {
+  it("dịch mã sự kiện sang tiếng Việt", () => {
+    expect(getAuditEventLabel("match.results_submitted")).toBe(
+      "Nhập kết quả trận",
+    )
+    expect(getAuditEventLabel("contest.bracket_drawn")).toBe(
+      "Bốc thăm sơ đồ đấu",
+    )
+    expect(getAuditEventLabel("match.walkover")).toBe("Xử thua vắng mặt")
+  })
+
+  it("giữ nguyên mã lạ thay vì trả chuỗi rỗng", () => {
+    // Thà hiện mã chưa dịch còn hơn để dòng nhật ký trống trơn.
+    expect(getAuditEventLabel("something.new")).toBe("something.new")
   })
 })

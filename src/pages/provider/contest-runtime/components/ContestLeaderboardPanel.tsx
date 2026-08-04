@@ -13,7 +13,10 @@ import {
   formatDurationSeconds,
   getErrorMessage,
 } from "@/features/contests/lib/contest-runtime"
-import { getLeaderboardModeLabel } from "@/features/contests/lib/contest-status"
+import {
+  getContestPublishAvailability,
+  getLeaderboardModeLabel,
+} from "@/features/contests/lib/contest-status"
 import type { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
 
 type RuntimeHook = ReturnType<typeof useContestRuntime>
@@ -29,6 +32,16 @@ export function ContestLeaderboardPanel({
   metrics: ContestMetrics | undefined
   runtime: RuntimeHook
 }) {
+  // Cửa chặn soi đúng luật backend, kèm lý do cụ thể — trước đây nằm ở nút
+  // trùng lặp trên header, giờ về đúng nút thật sự công bố.
+  const publishAvailability = getContestPublishAvailability(contest, {
+    totalMatches: metrics?.match_counts.total ?? 0,
+    unfinishedMatches:
+      (metrics?.match_counts.draft ?? 0) +
+      (metrics?.match_counts.ready ?? 0) +
+      (metrics?.match_counts.running ?? 0),
+  })
+
   const handlePublish = async () => {
     try {
       await runtime.publishLeaderboardMutation.mutateAsync()
@@ -68,7 +81,10 @@ export function ContestLeaderboardPanel({
               leaderboard?.mode ?? metrics?.leaderboard.mode,
             )}
           />
-          <StatusRow label="Đã công bố" value={leaderboard ? "Rồi" : "Chưa"} />
+          <StatusRow
+            label="Tình trạng công bố"
+            value={leaderboard ? "Đã công bố" : "Chưa công bố"}
+          />
           <StatusRow
             label="Thời điểm công bố"
             value={leaderboard?.published_at ?? "--"}
@@ -91,11 +107,17 @@ export function ContestLeaderboardPanel({
           />
         </div>
         <Button
-          className="mt-4 h-10 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030]"
+          className="mt-4 h-10 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!publishAvailability.allowed}
           onClick={() => void handlePublish()}
         >
           Công bố bảng xếp hạng
         </Button>
+        {publishAvailability.allowed ? null : (
+          <p className="mt-1.5 text-xs font-semibold text-amber-700">
+            {publishAvailability.reason}
+          </p>
+        )}
         <Button
           variant="outline"
           className="mt-2 h-10 rounded-lg border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"
@@ -166,7 +188,7 @@ export function ContestLeaderboardPanel({
           </div>
         ) : (
           <p className="text-sm font-semibold text-[#747878]">
-            Chưa có leaderboard được publish.
+            Chưa công bố bảng xếp hạng nào.
           </p>
         )}
       </Panel>

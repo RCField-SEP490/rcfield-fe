@@ -221,6 +221,7 @@ export type ContestItem = {
   my_registration?: ContestRegistration | null
   published_leaderboard?: ContestLeaderboardPayload | null
   runtime_summary?: ContestRuntimeSummary | null
+  match_stats?: ContestMatchStats | null
   highlight_rounds?: ContestHighlightRound[]
 }
 
@@ -498,6 +499,8 @@ export type ContestAuditLogItem = {
   actorName?: string | null
   /** Câu mô tả hành động tiếng Việt do BE build lúc đọc. */
   actionSummary?: string | null
+  /** Tên trận (join từ contest_matches) để không phải hiện mã băm. */
+  matchName?: string | null
   eventType: string
   beforeJson: Record<string, unknown> | null
   afterJson: Record<string, unknown> | null
@@ -512,6 +515,13 @@ export type ContestGenerateMatchesBody = {
   registration_ids?: string[]
   drivers_per_match?: number
   seeding_mode?: "MANUAL" | "CHECK_IN_ORDER"
+}
+
+/** Số liệu sơ đồ kèm sẵn trong danh sách giải, không phải gọi thêm cho từng giải. */
+export type ContestMatchStats = {
+  total: number
+  total_rounds: number
+  has_live_matches: boolean
 }
 
 export type ContestWalkoverStatus = "DNS" | "DNF" | "DQ"

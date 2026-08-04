@@ -47,7 +47,7 @@ export function MyRegistrationMatches({
           <CardListSkeleton count={2} itemClassName="h-28 rounded-2xl" />
         ) : matches.length === 0 ? (
           <EmptyState
-            title="Bạn chưa có match nào hiển thị trong bracket hiện tại."
+            title="Bạn chưa có trận nào trong sơ đồ đấu hiện tại."
             className="rounded-2xl border-slate-200 p-6"
           />
         ) : (

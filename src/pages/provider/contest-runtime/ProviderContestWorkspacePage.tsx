@@ -27,13 +27,7 @@ import {
   getPublishedLeaderboard,
   splitMatchesByPhase,
 } from "@/features/contests/lib/contest-runtime"
-import {
-  getContestEditAvailability,
-  getContestFormatLabel,
-  getContestPublishAvailability,
-  getContestStatusClass,
-  getContestStatusLabel,
-} from "@/features/contests/lib/contest-status"
+import { getContestEditAvailability } from "@/features/contests/lib/contest-status"
 import type {
   ContestEntryFeePaymentStatus,
   ContestMatchStatus,
@@ -66,7 +60,6 @@ import { ContestRegistrationPanel } from "./components/ContestRegistrationPanel"
 import { ContestRuntimeOverview } from "./components/ContestRuntimeOverview"
 import {
   defaultContestWorkspaceSection,
-  getContestWorkspacePath,
   type ContestWorkspaceSectionKey,
 } from "./contest-workspace"
 
@@ -237,17 +230,6 @@ export function ProviderContestWorkspacePage({
       auditPage: String(nextPage),
       auditLimit: String(auditLimit),
     })
-  }
-
-  const handlePublishLeaderboard = async () => {
-    try {
-      await workspace.runtime.publishLeaderboardMutation.mutateAsync()
-      toast.success("Đã công bố bảng xếp hạng")
-    } catch (error) {
-      toast.error("Không thể công bố bảng xếp hạng", {
-        description: getErrorMessage(error).message,
-      })
-    }
   }
 
   const handleSyncRaceRecords = async () => {
@@ -447,61 +429,21 @@ export function ProviderContestWorkspacePage({
     )
   }
 
-  // Khoá thao tác theo đúng luật backend áp, kèm lý do — thay vì cho bấm rồi
-  // mới nhận lỗi 400 mà người dùng không hiểu vì sao.
-  const unfinishedMatches = matches.filter(
-    (match) =>
-      match.status === "DRAFT" ||
-      match.status === "READY" ||
-      match.status === "RUNNING",
-  ).length
-  const publishAvailability = getContestPublishAvailability(contest, {
-    totalMatches: matches.length,
-    unfinishedMatches,
-  })
+  // Khoá sửa giải theo đúng luật backend áp, kèm lý do — thay vì cho bấm rồi
+  // mới nhận lỗi 400 mà người dùng không hiểu vì sao. Cửa chặn công bố nằm ở
+  // chính nút công bố trong tab Bảng xếp hạng.
   const editAvailability = getContestEditAvailability(contest)
 
   return (
     <ProviderShell contentClassName="max-w-none">
       <ProviderPageHeader
         title={
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <span
-              className="max-w-[15rem] md:max-w-[20rem] truncate text-xl font-extrabold tracking-tight text-[#1c1b1b] md:text-2xl"
-              title={contest.name}
-            >
-              {contest.name}
-            </span>
-            <Badge
-              className={`border text-[10px] font-bold px-2 py-0.5 ${getContestStatusClass(contest.status)}`}
-            >
-              {getContestStatusLabel(contest.status)}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
-            >
-              Format: {getContestFormatLabel(runtimeFormat)}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
-            >
-              Thời gian: {formatShortDate(contest.starts_at)} -{" "}
-              {formatShortDate(contest.ends_at)}
-            </Badge>
-            <Badge
-              variant="outline"
-              className="border-[#c4c7c8]/80 bg-white/50 px-2 py-0.5 text-[10px] font-bold text-[#444748]"
-            >
-              Đăng ký:{" "}
-              {metrics?.registration_counts.total ??
-                (workspace.runtime.registrationsQuery.isSuccess
-                  ? registrations.length
-                  : "--")}{" "}
-              người
-            </Badge>
-          </div>
+          <span
+            className="block max-w-full truncate text-xl font-extrabold tracking-tight text-[#1c1b1b] md:text-2xl"
+            title={contest.name}
+          >
+            {contest.name}
+          </span>
         }
         h2Title={contest.name}
         description={
@@ -513,31 +455,6 @@ export function ProviderContestWorkspacePage({
         contentClassName="sm:items-center"
         actions={
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-8 gap-1.5 rounded-lg border-[#c4c7c8] bg-white px-3 text-xs font-bold text-[#1c1b1b] hover:bg-[#f6f3f2]"
-              onClick={() =>
-                navigate(getContestWorkspacePath(contest.id, "bracket"))
-              }
-            >
-              <PlayCircle className="size-3.5" />
-              Mở nhánh đấu
-            </Button>
-            <Button
-              type="button"
-              disabled={!publishAvailability.allowed}
-              title={
-                publishAvailability.allowed
-                  ? undefined
-                  : publishAvailability.reason
-              }
-              className="h-8 gap-1.5 rounded-lg bg-[#1c1b1b] px-3 text-xs font-bold text-white hover:bg-[#313030] disabled:cursor-not-allowed disabled:opacity-50"
-              onClick={() => void handlePublishLeaderboard()}
-            >
-              <BarChart3 className="size-3.5" />
-              Công bố bảng xếp hạng
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -817,14 +734,6 @@ export function ProviderContestWorkspacePage({
       />
     </ProviderShell>
   )
-}
-
-function formatShortDate(value: string | null) {
-  if (!value) return "--"
-  return new Date(value).toLocaleString("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  })
 }
 
 function formatVnd(value: number) {

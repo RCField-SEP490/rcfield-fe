@@ -335,3 +335,56 @@ export function applyStagedParticipants(
     }
   })
 }
+
+/**
+ * Nhật ký thao tác viết bằng tiếng người.
+ *
+ * Bảng này là nơi duy nhất dịch mã sự kiện của backend; thiếu một mã thì
+ * `getAuditEventLabel` trả về chính mã đó để không giấu mất dòng nhật ký — thà
+ * hiện mã lạ còn hơn hiện chuỗi rỗng.
+ */
+const AUDIT_EVENT_LABEL: Record<string, string> = {
+  "contest.created": "Tạo giải đấu",
+  "contest.updated": "Sửa thông tin giải",
+  "contest.opened": "Mở đăng ký",
+  "contest.closed": "Đóng đăng ký",
+  "contest.cancelled": "Huỷ giải đấu",
+  "contest.banner_uploaded": "Đổi ảnh bìa",
+  "contest.bracket_drawn": "Bốc thăm sơ đồ đấu",
+  "contest.matches_generated": "Tạo lượt thi đấu",
+  "contest.final_bracket_generated": "Sinh nhánh chung kết",
+  "contest.leaderboard_published": "Công bố bảng xếp hạng",
+  "contest.staff_assigned": "Phân công nhân viên",
+  "contest.staff_unassigned": "Gỡ phân công nhân viên",
+  "contest.participant_banned": "Cấm người chơi",
+  "contest.participant_unbanned": "Bỏ cấm người chơi",
+
+  "registration.created": "Khách đăng ký",
+  "registration.approved": "Duyệt vào giải",
+  "registration.rejected": "Từ chối đăng ký",
+  "registration.cancelled": "Huỷ đăng ký",
+  "registration.cancelled_via_booking_cancel": "Huỷ đăng ký do huỷ phiếu xe",
+  "registration.checked_in": "Điểm danh",
+  "registration.disqualified": "Loại khỏi giải",
+  "registration.entry_fee_marked_paid": "Ghi nhận đã thu lệ phí",
+  "registration.entry_fee_waived": "Miễn lệ phí",
+  "registration.byoc_declaration_updated": "Sửa khai báo xe cá nhân",
+  "registration.vehicle_handed_over": "Giao xe cho người chơi",
+
+  "match.participants_updated": "Đổi người thi đấu",
+  "match.results_submitted": "Nhập kết quả trận",
+  "match.results_corrected": "Sửa kết quả trận",
+  "match.advanced": "Đưa người thắng sang vòng sau",
+  "match.walkover": "Xử thua vắng mặt",
+  "match.auto_resolved": "Tự đóng trận do thiếu đối thủ",
+  "match.third_place_populated": "Xếp người vào trận tranh hạng 3",
+
+  "booking.vehicle_checked_out": "Trả xe",
+  "booking.contest_rental_cancelled": "Huỷ phiếu mượn xe",
+  "booking.contest_rental_retained": "Giữ lại phiếu mượn xe",
+  "race_records.synced": "Đồng bộ thành tích toàn hệ thống",
+}
+
+export function getAuditEventLabel(eventType: string): string {
+  return AUDIT_EVENT_LABEL[eventType] ?? eventType
+}
