@@ -176,6 +176,7 @@ export function useContestForm() {
             ?.assignment_policy as ContestFormState["assignment_policy"]) ??
           "AT_CHECK_IN",
         finalists: String(contest.config?.finalists ?? 4),
+        runs_per_driver: String(contest.config?.runs_per_driver ?? 3),
         prizes: readPrizeTiers(contest.config),
       })
       setExtraConfig(stripManagedContestConfig(contest.config))
@@ -401,6 +402,12 @@ export function useContestForm() {
       16,
       Math.max(2, Number.parseInt(form.finalists, 10) || 4),
     )
+    const runsPerDriver = Math.min(
+      5,
+      Math.max(1, Number.parseInt(form.runs_per_driver, 10) || 3),
+    )
+    const hasTimedRuns =
+      runtimeFormat === "TIME_TRIAL" || runtimeFormat === "QUALIFYING_FINAL"
     // `format` và `runtime_format` cố tình KHÔNG gửi: backend tự suy từ mã format
     // trong catalog rồi ghi đè (`stripRuntimeManagedConfig` + `mergeContestConfig`).
     // Gửi lên chỉ tạo ảo giác là FE quyết định được.
@@ -425,6 +432,7 @@ export function useContestForm() {
           ? Number(templateDefaults.drivers_per_match ?? 1)
           : Number(templateDefaults.drivers_per_match ?? 2),
       ...(runtimeFormat === "QUALIFYING_FINAL" ? { finalists } : {}),
+      ...(hasTimedRuns ? { runs_per_driver: runsPerDriver } : {}),
       // Bỏ hẳn khoá khi chưa nhập gì, để trang công khai hiện dòng "sẽ công bố
       // trong điều lệ" thay vì một danh sách rỗng.
       ...(prizeItems.length > 0

@@ -16,6 +16,8 @@ export type ContestFormState = {
   vehicle_policy: "RENTAL_ONLY" | "BYOC_ONLY" | "MIXED"
   assignment_policy: "AT_CHECK_IN" | "PRE_ASSIGNED"
   finalists: string
+  /** Số lượt chạy mỗi VĐV ở các thể thức có pha tính giờ. */
+  runs_per_driver: string
   /** Cơ cấu giải thưởng hiện trên trang công khai; để trống thì phần đó báo "sẽ công bố sau". */
   prizes: PrizeTierState[]
 }
@@ -65,6 +67,7 @@ export const defaultForm: ContestFormState = {
   vehicle_policy: "BYOC_ONLY",
   assignment_policy: "AT_CHECK_IN",
   finalists: "4",
+  runs_per_driver: "3",
   // Mặc định hợp lý cho giải mới: VĐV đã trả lệ phí nên miễn tiền sân, và xe do
   // quán vận hành trong giải nên không bắt cọc. Giải CŨ đang sửa thì đọc lại
   // giá trị đã lưu, không áp mặc định này (xem useContestForm).

@@ -181,6 +181,15 @@ export function validateContestStep(
           errors.finalists = "Số VĐV vào chung kết phải từ 2 đến 16"
         }
       }
+      if (
+        context.runtimeFormat === "TIME_TRIAL" ||
+        context.runtimeFormat === "QUALIFYING_FINAL"
+      ) {
+        const runs = Number.parseInt(form.runs_per_driver, 10)
+        if (!Number.isFinite(runs) || runs < 1 || runs > 5) {
+          errors.runs_per_driver = "Số lượt chạy mỗi VĐV phải từ 1 đến 5"
+        }
+      }
 
       return errors
     }

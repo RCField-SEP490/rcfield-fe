@@ -20,9 +20,9 @@ const FORMAT_META: Record<
   TIME_TRIAL: {
     icon: Timer,
     steps: [
-      "Mỗi VĐV chạy một lượt tính giờ riêng",
-      "Nhập thời gian vòng chạy nhanh nhất hoặc tổng thời gian cho từng lượt",
-      "Bảng xếp hạng tính theo thành tích thời gian",
+      "Mỗi VĐV được vài lượt chạy riêng, số lượt do bạn đặt bên dưới",
+      "Nhân viên nhập thời gian cho từng lượt",
+      "Xếp hạng theo lượt chạy nhanh nhất của mỗi người, các lượt còn lại không tính",
     ],
   },
   KNOCKOUT: {
@@ -36,9 +36,9 @@ const FORMAT_META: Record<
   QUALIFYING_FINAL: {
     icon: Flag,
     steps: [
-      "Vòng loại: mỗi VĐV chạy một lượt tính giờ, xếp hạng theo vòng chạy nhanh nhất",
+      "Vòng loại: mỗi VĐV vài lượt tính giờ, lấy lượt nhanh nhất của từng người",
       "Chung kết: những người dẫn đầu vào nhánh đấu loại, hạng nhất gặp hạng cuối",
-      "Bảng xếp hạng chung cuộc tính theo số trận thắng ở chung kết",
+      "Ai không hoàn thành lượt nào thì không vào chung kết, kể cả khi còn trống suất",
     ],
   },
 }
@@ -113,6 +113,9 @@ export function StepFormat({
   }
 
   const allowsRental = form.vehicle_policy !== "BYOC_ONLY"
+  // Hai thể thức có pha chạy tính giờ dùng chung ô số lượt.
+  const hasTimedRuns =
+    runtimeFormat === "TIME_TRIAL" || runtimeFormat === "QUALIFYING_FINAL"
   const vehiclePolicyOptions =
     form.vehicle_policy === "MIXED"
       ? [...VEHICLE_POLICY_OPTIONS, LEGACY_MIXED_OPTION]
@@ -248,6 +251,33 @@ export function StepFormat({
                 </li>
               ))}
             </ol>
+          </div>
+        ) : null}
+
+        {hasTimedRuns && form.contest_template_id ? (
+          <div className="mt-4 max-w-xs">
+            <ContestFormField
+              label="Số lượt chạy mỗi VĐV"
+              error={errors.runs_per_driver}
+            >
+              <Input
+                type="number"
+                min={1}
+                max={5}
+                className="h-11"
+                value={form.runs_per_driver}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    runs_per_driver: event.target.value,
+                  }))
+                }
+              />
+              <p className="text-xs leading-5 text-[#747878]">
+                Từ 1 đến 5. Xếp hạng lấy lượt nhanh nhất, nên nhiều lượt giúp
+                một cú trượt tay không làm hỏng cả giải của VĐV.
+              </p>
+            </ContestFormField>
           </div>
         ) : null}
 
