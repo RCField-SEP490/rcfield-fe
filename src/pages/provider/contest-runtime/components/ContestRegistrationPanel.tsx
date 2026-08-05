@@ -5,7 +5,10 @@ import type {
   ContestItem,
   ContestRegistration,
 } from "@/features/contests/types"
-import { getErrorMessage } from "@/features/contests/lib/contest-runtime"
+import {
+  getErrorMessage,
+  getRegistrationDisplayName,
+} from "@/features/contests/lib/contest-runtime"
 import { getContestCheckInAvailability } from "@/features/contests/lib/contest-status"
 import {
   Panel,
@@ -16,6 +19,7 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import type { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import { ContestRegistrationTable } from "./ContestRegistrationTable"
+import { ContestBanList } from "./registration/ContestBanList"
 import { RegistrationActionDialog } from "./registration/RegistrationActionDialog"
 import {
   RegistrationFilters,
@@ -75,6 +79,10 @@ export function ContestRegistrationPanel({
     dialogState,
     reason,
     setReason,
+    banScope,
+    setBanScope,
+    banExpiresAt,
+    setBanExpiresAt,
     openDialog,
     closeDialog,
     handleDialogAction,
@@ -201,12 +209,35 @@ export function ContestRegistrationPanel({
         />
       </Panel>
 
+      <ContestBanList
+        bans={workspace.bansQuery.data ?? []}
+        onLift={async (banId) => {
+          try {
+            await workspace.liftBanMutation.mutateAsync({ banId })
+            toast.success("Đã gỡ lệnh cấm")
+          } catch (error) {
+            toast.error("Không gỡ được lệnh cấm", {
+              description: getErrorMessage(error).message,
+            })
+          }
+        }}
+      />
+
       <RegistrationActionDialog
         kind={dialogState.kind}
+        targetName={
+          dialogState.registration
+            ? getRegistrationDisplayName(dialogState.registration)
+            : null
+        }
         open={Boolean(dialogState.kind)}
         onOpenChange={closeDialog}
         reason={reason}
         onReasonChange={setReason}
+        banScope={banScope}
+        onBanScopeChange={setBanScope}
+        banExpiresAt={banExpiresAt}
+        onBanExpiresAtChange={setBanExpiresAt}
         onConfirm={handleDialogAction}
       />
     </div>

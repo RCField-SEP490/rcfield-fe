@@ -28,6 +28,7 @@ import {
   splitMatchesByPhase,
 } from "@/features/contests/lib/contest-runtime"
 import { getContestEditAvailability } from "@/features/contests/lib/contest-status"
+import { cn } from "@/shared/lib/utils"
 import type {
   ContestEntryFeePaymentStatus,
   ContestMatchStatus,
@@ -51,7 +52,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
-import { ContestDisciplinePanel } from "./components/ContestDisciplinePanel"
+import { ContestStaffPanel } from "./components/ContestStaffPanel"
 import { ContestFeePanel } from "./components/ContestFeePanel"
 import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
@@ -66,11 +67,12 @@ import {
 
 const sectionSummaries: Record<ContestWorkspaceSectionKey, string> = {
   overview: "Tổng quan điều hành, trạng thái giải và các chỉ số sẵn sàng.",
-  registrations: "Duyệt đăng ký, xử lý lệ phí và điểm danh người chơi.",
+  registrations:
+    "Duyệt đăng ký, xử lý lệ phí, điểm danh và kỷ luật người chơi.",
   bracket: "Bốc thăm sơ đồ, theo dõi từng trận và nhập kết quả.",
   leaderboard: "Theo dõi bản nháp, công bố và đồng bộ bảng xếp hạng.",
   audit: "Xem lại toàn bộ nhật ký thao tác phát sinh trong contest.",
-  discipline: "Phân công staff, disqualify người chơi và xử lý ban contest.",
+  staff: "Phân công nhân viên được vận hành giải này.",
 }
 
 export function ProviderContestWorkspacePage({
@@ -97,12 +99,14 @@ export function ProviderContestWorkspacePage({
   const needsRegistrations =
     section === "overview" ||
     section === "registrations" ||
-    section === "bracket" ||
-    section === "discipline"
+    section === "bracket"
   const needsMatches = section === "overview" || section === "bracket"
   const needsMetrics = section === "overview" || section === "leaderboard"
   const needsAuditLogs = section === "audit"
-  const needsGovernance = section === "discipline"
+  // Lệnh cấm theo người nên nạp cùng danh sách người chơi; phân công nhân viên
+  // là việc riêng, chỉ tab Nhân sự mới cần.
+  const needsBans = section === "registrations"
+  const needsStaff = section === "staff"
 
   const workspace = useContestWorkspace(contestId, {
     registrations: {
@@ -128,9 +132,9 @@ export function ProviderContestWorkspacePage({
       matches: needsMatches,
       metrics: needsMetrics,
       auditLogs: needsAuditLogs,
-      staffAssignments: needsGovernance,
-      bans: needsGovernance,
-      staffOptions: needsGovernance,
+      staffAssignments: needsStaff,
+      bans: needsBans,
+      staffOptions: needsStaff,
     },
   })
 
@@ -154,6 +158,11 @@ export function ProviderContestWorkspacePage({
     [apiMatches, stagedParticipantsByMatch],
   )
   const metrics = workspace.runtime.metricsQuery.data
+  // Ba thẻ luôn hiện; đồng bộ và doanh thu chỉ hiện khi thật sự có gì để nói.
+  const visibleMetricCount =
+    3 +
+    (metrics?.leaderboard.published ? 1 : 0) +
+    ((contest?.entry_fee ?? 0) > 0 ? 1 : 0)
   const auditLogsResponse = workspace.runtime.auditLogsQuery.data
   const auditLogs = auditLogsResponse?.data ?? []
   const auditMeta = auditLogsResponse?.meta
@@ -511,7 +520,19 @@ export function ProviderContestWorkspacePage({
       ) : null}
 
       {section === "overview" ? (
-        <section className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        // Hai thẻ cuối có thể ẩn, nên số cột phải bám theo số thẻ thật. Cố định
+        // 4 cột thì khi đủ 5 thẻ, thẻ thứ năm rơi xuống một hàng riêng bỏ trống
+        // ba ô bên cạnh.
+        <section
+          className={cn(
+            "mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2",
+            visibleMetricCount === 5
+              ? "xl:grid-cols-5"
+              : visibleMetricCount === 4
+                ? "xl:grid-cols-4"
+                : "xl:grid-cols-3",
+          )}
+        >
           <MetricCard
             label="Đăng ký"
             value={String(
@@ -544,28 +565,36 @@ export function ProviderContestWorkspacePage({
             tone={metrics?.leaderboard.published ? "success" : "warning"}
             compact
           />
-          <MetricCard
-            label="Đồng bộ toàn hệ thống"
-            value={metrics?.global_sync.synced ? "Đã đồng bộ" : "Chưa đồng bộ"}
-            helper={
-              metrics?.global_sync.synced_at
-                ? new Date(metrics.global_sync.synced_at).toLocaleString(
-                    "vi-VN",
-                  )
-                : "Chưa đồng bộ thành tích"
-            }
-            icon={<CalendarCheck2 />}
-            tone={metrics?.global_sync.synced ? "success" : "neutral"}
-            compact
-          />
-          <MetricCard
-            label="Doanh thu lệ phí"
-            value={formatVnd(metrics?.revenue?.paid_revenue ?? 0)}
-            helper={`Dự kiến ${formatVnd(metrics?.revenue?.expected_revenue ?? 0)} · Chờ ${formatVnd(metrics?.revenue?.pending_revenue ?? 0)}`}
-            icon={<CircleDollarSign />}
-            tone="success"
-            compact
-          />
+          {/* Đồng bộ thành tích chỉ xảy ra sau khi công bố bảng xếp hạng, nên
+              trước đó thẻ này luôn đứng ở "Chưa đồng bộ" — một ô chiếm chỗ để
+              nói rằng chưa tới lượt nó. */}
+          {metrics?.leaderboard.published ? (
+            <MetricCard
+              label="Đồng bộ toàn hệ thống"
+              value={metrics.global_sync.synced ? "Đã đồng bộ" : "Chưa đồng bộ"}
+              helper={
+                metrics.global_sync.synced_at
+                  ? new Date(metrics.global_sync.synced_at).toLocaleString(
+                      "vi-VN",
+                    )
+                  : "Chưa đồng bộ thành tích"
+              }
+              icon={<CalendarCheck2 />}
+              tone={metrics.global_sync.synced ? "success" : "neutral"}
+              compact
+            />
+          ) : null}
+          {/* Giải miễn phí thì cả ba con số doanh thu đều là 0đ mãi mãi. */}
+          {contest.entry_fee > 0 ? (
+            <MetricCard
+              label="Doanh thu lệ phí"
+              value={formatVnd(metrics?.revenue?.paid_revenue ?? 0)}
+              helper={`Dự kiến ${formatVnd(metrics?.revenue?.expected_revenue ?? 0)} · Chờ ${formatVnd(metrics?.revenue?.pending_revenue ?? 0)}`}
+              icon={<CircleDollarSign />}
+              tone="success"
+              compact
+            />
+          ) : null}
         </section>
       ) : (
         <section className="mb-3 flex flex-wrap items-center gap-2">
@@ -724,12 +753,7 @@ export function ProviderContestWorkspacePage({
         />
       ) : null}
 
-      {section === "discipline" ? (
-        <ContestDisciplinePanel
-          registrations={registrations}
-          workspace={workspace}
-        />
-      ) : null}
+      {section === "staff" ? <ContestStaffPanel workspace={workspace} /> : null}
 
       <ConfirmDialog
         open={bracketBlocker.state === "blocked"}

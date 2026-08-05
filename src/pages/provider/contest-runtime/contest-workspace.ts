@@ -7,7 +7,10 @@ export const contestWorkspaceSections = [
   { key: "bracket", label: "Nhánh đấu" },
   { key: "leaderboard", label: "Bảng xếp hạng" },
   { key: "audit", label: "Nhật ký" },
-  { key: "discipline", label: "Kỷ luật / Nhân sự" },
+  // Nhãn cũ là "Kỷ luật / Nhân sự" — dấu gạch chéo trong tên tab gần như luôn
+  // là dấu hiệu hai việc không liên quan bị nhét chung. Loại khỏi giải và cấm
+  // tham gia đã chuyển sang tab Người chơi, nơi có sẵn danh sách người thật.
+  { key: "staff", label: "Nhân sự" },
 ] as const
 
 export type ContestWorkspaceSectionKey =

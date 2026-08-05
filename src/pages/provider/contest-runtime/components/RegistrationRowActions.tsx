@@ -15,6 +15,8 @@ export type RegistrationActionKind =
   | "approve"
   | "reject"
   | "cancel"
+  | "disqualify"
+  | "ban"
 
 function getRegistrationActions(registration: ContestRegistration) {
   const editablePaymentStatuses: ContestRegistration["paymentStatus"][] = [
@@ -42,6 +44,11 @@ function getRegistrationActions(registration: ContestRegistration) {
     canReject: registration.status === "PENDING",
     canCancel:
       registration.status === "PENDING" || registration.status === "CONFIRMED",
+    // Loại khỏi giải chỉ có nghĩa với người đã chắc suất — người còn chờ duyệt
+    // thì từ chối là đủ, chưa có gì để loại.
+    canDisqualify:
+      registration.status === "CONFIRMED" ||
+      registration.status === "CHECKED_IN",
   }
 }
 
@@ -139,6 +146,23 @@ export function RegistrationRowActions({
             onClick={() => onAction("cancel", registration)}
           >
             Huỷ đăng ký
+          </DropdownMenuItem>
+
+          {/* Kỷ luật nằm cuối, sau một đường ngăn: đây là nhóm việc nặng nhất
+              và không nên bấm nhầm khi đang định huỷ một đăng ký bình thường. */}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            disabled={!actions.canDisqualify}
+            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-700"
+            onClick={() => onAction("disqualify", registration)}
+          >
+            Loại khỏi giải
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-red-700"
+            onClick={() => onAction("ban", registration)}
+          >
+            Cấm tham gia
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

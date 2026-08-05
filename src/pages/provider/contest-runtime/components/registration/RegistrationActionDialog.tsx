@@ -6,9 +6,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog"
+import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Textarea } from "@/shared/ui/textarea"
 import type { RegistrationActionKind } from "../RegistrationRowActions"
+
+/** `PROVIDER` cấm khỏi mọi giải của quán — backend đã hỗ trợ từ đầu. */
+export type BanScope = "CONTEST" | "PROVIDER"
 
 const REJECT_REASON_MIN = 5
 
@@ -72,21 +76,52 @@ const ACTION_COPY: Record<RegistrationActionKind, ActionCopy> = {
     confirmLabel: "Huỷ đăng ký",
     destructive: true,
   },
+  disqualify: {
+    title: "Loại khỏi giải",
+    description:
+      "Gỡ người chơi khỏi mọi trận chưa đấu và đánh dấu phá giải. Khác với huỷ đăng ký ở chỗ có ghi nhận vi phạm, nhưng người này vẫn đăng ký giải sau được.",
+    reasonLabel: "Lý do loại",
+    placeholder: "Ví dụ: cố tình húc xe đối thủ ở vòng tứ kết",
+    reasonRequired: true,
+    confirmLabel: "Loại khỏi giải",
+    destructive: true,
+  },
+  ban: {
+    title: "Cấm tham gia",
+    description:
+      "Chặn người này đăng ký. Khác với loại khỏi giải: lệnh cấm còn hiệu lực về sau, và có thể trải rộng ra mọi giải của bạn.",
+    reasonLabel: "Lý do cấm",
+    placeholder: "Ví dụ: gây gổ với trọng tài, đã nhắc nhở hai lần",
+    reasonRequired: true,
+    confirmLabel: "Cấm tham gia",
+    destructive: true,
+  },
 }
 
 export function RegistrationActionDialog({
   kind,
+  targetName,
   open,
   onOpenChange,
   reason,
   onReasonChange,
+  banScope,
+  onBanScopeChange,
+  banExpiresAt,
+  onBanExpiresAtChange,
   onConfirm,
 }: {
   kind: RegistrationActionKind | null
+  /** Tên người đang bị thao tác — thay cho ô nhập user id trước đây. */
+  targetName?: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
   reason: string
   onReasonChange: (value: string) => void
+  banScope: BanScope
+  onBanScopeChange: (value: BanScope) => void
+  banExpiresAt: string
+  onBanExpiresAtChange: (value: string) => void
   onConfirm: () => Promise<void>
 }) {
   const copy = kind ? ACTION_COPY[kind] : null
@@ -102,10 +137,47 @@ export function RegistrationActionDialog({
           <DialogTitle>{copy?.title ?? "Cập nhật đăng ký"}</DialogTitle>
         </DialogHeader>
 
+        {targetName ? (
+          <p className="text-sm font-bold text-[#1c1b1b]">{targetName}</p>
+        ) : null}
+
         {copy ? (
           <p className="text-sm font-semibold text-[#5d5f5f]">
             {copy.description}
           </p>
+        ) : null}
+
+        {kind === "ban" ? (
+          <div className="space-y-3 rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-bold text-[#1c1b1b]">
+                Phạm vi cấm
+              </Label>
+              <select
+                className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-semibold"
+                value={banScope}
+                onChange={(event) =>
+                  onBanScopeChange(event.target.value as BanScope)
+                }
+              >
+                <option value="CONTEST">Chỉ giải này</option>
+                <option value="PROVIDER">Mọi giải của tôi</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-bold text-[#1c1b1b]">
+                Cấm đến khi nào
+                <span className="ml-1 font-semibold text-[#747878]">
+                  (để trống là vĩnh viễn)
+                </span>
+              </Label>
+              <Input
+                type="datetime-local"
+                value={banExpiresAt}
+                onChange={(event) => onBanExpiresAtChange(event.target.value)}
+              />
+            </div>
+          </div>
         ) : null}
 
         <div className="space-y-2">

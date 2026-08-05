@@ -486,9 +486,9 @@ export const router = createBrowserRouter([
             ),
           },
           {
-            path: routePaths.providerContestDiscipline,
+            path: routePaths.providerContestStaff,
             element: providerGuardRoute(
-              <ProviderContestWorkspacePage section="discipline" />,
+              <ProviderContestWorkspacePage section="staff" />,
             ),
           },
           {

@@ -82,7 +82,7 @@ export const routePaths = {
   providerContestBracket: "/provider/contests/:contestId/bracket",
   providerContestLeaderboard: "/provider/contests/:contestId/leaderboard",
   providerContestAudit: "/provider/contests/:contestId/audit",
-  providerContestDiscipline: "/provider/contests/:contestId/discipline",
+  providerContestStaff: "/provider/contests/:contestId/staff",
   providerConfiguration: "/provider/configuration",
   providerHelp: "/provider/help",
   adminDashboard: "/admin/dashboard",
