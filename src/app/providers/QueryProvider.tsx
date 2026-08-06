@@ -7,10 +7,12 @@ export type QueryProviderProps = {
 }
 
 export function QueryProvider({ children }: QueryProviderProps) {
+  const showDevtools = import.meta.env.DEV && import.meta.env.VITE_REACT_QUERY_DEVTOOLS === "true"
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {showDevtools && <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />}
     </QueryClientProvider>
   )
 }
