@@ -1,9 +1,9 @@
-import type { KycDocumentType } from '../../provider-kyc/types'
+import type { KycDocumentType } from "../../provider-kyc/types"
 
-export type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'GRACE_PERIOD' | 'EXPIRED'
-export type ProviderStatus = 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED'
-export type PaymentRequestStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED'
-export type PlanName = 'TRIAL' | 'STARTER' | 'GROWTH' | 'PRO'
+export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "GRACE_PERIOD" | "EXPIRED"
+export type ProviderStatus = "PENDING" | "ACTIVE" | "REJECTED" | "SUSPENDED"
+export type PaymentRequestStatus = "PENDING" | "CONFIRMED" | "REJECTED"
+export type PlanName = "TRIAL" | "STARTER" | "GROWTH" | "PRO"
 
 export interface SubscriptionPlan {
   id: string
@@ -63,6 +63,9 @@ export interface KycDocument {
 export interface ProviderDetail extends ProviderListItem {
   phone: string | null
   business_description: string | null
+  /** NULL ở hồ sơ tạo trước khi hai cột này tồn tại; đăng ký mới luôn có. */
+  tax_code: string | null
+  business_email: string | null
   rejection_reason: string | null
   suspended_at: string | null
   suspended_reason: string | null
@@ -112,3 +115,22 @@ export interface AdminPaymentRequestItem {
   plan_name: PlanName | null
   price_per_month: number | null
 }
+
+/** Thông tin doanh nghiệp lấy từ dữ liệu Cục Thuế. */
+export interface TaxBusinessInfo {
+  taxCode: string
+  legalName: string
+  internationalName: string | null
+  shortName: string | null
+  address: string | null
+  /** Nguyên văn, ví dụ "NNT đang hoạt động". */
+  taxStatus: string
+}
+
+export type TaxLookupResult =
+  | { status: "ACTIVE"; business: TaxBusinessInfo }
+  | { status: "INACTIVE"; business: TaxBusinessInfo }
+  | { status: "NOT_FOUND" }
+  | { status: "INVALID" }
+  /** Không hỏi được Cục Thuế; cho đi tiếp nhưng hồ sơ bị đánh dấu chưa xác minh. */
+  | { status: "UNAVAILABLE" }

@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "framer-motion"
+import { ArrowRight, Trophy } from "lucide-react"
 import { cardVariants, emphasizedEase } from "@/shared/lib/motion"
 import { getCafes } from "@/features/explore/api/explore.api"
-import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import {
+  contestApi,
+  contestQueryKeys,
+} from "@/features/contests/api/contest.api"
 import {
   featuredPopupApi,
   featuredPopupQueryKeys,
@@ -20,7 +24,13 @@ import { CafeGridCard } from "./components/CafeGridCard"
 import { ContestExploreCard } from "./components/ContestExploreCard"
 import { ContestDiscoveryRail } from "./components/ContestDiscoveryRail"
 import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
-import { buildBookingUrl, cafeInBounds, haversineKm, type MapBounds, type UserLocation } from "./explore-utils"
+import {
+  buildBookingUrl,
+  cafeInBounds,
+  haversineKm,
+  type MapBounds,
+  type UserLocation,
+} from "./explore-utils"
 import { useExploreFilters } from "./useExploreFilters"
 import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
@@ -46,7 +56,9 @@ export function ExplorePage() {
   const [searchOnMove, setSearchOnMove] = useState(false)
   const [dismissedPopupId, setDismissedPopupId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
-    return (localStorage.getItem("explore_view_mode") as "grid" | "list") || "list"
+    return (
+      (localStorage.getItem("explore_view_mode") as "grid" | "list") || "list"
+    )
   })
 
   const handleViewModeChange = (mode: "grid" | "list") => {
@@ -54,7 +66,9 @@ export function ExplorePage() {
     localStorage.setItem("explore_view_mode", mode)
   }
   const listRef = useRef<HTMLDivElement>(null)
-  const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const boundsTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
@@ -85,16 +99,23 @@ export function ExplorePage() {
 
       if (isAuthenticated) {
         try {
-          const isSynced = localStorage.getItem("rcfield_favorites_synced") === "true"
+          const isSynced =
+            localStorage.getItem("rcfield_favorites_synced") === "true"
           if (!isSynced) {
             const mergedFavs = await favoriteApi.syncFavorites(localFavs)
             setFavoriteIds(mergedFavs)
-            localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(mergedFavs))
+            localStorage.setItem(
+              "rcfield_favorite_cafes",
+              JSON.stringify(mergedFavs),
+            )
             localStorage.setItem("rcfield_favorites_synced", "true")
           } else {
             const dbFavs = await favoriteApi.getFavorites()
             setFavoriteIds(dbFavs)
-            localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(dbFavs))
+            localStorage.setItem(
+              "rcfield_favorite_cafes",
+              JSON.stringify(dbFavs),
+            )
           }
         } catch (e) {
           console.error("Failed to load favorites from backend", e)
@@ -112,7 +133,9 @@ export function ExplorePage() {
   const handleToggleFavorite = useCallback(
     async (cafeId: string) => {
       const isFav = favoriteIds.includes(cafeId)
-      const updated = isFav ? favoriteIds.filter((id) => id !== cafeId) : [...favoriteIds, cafeId]
+      const updated = isFav
+        ? favoriteIds.filter((id) => id !== cafeId)
+        : [...favoriteIds, cafeId]
 
       setFavoriteIds(updated)
       try {
@@ -132,7 +155,10 @@ export function ExplorePage() {
         console.error("Failed to toggle favorite:", e)
         setFavoriteIds(favoriteIds)
         try {
-          localStorage.setItem("rcfield_favorite_cafes", JSON.stringify(favoriteIds))
+          localStorage.setItem(
+            "rcfield_favorite_cafes",
+            JSON.stringify(favoriteIds),
+          )
         } catch (err) {
           console.error(err)
         }
@@ -146,19 +172,31 @@ export function ExplorePage() {
     boundsTimerRef.current = setTimeout(() => setMapBounds(bounds), 150)
   }, [])
 
-  const { data: cafes = [], isLoading, isError, refetch } = useQuery({
+  const {
+    data: cafes = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["explore", "cafes", filters.params],
     queryFn: () => getCafes(filters.params),
   })
 
-  const { data: contestsData, isLoading: isLoadingContests, isError: isErrorContests } = useQuery({
+  const {
+    data: contestsData,
+    isLoading: isLoadingContests,
+    isError: isErrorContests,
+  } = useQuery({
     queryKey: contestQueryKeys.list({ public: true }),
     queryFn: () => contestApi.listContests({ limit: 100 }),
     enabled: filters.searchTarget === "contests",
   })
 
   const { data: contestRailData } = useQuery({
-    queryKey: contestQueryKeys.list({ public: true, placement: "explore-rail" }),
+    queryKey: contestQueryKeys.list({
+      public: true,
+      placement: "explore-rail",
+    }),
     queryFn: () => contestApi.listContests({ limit: 6 }),
   })
 
@@ -213,7 +251,8 @@ export function ExplorePage() {
       (c) =>
         c.name.toLowerCase().includes(query) ||
         (c.description && c.description.toLowerCase().includes(query)) ||
-        (c.host_branch?.cafe?.name && c.host_branch.cafe.name.toLowerCase().includes(query))
+        (c.host_branch?.cafe?.name &&
+          c.host_branch.cafe.name.toLowerCase().includes(query)),
     )
   }, [contests, filters.query])
 
@@ -223,7 +262,8 @@ export function ExplorePage() {
 
   const filteredCafes = useMemo(() => {
     let visible = cafes
-    if (searchOnMove && mapBounds) visible = visible.filter((c) => cafeInBounds(c, mapBounds))
+    if (searchOnMove && mapBounds)
+      visible = visible.filter((c) => cafeInBounds(c, mapBounds))
 
     return [...visible].sort((a, b) => {
       const isFavA = favoriteIds.includes(a.id)
@@ -239,8 +279,18 @@ export function ExplorePage() {
         if (!hasA) return 1
         if (!hasB) return -1
         return (
-          haversineKm(userLocation.lat, userLocation.lng, a.latitude!, a.longitude!) -
-          haversineKm(userLocation.lat, userLocation.lng, b.latitude!, b.longitude!)
+          haversineKm(
+            userLocation.lat,
+            userLocation.lng,
+            a.latitude!,
+            a.longitude!,
+          ) -
+          haversineKm(
+            userLocation.lat,
+            userLocation.lng,
+            b.latitude!,
+            b.longitude!,
+          )
         )
       }
       return 0
@@ -391,8 +441,12 @@ export function ExplorePage() {
                       animate={{ opacity: 1, scale: 1 }}
                       className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm"
                     >
-                      <h3 className="text-lg font-semibold">Không tải được dữ liệu cơ sở</h3>
-                      <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                      <h3 className="text-lg font-semibold">
+                        Không tải được dữ liệu cơ sở
+                      </h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Vui lòng thử lại sau hoặc kiểm tra kết nối API.
+                      </p>
                       <button
                         type="button"
                         onClick={() => void refetch()}
@@ -408,20 +462,33 @@ export function ExplorePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm"
                     >
-                      <h3 className="text-lg font-semibold">Không có cơ sở trong khu vực này</h3>
+                      <h3 className="text-lg font-semibold">
+                        Không có cơ sở trong khu vực này
+                      </h3>
                       <p className="mt-2 text-sm text-slate-500">
-                        {searchOnMove && mapBounds ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở." : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
+                        {searchOnMove && mapBounds
+                          ? "Di chuyển hoặc thu nhỏ bản đồ để xem thêm cơ sở."
+                          : "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."}
                       </p>
                     </motion.div>
                   ) : (
                     <motion.main
                       key={`results-${viewMode}`}
-                      className={viewMode === "grid" ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" : "space-y-4"}
+                      className={
+                        viewMode === "grid"
+                          ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                          : "space-y-4"
+                      }
                     >
                       {filteredCafes.map((cafe, index) => {
                         const dist =
                           userLocation && cafe.latitude && cafe.longitude
-                            ? haversineKm(userLocation.lat, userLocation.lng, cafe.latitude, cafe.longitude)
+                            ? haversineKm(
+                                userLocation.lat,
+                                userLocation.lng,
+                                cafe.latitude,
+                                cafe.longitude,
+                              )
                             : undefined
                         return (
                           <motion.div
@@ -471,26 +538,42 @@ export function ExplorePage() {
               >
                 {/* Contest results list */}
                 <div className="mb-4">
-                  <h2 className="text-lg font-extrabold text-slate-950">Giải đấu RC nổi bật</h2>
-                  <p className="text-xs text-slate-500">Các cuộc đua tốc độ và kỹ thuật diễn ra tại các chi nhánh RC Cafe</p>
+                  <h2 className="text-lg font-extrabold text-slate-950">
+                    Giải đấu RC nổi bật
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Các cuộc đua tốc độ và kỹ thuật diễn ra tại các chi nhánh RC
+                    Cafe
+                  </p>
                 </div>
 
                 <main>
                   {isLoadingContests ? (
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                       {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="h-64 animate-pulse rounded-2xl bg-slate-200/50" />
+                        <div
+                          key={i}
+                          className="h-64 animate-pulse rounded-2xl bg-slate-200/50"
+                        />
                       ))}
                     </div>
                   ) : isErrorContests ? (
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
-                      <h3 className="text-lg font-semibold">Không tải được dữ liệu giải đấu</h3>
-                      <p className="mt-2 text-sm text-slate-500">Vui lòng thử lại sau hoặc kiểm tra kết nối API.</p>
+                      <h3 className="text-lg font-semibold">
+                        Không tải được dữ liệu giải đấu
+                      </h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Vui lòng thử lại sau hoặc kiểm tra kết nối API.
+                      </p>
                     </div>
                   ) : filteredContests.length === 0 ? (
                     <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
-                      <h3 className="text-lg font-semibold">Chưa tìm thấy giải đấu nào</h3>
-                      <p className="mt-2 text-sm text-slate-500">Thử thay đổi từ khóa tìm kiếm ở thanh trên.</p>
+                      <h3 className="text-lg font-semibold">
+                        Chưa tìm thấy giải đấu nào
+                      </h3>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Thử thay đổi từ khóa tìm kiếm ở thanh trên.
+                      </p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -538,12 +621,18 @@ export function ExplorePage() {
           cafes={filteredCafes}
           userLocation={userLocation}
           onUserLocation={setUserLocation}
-          onSelectCafe={(cafe) => { setQuickViewCafe(cafe) }}
+          onSelectCafe={(cafe) => {
+            setQuickViewCafe(cafe)
+          }}
           onClose={() => setShowMap(false)}
         />
       )}
 
-      <CafeQuickViewDialog cafe={quickViewCafe} onClose={() => setQuickViewCafe(null)} onBookNow={handleBookNow} />
+      <CafeQuickViewDialog
+        cafe={quickViewCafe}
+        onClose={() => setQuickViewCafe(null)}
+        onBookNow={handleBookNow}
+      />
 
       <Dialog
         open={Boolean(activeFeaturedPopup) && !popupDismissed}
@@ -557,7 +646,13 @@ export function ExplorePage() {
           }
         }}
       >
-        <DialogContent className="max-w-3xl overflow-hidden border-none p-0">
+        {/*
+          Phải là `sm:max-w-3xl`, không phải `max-w-3xl`. DialogContent mặc định
+          có `sm:max-w-sm`; Tailwind xếp các lớp kèm media query xuống sau, nên
+          lớp không breakpoint luôn thua và modal bị ép còn 384px trên desktop —
+          đó là lý do nội dung bên trong trông chật cứng.
+        */}
+        <DialogContent className="overflow-hidden border-none p-0 sm:max-w-3xl">
           {activeFeaturedPopup ? (
             <FeaturedContestPopup
               title={activeFeaturedPopup.title}
@@ -588,6 +683,20 @@ export function ExplorePage() {
   )
 }
 
+/**
+ * Popup giải đấu nổi bật trên trang khám phá.
+ *
+ * Bốn thứ đã sửa so với bản trước:
+ *
+ * 1. Chữ tiếng Việt mất hết dấu ("Kham pha giai dau dang hot") — đọc như lỗi
+ *    encoding, mà đây là thứ đầu tiên khách nhìn thấy khi vào trang.
+ * 2. Dòng "Popup dong do admin dieu phoi" là ghi chú nội bộ lọt ra ngoài. Khách
+ *    không cần biết ai điều phối popup; nó còn chiếm nửa hàng nên nút CTA bị ép
+ *    hẹp lại thành hình tròn với chữ xuống ba dòng.
+ * 3. Nút CTA thiếu `shrink-0` nên bị flex bóp méo.
+ * 4. Nút đóng X của Dialog nằm đè lên dòng chữ đầu — cột nội dung nay chừa lề
+ *    phải cho nó.
+ */
 function FeaturedContestPopup({
   title,
   subtitle,
@@ -602,40 +711,51 @@ function FeaturedContestPopup({
   onAction: () => void
 }) {
   return (
-    <div className="grid overflow-hidden bg-[#101317] text-white md:grid-cols-[1.05fr_0.95fr]">
-      <div className="relative min-h-[260px]">
+    <div className="grid overflow-hidden bg-[#101317] text-white md:grid-cols-2">
+      <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[300px]">
         {imageUrl ? (
-          <img src={imageUrl} alt={title} className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={imageUrl}
+            alt={title}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         ) : (
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#fb923c,transparent_42%),linear-gradient(135deg,#111827,#1f2937_55%,#7c2d12)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-tr from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-5 left-5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.24em] text-orange-200 backdrop-blur">
-          Featured Contest
+        <div className="absolute bottom-4 left-4 flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-orange-200 backdrop-blur">
+          <Trophy className="size-3.5" />
+          Giải đấu nổi bật
         </div>
       </div>
-      <div className="flex flex-col justify-between p-7">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-300">
-            Kham pha giai dau dang hot
+
+      <div className="flex flex-col justify-between gap-6 p-6 pr-12 md:p-7 md:pr-12">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-wider text-orange-300">
+            Đang mở đăng ký
           </p>
-          <h2 className="mt-3 text-3xl font-black leading-tight">{title}</h2>
-          <p className="mt-4 text-sm leading-7 text-slate-300">
-            {subtitle ?? "Thong tin giai dau noi bat dang duoc he thong uu tien hien thi tren trang kham pha."}
-          </p>
+          <h2 className="mt-2 line-clamp-2 text-2xl font-black leading-tight md:text-3xl">
+            {title}
+          </h2>
+          {subtitle ? (
+            <p className="mt-3 line-clamp-4 text-sm leading-6 text-slate-300">
+              {subtitle}
+            </p>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-slate-300">
+              Xem thể lệ, lệ phí và số suất còn lại trước khi đăng ký.
+            </p>
+          )}
         </div>
-        <div className="mt-6 flex items-center justify-between gap-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            Popup dong do admin dieu phoi
-          </div>
-          <button
-            type="button"
-            onClick={onAction}
-            className="rounded-full bg-orange-500 px-5 py-3 text-sm font-black text-white transition hover:bg-orange-400"
-          >
-            {ctaLabel}
-          </button>
-        </div>
+
+        <button
+          type="button"
+          onClick={onAction}
+          className="inline-flex shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-orange-500 px-5 py-3 text-sm font-black text-white transition hover:bg-orange-400 md:self-start"
+        >
+          {ctaLabel}
+          <ArrowRight className="size-4" />
+        </button>
       </div>
     </div>
   )

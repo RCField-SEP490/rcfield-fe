@@ -10,6 +10,7 @@ import type {
   SubscriptionPlan,
   CafeListItem,
   ImpersonateResponse,
+  TaxLookupResult,
 } from "../types"
 
 interface PaginatedResponse<T> {
@@ -18,8 +19,14 @@ interface PaginatedResponse<T> {
 }
 
 export const subscriptionApi = {
-  getSubscriptionStatus: async (): Promise<{ success: boolean; data: ProviderSubscription | null }> => {
-    const res = await api.get<{ success: boolean; data: ProviderSubscription | null }>("/v1/provider/subscription")
+  getSubscriptionStatus: async (): Promise<{
+    success: boolean
+    data: ProviderSubscription | null
+  }> => {
+    const res = await api.get<{
+      success: boolean
+      data: ProviderSubscription | null
+    }>("/v1/provider/subscription")
     return res.data
   },
 
@@ -29,25 +36,46 @@ export const subscriptionApi = {
     transfer_date: string
     transfer_amount: number
   }): Promise<{ success: boolean; data: PaymentRequest }> => {
-    const res = await api.post<{ success: boolean; data: PaymentRequest }>("/v1/provider/payment-requests", body)
+    const res = await api.post<{ success: boolean; data: PaymentRequest }>(
+      "/v1/provider/payment-requests",
+      body,
+    )
     return res.data
   },
 
-  listMyPaymentRequests: async (page = 1, limit = 20): Promise<PaginatedResponse<PaymentRequest>> => {
-    const res = await api.get<PaginatedResponse<PaymentRequest>>("/v1/provider/payment-requests", {
-      params: { page, limit },
-    })
+  listMyPaymentRequests: async (
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<PaymentRequest>> => {
+    const res = await api.get<PaginatedResponse<PaymentRequest>>(
+      "/v1/provider/payment-requests",
+      {
+        params: { page, limit },
+      },
+    )
     return res.data
+  },
+
+  /**
+   * Tra mã số thuế trên dữ liệu Cục Thuế (qua backend, không gọi thẳng bên thứ ba).
+   *
+   * Luôn trả 200 — "không tìm thấy" là câu trả lời hợp lệ, không phải lỗi.
+   */
+  lookupBusiness: async (taxCode: string): Promise<TaxLookupResult> => {
+    const res = await api.get<{ success: boolean; data: TaxLookupResult }>(
+      `/v1/business-lookup/${encodeURIComponent(taxCode)}`,
+    )
+    return res.data.data
   },
 
   registerProvider: async (
     formData: FormData,
   ): Promise<{ success: boolean; data: { id: string; email: string } }> => {
     // Do NOT set Content-Type manually — browser sets multipart boundary automatically
-    const res = await api.post<{ success: boolean; data: { id: string; email: string } }>(
-      "/v1/auth/register-provider",
-      formData,
-    )
+    const res = await api.post<{
+      success: boolean
+      data: { id: string; email: string }
+    }>("/v1/auth/register-provider", formData)
     return res.data
   },
 
@@ -56,12 +84,19 @@ export const subscriptionApi = {
     page?: number
     limit?: number
   }): Promise<PaginatedResponse<ProviderListItem>> => {
-    const res = await api.get<PaginatedResponse<ProviderListItem>>("/v1/admin/providers", { params })
+    const res = await api.get<PaginatedResponse<ProviderListItem>>(
+      "/v1/admin/providers",
+      { params },
+    )
     return res.data
   },
 
-  getProviderDetail: async (id: string): Promise<{ success: boolean; data: ProviderDetail }> => {
-    const res = await api.get<{ success: boolean; data: ProviderDetail }>(`/v1/admin/providers/${id}`)
+  getProviderDetail: async (
+    id: string,
+  ): Promise<{ success: boolean; data: ProviderDetail }> => {
+    const res = await api.get<{ success: boolean; data: ProviderDetail }>(
+      `/v1/admin/providers/${id}`,
+    )
     return res.data
   },
 
@@ -86,7 +121,10 @@ export const subscriptionApi = {
     page?: number
     limit?: number
   }): Promise<PaginatedResponse<AdminPaymentRequestItem>> => {
-    const res = await api.get<PaginatedResponse<AdminPaymentRequestItem>>("/v1/admin/payment-requests", { params })
+    const res = await api.get<PaginatedResponse<AdminPaymentRequestItem>>(
+      "/v1/admin/payment-requests",
+      { params },
+    )
     return res.data
   },
 
@@ -112,22 +150,47 @@ export const subscriptionApi = {
       price_per_month?: number
     },
   ): Promise<SubscriptionPlan> => {
-    const res = await api.patch<SubscriptionPlan>(`/v1/admin/subscription-plans/${id}`, body)
+    const res = await api.patch<SubscriptionPlan>(
+      `/v1/admin/subscription-plans/${id}`,
+      body,
+    )
     return res.data
   },
 
-  getProviderMe: async (): Promise<{ success: boolean; data: ProviderDetail }> => {
-    const res = await api.get<{ success: boolean; data: ProviderDetail }>("/v1/provider/me")
+  getProviderMe: async (): Promise<{
+    success: boolean
+    data: ProviderDetail
+  }> => {
+    const res = await api.get<{ success: boolean; data: ProviderDetail }>(
+      "/v1/provider/me",
+    )
     return res.data
+  },
+
+  updateProviderMe: async (body: {
+    business_name?: string
+    business_description?: string | null
+    tax_code?: string
+    business_email?: string
+  }): Promise<ProviderDetail> => {
+    const res = await api.patch<{ success: boolean; data: ProviderDetail }>(
+      "/v1/provider/me",
+      body,
+    )
+    return res.data.data
   },
 
   getProviderCafes: async (id: string): Promise<CafeListItem[]> => {
-    const res = await api.get<{ data: CafeListItem[] }>(`/v1/admin/providers/${id}/cafes`)
+    const res = await api.get<{ data: CafeListItem[] }>(
+      `/v1/admin/providers/${id}/cafes`,
+    )
     return res.data.data
   },
 
   impersonateProvider: async (id: string): Promise<ImpersonateResponse> => {
-    const res = await api.post<ImpersonateResponse>(`/v1/admin/providers/${id}/impersonate`)
+    const res = await api.post<ImpersonateResponse>(
+      `/v1/admin/providers/${id}/impersonate`,
+    )
     return res.data
   },
 }
