@@ -65,6 +65,7 @@ const contestStatusOptions = [
 ] as const
 
 export function CustomerContestRegistrationsPage() {
+  const [now] = useState(() => Date.now())
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const [cancelId, setCancelId] = useState<string | null>(null)
@@ -72,6 +73,7 @@ export function CustomerContestRegistrationsPage() {
   // theo isPending vì mutation resolve trước khi điều hướng).
   const [payingId, setPayingId] = useState<string | null>(null)
   const query = searchParams.get("query") ?? ""
+  const bookingIdFilter = searchParams.get("bookingId") ?? null
   const journeyStatus = searchParams.get("journey") ?? "ALL"
   const contestStatus = searchParams.get("contestStatus") ?? "ALL"
 
@@ -125,10 +127,12 @@ export function CustomerContestRegistrationsPage() {
     },
   })
 
-  const registrations = useMemo(
-    () => registrationsQuery.data ?? [],
-    [registrationsQuery.data],
-  )
+  const registrations = useMemo(() => {
+    const items = registrationsQuery.data ?? []
+    return bookingIdFilter
+      ? items.filter((registration) => registration.bookingId === bookingIdFilter)
+      : items
+  }, [bookingIdFilter, registrationsQuery.data])
   const stats = useMemo(() => {
     return {
       total: registrations.length,
@@ -194,7 +198,9 @@ export function CustomerContestRegistrationsPage() {
           <EmptyState
             icon={Trophy}
             title="Bạn chưa có contest phù hợp bộ lọc"
-            description="Hãy khám phá thêm các giải đang mở đăng ký hoặc điều chỉnh bộ lọc để xem hành trình thi đấu của bạn."
+            description={bookingIdFilter
+              ? "Không tìm thấy đăng ký giải đấu tương ứng với đơn đặt này."
+              : "Hãy khám phá thêm các giải đang mở đăng ký hoặc điều chỉnh bộ lọc để xem hành trình thi đấu của bạn."}
             className="rounded-3xl border-2 border-slate-200 bg-white p-12 shadow-sm"
             action={
               <Button
@@ -219,14 +225,9 @@ export function CustomerContestRegistrationsPage() {
                   } | null)
                 : null
             const contestUpcoming = contest?.starts_at
-              ? new Date(contest.starts_at).getTime() > Date.now()
+              ? new Date(contest.starts_at).getTime() > now
               : false
-            const bookingNeedsPayment =
-              registration.bookingId &&
-              registration.booking &&
-              ["PENDING", "AWAITING_PAYMENT"].includes(
-                registration.booking.status,
-              )
+            const entryFeeIsIncludedInBooking = Boolean(registration.bookingId)
 
             return (
               <article
@@ -294,7 +295,22 @@ export function CustomerContestRegistrationsPage() {
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        {registration.paymentStatus === "PENDING_PAYMENT" ? (
+                        {registration.paymentStatus === "PENDING_PAYMENT" && entryFeeIsIncludedInBooking ? (
+                          <Button
+                            asChild
+                            className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
+                          >
+                            <Link
+                              to={routePaths.customerBookingDetail.replace(
+                                ":bookingId",
+                                registration.bookingId!,
+                              )}
+                            >
+                              <CreditCard className="mr-2 size-4" />
+                              Thanh toán đơn đặt
+                            </Link>
+                          </Button>
+                        ) : registration.paymentStatus === "PENDING_PAYMENT" ? (
                           <Button
                             type="button"
                             className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
@@ -339,19 +355,6 @@ export function CustomerContestRegistrationsPage() {
                         ) : null}
                       </div>
                     </div>
-
-                    {bookingNeedsPayment ? (
-                      <Link
-                        to={routePaths.customerBookingDetail.replace(
-                          ":bookingId",
-                          registration.bookingId!,
-                        )}
-                        className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-orange-600 hover:text-orange-700"
-                      >
-                        Thanh toán tiền thuê xe
-                        <ArrowRight className="size-4" />
-                      </Link>
-                    ) : null}
 
                     {registration.status === "CONFIRMED" &&
                     contestUpcoming &&

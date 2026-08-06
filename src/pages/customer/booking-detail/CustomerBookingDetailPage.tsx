@@ -216,7 +216,6 @@ export function CustomerBookingDetailPage() {
 
   const slotFee = sumComponents(booking.payment_components, "SLOT_FEE")
   const rentalFee = sumComponents(booking.payment_components, "RENTAL_FEE")
-  const depositAmount = 0
   const fnbPreorderFee = sumComponents(booking.payment_components, "FNB_PREORDER", "FB_PREORDER")
   const damageBreakdown = booking.damage_breakdown
   // Read damage from payment_components first (backend creates DAMAGE_CHARGE PENDING when inspection submitted),
@@ -636,17 +635,6 @@ export function CustomerBookingDetailPage() {
                   <span className="text-orange-600">{fmt(totalAmount)}</span>
                 </div>
 
-                {depositAmount > 0 && (
-                  <div className="p-3 bg-orange-50/40 rounded-xl border border-orange-100 space-y-1">
-                    <div className="flex justify-between text-[11px] font-extrabold text-orange-900">
-                      <span>Đã đặt cọc:</span>
-                      <span>{fmt(depositAmount)}</span>
-                    </div>
-                    <p className="text-[9px] text-orange-600 font-semibold leading-normal">
-                      Khoản cọc sẽ được hoàn trả hoặc cấn trừ vào hóa đơn thực tế sau khi trả xe.
-                    </p>
-                  </div>
-                )}
               </CardContent>
               <CardFooter className="pt-2 pb-4 border-t border-slate-50 justify-center">
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold">

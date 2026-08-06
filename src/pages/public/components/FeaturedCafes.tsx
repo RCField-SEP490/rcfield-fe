@@ -6,7 +6,10 @@ import { getCafes } from "@/features/explore/api/explore.api"
 import { Button } from "@/shared/ui/button"
 import { routePaths } from "@/app/router/route-paths"
 import { formatCurrency } from "@/shared/lib/format"
-import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
+import {
+  buildCafeBookingPath,
+  buildCafeDetailPath,
+} from "@/pages/customer/cafe-detail/cafe-detail-utils"
 
 export function FeaturedCafes() {
   const { data: cafes = [], isLoading } = useQuery({
@@ -139,7 +142,7 @@ export function FeaturedCafes() {
                         size="sm"
                         className="rounded-xl bg-orange-600 px-4 font-bold text-white shadow-md shadow-orange-600/10 hover:bg-orange-700 hover:shadow-lg active:scale-95"
                       >
-                        <Link to={`/booking/create?cafe_id=${cafe.id}`}>
+                        <Link to={buildCafeBookingPath(cafe.id)}>
                           Đặt lịch
                         </Link>
                       </Button>

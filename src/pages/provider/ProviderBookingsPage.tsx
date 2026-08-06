@@ -406,43 +406,39 @@ function CancelDialog({
   )
 }
 
-function SessionTimer({ plannedEndAt, actualStartAt, status }: { plannedEndAt: string; actualStartAt: string; status: string }) {
-  const [timeStr, setTimeStr] = useState("")
+function SessionTimer({ plannedEndAt, status }: { plannedEndAt: string; actualStartAt?: string; status: string }) {
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
-    if (status !== 'ACTIVE') {
-      setTimeStr(status === 'EXTENDING' ? 'Gia hạn' : 'Chờ xác nhận')
-      return
-    }
-
-    const interval = setInterval(() => {
-      const now = Date.now()
-      const end = new Date(plannedEndAt).getTime()
-      const diff = end - now
-      const isOverdue = diff < 0
-      const absDiff = Math.abs(diff)
-
-      const hrs = Math.floor(absDiff / 3600000)
-      const mins = Math.floor((absDiff % 3600000) / 60000)
-      const secs = Math.floor((absDiff % 60000) / 1000)
-
-      const format = (n: number) => String(n).padStart(2, "0")
-      const timeFormatted = `${format(hrs)}:${format(mins)}:${format(secs)}`
-
-      if (isOverdue) {
-        setTimeStr(`Quá giờ: ${timeFormatted}`)
-      } else {
-        setTimeStr(timeFormatted)
-      }
-    }, 1000)
-
+    if (status !== 'ACTIVE') return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
-  }, [plannedEndAt, actualStartAt, status])
+  }, [status])
 
-  const isOverdue = new Date(plannedEndAt).getTime() < Date.now() && status === 'ACTIVE'
+  if (status !== 'ACTIVE') {
+    return (
+      <span className="text-slate-700 font-mono font-medium">
+        {status === 'EXTENDING' ? 'Gia hạn' : 'Chờ xác nhận'}
+      </span>
+    )
+  }
+
+  const end = new Date(plannedEndAt).getTime()
+  const diff = end - now
+  const isOverdue = diff < 0
+  const absDiff = Math.abs(diff)
+
+  const hrs = Math.floor(absDiff / 3600000)
+  const mins = Math.floor((absDiff % 3600000) / 60000)
+  const secs = Math.floor((absDiff % 60000) / 1000)
+
+  const format = (n: number) => String(n).padStart(2, "0")
+  const timeFormatted = `${format(hrs)}:${format(mins)}:${format(secs)}`
+  const displayStr = isOverdue ? `Quá giờ: ${timeFormatted}` : timeFormatted
+
   return (
     <span className={isOverdue ? "text-red-500 font-bold" : "text-slate-700 font-mono font-medium"}>
-      {timeStr || "00:00:00"}
+      {displayStr}
     </span>
   )
 }
@@ -465,6 +461,7 @@ export function ProviderBookingsPage() {
       msg.event === "SESSION_EXTENSION_PROPOSED" ||
       msg.event === "CUSTOMER_CHECKOUT_CONFIRMED" ||
       msg.event === "SESSION_STATUS_CHANGED" ||
+      msg.event === "BOOKING_UPDATED" ||
       msg.event === "booking.new"
     ) {
       void queryClient.invalidateQueries({ queryKey: ["bookings"] })

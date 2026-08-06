@@ -203,7 +203,10 @@ export function useCancelBooking() {
       bookingId: string
       reason?: string
     }) => bookingApi.cancelBooking(bookingId, reason),
-    onSuccess: () => {
+    // Refresh on both outcomes. A timeout or a concurrent cancellation can
+    // change the booking state on the server even when this request returns an
+    // error, and the customer must not keep seeing a stale active hold.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: bookingQueryKeys.all })
     },
   })

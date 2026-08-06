@@ -24,6 +24,7 @@ export const routePaths = {
   customerVehicles: "/customer/vehicles",
   customerReviews: "/customer/reviews",
   customerActiveSession: "/customer/sessions/:sessionId",
+  customerInspection: "/customer/inspections/:sessionId",
   customerDamageReview: "/customer/damage-review/:sessionId",
   customerExtensionResponse: "/customer/extension-response/:sessionId",
   staffActivate: "/staff-invite/activate",
