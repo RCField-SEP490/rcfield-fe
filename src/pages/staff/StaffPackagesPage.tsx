@@ -27,6 +27,16 @@ interface SuggestedCustomer {
   avatarUrl: string | null
 }
 
+interface SubscriptionItem {
+  status: string
+  planName: string
+  cafeName?: string
+  purchasedAt?: string
+  expiresAt?: string
+  remainingSessions: number
+  totalSessions: number
+}
+
 export default function StaffPackagesPage() {
   const { assignedCafeId } = useStaffOperations()
 
@@ -64,18 +74,18 @@ export default function StaffPackagesPage() {
   })
 
   const filteredSubscriptions = lookupData?.activeSubscriptions?.filter(
-    (sub: any) => sub.status === "ACTIVE" || sub.status === "EXPIRED" || sub.status === "EXHAUSTED"
+    (sub: SubscriptionItem) => sub.status === "ACTIVE" || sub.status === "EXPIRED" || sub.status === "EXHAUSTED"
   ) || []
 
-  // Auto reset search results when input is cleared
-  React.useEffect(() => {
-    if (!searchQuery.trim()) {
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val)
+    if (!val.trim()) {
       setSearchTriggerQuery("")
       setHasSearched(false)
       setSelectedCustomerId("")
       setHasSelectedCustomer(false)
     }
-  }, [searchQuery])
+  }
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -190,7 +200,7 @@ export default function StaffPackagesPage() {
             type="text"
             placeholder="Nhập số điện thoại, email hoặc họ tên thành viên cần tra cứu..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full rounded-xl border border-[#e5e2e1] bg-white pl-11 pr-4 py-3 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c] focus:border-[#ea580c] shadow-sm"
           />
         </div>
@@ -327,7 +337,7 @@ export default function StaffPackagesPage() {
 
               {filteredSubscriptions && filteredSubscriptions.length > 0 ? (
                 <div className="space-y-3">
-                  {filteredSubscriptions.map((sub: any, idx: number) => (
+                  {filteredSubscriptions.map((sub: SubscriptionItem, idx: number) => (
                     <div
                       key={idx}
                       className="rounded-xl border border-orange-200 bg-[#fffbf9]/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"

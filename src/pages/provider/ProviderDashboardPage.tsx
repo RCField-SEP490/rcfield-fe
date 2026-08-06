@@ -210,13 +210,7 @@ export function ProviderDashboardPage() {
     }
   }
 
-  const handleResetOnboarding = () => {
-    localStorage.setItem("onboarding_completed", "false")
-    localStorage.setItem("view_setup", "true")
-    setOnboardingCompleted(false)
-    setViewSetup(true)
-    toast.info("Đang hiển thị lại hướng dẫn thiết lập cơ bản.")
-  }
+
 
   const isLoadingOnboarding =
     isLoadingCafes || (branchesCreated && isLoadingVehicles)
@@ -251,7 +245,7 @@ export function ProviderDashboardPage() {
     )
   }
 
-  return <RealDashboard onResetOnboarding={handleResetOnboarding} />
+  return <RealDashboard />
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -465,11 +459,7 @@ function FleetStatusItem({
 
 // ── Real Dashboard (hiển thị sau onboarding) ─────────────────────────────────
 
-function RealDashboard({
-  onResetOnboarding: _onResetOnboarding,
-}: {
-  onResetOnboarding: () => void
-}) {
+function RealDashboard() {
   const [period, setPeriod] = useState<RevenuePeriod>("daily")
   const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null)
   const [customFrom, setCustomFrom] = useState("")
@@ -511,14 +501,14 @@ function RealDashboard({
     }
 
     const toastId = toast.loading("Đang nạp dữ liệu đơn đặt...")
-    let exportBookings: RecentBookingItem[] = []
+    let exportBookings: RecentBookingItem[]
     try {
       exportBookings = await providerDashboardApi.getRecentBookings({
         from,
         to,
         cafeId: selectedCafeId
       })
-    } catch (err) {
+    } catch {
       toast.dismiss(toastId)
       toast.error("Không thể tải danh sách đơn đặt để xuất báo cáo.")
       return
@@ -567,7 +557,7 @@ function RealDashboard({
     titleCell.alignment = { vertical: "middle", horizontal: "left" }
 
     wsKpi.addRow([`Thời gian xuất: ${new Date().toLocaleString("vi-VN")}`])
-    wsKpi.addRow([`Chi nhánh: ${selectedCafeId ? (cafes.find((c: any) => c.id === selectedCafeId)?.name || "Chi nhánh đã chọn") : "Tất cả chi nhánh"}`])
+    wsKpi.addRow([`Chi nhánh: ${selectedCafeId ? (cafes.find((c: { id: string; name: string }) => c.id === selectedCafeId)?.name || "Chi nhánh đã chọn") : "Tất cả chi nhánh"}`])
     wsKpi.addRow([`Khoảng thời gian: Từ ${new Date(from).toLocaleDateString("vi-VN")} đến ${new Date(to).toLocaleDateString("vi-VN")}`])
     wsKpi.addRow([]) // Dòng trống
 
@@ -615,7 +605,7 @@ function RealDashboard({
     // Tự động giãn cột
     wsKpi.columns.forEach((column) => {
       let maxLen = 0
-      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+      column.eachCell?.({ includeEmpty: false }, (cell) => {
         const valStr = cell.value ? cell.value.toString() : ""
         if (valStr.length > maxLen) maxLen = valStr.length
       })
@@ -644,7 +634,7 @@ function RealDashboard({
     })
 
     if (breakdown && breakdown.length > 0) {
-      breakdown.forEach((item: any, index: number) => {
+      breakdown.forEach((item: { label: string; amount: number }, index: number) => {
         const row = wsBreakdown.addRow([item.label, item.amount])
         row.height = 22
         row.eachCell((cell, colNum) => {
@@ -668,7 +658,7 @@ function RealDashboard({
 
     wsBreakdown.columns.forEach((column) => {
       let maxLen = 0
-      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+      column.eachCell?.({ includeEmpty: false }, (cell) => {
         const valStr = cell.value ? cell.value.toString() : ""
         if (valStr.length > maxLen) maxLen = valStr.length
       })
@@ -710,7 +700,7 @@ function RealDashboard({
     })
 
     if (branches && branches.length > 0) {
-      branches.forEach((item: any, index: number) => {
+      branches.forEach((item: { cafeName: string; totalRevenue: number; bookingCount: number }, index: number) => {
         const row = wsBranches.addRow([
           item.cafeName,
           item.totalRevenue,
@@ -738,7 +728,7 @@ function RealDashboard({
 
     wsBranches.columns.forEach((column) => {
       let maxLen = 0
-      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+      column.eachCell?.({ includeEmpty: false }, (cell) => {
         const valStr = cell.value ? cell.value.toString() : ""
         if (valStr.length > maxLen) maxLen = valStr.length
       })
@@ -775,7 +765,7 @@ function RealDashboard({
     })
 
     if (trend && trend.length > 0) {
-      trend.forEach((item: any, index: number) => {
+      trend.forEach((item, index: number) => {
         const row = wsTrend.addRow([
           item.label,
           item.slotFee || 0,
@@ -807,7 +797,7 @@ function RealDashboard({
 
     wsTrend.columns.forEach((column) => {
       let maxLen = 0
-      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+      column.eachCell?.({ includeEmpty: false }, (cell) => {
         const valStr = cell.value ? cell.value.toString() : ""
         if (valStr.length > maxLen) maxLen = valStr.length
       })
@@ -861,7 +851,7 @@ function RealDashboard({
     }
 
     if (exportBookings && exportBookings.length > 0) {
-      exportBookings.forEach((item: any, index: number) => {
+      exportBookings.forEach((item: RecentBookingItem, index: number) => {
         const formattedDate = new Date(item.slotStart).toLocaleString("vi-VN")
         const row = wsBookings.addRow([
           item.bookingId,
@@ -898,7 +888,7 @@ function RealDashboard({
 
     wsBookings.columns.forEach((column) => {
       let maxLen = 0
-      column.eachCell && column.eachCell({ includeEmpty: false }, (cell) => {
+      column.eachCell?.({ includeEmpty: false }, (cell) => {
         const valStr = cell.value ? cell.value.toString() : ""
         if (valStr.length > maxLen) maxLen = valStr.length
       })
@@ -908,7 +898,7 @@ function RealDashboard({
     // 6. Ghi và tải file Excel xuống
     const buffer = await workbook.xlsx.writeBuffer()
     const branchNameSafe = selectedCafeId 
-      ? (cafes.find((c: any) => c.id === selectedCafeId)?.name || "branch").replace(/\s+/g, "_") 
+      ? (cafes.find((c: { id: string; name: string }) => c.id === selectedCafeId)?.name || "branch").replace(/\s+/g, "_") 
       : "cac_chi_nhanh"
     const dateStr = new Date().toISOString().substring(0, 10)
     

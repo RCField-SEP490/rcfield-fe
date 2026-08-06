@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
   AlertCircle,
   ArrowRight,
@@ -25,12 +26,13 @@ import { formatCurrency } from "@/shared/lib/format"
  * additional fees across the booking lifecycle.
  */
 export function PaymentResultPage() {
+  const [now] = useState(() => Date.now())
   const [searchParams] = useSearchParams()
   const status = searchParams.get("status")
   const txnRef = searchParams.get("txn_ref")
   const reason = searchParams.get("reason")
   const responseCode = searchParams.get("response_code")
-  const isSuccess = status === "success"
+  const gatewayReportedSuccess = status === "success"
   const isCounterPayment = txnRef?.startsWith("ctr_") ?? false
 
   const {
@@ -40,24 +42,63 @@ export function PaymentResultPage() {
   } = useQuery({
     queryKey: ["payment-result-transaction", txnRef],
     queryFn: () => bookingApi.getPaymentTransaction(txnRef!),
-    enabled: isSuccess && !!txnRef,
+    // The return URL is only a client redirect. Always verify its transaction
+    // record before deciding whether this payment actually succeeded.
+    enabled: !!txnRef,
     retry: 1,
   })
 
   const bookingId =
     searchParams.get("booking_id") ??
+    searchParams.get("bookingId") ??
     transaction?.bookingId ??
     (txnRef ? txnRefToBookingId(txnRef) : undefined)
+  const { data: booking, isFetching: isFetchingBooking } = useQuery({
+    queryKey: ["payment-result-booking", bookingId],
+    queryFn: () => bookingApi.getBooking(bookingId!),
+    enabled: !!bookingId,
+    retry: 1,
+  })
+  const isPackageReturn = txnRef?.startsWith("pkg_") === true
+  // A URL parameter alone can be edited or arrive before the server-side IPN.
+  // Only a persisted SUCCESS transaction is proof that money was accepted.
+  const isSuccess = gatewayReportedSuccess && !!txnRef && (isPackageReturn || transaction?.status === "SUCCESS")
+  const isVerifyingSuccess = gatewayReportedSuccess && (!txnRef || (!isPackageReturn && transaction?.status !== "SUCCESS"))
+  const verificationUnavailable = isVerifyingSuccess && (!txnRef || isTransactionError || transaction?.status === "FAILED")
+  const isCheckingFailedPayment = !gatewayReportedSuccess && !!txnRef && !transaction && isFetchingTransaction
+  const isCheckingFailedBooking = !gatewayReportedSuccess && !!bookingId && !booking && isFetchingBooking
+  const isCheckingOutcome = isCheckingFailedPayment || isCheckingFailedBooking
+  const isPendingHold = booking?.status === "PENDING"
+  const isContestBooking = Boolean(booking?.contestId)
+  const paymentExpiry = booking?.paymentExpiresAt ? new Date(booking.paymentExpiresAt) : null
+  const holdIsActive = isPendingHold && (!paymentExpiry || paymentExpiry.getTime() > now)
   const isAdditionalPayment = transaction?.additionalPayment ?? isCounterPayment
   const isPackagePurchase =
-    isSuccess && txnRef?.startsWith("pkg_") === true && isTransactionError
+    isSuccess && isPackageReturn && isTransactionError
   const paidAmount = transaction ? Number(transaction.amount) : undefined
   const receiptLines = transaction?.components ?? []
   const paymentTitle = isAdditionalPayment
     ? "Biên nhận thanh toán phí phát sinh"
     : isPackagePurchase
       ? "Thanh toán gói thành công"
-      : "Biên nhận thanh toán đặt trước"
+      : "Biên nhận thanh toán đơn đặt"
+
+  const handleResumePayment = async () => {
+    if (!bookingId) return
+    try {
+      const result = await bookingApi.createCheckout(bookingId)
+      if (!result.payment_url) throw new Error("Không nhận được liên kết thanh toán")
+      window.location.href = result.payment_url
+    } catch {
+      // The booking detail has the definitive status and provides a safe
+      // recovery path when the checkout link cannot be recreated here.
+      window.location.href = `/booking/${bookingId}`
+    }
+  }
+
+  const failureDescription = responseCode === "24"
+    ? "Bạn đã hủy giao dịch tại VNPay. Đơn vẫn được giữ chỗ trong thời hạn thanh toán, nếu còn hiệu lực."
+    : "Giao dịch chưa hoàn tất. Đơn chỉ được giữ chỗ đến hết thời hạn thanh toán; bạn có thể tiếp tục thanh toán nếu đơn còn hiệu lực."
 
   return (
     <main className="min-h-screen bg-[#f3f6f8] px-4 py-10 md:px-6 md:py-16">
@@ -65,17 +106,23 @@ export function PaymentResultPage() {
         <CardContent className="p-0">
           <section className="px-6 py-8 md:px-10 md:py-10">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+              <div className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${isSuccess ? "bg-emerald-50 text-emerald-700" : isVerifyingSuccess ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-600"}`}>
                 {isSuccess ? <CheckCircle2 className="size-8" /> : <AlertCircle className="size-8" />}
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isSuccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-                {isSuccess ? "Đã hoàn tất" : "Không thành công"}
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isSuccess ? "bg-emerald-50 text-emerald-700" : isVerifyingSuccess ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                {isSuccess ? "Đã hoàn tất" : isVerifyingSuccess ? "Đang xác thực" : "Chưa hoàn tất"}
               </span>
             </div>
 
             <div className="mt-5">
               <h1 className="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
-                {isSuccess ? paymentTitle : "Thanh toán chưa hoàn tất"}
+                {isSuccess
+                  ? paymentTitle
+                  : verificationUnavailable
+                    ? "Chưa thể xác thực thanh toán"
+                    : isVerifyingSuccess
+                      ? "Đang xác thực thanh toán"
+                      : "Thanh toán chưa hoàn tất"}
               </h1>
               <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-600">
                 {isSuccess
@@ -83,8 +130,12 @@ export function PaymentResultPage() {
                     ? "Biên nhận này chỉ ghi nhận khoản phát sinh vừa thanh toán. Tổng kết toàn bộ đơn nằm trong chi tiết đơn đặt."
                     : isPackagePurchase
                       ? "Gói của bạn đã được kích hoạt và sẵn sàng sử dụng."
-                      : "Biên nhận này ghi nhận khoản đặt trước của đơn. Các khoản phát sinh sau phiên chơi sẽ được thanh toán riêng nếu có."
-                  : "Giao dịch không hoàn tất. Bạn có thể thử thanh toán lại hoặc chọn phương thức khác."}
+                      : "Biên nhận này ghi nhận khoản thanh toán của đơn. Các khoản phát sinh sau phiên chơi sẽ được thanh toán riêng nếu có."
+                  : isVerifyingSuccess
+                    ? verificationUnavailable
+                      ? "Chưa thể đối chiếu giao dịch ngay lúc này. Vui lòng mở chi tiết đơn để kiểm tra trước khi thực hiện bất kỳ thanh toán nào khác."
+                      : "Chúng tôi đang đối chiếu giao dịch với hệ thống thanh toán. Vui lòng không thanh toán lại trong lúc này."
+                    : failureDescription}
               </p>
             </div>
 
@@ -92,6 +143,12 @@ export function PaymentResultPage() {
               <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
                 <Loader2 className="size-5 animate-spin text-orange-500" />
                 Đang tải biên nhận thanh toán...
+              </div>
+            )}
+
+            {verificationUnavailable && (
+              <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-800">
+                Không tạo giao dịch mới từ trang này để tránh thanh toán trùng.
               </div>
             )}
 
@@ -106,10 +163,32 @@ export function PaymentResultPage() {
               />
             )}
 
-            {!isSuccess && (reason || responseCode) && (
+            {!isSuccess && !isVerifyingSuccess && (reason || responseCode) && (
               <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700">
-                {reason ? `Lý do: ${reason}` : `Mã lỗi: ${responseCode}`}
+                {reason ? `Lý do: ${reason}` : `Mã phản hồi VNPay: ${responseCode}`}
               </div>
+            )}
+
+            {!isSuccess && !isVerifyingSuccess && isFetchingBooking && (
+              <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+                <Loader2 className="size-5 animate-spin text-orange-500" />
+                Đang kiểm tra thời hạn giữ chỗ...
+              </div>
+            )}
+
+            {isCheckingFailedPayment && (
+              <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+                <Loader2 className="size-5 animate-spin text-orange-500" />
+                Đang kiểm tra trạng thái đơn đặt...
+              </div>
+            )}
+
+            {!isSuccess && !isVerifyingSuccess && paymentExpiry && (
+              <p className={`mt-4 text-sm font-semibold ${holdIsActive ? "text-amber-700" : "text-red-700"}`}>
+                {holdIsActive
+                  ? `Giữ chỗ đến: ${formatPaymentTime(booking?.paymentExpiresAt ?? undefined)}`
+                  : "Thời hạn giữ chỗ của đơn đã kết thúc."}
+              </p>
             )}
           </section>
 
@@ -128,11 +207,13 @@ export function PaymentResultPage() {
               </Button>
             )}
 
-            <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
-              <Link to={routePaths.customerContestRegistrations}>
-                <Trophy className="size-4" /> Xem đăng ký giải đấu
-              </Link>
-            </Button>
+            {isContestBooking && bookingId ? (
+              <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
+                <Link to={`${routePaths.customerContestRegistrations}?bookingId=${encodeURIComponent(bookingId)}`}>
+                  <Trophy className="size-4" /> Xem đăng ký giải
+                </Link>
+              </Button>
+            ) : null}
 
             {isSuccess && bookingId ? (
               <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
@@ -140,10 +221,20 @@ export function PaymentResultPage() {
                   Xem chi tiết đơn đặt <ArrowRight className="size-4" />
                 </Link>
               </Button>
-            ) : !isSuccess ? (
+            ) : !isSuccess && !isVerifyingSuccess && !isCheckingOutcome && holdIsActive && bookingId ? (
+              <Button size="lg" onClick={handleResumePayment} className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
+                <RotateCcw className="size-4" /> Thanh toán lại
+              </Button>
+            ) : !isSuccess && isVerifyingSuccess && verificationUnavailable && bookingId ? (
               <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
-                <Link to="/booking/new">
-                  <RotateCcw className="size-4" /> Đặt lại
+                <Link to={`/booking/${bookingId}`}>
+                  Kiểm tra đơn đặt <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : !isSuccess && !isVerifyingSuccess && !isCheckingOutcome ? (
+              <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
+                <Link to="/booking/create">
+                  <RotateCcw className="size-4" /> Đặt lịch mới
                 </Link>
               </Button>
             ) : null}
@@ -189,7 +280,7 @@ function PaymentReceipt({
           ))
         ) : (
           <ReceiptLine
-            label={additionalPayment ? "Phí phát sinh tại quầy" : "Khoản thanh toán đặt trước"}
+            label={additionalPayment ? "Phí phát sinh tại quầy" : "Khoản thanh toán đơn đặt"}
             amount={amount}
           />
         )}
@@ -202,7 +293,7 @@ function PaymentReceipt({
 
       {additionalPayment && (
         <p className="mt-3 text-xs font-medium leading-5 text-emerald-800">
-          Không bao gồm khoản thanh toán đặt trước của đơn.
+          Không bao gồm khoản thanh toán ban đầu của đơn.
         </p>
       )}
 
@@ -255,10 +346,11 @@ function ReceiptMeta({
 
 function formatPaymentResultComponent(type: string, additionalPayment: boolean): string {
   const labels: Record<string, string> = {
-    BOOKING_PAYMENT: "Khoản thanh toán đặt trước",
+    BOOKING_PAYMENT: "Khoản thanh toán đơn đặt",
     COUNTER_SERVICE: "Phí phát sinh tại quầy",
     SLOT_FEE: "Phí lịch chơi",
     RENTAL_FEE: "Phí thuê xe",
+    CONTEST_ENTRY_FEE: "Phí tham gia giải đấu",
     FNB_PREORDER: additionalPayment ? "Đồ ăn & thức uống gọi tại quầy" : "Đồ ăn & thức uống đặt trước",
     FB_PREORDER: additionalPayment ? "Đồ ăn & thức uống gọi tại quầy" : "Đồ ăn & thức uống đặt trước",
     FNB_ON_SITE: "Đồ ăn & thức uống gọi tại quầy",
@@ -266,7 +358,7 @@ function formatPaymentResultComponent(type: string, additionalPayment: boolean):
     DAMAGE_CHARGE: "Phí đền bù hư hỏng",
     PROMOTION_DISCOUNT: "Ưu đãi áp dụng",
   }
-  return labels[type] ?? (additionalPayment ? "Phí phát sinh tại quầy" : "Khoản thanh toán đặt trước")
+  return labels[type] ?? (additionalPayment ? "Phí phát sinh tại quầy" : "Khoản thanh toán đơn đặt")
 }
 
 function formatGateway(gateway?: string): string {

@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
-import { cn } from "@/shared/lib/utils"
+import { cn, getApiErrorInfo } from "@/shared/lib/utils"
 import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
 import { CustomerPageShell } from "./components/CustomerPageShell"
@@ -59,6 +59,7 @@ const PLAY_MODE_FILTERS: Array<{ key: PlayModeFilter; label: string }> = [
 ]
 
 export function CustomerBookingsPage() {
+  const [now] = useState(() => Date.now())
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [playModeFilter, setPlayModeFilter] = useState<PlayModeFilter>("all")
   const [currentPage, setCurrentPage] = useState(1)
@@ -101,20 +102,28 @@ export function CustomerBookingsPage() {
   }
 
   const bookings = data?.data ?? []
+  const cancelTargetBooking = bookings.find((booking) => booking.id === cancelTarget)
   const totalBookings = data?.total ?? 0
   const totalPages = Math.ceil(totalBookings / PAGE_SIZE)
 
   const handleCancelConfirm = () => {
     if (!cancelTarget) return
+    const isCancellingHold = bookings.find((booking) => booking.id === cancelTarget)?.status === "PENDING"
     cancelMutation.mutate(
       { bookingId: cancelTarget },
       {
         onSuccess: () => {
           setCancelTarget(null)
-          toast.success("Đã hủy lịch đặt thành công!")
+          toast.success(isCancellingHold ? "Đã hủy giữ chỗ." : "Đã hủy lịch đặt thành công!")
         },
-        onError: () => {
-          toast.error("Không thể hủy đơn. Vui lòng thử lại.")
+        onError: (error) => {
+          const { code, message } = getApiErrorInfo(error)
+          if (code === "BOOKING_NOT_CANCELLABLE") {
+            setCancelTarget(null)
+            toast.info("Giữ chỗ không còn hiệu lực hoặc đơn đã được hủy.")
+            return
+          }
+          toast.error(message || "Không thể hủy đơn. Vui lòng thử lại.")
         },
       },
     )
@@ -195,7 +204,10 @@ export function CustomerBookingsPage() {
               const slotStart = new Date(booking.slotStart)
               const slotEnd = new Date(booking.slotEnd)
               const shortId = booking.id.substring(0, 8).toUpperCase()
-              const isPast = slotStart < new Date()
+              const isPast = slotStart.getTime() < now
+              const paymentHoldIsActive = booking.status === "PENDING" && (
+                !booking.paymentExpiresAt || new Date(booking.paymentExpiresAt).getTime() > now
+              )
 
               return (
                 <div key={booking.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/70 transition-colors">
@@ -224,14 +236,14 @@ export function CustomerBookingsPage() {
                       {booking.status === "PENDING" && booking.paymentExpiresAt && (
                         <span className="flex items-center gap-1 text-amber-600 font-semibold ml-2">
                           <Clock className="h-3 w-3" />
-                          HH: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+    Giữ chỗ đến: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
                     </div>
 
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 justify-end">
-                      {booking.status === "PENDING" && !isPast && (
+                      {paymentHoldIsActive && !isPast && (
                         <Button
                           size="sm"
                           className="h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg shadow-sm"
@@ -240,7 +252,7 @@ export function CustomerBookingsPage() {
                         >
                           {resumingId === booking.id
                             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <><CreditCard className="h-3.5 w-3.5 mr-1" />Thanh toán</>}
+                            : <><CreditCard className="h-3.5 w-3.5 mr-1" />Thanh toán lại</>}
                         </Button>
                       )}
                       {(booking.status === "CONFIRMED" || booking.status === "PENDING") && !isPast && (
@@ -323,9 +335,13 @@ export function CustomerBookingsPage() {
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-black text-slate-950">Xác nhận hủy đặt lịch sân?</h3>
+              <h3 className="text-lg font-black text-slate-950">
+                {cancelTargetBooking?.status === "PENDING" ? "Hủy giữ chỗ?" : "Xác nhận hủy đặt lịch sân?"}
+              </h3>
               <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-                Hủy trước <strong className="text-slate-800">24 giờ</strong>: hoàn 100% phí lịch. Hủy trong 12–24h: hoàn 50%. Dưới 12h: không hoàn phí lịch.
+                {cancelTargetBooking?.status === "PENDING"
+                  ? "Đơn chưa thanh toán. Vị trí đang giữ sẽ được trả lại ngay và không có khoản tiền nào cần hoàn."
+                  : <>Hủy trước <strong className="text-slate-800">24 giờ</strong>: hoàn 100% phí lịch. Hủy trong 12–24h: hoàn 50%. Dưới 12h: không hoàn phí lịch.</>}
               </p>
             </div>
             <div className="flex items-center gap-3 justify-end pt-2">
@@ -337,7 +353,7 @@ export function CustomerBookingsPage() {
                 onClick={handleCancelConfirm}
                 disabled={cancelMutation.isPending}
               >
-                {cancelMutation.isPending ? "Đang hủy..." : "Có, xác nhận hủy"}
+                {cancelMutation.isPending ? "Đang hủy..." : cancelTargetBooking?.status === "PENDING" ? "Có, hủy giữ chỗ" : "Có, xác nhận hủy"}
               </Button>
             </div>
           </div>

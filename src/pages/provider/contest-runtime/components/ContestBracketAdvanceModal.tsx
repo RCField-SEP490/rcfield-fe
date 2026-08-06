@@ -1,4 +1,4 @@
-import { useState, useEffect, useId } from "react"
+import { useState, useId } from "react"
 import type {
   ContestMatch,
   ContestMatchParticipant,
@@ -97,7 +97,9 @@ export function ContestBracketAdvanceModal({
   const statusId = `${formId}-status`
   const noteId = `${formId}-note`
 
-  useEffect(() => {
+  const [prevPayload, setPrevPayload] = useState(payload)
+  if (prevPayload !== payload) {
+    setPrevPayload(payload)
     if (payload?.participant) {
       const p = payload.participant
       setFinishPosition(
@@ -115,7 +117,7 @@ export function ContestBracketAdvanceModal({
       setIsWinner(p.is_winner ?? true)
       setQuickUpdateResult(false)
     }
-  }, [payload])
+  }
 
   if (!payload) return null
 

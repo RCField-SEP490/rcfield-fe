@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { env } from "@/shared/lib/env"
 import {
   AlertTriangle, CalendarClock, Camera, Car, CheckCircle2, ChevronDown, Clock3, Gamepad2,
   Layers, MapPin, Navigation, QrCode, RotateCcw, Users, UtensilsCrossed, XCircle,
 } from "lucide-react"
-import { Link, useParams } from "react-router"
+import { Link, useParams, useSearchParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Separator } from "@/shared/ui/separator"
 import { formatCurrency } from "@/shared/lib/format"
+import { getApiErrorInfo } from "@/shared/lib/utils"
 import { useBooking, useCancelBooking } from "@/features/booking/hooks/use-booking"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -82,6 +83,7 @@ function CancelDialog({
   onCancel: () => void
   isPending: boolean
 }) {
+  const isPendingHold = booking.status === "PENDING"
   const refund = estimateRefund(booking)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -90,24 +92,32 @@ function CancelDialog({
           <AlertTriangle className="h-6 w-6" />
         </div>
         <div className="space-y-2">
-          <h3 className="text-lg font-black text-slate-950">Xác nhận hủy đặt lịch?</h3>
-          <p className="text-xs font-semibold text-slate-500">{refund.policy}</p>
+          <h3 className="text-lg font-black text-slate-950">
+            {isPendingHold ? "Hủy giữ chỗ?" : "Xác nhận hủy đặt lịch?"}
+          </h3>
+          <p className="text-xs font-semibold text-slate-500">
+            {isPendingHold
+              ? "Đơn chưa thanh toán. Vị trí đang giữ sẽ được trả lại ngay và không có khoản tiền nào cần hoàn."
+              : refund.policy}
+          </p>
         </div>
-        <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-1.5 text-xs">
-          <div className="flex justify-between text-slate-600">
-            <span>Hoàn phí lịch</span>
-            <span className="font-mono font-semibold">{formatCurrency(refund.slotFee)}</span>
+        {!isPendingHold && (
+          <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 space-y-1.5 text-xs">
+            <div className="flex justify-between text-slate-600">
+              <span>Hoàn phí lịch</span>
+              <span className="font-mono font-semibold">{formatCurrency(refund.slotFee)}</span>
+            </div>
+            <div className="flex justify-between text-slate-600">
+              <span>Hoàn phí khác (thuê xe, đồ ăn & thức uống)</span>
+              <span className="font-mono font-semibold">{formatCurrency(refund.rest)}</span>
+            </div>
+            <div className="border-t border-dashed border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
+              <span>Ước tính hoàn lại</span>
+              <span className="font-mono text-emerald-600">{formatCurrency(refund.total)}</span>
+            </div>
+            <p className="text-[10px] text-slate-400">* Số tiền thực tế sẽ được xử lý trong 3-5 ngày làm việc.</p>
           </div>
-          <div className="flex justify-between text-slate-600">
-            <span>Hoàn phí khác (thuê xe, đồ ăn & thức uống)</span>
-            <span className="font-mono font-semibold">{formatCurrency(refund.rest)}</span>
-          </div>
-          <div className="border-t border-dashed border-slate-200 pt-1.5 flex justify-between font-bold text-slate-800">
-            <span>Ước tính hoàn lại</span>
-            <span className="font-mono text-emerald-600">{formatCurrency(refund.total)}</span>
-          </div>
-          <p className="text-[10px] text-slate-400">* Số tiền thực tế sẽ được xử lý trong 3-5 ngày làm việc.</p>
-        </div>
+        )}
         <div className="flex items-center gap-3 justify-end pt-1">
           <Button variant="outline" className="border-slate-200 font-bold h-10 text-xs rounded-xl" onClick={onCancel}>
             Không, giữ lịch
@@ -117,7 +127,7 @@ function CancelDialog({
             onClick={onConfirm}
             disabled={isPending}
           >
-            {isPending ? "Đang hủy..." : "Có, xác nhận hủy"}
+            {isPending ? "Đang hủy..." : isPendingHold ? "Có, hủy giữ chỗ" : "Có, xác nhận hủy"}
           </Button>
         </div>
       </div>
@@ -127,6 +137,7 @@ function CancelDialog({
 
 export function BookingDetailPage() {
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const bookingId = params.bookingId ?? params.id
   const { data: booking, isLoading, error, isError, refetch: refetchBooking } = useBooking(bookingId)
   const cancelMutation = useCancelBooking()
@@ -236,6 +247,7 @@ export function BookingDetailPage() {
   const checkInPhotos = sessionDetail?.inspections
     ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
     .flatMap((ins) => ins.photos) ?? []
+  const checkInInspection = sessionDetail?.inspections.find((ins) => ins.type === "CHECK_IN") ?? null
 
   const checkOutPhotos = sessionDetail?.inspections
     ?.filter((ins) => ins.type === "CHECK_OUT" && ins.photos.length > 0)
@@ -279,9 +291,51 @@ export function BookingDetailPage() {
   }, [actualStartAt, sessionDetail, booking?.session?.status, booking?.session?.plannedEndAt])
 
   const [payingAdditional, setPayingAdditional] = useState(false)
+  const [resumingInitialPayment, setResumingInitialPayment] = useState(false)
   const [settlingCash, setSettlingCash] = useState(false)
   const [checkInPhotosOpen, setCheckInPhotosOpen] = useState(false)
   const [checkOutPhotosOpen, setCheckOutPhotosOpen] = useState(false)
+  const [checkInDisputeOpen, setCheckInDisputeOpen] = useState(false)
+  const [checkInDisagreementNote, setCheckInDisagreementNote] = useState("")
+  const [submittingCheckInDispute, setSubmittingCheckInDispute] = useState(false)
+  const handoverCardRef = useRef<HTMLDivElement>(null)
+  const shouldFocusHandover = searchParams.get("section") === "handover"
+
+  useEffect(() => {
+    if (!shouldFocusHandover || checkInPhotos.length === 0) return
+    const timer = requestAnimationFrame(() => {
+      setCheckInPhotosOpen(true)
+      handoverCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    })
+    return () => cancelAnimationFrame(timer)
+  }, [checkInPhotos.length, shouldFocusHandover])
+
+  const handleCheckInDispute = async () => {
+    if (!sessionId || !checkInInspection) return
+    const disagreementNote = checkInDisagreementNote.trim()
+    if (!disagreementNote) {
+      toast.error("Vui lòng mô tả điểm sai lệch bạn phát hiện.")
+      return
+    }
+
+    try {
+      setSubmittingCheckInDispute(true)
+      await customerSessionApi.confirmInspection(sessionId, checkInInspection.inspectionId, {
+        agreed: false,
+        disagreementNote,
+      })
+      toast.success("Đã gửi phản hồi cho nhân viên trực ca")
+      setCheckInDisputeOpen(false)
+      setCheckInDisagreementNote("")
+      refreshBookingState()
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || "Không thể gửi phản hồi sai lệch")
+    } finally {
+      setSubmittingCheckInDispute(false)
+    }
+  }
+
   const operationalTiming = getSessionOperationalTiming(
     sessionDetail?.plannedEnd ?? booking?.session?.plannedEndAt,
     sessionDetail?.status ?? booking?.session?.status,
@@ -308,6 +362,21 @@ export function BookingDetailPage() {
     }
   }
 
+  const handleResumeInitialPayment = async () => {
+    if (!bookingId) return
+    try {
+      setResumingInitialPayment(true)
+      const result = await bookingApi.createCheckout(bookingId)
+      if (!result.payment_url) throw new Error("Không nhận được liên kết thanh toán")
+      window.location.href = result.payment_url
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      toast.error(axiosError.response?.data?.message || "Không thể khởi tạo lại thanh toán")
+    } finally {
+      setResumingInitialPayment(false)
+    }
+  }
+
   const snapshot = booking?.snapshot as Record<string, unknown> | null
   const snapshotSlotFee = Number(snapshot?.slot_fee_total ?? snapshot?.slot_fee ?? 0)
   const snapshotRentalFee = Number(
@@ -316,6 +385,17 @@ export function BookingDetailPage() {
     0
   )
   const snapshotFnbPreorder = Number(snapshot?.fnb_total ?? snapshot?.fnb_preorder_fee ?? 0)
+  const snapshotContestEntryFee = Number(snapshot?.contest_entry_fee ?? 0)
+  const initialPaymentWasSuccessful = (booking?.payment_transactions ?? []).some(
+    (transaction) => transaction.type === "PAYMENT" && transaction.status === "SUCCESS",
+  ) || (booking?.payment_components ?? []).some(
+    (component) =>
+      ["SLOT_FEE", "RENTAL_FEE", "FNB_PREORDER", "FB_PREORDER"].includes(component.type) &&
+      ["HELD", "CAPTURED", "DISBURSED", "REFUNDED", "PARTIALLY_REFUNDED", "PENDING_REFUND"].includes(component.status),
+  )
+  const initialPaymentGateway = (booking?.payment_transactions ?? []).find(
+    (transaction) => transaction.type === "PAYMENT" && transaction.status === "SUCCESS",
+  )?.gateway
 
   // Financial totals come from the backend's shared summary. Operational F&B
   // orders and inspection data must not recalculate what the customer owes.
@@ -324,10 +404,11 @@ export function BookingDetailPage() {
     { componentId: "slot-fee", label: "Phí lịch chơi", amount: Number(snapshotSlotFee) },
     { componentId: "rental-fee", label: "Phí thuê xe", amount: Number(snapshotRentalFee) },
     { componentId: "fnb-preorder", label: "Đồ ăn & thức uống đặt trước", amount: Number(snapshotFnbPreorder) },
+    { componentId: "contest-entry-fee", label: "Phí tham gia giải đấu", amount: Number(snapshotContestEntryFee) },
   ].filter((line) => line.amount > 0)
   const fallbackAdditionalLines = (booking?.payment_components ?? [])
     .filter((component) =>
-      !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(component.type) &&
+      !["SLOT_FEE", "RENTAL_FEE", "CONTEST_ENTRY_FEE"].includes(component.type) &&
       !((component.type === "FNB_PREORDER" || component.type === "FB_PREORDER") && component.status === "HELD"),
     )
     .map((component) => ({
@@ -347,9 +428,12 @@ export function BookingDetailPage() {
   const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
   const additionalLines = financialSummary?.additionalLines ?? fallbackAdditionalLines
   const prepaidDiscountAmount = financialSummary?.prepaidDiscountAmount ?? Number(booking?.discountAmount ?? 0)
-  const prepaidPaidAmount = financialSummary?.prepaidPaidAmount ?? Math.max(
+  const prepaidServiceAmount = Math.max(
     0,
-    fallbackPrepaidLines.reduce((sum, line) => sum + line.amount, 0) - prepaidDiscountAmount,
+    prepaidLines.reduce((sum, line) => sum + Number(line.amount), 0) - prepaidDiscountAmount,
+  )
+  const prepaidPaidAmount = financialSummary?.prepaidPaidAmount ?? (
+    initialPaymentWasSuccessful ? prepaidServiceAmount : 0
   )
   const additionalTotal = financialSummary?.additionalTotal ?? additionalLines.reduce(
     (sum, line) => sum + Number(line.amount),
@@ -365,12 +449,17 @@ export function BookingDetailPage() {
     : booking?.fnb_order
       ? [booking.fnb_order]
       : []).filter((order) => order.items.length > 0)
-  const preorderFnbOrders = customerFnbOrders.filter((order) => order.orderType === "PRE_ORDER")
-  const onsiteFnbOrders = customerFnbOrders.filter((order) => order.orderType === "ON_SITE")
+  const cancelledFnbOrders = customerFnbOrders.filter((order) => order.status === "CANCELLED")
+  const preorderFnbOrders = customerFnbOrders.filter(
+    (order) => order.orderType === "PRE_ORDER" && order.status !== "CANCELLED",
+  )
+  const onsiteFnbOrders = customerFnbOrders.filter(
+    (order) => order.orderType === "ON_SITE" && order.status !== "CANCELLED",
+  )
   // This supports the merged payload returned by an older server during a
   // rolling deployment. New responses always include one of the two groups above.
   const legacyFnbOrders = customerFnbOrders.filter(
-    (order) => order.orderType !== "PRE_ORDER" && order.orderType !== "ON_SITE",
+    (order) => order.status !== "CANCELLED" && order.orderType !== "PRE_ORDER" && order.orderType !== "ON_SITE",
   )
   const getFnbGroupTotal = (orders: typeof customerFnbOrders) => orders.reduce(
     (sum, order) => sum + (order.totalAmount ?? order.items.reduce((itemSum, item) => itemSum + Number(item.subtotal), 0)),
@@ -378,6 +467,7 @@ export function BookingDetailPage() {
   )
   const onsiteFnbComponent = booking?.payment_components?.find((component) => component.type === "FNB_ON_SITE")
   const onsiteFnbPaid = onsiteFnbComponent?.status === "DISBURSED" || onsiteFnbComponent?.status === "HELD"
+  const preorderFnbPaid = initialPaymentWasSuccessful
   const renderFnbGroup = (
     orders: typeof customerFnbOrders,
     options: { title: string; description: string; paymentLabel: string; className: string; badgeClassName: string },
@@ -433,7 +523,6 @@ export function BookingDetailPage() {
 
   const refundSlotFee = refundComponents.filter(c => c.type === "SLOT_FEE").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
   const refundRentalFee = refundComponents.filter(c => c.type === "RENTAL_FEE").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
-  const refundDeposit = refundComponents.filter(c => c.type === "SECURITY_DEPOSIT").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
   const refundFnb = refundComponents.filter(c => c.type === "FNB_PREORDER" || c.type === "FB_PREORDER").reduce((sum, c) => sum + Number(c.refundedAmount ?? 0), 0)
 
   const checkInWindowExpired = booking ? hasExpiredCheckInWindow(booking) : false
@@ -468,7 +557,15 @@ export function BookingDetailPage() {
       { bookingId: booking.id },
       {
         onSuccess: () => { setShowCancelDialog(false); toast.success("Đã hủy đơn đặt lịch") },
-        onError: () => toast.error("Không thể hủy đơn. Vui lòng thử lại."),
+        onError: (error) => {
+          const { code, message } = getApiErrorInfo(error)
+          if (code === "BOOKING_NOT_CANCELLABLE") {
+            setShowCancelDialog(false)
+            toast.info("Giữ chỗ không còn hiệu lực hoặc đơn đã được hủy.")
+            return
+          }
+          toast.error(message || "Không thể hủy đơn. Vui lòng thử lại.")
+        },
       },
     )
   }
@@ -504,6 +601,10 @@ export function BookingDetailPage() {
   const slotEnd = new Date(booking.slotEnd)
   const slotLabel = `${formatTime(slotStart)} - ${formatTime(slotEnd)}, ${formatDate(slotStart)}`
   const paymentExpiry = booking.paymentExpiresAt ? new Date(booking.paymentExpiresAt) : null
+  const paymentHoldIsActive = booking.status === "PENDING" && (!paymentExpiry || paymentExpiry.getTime() > currentTime)
+  const isCancelledBeforePayment = booking.status === "CANCELLED" && !initialPaymentWasSuccessful
+  const isHistoricalNonFulfilledBooking = booking.status === "CANCELLED" || booking.status === "NO_SHOW"
+  const canCancelBooking = role === "customer" || role === "provider"
   const playerCount = booking.participants.length || 1
 
   const percentage = Math.min(100, Math.max(0, (secondsLeft / totalDuration) * 100))
@@ -694,15 +795,26 @@ export function BookingDetailPage() {
                     : timelineStatus === "COMPLETED" && sess?.actualEndAt
                     ? formatDateTime(new Date(sess.actualEndAt))
                     : "Sau khi check-out hoàn tất"
+                  const reservationTitle = initialPaymentWasSuccessful
+                    ? "Đặt lịch đã thanh toán"
+                    : timelineStatus === "CANCELLED"
+                      ? "Giữ chỗ đã hủy"
+                      : "Yêu cầu giữ chỗ đã tạo"
+                  const reservationDescription = initialPaymentWasSuccessful
+                    ? formatDateTime(new Date(booking.createdAt))
+                    : timelineStatus === "CANCELLED"
+                      ? "Đơn đã được hủy trước khi có thanh toán."
+                      : `Tạo lúc: ${formatDateTime(new Date(booking.createdAt))}`
 
                   return (
                     <div className="relative space-y-6 pl-8">
                       <div className="absolute left-3 top-3 h-[calc(100%-24px)] w-px bg-border" />
                       <TimelineItem
-                        icon={CheckCircle2}
-                        title="Đặt thành công"
-                        description={formatDateTime(new Date(booking.createdAt))}
-                        done={timelineStatus !== "PENDING"}
+                        icon={initialPaymentWasSuccessful ? CheckCircle2 : timelineStatus === "CANCELLED" ? XCircle : Clock3}
+                        title={reservationTitle}
+                        description={reservationDescription}
+                        done={initialPaymentWasSuccessful}
+                        active={timelineStatus === "PENDING"}
                       />
                       {timelineStatus === "PENDING" && paymentExpiry && (
                         <TimelineItem
@@ -840,10 +952,15 @@ export function BookingDetailPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Car className="h-5 w-5" />
-                    Xe thuê
+                    {isHistoricalNonFulfilledBooking ? "Xe đã giữ" : "Xe thuê"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {isHistoricalNonFulfilledBooking && (
+                    <p className="text-xs text-slate-500">
+                      Xe chưa được nhận. Thông tin tại thời điểm đặt được lưu để đối soát.
+                    </p>
+                  )}
                   {booking.vehicles.map((v, i) => (
                     <div key={v.id} className="flex items-center gap-4 rounded-xl border p-3">
                       <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
@@ -864,7 +981,9 @@ export function BookingDetailPage() {
                       </div>
                       {v.rentalFeeSnapshot != null && (
                         <div className="text-right text-sm shrink-0">
-                          <p className="text-xs text-muted-foreground">Phí thuê</p>
+                          <p className="text-xs text-muted-foreground">
+                            {isHistoricalNonFulfilledBooking ? "Giá thuê khi đặt" : "Phí thuê"}
+                          </p>
                           <p className="font-semibold">{formatCurrency(Number(v.rentalFeeSnapshot))}</p>
                         </div>
                       )}
@@ -886,10 +1005,12 @@ export function BookingDetailPage() {
                 <CardContent className="space-y-3">
                   {renderFnbGroup(preorderFnbOrders, {
                     title: "Đặt trước khi đến sân",
-                    description: "Các món này đã được thanh toán cùng đơn đặt lịch.",
-                    paymentLabel: "Đã thanh toán",
-                    className: "border-emerald-200 bg-emerald-50/40",
-                    badgeClassName: "bg-emerald-100 text-emerald-700",
+                    description: preorderFnbPaid
+                      ? "Các món này đã được thanh toán cùng đơn đặt lịch."
+                      : "Các món này sẽ được thanh toán cùng đơn đặt lịch.",
+                    paymentLabel: preorderFnbPaid ? "Đã thanh toán" : "Chờ thanh toán",
+                    className: preorderFnbPaid ? "border-emerald-200 bg-emerald-50/40" : "border-amber-200 bg-amber-50/40",
+                    badgeClassName: preorderFnbPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
                   })}
                   {renderFnbGroup(onsiteFnbOrders, {
                     title: "Gọi trong phiên chơi",
@@ -905,13 +1026,22 @@ export function BookingDetailPage() {
                     className: "border-slate-200 bg-slate-50",
                     badgeClassName: "bg-slate-200 text-slate-700",
                   })}
+                  {renderFnbGroup(cancelledFnbOrders, {
+                    title: "Món đã hủy",
+                    description: booking.status === "NO_SHOW"
+                      ? "Khách không đến; các món này không được phục vụ."
+                      : "Các món này đã được hủy cùng đơn đặt lịch.",
+                    paymentLabel: "Đã hủy",
+                    className: "border-rose-200 bg-rose-50/40",
+                    badgeClassName: "bg-rose-100 text-rose-700",
+                  })}
                 </CardContent>
               </Card>
             )}
 
             {/* Check-in handover photos */}
             {checkInPhotos.length > 0 && (
-              <Card className="rounded-xl shadow-sm overflow-hidden">
+              <Card ref={handoverCardRef} className="rounded-xl shadow-sm overflow-hidden scroll-mt-24">
                 <button
                   type="button"
                   onClick={() => setCheckInPhotosOpen((v) => !v)}
@@ -922,7 +1052,7 @@ export function BookingDetailPage() {
                     <div>
                       <p className="font-semibold text-sm text-foreground">Ảnh bàn giao xe (Check-in)</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {checkInPhotos.length} ảnh · nhân viên chụp trước khi phiên bắt đầu
+                        {checkInPhotos.length} ảnh · biên bản bàn giao xe
                       </p>
                     </div>
                   </div>
@@ -949,6 +1079,69 @@ export function BookingDetailPage() {
                         </div>
                       ))}
                     </div>
+
+                    {role === "customer" && checkInInspection && !checkInInspection.customerConfirmedAt &&
+                      ["ACTIVE", "EXTENDING"].includes(sessionDetail?.status ?? "") && (
+                      <div className="mt-4 rounded-xl border border-orange-100 bg-orange-50/50 p-4">
+                        {!checkInDisputeOpen ? (
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="text-xs leading-relaxed text-slate-600">
+                              Nếu ảnh biên bản khác với tình trạng xe bạn đã nhận, hãy báo ngay để nhân viên kiểm tra trực tiếp.
+                            </p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCheckInDisputeOpen(true)}
+                              className="shrink-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            >
+                              <XCircle className="mr-1.5 size-4" />
+                              Báo sai lệch
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">Báo sai lệch bàn giao xe</p>
+                              <p className="mt-1 text-xs text-slate-600">
+                                Mô tả cụ thể để nhân viên đối chiếu với xe đang bàn giao.
+                              </p>
+                            </div>
+                            <textarea
+                              value={checkInDisagreementNote}
+                              onChange={(event) => setCheckInDisagreementNote(event.target.value)}
+                              maxLength={500}
+                              rows={3}
+                              placeholder="Ví dụ: cản trước có vết xước nhưng chưa thấy trong ảnh..."
+                              className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={submittingCheckInDispute}
+                                onClick={() => {
+                                  setCheckInDisputeOpen(false)
+                                  setCheckInDisagreementNote("")
+                                }}
+                              >
+                                Hủy
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={submittingCheckInDispute}
+                                onClick={() => void handleCheckInDispute()}
+                                className="bg-red-600 text-white hover:bg-red-700"
+                              >
+                                {submittingCheckInDispute ? "Đang gửi..." : "Gửi phản hồi"}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 )}
               </Card>
@@ -1035,11 +1228,24 @@ export function BookingDetailPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                    <span className="text-xs font-bold text-emerald-700">
+                    {booking.status === "PENDING" ? (
+                      <Clock3 className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    ) : isCancelledBeforePayment ? (
+                      <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    )}
+                    <span className={`text-xs font-bold ${booking.status === "PENDING"
+                      ? "text-amber-700"
+                      : isCancelledBeforePayment
+                        ? "text-red-700"
+                        : "text-emerald-700"}`}
+                    >
                       {booking.status === "PENDING"
-                        ? "Sẽ thanh toán qua VNPAY"
-                        : "Đã thanh toán khi đặt lịch"}
+                        ? "Chờ khách thanh toán qua VNPay"
+                        : isCancelledBeforePayment
+                          ? "Đơn đã hủy trước khi thanh toán"
+                          : `Đã thanh toán qua ${gatewayLabel(initialPaymentGateway)}`}
                     </span>
                   </div>
                   <div className="pl-5 space-y-1.5">
@@ -1056,8 +1262,16 @@ export function BookingDetailPage() {
                       </div>
                     )}
                     <div className="flex justify-between text-sm font-bold border-t border-slate-100 pt-1.5">
-                      <span className="text-slate-800">Đã thanh toán trước</span>
-                      <span className="text-slate-900 tabular-nums">{formatCurrency(prepaidPaidAmount)}</span>
+                      <span className="text-slate-800">
+                        {booking.status === "PENDING"
+                          ? "Tổng cần thanh toán"
+                          : initialPaymentWasSuccessful
+                            ? "Đã thanh toán khi đặt lịch"
+                            : "Chưa phát sinh thanh toán"}
+                      </span>
+                      <span className="text-slate-900 tabular-nums">
+                        {formatCurrency(booking.status === "PENDING" ? prepaidServiceAmount : prepaidPaidAmount)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1137,8 +1351,21 @@ export function BookingDetailPage() {
                     Đã thanh toán đầy đủ
                   </div>
                 ) : booking.status === "PENDING" ? (
-                  <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-700 font-medium text-center">
-                    Chờ thanh toán
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-amber-50 border border-amber-100 p-3 text-xs text-amber-700 font-medium text-center">
+                      {paymentHoldIsActive
+                        ? <>Chờ thanh toán{paymentExpiry ? ` · Giữ chỗ đến ${formatDateTime(paymentExpiry)}` : ""}</>
+                        : "Thời hạn giữ chỗ đã hết. Vui lòng tạo đơn đặt mới."}
+                    </div>
+                    {role === "customer" && paymentHoldIsActive && (
+                      <Button
+                        onClick={handleResumeInitialPayment}
+                        disabled={resumingInitialPayment}
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                      >
+                        {resumingInitialPayment ? "Đang khởi tạo..." : "Thanh toán lại qua VNPay"}
+                      </Button>
+                    )}
                   </div>
                 ) : null}
               </CardContent>
@@ -1164,12 +1391,6 @@ export function BookingDetailPage() {
                       <div className="flex justify-between text-slate-600">
                         <span>Hoàn phí thuê xe:</span>
                         <span className="font-semibold">{formatCurrency(refundRentalFee)}</span>
-                      </div>
-                    )}
-                    {refundDeposit > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span>Hoàn tiền cọc xe:</span>
-                        <span className="font-semibold">{formatCurrency(refundDeposit)}</span>
                       </div>
                     )}
                     {refundFnb > 0 && (
@@ -1226,13 +1447,13 @@ export function BookingDetailPage() {
               </Card>
             )}
 
-            {booking.status === "PENDING" && !checkInWindowExpired && (
+            {canCancelBooking && booking.status === "PENDING" && !checkInWindowExpired && (
               <Button
                 variant="destructive"
                 className="w-full"
                 onClick={() => setShowCancelDialog(true)}
               >
-                <XCircle className="h-4 w-4" /> Hủy đơn
+                <XCircle className="h-4 w-4" /> Hủy giữ chỗ
               </Button>
             )}
             </div>

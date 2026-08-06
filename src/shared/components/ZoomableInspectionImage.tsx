@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react"
-import { Minus, Plus, RefreshCw, ZoomIn } from "lucide-react"
+import { ImageOff, Minus, Plus, RefreshCw, ZoomIn } from "lucide-react"
 
-import { cn } from "@/shared/lib/utils"
+import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
 
@@ -25,6 +25,14 @@ export function ZoomableInspectionImage({
 }: ZoomableInspectionImageProps) {
   const [open, setOpen] = useState(false)
   const [zoom, setZoom] = useState(MIN_ZOOM)
+  const [failedSource, setFailedSource] = useState<string | null>(null)
+  const imageSrc = sanitizeImageUrl(src)
+
+  const [prevImageSrc, setPrevImageSrc] = useState(imageSrc)
+  if (prevImageSrc !== imageSrc) {
+    setPrevImageSrc(imageSrc)
+    setFailedSource(null)
+  }
 
   const handleOpen = useCallback(() => {
     setZoom(MIN_ZOOM)
@@ -37,6 +45,22 @@ export function ZoomableInspectionImage({
 
   const resetZoom = () => setZoom(MIN_ZOOM)
 
+  if (!imageSrc || failedSource === imageSrc) {
+    return (
+      <div
+        role="img"
+        aria-label={alt}
+        className={cn(
+          "flex items-center justify-center overflow-hidden bg-slate-100 text-slate-400",
+          buttonClassName,
+          className,
+        )}
+      >
+        <ImageOff className="size-4" aria-hidden="true" />
+      </div>
+    )
+  }
+
   return (
     <>
       <button
@@ -48,7 +72,13 @@ export function ZoomableInspectionImage({
         )}
         aria-label={`Phóng to ${alt}`}
       >
-        <img src={src} alt={alt} loading="lazy" className={cn("h-full w-full object-cover", className)} />
+        <img
+          src={imageSrc}
+          alt={alt}
+          loading="lazy"
+          onError={() => setFailedSource(imageSrc)}
+          className={cn("h-full w-full object-cover", className)}
+        />
         <span className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30 group-focus-visible:bg-black/30">
           <span className="rounded-full bg-black/75 p-2 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 shadow-md">
             <ZoomIn className="size-4" />
@@ -78,8 +108,9 @@ export function ZoomableInspectionImage({
               }}
             >
               <img
-                src={src}
+                src={imageSrc}
                 alt={alt}
+                onError={() => setFailedSource(imageSrc)}
                 className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-lg select-none"
               />
             </div>
