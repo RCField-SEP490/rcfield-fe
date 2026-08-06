@@ -97,7 +97,9 @@ const STEPS_WITHOUT_SCHEDULE: CheckoutStep[] = ALL_STEPS
 export function CreateBookingPage() {
   const [searchParams] = useSearchParams()
   const authRole = useAuthStore((state) => state.role)
-  const requestedCafeId = searchParams.get("cafeId")
+  // cafeId is the canonical query key. Keep cafe_id as a compatibility
+  // fallback for links that were published before the parameter was unified.
+  const requestedCafeId = searchParams.get("cafeId") ?? searchParams.get("cafe_id")
   const cafeId = requestedCafeId ?? ""
   const vehicleId = searchParams.get("vehicleId") ?? undefined
   const modeParam = searchParams.get("mode") as BookingMode | null

@@ -103,6 +103,19 @@ export function CustomerInspectionConfirmPage() {
     return () => clearInterval(timer)
   }, [])
 
+  // Check-in is an informational handover record, not a separate blocking
+  // customer flow. Old notifications can still target this route, so route
+  // them into the handover section of the booking once the session is active.
+  useEffect(() => {
+    if (
+      session &&
+      inspection?.type === "CHECK_IN" &&
+      ["ACTIVE", "EXTENDING"].includes(session.status)
+    ) {
+      navigate(`/customer/bookings/${session.bookingId}?section=handover`, { replace: true })
+    }
+  }, [inspection?.type, navigate, session])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -138,16 +151,17 @@ export function CustomerInspectionConfirmPage() {
   }
 
   const isCheckoutInspection = inspection.type === "CHECK_OUT"
+  const isHandoverReview = !isCheckoutInspection && ["ACTIVE", "EXTENDING"].includes(session.status)
 
   // Approve vehicle handler
   const handleApprove = async () => {
     setIsSubmitting(true)
     try {
       await customerSessionApi.confirmInspection(session.sessionId, inspection.inspectionId, { agreed: true })
-      toast.success(isCheckoutInspection ? "Xác nhận trả xe thành công!" : "Xác nhận bàn giao xe thành công!", {
+      toast.success(isCheckoutInspection ? "Xác nhận trả xe thành công!" : "Đã ghi nhận bạn đã xem biên bản!", {
         description: isCheckoutInspection
           ? "Phiên chơi đã được đóng sau khi đối chiếu biên bản."
-          : "Phiên chơi của bạn đã chính thức bắt đầu. Chúc bạn chơi vui vẻ!"
+          : "Phiên chơi đang diễn ra. Cảm ơn bạn đã cùng đối chiếu tình trạng xe."
       })
       await queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(session.bookingId) })
       navigate(`/customer/bookings/${session.bookingId}`)
@@ -201,29 +215,37 @@ export function CustomerInspectionConfirmPage() {
           <div className="space-y-1">
             <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              {isCheckoutInspection ? "Quy Trình Serious Inspection (Trả xe)" : "Quy Trình Serious Inspection (Bàn giao xe)"}
+              {isCheckoutInspection ? "Xác nhận trả xe" : "Biên bản bàn giao xe"}
             </span>
             <h1 className="text-xl font-black text-slate-950">
-              {isCheckoutInspection ? "Kiểm Tra Tình Trạng Trả Xe" : "Kiểm Tra Tình Trạng Nhận Xe"}
+              {isCheckoutInspection ? "Kiểm Tra Tình Trạng Trả Xe" : "Xem Tình Trạng Xe Đã Nhận"}
             </h1>
             <p className="text-xs text-slate-500 font-semibold">Phiên chơi: <strong className="text-slate-800">{session.sessionId}</strong> • Nhân viên bàn giao: <strong className="text-slate-800">{session.staffName}</strong></p>
           </div>
 
-          {/* Countdown Clock */}
-          <div className="flex items-center gap-3 bg-rose-50 border border-rose-100 px-4 py-2.5 rounded-xl self-end md:self-auto">
-            <Clock className="h-5 w-5 text-rose-500 animate-pulse shrink-0" />
-            <div>
-              <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider leading-none">Hết hạn sau</p>
-              <p className="text-base font-black text-rose-600 mt-1 leading-none">{formatTime(timeLeft)}</p>
+          {isCheckoutInspection ? (
+            <div className="flex items-center gap-3 bg-rose-50 border border-rose-100 px-4 py-2.5 rounded-xl self-end md:self-auto">
+              <Clock className="h-5 w-5 text-rose-500 animate-pulse shrink-0" />
+              <div>
+                <p className="text-[9px] font-black text-rose-400 uppercase tracking-wider leading-none">Hết hạn sau</p>
+                <p className="text-base font-black text-rose-600 mt-1 leading-none">{formatTime(timeLeft)}</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-xl self-end md:self-auto">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+              <p className="text-xs font-extrabold text-emerald-700">
+                {isHandoverReview ? "Phiên chơi đang diễn ra" : "Đang hoàn tất bàn giao"}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Dynamic Stepper Info */}
         <div className="bg-orange-500/5 border border-orange-200/50 p-4 rounded-xl text-xs font-semibold text-orange-950 flex gap-2">
           <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>Lưu ý:</strong> Vui lòng xem kỹ các góc ảnh chụp thực tế dưới đây. Bất kỳ điểm sai lệch nào cần được phản hồi ngay để staff kiểm tra lại trước khi tiếp tục quy trình.
+            <strong>Lưu ý:</strong> Vui lòng xem kỹ các góc ảnh chụp thực tế dưới đây. Nếu thấy sai lệch, hãy báo ngay để staff kiểm tra trực tiếp với bạn.
           </p>
         </div>
 
@@ -360,7 +382,7 @@ export function CustomerInspectionConfirmPage() {
                   className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs h-12 rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <CheckCircle2 className="h-4 w-4 text-orange-400" />
-                  {isCheckoutInspection ? "Tôi đồng ý biên bản trả xe & Hoàn tất phiên" : "Tôi đồng ý tình trạng xe & Bắt đầu chơi"}
+                  {isCheckoutInspection ? "Tôi đồng ý biên bản trả xe & Hoàn tất phiên" : "Tôi đã xem biên bản bàn giao"}
                 </Button>
 
                 <Button
@@ -369,7 +391,7 @@ export function CustomerInspectionConfirmPage() {
                   className="w-full border-red-200 hover:bg-red-50 text-red-600 font-extrabold text-xs h-12 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <XCircle className="h-4 w-4" />
-                  {isCheckoutInspection ? "Tôi phát hiện sai lệch / Từ chối trả xe" : "Tôi phát hiện lỗi sai lệch / Từ chối nhận"}
+                  {isCheckoutInspection ? "Tôi phát hiện sai lệch / Từ chối trả xe" : "Báo sai lệch bàn giao xe"}
                 </Button>
               </div>
             ) : (

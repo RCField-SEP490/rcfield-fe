@@ -11,7 +11,7 @@ export type BookingStatus =
 export type PaymentComponentType =
   | 'SLOT_FEE'
   | 'RENTAL_FEE'
-  | 'SECURITY_DEPOSIT'
+  | 'CONTEST_ENTRY_FEE'
   | 'FNB_PREORDER'
   | 'FB_PREORDER'
   | 'FNB_ON_SITE'
@@ -74,6 +74,7 @@ export interface BookingFinancialSummary {
   prepaidServiceTotal: number
   prepaidDiscountAmount: number
   prepaidPaidAmount: number
+  prepaidOutstandingAmount: number
   additionalTotal: number
   additionalPaidAmount: number
   additionalOutstandingAmount: number
@@ -101,7 +102,6 @@ export interface AvailableVehicle {
   catalog_name: string
   tier: string
   rental_fee_per_hour: number
-  security_deposit: number
 }
 
 export interface AvailabilityResponse {
@@ -167,6 +167,7 @@ export interface BookingResponse {
   snapshot: Record<string, unknown> | null
   paymentExpiresAt: string | null
   checkInCode: string | null
+  contestId?: string | null
   discountAmount: number
   promotionId: string | null
   createdAt: string
@@ -272,7 +273,6 @@ export interface CreateBookingResult {
   breakdown: {
     slot_fee: number
     rental_fee: number
-    security_deposit: number
     fnb_total: number
     discount: number
     total: number
