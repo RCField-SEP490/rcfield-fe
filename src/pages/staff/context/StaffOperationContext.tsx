@@ -178,7 +178,32 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       // Invalidate notifications query so the notification count/list updates immediately
       void queryClient.invalidateQueries({ queryKey: ["notifications"] })
 
-      const data = msg.data as { sessionId?: string; type?: string; note?: string } | undefined
+      const data = msg.data as {
+        bookingId?: string
+        sessionId?: string
+        type?: string
+        note?: string
+        action?: string
+      } | undefined
+
+      // Cafe-wide operational events are deliberately silent. They make every
+      // staff screen refetch authoritative data without turning colleagues'
+      // actions into a stream of duplicate toasts.
+      if (
+        msg.event === "BOOKING_UPDATED" ||
+        msg.event === "SESSION_UPDATED" ||
+        msg.event === "BOOKING_PAYMENT_UPDATED"
+      ) {
+        void fetchData()
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
+        void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+        return
+      }
+
+      if (msg.event === "FNB_ORDER_UPDATED") {
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.fnbOrders() })
+        return
+      }
 
       if (msg.event === "CUSTOMER_CHECKIN_CONFIRMED") {
         void fetchData()

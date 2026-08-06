@@ -164,7 +164,11 @@ export default function StaffSessionDetailPage() {
         "CUSTOMER_CHECKOUT_CONFIRMED",
         "SESSION_CHECKOUT_COMPLETED",
         "CUSTOMER_PAYMENT_CONFIRMED",
+        "BOOKING_PAYMENT_UPDATED",
+        "SESSION_UPDATED",
         "SESSION_FNB_ORDER_ADDED",
+        "FNB_ORDER_UPDATED",
+        "CUSTOMER_INSPECTION_DISPUTED",
         "CUSTOMER_EXTENSION_APPROVED",
         "CUSTOMER_EXTENSION_REJECTED",
       ].includes(message.event)
@@ -407,8 +411,6 @@ export default function StaffSessionDetailPage() {
 
   const checkInInspection = session.inspections.find((inspection) => inspection.type === "CHECK_IN")
   const checkOutInspection = session.inspections.find((inspection) => inspection.type === "CHECK_OUT")
-  const checkInPending = Boolean(checkInInspection && !checkInInspection.customerConfirmed && !checkInInspection.customerConfirmedAt)
-
   const checkInDisputed = Boolean(checkInInspection && !checkInInspection.customerConfirmed && checkInInspection.customerConfirmedAt)
   const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
   const extensionPending =
@@ -481,7 +483,7 @@ export default function StaffSessionDetailPage() {
   ].filter((line) => line.amount > 0)
   const fallbackAdditionalLines = (booking.payment_components ?? [])
     .filter((component) =>
-      !["SLOT_FEE", "RENTAL_FEE", "SECURITY_DEPOSIT"].includes(component.type) &&
+      !["SLOT_FEE", "RENTAL_FEE"].includes(component.type) &&
       !((component.type === "FNB_PREORDER" || component.type === "FB_PREORDER") && component.status === "HELD"),
     )
     .map((component) => ({
@@ -1036,16 +1038,14 @@ export default function StaffSessionDetailPage() {
       )}
 
       {/* 4. RENDER INSPECTION BANNER */}
-      {session.status === "CHECKED_IN" && !checkInPending && (
+      {session.status === "CHECKED_IN" && !checkInInspection && (
         <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-amber-900">
-              {checkInDisputed ? "Khách phản hồi sai lệch biên bản nhận xe" : "Yêu cầu chụp ảnh kiểm xe bàn giao"}
+              Yêu cầu chụp ảnh kiểm xe bàn giao
             </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
-              {checkInDisputed
-                ? "Nhân viên cần kiểm tra lại tình trạng xe với khách và lập biên bản bàn giao mới."
-                : "Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi cho khách khởi động lượt chạy."}
+              Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi cho khách khởi động lượt chạy.
             </p>
           </div>
           <StaffButton
@@ -1059,15 +1059,22 @@ export default function StaffSessionDetailPage() {
         </StaffCard>
       )}
 
-      {checkInPending && (
+      {checkInDisputed && ["CHECKED_IN", "ACTIVE", "EXTENDING"].includes(session.status) && (
         <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-blue-200 bg-blue-50">
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-blue-900">Đã gửi biên bản nhận xe cho khách</h4>
+            <h4 className="text-sm font-bold text-blue-900">Khách phản hồi sai lệch biên bản nhận xe</h4>
             <p className="text-xs text-blue-800 leading-relaxed">
-              Khách cần mở ứng dụng để xác nhận tình trạng xe. Khi khách đồng ý, phiên sẽ tự chuyển sang trạng thái đang chơi.
+              Kiểm tra trực tiếp với khách và lập lại biên bản bàn giao nếu cần. Xe vẫn đang thuộc phiên chạy này.
             </p>
           </div>
-          <StaffBadge variant="info">CHỜ KHÁCH XÁC NHẬN</StaffBadge>
+          <StaffButton
+            onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_IN`)}
+            variant="primary"
+            className="bg-blue-600 hover:bg-blue-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
+          >
+            <ClipboardCheck className="size-4" />
+            Lập lại biên bản bàn giao
+          </StaffButton>
         </StaffCard>
       )}
 

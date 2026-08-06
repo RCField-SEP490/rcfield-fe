@@ -9,7 +9,6 @@ import {
   Plus,
   Trash2,
   FileCheck,
-  ShieldAlert,
 } from "lucide-react"
 import {
   staffApi,
@@ -67,11 +66,6 @@ export default function StaffCheckoutSummaryPage() {
   const [editItems, setEditItems] = useState<DamageLineItemInput[]>([])
   const [savingItems, setSavingItems] = useState(false)
 
-  // Dispute escalation
-  const [disputeOpen, setDisputeOpen] = useState(false)
-  const [disputeNote, setDisputeNote] = useState("")
-  const [escalating, setEscalating] = useState(false)
-
   const loadSession = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true)
@@ -124,6 +118,9 @@ export default function StaffCheckoutSummaryPage() {
         "CUSTOMER_CHECKOUT_CONFIRMED",
         "SESSION_CHECKOUT_COMPLETED",
         "CUSTOMER_PAYMENT_CONFIRMED",
+        "BOOKING_PAYMENT_UPDATED",
+        "SESSION_UPDATED",
+        "CUSTOMER_INSPECTION_DISPUTED",
       ].includes(message.event)
     ) {
       void syncOperationalState()
@@ -231,32 +228,6 @@ export default function StaffCheckoutSummaryPage() {
       }
     } finally {
       setConfirming(false)
-    }
-  }
-
-  const handleEscalate = async () => {
-    if (!checkoutInspection || !disputeNote.trim()) {
-      toast.error("Vui lòng nhập lý do tranh chấp.")
-      return
-    }
-    setEscalating(true)
-    try {
-      await staffApi.escalateDispute(
-        sessionId!,
-        checkoutInspection.inspectionId,
-        disputeNote,
-      )
-      toast.success(
-        "Đã chuyển tranh chấp lên quản lý cơ sở. Vui lòng chờ phán quyết.",
-      )
-      setDisputeOpen(false)
-      navigate("/staff/today-bookings")
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message
-      toast.error(msg ?? "Không thể gửi tranh chấp.")
-    } finally {
-      setEscalating(false)
     }
   }
 
@@ -597,47 +568,6 @@ export default function StaffCheckoutSummaryPage() {
         )}
       </StaffCard>
 
-      {/* Dispute escalation modal */}
-      {disputeOpen && (
-        <StaffCard className="space-y-3 border-2 border-amber-300">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="size-5 text-amber-600" />
-            <h3 className="text-sm font-bold text-amber-900">
-              Chuyển tranh chấp lên quản lý cơ sở
-            </h3>
-          </div>
-          <p className="text-xs text-[#6b7280] font-semibold">
-            Quản lý cơ sở sẽ được thông báo và có toàn quyền phán quyết về mức bồi
-            thường.
-          </p>
-          <textarea
-            rows={3}
-            placeholder="Mô tả lý do tranh chấp (ví dụ: khách không đồng ý với mức giá cánh gió)..."
-            value={disputeNote}
-            onChange={(e) => setDisputeNote(e.target.value)}
-            className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
-          />
-          <div className="flex gap-2">
-            <StaffButton
-              type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={() => setDisputeOpen(false)}
-            >
-              Hủy
-            </StaffButton>
-            <StaffButton
-              type="button"
-              className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold"
-              onClick={handleEscalate}
-              disabled={escalating || !disputeNote.trim()}
-            >
-              {escalating ? "Đang gửi..." : "Gửi tranh chấp"}
-            </StaffButton>
-          </div>
-        </StaffCard>
-      )}
-
       {/* Actions */}
       {!editMode && sessionStatus === "CHECKING_OUT" && (
         <div className="space-y-3 pt-2">
@@ -653,18 +583,6 @@ export default function StaffCheckoutSummaryPage() {
               ? "Đang xác nhận..."
               : "Xác nhận trả xe — Hoàn tất phiên chơi"}
           </StaffButton>
-
-          {!disputeOpen && (
-            <StaffButton
-              type="button"
-              variant="outline"
-              className="w-full gap-2 text-amber-700 border-amber-300 hover:bg-amber-50"
-              onClick={() => setDisputeOpen(true)}
-            >
-              <ShieldAlert className="size-4" />
-              Khách phản hồi sai lệch — Chuyển quản lý cơ sở
-            </StaffButton>
-          )}
         </div>
       )}
 

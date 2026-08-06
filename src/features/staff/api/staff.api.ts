@@ -367,14 +367,6 @@ export const staffApi = {
     return res.data.data
   },
 
-  escalateDispute: async (sessionId: string, inspectionId: string, note: string): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(
-      `/v1/staff/sessions/${sessionId}/escalate-dispute`,
-      { inspectionId, note },
-    )
-    return res.data.data
-  },
-
   proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee?: number; direct?: boolean }): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/extensions`, data)
     return res.data.data
@@ -473,4 +465,3 @@ export const staffApi = {
     return res.data.data
   },
 }
-
