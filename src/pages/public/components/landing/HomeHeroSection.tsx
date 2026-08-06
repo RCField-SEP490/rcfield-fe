@@ -25,7 +25,7 @@ export function HomeHeroSection() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top_left,_rgba(251,146,60,0.22),_transparent_38%),radial-gradient(circle_at_top_right,_rgba(15,23,42,0.08),_transparent_34%)]" />
 
       <div className="mx-auto max-w-7xl px-4 pb-20 pt-10 md:px-6 lg:pb-28 lg:pt-18">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_460px] lg:items-center">
           <motion.div
             variants={staggerContainer}
             initial={prefersReducedMotion ? false : "hidden"}
@@ -38,7 +38,7 @@ export function HomeHeroSection() {
             </motion.div>
 
             <motion.div variants={fadeUpItem} className="space-y-5">
-              <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-slate-950 md:text-6xl xl:text-[5.1rem]">
+              <h1 className="max-w-3xl text-5xl font-black leading-[0.98] tracking-tight text-slate-950 md:text-6xl xl:text-[4.7rem]">
                 Chạy RC <span className="text-orange-600">đúng sân</span>, đúng giờ, không lo cọc.
               </h1>
               <p className="max-w-xl text-base font-medium leading-8 text-slate-600 md:text-lg">
@@ -83,7 +83,7 @@ export function HomeHeroSection() {
           <HeroShowcaseRail venues={venues} isLoading={isLoading} />
         </div>
 
-        <div className="mt-10 lg:-mt-6">
+        <div className="mt-10 lg:mt-12">
           <HomeSearchPanel />
         </div>
       </div>

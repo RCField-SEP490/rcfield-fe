@@ -16,17 +16,16 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
 
   if (isLoading) {
     return (
-      <div className="relative hidden h-[520px] lg:block">
-        <div className="absolute right-0 top-10 z-10 h-[340px] w-[300px] animate-pulse rounded-[32px] bg-white/70" />
-        <div className="absolute left-0 top-6 z-0 h-[125px] w-[150px] animate-pulse rounded-[24px] bg-white/60" />
-        <div className="absolute bottom-16 left-4 z-20 h-[90px] w-[220px] animate-pulse rounded-[24px] bg-white/55" />
+      <div className="relative hidden h-[470px] lg:block">
+        <div className="absolute right-0 top-5 z-10 h-[420px] w-[320px] animate-pulse rounded-[32px] bg-white/70" />
+        <div className="absolute left-1 top-12 z-0 h-[145px] w-[170px] animate-pulse rounded-[24px] bg-white/60" />
       </div>
     )
   }
 
   if (venues.length === 0) {
     return (
-      <div className="hidden lg:flex lg:h-[520px] lg:items-center lg:justify-center">
+      <div className="hidden lg:flex lg:h-[470px] lg:items-center lg:justify-center">
         <div className="max-w-sm rounded-[32px] border border-slate-200 bg-white/80 p-8 text-center shadow-[var(--landing-shadow-soft)]">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-orange-600">Đang cập nhật</p>
           <h3 className="mt-3 text-2xl font-black text-slate-950">Chưa có cơ sở hiển thị</h3>
@@ -38,28 +37,12 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
     )
   }
 
-  const [primaryVenue, secondaryVenue, tertiaryVenue] = venues
+  const [primaryVenue, secondaryVenue] = venues
 
   return (
-    <div className="relative hidden h-[520px] lg:block">
+    <div className="relative hidden h-[470px] lg:block">
       {secondaryVenue ? (
-        <FloatingMiniCard venue={secondaryVenue} className="left-0 top-6 z-0 w-[150px]" />
-      ) : null}
-
-      {tertiaryVenue ? (
-        <motion.div
-          variants={softReveal}
-          initial={prefersReducedMotion ? false : "hidden"}
-          animate={prefersReducedMotion ? undefined : "visible"}
-          className="absolute bottom-16 left-4 z-20 rounded-[24px] border border-white/70 bg-white/94 px-5 py-4 shadow-[var(--landing-shadow-soft)]"
-        >
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-orange-500">Vừa đặt xong</p>
-          <p className="mt-2 text-base font-black text-slate-950">{tertiaryVenue.name}</p>
-          <p className="mt-1 flex items-center gap-2 text-sm font-medium text-slate-500">
-            <MapPin className="h-3.5 w-3.5 text-orange-500" />
-            {tertiaryVenue.cityLabel}
-          </p>
-        </motion.div>
+        <FloatingMiniCard venue={secondaryVenue} className="left-1 top-12 z-0 w-[170px]" />
       ) : null}
 
       <motion.div
@@ -67,31 +50,31 @@ export function HeroShowcaseRail({ venues, isLoading }: HeroShowcaseRailProps) {
         initial={prefersReducedMotion ? false : "hidden"}
         animate={prefersReducedMotion ? undefined : "visible"}
         whileHover={prefersReducedMotion ? undefined : "hover"}
-        className="absolute right-0 top-10 z-10"
+        className="absolute right-0 top-5 z-10"
       >
         <motion.article
           variants={heroFloat}
           initial="rest"
           whileHover="hover"
-          className="w-[300px] overflow-hidden rounded-[32px] border border-white/80 bg-white shadow-[var(--landing-shadow-strong)]"
+          className="w-[320px] overflow-hidden rounded-[32px] border border-white/80 bg-white shadow-[var(--landing-shadow-strong)]"
         >
-          <div className="relative aspect-[1.16] overflow-hidden bg-[var(--landing-surface-soft)]">
+          <div className="relative aspect-video overflow-hidden bg-[var(--landing-surface-soft)]">
             <VenueVisual venue={primaryVenue} size="hero" />
           </div>
-          <div className="space-y-4 p-6">
+          <div className="space-y-3 p-5">
             <div>
-              <h3 className="text-2xl font-black tracking-tight text-slate-950">
+              <h3 className="line-clamp-2 text-xl font-black tracking-tight text-slate-950">
                 <Link to={primaryVenue.detailHref} className="transition-colors hover:text-orange-600">
                   {primaryVenue.name}
                 </Link>
               </h3>
-              <p className="mt-2 flex items-center gap-2 text-sm font-medium text-slate-500">
+              <p className="mt-1.5 flex items-center gap-2 text-sm font-medium text-slate-500">
                 <MapPin className="h-4 w-4 text-orange-500" />
                 {primaryVenue.cityLabel}
               </p>
             </div>
 
-            <div className="flex items-center justify-between rounded-2xl bg-[var(--landing-surface-soft)] px-4 py-3">
+            <div className="flex items-center justify-between rounded-2xl bg-[var(--landing-surface-soft)] px-4 py-2.5">
               <div>
                 <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Trạng thái</p>
                 <p className="mt-1 text-sm font-bold text-slate-700">{primaryVenue.availabilityLabel}</p>
@@ -144,7 +127,7 @@ function FloatingMiniCard({
         <VenueVisual venue={venue} size="mini" />
       </div>
       <div className="space-y-1 p-3">
-        <h3 className="line-clamp-1 text-sm font-black text-slate-950">{venue.name}</h3>
+        <h3 className="line-clamp-2 text-sm font-black leading-5 text-slate-950">{venue.name}</h3>
         <p className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
           <MapPin className="h-3 w-3 shrink-0 text-orange-500" />
           <span className="truncate">{venue.cityLabel}</span>

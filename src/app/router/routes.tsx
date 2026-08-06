@@ -47,6 +47,7 @@ import { ExplorePage } from "@/pages/customer/explore/ExplorePage"
 import { CreateBookingPage } from "@/pages/booking/CreateBookingPage"
 import { BookingDetailPage } from "@/pages/booking/BookingDetailPage"
 import { CustomerActiveSessionPage } from "@/pages/customer/session/CustomerActiveSessionPage"
+import { CustomerInspectionConfirmPage } from "@/pages/customer/inspection/CustomerInspectionConfirmPage"
 import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamageReviewPage"
 import { CustomerExtensionResponsePage } from "@/pages/customer/extension/CustomerExtensionResponsePage"
 import { PaymentResultPage } from "@/pages/booking/PaymentResultPage"
@@ -241,6 +242,10 @@ export const router = createBrowserRouter([
           {
             path: routePaths.customerActiveSession,
             element: <CustomerActiveSessionPage />,
+          },
+          {
+            path: routePaths.customerInspection,
+            element: <CustomerInspectionConfirmPage />,
           },
           {
             path: routePaths.customerDamageReview,

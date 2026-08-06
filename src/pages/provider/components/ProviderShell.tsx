@@ -153,6 +153,9 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         })
         void queryClient.invalidateQueries({ queryKey: ["bookings"] })
         void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      } else if (msg.event === "BOOKING_UPDATED") {
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
       } else if (
         msg.event === "MAINTENANCE_COMPLETED_NOTIFICATION" ||
         msg.event === "VEHICLE_MAINTENANCE_COMPLETED"

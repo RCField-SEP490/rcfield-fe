@@ -1,5 +1,7 @@
-import { routePaths } from "@/app/router/route-paths"
-import { buildCafeDetailPath } from "@/pages/customer/cafe-detail/cafe-detail-utils"
+import {
+  buildCafeBookingPath,
+  buildCafeDetailPath,
+} from "@/pages/customer/cafe-detail/cafe-detail-utils"
 import type { Cafe } from "@/shared/data/explore-data"
 import { CAFE_PLACEHOLDER_IMAGE } from "@/features/cafes/lib/cafe.mappers"
 import type {
@@ -15,8 +17,9 @@ export function mapCafeToHeroVenue(cafe: Cafe): HeroVenueCardViewModel {
     image: hasRealImage(cafe.image) ? cafe.image : null,
     hasRealImage: hasRealImage(cafe.image),
     ratingLabel: cafe.rating > 0 ? cafe.rating.toFixed(1) : null,
-    availabilityLabel: cafe.slotFeeRate ? "Đang mở đặt lịch" : "Xem chi tiết sân",
-    bookingHref: `${routePaths.bookingCreate}?cafe_id=${cafe.id}`,
+    availabilityLabel:
+      cafe.status === "ACTIVE" ? "Sẵn sàng đặt lịch" : "Chưa mở đặt lịch",
+    bookingHref: buildCafeBookingPath(cafe.id),
     detailHref: buildCafeDetailPath(cafe),
   }
 }
