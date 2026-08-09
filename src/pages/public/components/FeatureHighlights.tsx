@@ -65,7 +65,7 @@ const features = [
     icon: CalendarCheck,
     color: "from-emerald-500 to-teal-500",
     title: "Đặt lịch & giữ chỗ",
-    desc: "Chọn khung giờ, đặt xe thuê hoặc mang xe cá nhân. Thanh toán cọc online nhanh chóng.",
+    desc: "Chọn khung giờ, đặt xe thuê hoặc mang xe cá nhân. Thanh toán toàn bộ chi phí rõ ràng trước khi đến sân.",
     mockup: (
       <div className="h-44 w-full rounded-2xl bg-slate-950 p-4 border border-white/10 flex flex-col justify-between">
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -194,7 +194,7 @@ const features = [
     icon: Receipt,
     color: "from-amber-500 to-orange-500",
     title: "Thanh toán rõ ràng",
-    desc: "Hóa đơn chi tiết từng khoản mục. Tiền cọc hoàn tự động sau khi đối soát xong trạng thái xe.",
+    desc: "Hóa đơn chi tiết từng khoản mục. Khoản hoàn (nếu có) được đối soát theo chính sách hủy và trạng thái dịch vụ.",
     mockup: (
       <div className="h-44 w-full rounded-2xl bg-slate-950 p-4 border border-white/10 flex flex-col justify-between text-xs">
         <div className="flex justify-between text-3xs font-extrabold text-slate-400 border-b border-white/5 pb-2">
@@ -211,15 +211,15 @@ const features = [
             <span className="font-bold">80.000đ</span>
           </div>
           <div className="flex justify-between text-slate-500">
-            <span>Tiền cọc xe (Hoàn lại)</span>
-            <span>100.000đ</span>
+            <span>Đồ ăn & thức uống đặt trước</span>
+            <span>30.000đ</span>
           </div>
         </div>
         <div className="flex justify-between items-center border-t border-white/5 pt-2">
           <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-            Đã hoàn cọc
+            Thanh toán an toàn
           </span>
-          <span className="text-sm font-black text-white">200.000đ</span>
+          <span className="text-sm font-black text-white">230.000đ</span>
         </div>
       </div>
     ),

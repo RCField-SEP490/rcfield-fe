@@ -2,7 +2,6 @@ import { Link } from "react-router"
 import { useMemo, useState } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
-  AlertTriangle,
   ArrowRight,
   BadgePercent,
   BookOpen,
@@ -97,7 +96,6 @@ const guideDefinitions: Record<GuideRole, GuideDefinition> = {
       { label: "Đặt lịch hôm nay", description: "Tra cứu và xử lý khách đến trong ngày", icon: CalendarDays, to: routePaths.staffTodayBookings },
       { label: "Gọi món", description: "Theo dõi và cập nhật trạng thái món", icon: Coffee, to: routePaths.staffFnbOrders },
       { label: "Bảo trì đội xe", description: "Cập nhật xe cần kiểm tra hoặc sửa chữa", icon: Wrench, to: routePaths.staffMaintenance },
-      { label: "Quản lý sự cố", description: "Ghi nhận và xử lý tình huống vận hành", icon: AlertTriangle, to: routePaths.staffIncidents },
     ],
     sections: [
       {
@@ -118,8 +116,8 @@ const guideDefinitions: Record<GuideRole, GuideDefinition> = {
         title: "Trong và sau phiên chạy",
         description: "Theo dõi an toàn, xử lý phát sinh và hoàn tất bàn giao.",
         icon: PlayCircle,
-        steps: ["Theo dõi phiên chạy đang hoạt động.", "Ghi nhận sự cố ngay khi phát hiện; không tự bỏ qua lỗi an toàn.", "Khi trả xe, hoàn tất kiểm tra trước khi đóng phiên."],
-        action: { label: "Xem sự cố", to: routePaths.staffIncidents },
+        steps: ["Theo dõi phiên chạy đang hoạt động.", "Nếu xe có lỗi hoặc hư hỏng, ghi nhận tại biên bản trả xe để tạo phiếu bảo trì.", "Khi trả xe, hoàn tất kiểm tra trước khi đóng phiên."],
+        action: { label: "Mở bảo trì đội xe", to: routePaths.staffMaintenance },
       },
       {
         title: "Đội xe và thiết bị",

@@ -14,7 +14,6 @@ import StaffTodayBookingsPage from "@/pages/staff/StaffTodayBookingsPage"
 import StaffSessionDetailPage from "@/pages/staff/StaffSessionDetailPage"
 import StaffInspectionPage from "@/pages/staff/StaffInspectionPage"
 import StaffFnbOrdersPage from "@/pages/staff/StaffFnbOrdersPage"
-import StaffIncidentsPage from "@/pages/staff/StaffIncidentsPage"
 import StaffMaintenancePage from "@/pages/staff/StaffMaintenancePage"
 import StaffByocPage from "@/pages/staff/StaffByocPage"
 import StaffPackagesPage from "@/pages/staff/StaffPackagesPage"
@@ -301,7 +300,11 @@ export const router = createBrowserRouter([
             element: <StaffCheckoutSummaryPage />,
           },
           { path: routePaths.staffFnbOrders, element: <StaffFnbOrdersPage /> },
-          { path: routePaths.staffIncidents, element: <StaffIncidentsPage /> },
+          // Legacy route: incident handling is consolidated in fleet maintenance.
+          {
+            path: routePaths.staffIncidents,
+            element: <Navigate to={routePaths.staffMaintenance} replace />,
+          },
           {
             path: routePaths.staffMaintenance,
             element: <StaffMaintenancePage />,
