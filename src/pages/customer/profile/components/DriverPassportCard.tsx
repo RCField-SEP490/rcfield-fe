@@ -61,7 +61,7 @@ export function DriverPassportCard() {
       setDraftDriverHandle(null)
       setDraftLeaderboardOptIn(null)
       setDraftPublicProfile(null)
-      toast.success("Đã cập nhật Driver Passport.")
+      toast.success("Đã cập nhật hồ sơ tay đua.")
       await queryClient.invalidateQueries({
         queryKey: racingQueryKeys.passport(),
       })
@@ -72,7 +72,7 @@ export function DriverPassportCard() {
           ? (error as { response?: { data?: { message?: string } } }).response
               ?.data?.message
           : undefined
-      toast.error("Không thể cập nhật Driver Passport", {
+      toast.error("Không thể cập nhật hồ sơ tay đua", {
         description: message ?? "Vui lòng thử lại.",
       })
     },
@@ -96,7 +96,7 @@ export function DriverPassportCard() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-200">
-              Driver Passport
+              Hồ sơ tay đua
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <h2 className="text-2xl font-black">
@@ -108,8 +108,7 @@ export function DriverPassportCard() {
               />
             </div>
             <p className="mt-2 text-sm font-medium text-slate-300">
-              @{passport?.driver_handle ?? "--"} · Mã hộ chiếu:{" "}
-              {passport?.passport_code ?? "--"}
+              @{passport?.driver_handle ?? "--"}
             </p>
           </div>
           <Button
@@ -118,7 +117,7 @@ export function DriverPassportCard() {
             className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
           >
             <Link to={routePaths.globalLeaderboard}>
-              Xem Global Leaderboard
+              Xem bảng xếp hạng
             </Link>
           </Button>
         </div>
@@ -144,12 +143,12 @@ export function DriverPassportCard() {
           />
           <Metric
             icon={Trophy}
-            label="Verified race record"
+            label="Lượt chạy hợp lệ"
             value={String(passport?.stats.verified_race_records ?? 0)}
           />
           <Metric
             icon={Gauge}
-            label="Best global lap"
+            label="Vòng chạy nhanh nhất"
             value={formatLap(passport?.stats.best_global_lap_ms)}
           />
         </div>
@@ -165,7 +164,7 @@ export function DriverPassportCard() {
                 />
               </label>
               <label className="space-y-2">
-                <Label>Driver handle</Label>
+                <Label>Tên tay đua</Label>
                 <Input
                   value={driverHandleValue}
                   onChange={(event) => setDraftDriverHandle(event.target.value)}
@@ -174,14 +173,14 @@ export function DriverPassportCard() {
             </div>
             <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3">
               <PrivacyToggle
-                label="Hiển thị trên Global Leaderboard"
+                label="Hiển thị trên bảng xếp hạng"
                 description="Tắt để ẩn tên bạn khỏi bảng xếp hạng toàn hệ thống."
                 checked={leaderboardOptInValue}
                 onCheckedChange={setDraftLeaderboardOptIn}
               />
               <PrivacyToggle
                 label="Hồ sơ công khai"
-                description="Cho phép người khác xem Driver Passport của bạn qua driver handle."
+                description="Cho phép người khác xem hồ sơ của bạn qua tên tay đua."
                 checked={publicProfileValue}
                 onCheckedChange={setDraftPublicProfile}
               />
@@ -191,7 +190,7 @@ export function DriverPassportCard() {
               onClick={() => updateMutation.mutate()}
             >
               <Save className="size-4" />
-              {updateMutation.isPending ? "Đang lưu..." : "Lưu Driver Passport"}
+              {updateMutation.isPending ? "Đang lưu..." : "Lưu hồ sơ tay đua"}
             </Button>
           </section>
 
@@ -199,7 +198,7 @@ export function DriverPassportCard() {
             <div className="flex items-center gap-2 text-slate-900">
               <Barcode className="size-4 text-orange-500" />
               <h3 className="text-sm font-black uppercase tracking-wide">
-                Badge shelf
+                Danh hiệu
               </h3>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -214,7 +213,7 @@ export function DriverPassportCard() {
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
                       {achievement.description ??
-                        "Badge đã mở khóa từ dữ liệu chơi thật."}
+                        "Danh hiệu được mở khóa từ dữ liệu chơi thực tế."}
                     </p>
                     <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-orange-700">
                       {new Date(achievement.unlocked_at).toLocaleDateString(

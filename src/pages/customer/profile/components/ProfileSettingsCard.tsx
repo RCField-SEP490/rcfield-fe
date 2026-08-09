@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { Camera, LockKeyhole, Mail, MessageSquareText, Phone, Save, Trash2 } from "lucide-react"
+import { Camera, LockKeyhole, Mail, Phone, Save, Trash2 } from "lucide-react"
 import { getMe, updateMe } from "@/features/auth/api/auth.api"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { uploadImage } from "@/features/uploads/api/upload.api"
@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Separator } from "@/shared/ui/separator"
-import { Switch } from "@/shared/ui/switch"
 
 export function ProfileSettingsCard() {
   const user = useAuthStore((state) => state.user)
@@ -171,14 +170,6 @@ export function ProfileSettingsCard() {
 
         <Separator />
 
-        <section className="space-y-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Thông báo</p>
-          <NotificationRow icon={Mail} title="Email Marketing" description="Nhận tin tức khuyến mãi, giải đua và sự kiện." defaultChecked />
-          <NotificationRow icon={MessageSquareText} title="SMS Booking Reminders" description="Nhận tin nhắn nhắc nhở trước giờ chạy." defaultChecked />
-        </section>
-
-        <Separator />
-
         <section className="space-y-3">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bảo mật</p>
           <div className="flex flex-wrap gap-2">
@@ -227,29 +218,4 @@ function persistUser(user: { id: string; email: string; fullName: string; phone?
   } catch {
     // ignore malformed storage
   }
-}
-
-function NotificationRow({
-  icon: Icon,
-  title,
-  description,
-  defaultChecked,
-}: {
-  icon: typeof Mail
-  title: string
-  description: string
-  defaultChecked?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex gap-3">
-        <Icon className="mt-1 h-5 w-5 text-muted-foreground" />
-        <div>
-          <p className="font-medium">{title}</p>
-          <p className="text-sm text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <Switch defaultChecked={defaultChecked} />
-    </div>
-  )
 }
