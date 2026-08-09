@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { AlertTriangle, CalendarClock, CreditCard, XCircle, ChevronLeft, ChevronRight, Wrench, Clock, User, PlayCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useCafeBookings, useCancelBooking, useBooking } from "@/features/booking/hooks/use-booking"
-import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { sanitizeImageUrl } from "@/shared/lib/utils"
 import type { BookingStatus, CafeBookingListItem } from "@/features/booking/types/booking.types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -334,7 +333,28 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
   )
 }
 
-const today = new Date().toISOString().split("T")[0]
+type BookingPeriodPreset = "TODAY" | "YESTERDAY" | "TOMORROW" | "LAST_7_DAYS" | "ALL_TIME" | "CUSTOM"
+
+const DATE_TIME_ZONE = "Asia/Ho_Chi_Minh"
+
+function getVietnamToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: DATE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date())
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${value.year}-${value.month}-${value.day}`
+}
+
+function shiftCalendarDate(date: string, offset: number) {
+  const shifted = new Date(`${date}T12:00:00Z`)
+  shifted.setUTCDate(shifted.getUTCDate() + offset)
+  return shifted.toISOString().slice(0, 10)
+}
+
+const today = getVietnamToday()
 
 const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }> = {
   PENDING: { label: "Chờ thanh toán", className: "bg-amber-100 text-amber-800" },
@@ -348,6 +368,53 @@ const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }>
 const PLAY_MODE_LABELS: Record<string, string> = {
   RENTAL: "Thuê xe",
   BYOC: "Xe riêng",
+}
+
+const BOOKING_STATUS_FILTERS: Array<{ value: BookingStatus | "ALL"; label: string }> = [
+  { value: "ALL", label: "Tất cả" },
+  { value: "PENDING", label: "Chờ thanh toán" },
+  { value: "CONFIRMED", label: "Đã xác nhận" },
+  { value: "AWAITING_PAYMENT", label: "Chờ thanh toán thêm" },
+  { value: "COMPLETED", label: "Hoàn thành" },
+  { value: "NO_SHOW", label: "Không đến" },
+  { value: "CANCELLED", label: "Đã hủy" },
+]
+
+const BOOKING_PERIOD_OPTIONS: Array<{ value: BookingPeriodPreset; label: string }> = [
+  { value: "TODAY", label: "Hôm nay" },
+  { value: "YESTERDAY", label: "Hôm qua" },
+  { value: "TOMORROW", label: "Ngày mai" },
+  { value: "LAST_7_DAYS", label: "7 ngày gần đây" },
+  { value: "ALL_TIME", label: "Tất cả lịch sử" },
+  { value: "CUSTOM", label: "Chọn khoảng ngày" },
+]
+
+interface BookingPeriodParams {
+  date?: string
+  from?: string
+  to?: string
+  label: string
+}
+
+function getBookingPeriodParams(
+  period: BookingPeriodPreset,
+  customFrom: string,
+  customTo: string,
+): BookingPeriodParams {
+  switch (period) {
+    case "YESTERDAY":
+      return { date: shiftCalendarDate(today, -1), label: "hôm qua" }
+    case "TOMORROW":
+      return { date: shiftCalendarDate(today, 1), label: "ngày mai" }
+    case "LAST_7_DAYS":
+      return { from: shiftCalendarDate(today, -6), to: today, label: "7 ngày gần đây" }
+    case "ALL_TIME":
+      return { label: "tất cả lịch sử" }
+    case "CUSTOM":
+      return { from: customFrom, to: customTo, label: "khoảng ngày đã chọn" }
+    default:
+      return { date: today, label: "hôm nay" }
+  }
 }
 
 function formatTime(iso: string) {
@@ -444,32 +511,15 @@ function SessionTimer({ plannedEndAt, status }: { plannedEndAt: string; actualSt
 }
 
 export function ProviderBookingsPage() {
-  const [selectedDate, setSelectedDate] = useState(today)
   const [selectedCafeId, setSelectedCafeId] = useState<string>("")
   const [cancelTarget, setCancelTarget] = useState<CafeBookingListItem | null>(null)
   const [detailBookingId, setDetailBookingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const [now] = useState(() => Date.now())
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | "ALL">("ALL")
+  const [periodPreset, setPeriodPreset] = useState<BookingPeriodPreset>("TODAY")
+  const [customFrom, setCustomFrom] = useState(today)
+  const [customTo, setCustomTo] = useState(today)
   const limit = 20
-
-  const queryClient = useQueryClient()
-
-  // WebSocket real-time synchronization
-  useWebSocket((msg) => {
-    if (
-      msg.event === "SESSION_CHECKIN_CONFIRMED" ||
-      msg.event === "SESSION_EXTENSION_PROPOSED" ||
-      msg.event === "CUSTOMER_CHECKOUT_CONFIRMED" ||
-      msg.event === "SESSION_STATUS_CHANGED" ||
-      msg.event === "BOOKING_UPDATED" ||
-      msg.event === "booking.new"
-    ) {
-      void queryClient.invalidateQueries({ queryKey: ["bookings"] })
-      if (detailBookingId) {
-        void queryClient.invalidateQueries({ queryKey: ["booking", detailBookingId] })
-      }
-    }
-  })
 
   const { data: cafesData } = useQuery({
     queryKey: cafeQueryKeys.list({ page: 1, limit: 100, scope: "managed" }),
@@ -477,24 +527,22 @@ export function ProviderBookingsPage() {
   })
   const cafes = cafesData?.data ?? []
   const activeCafeId = selectedCafeId || cafes[0]?.id
+  const period = getBookingPeriodParams(periodPreset, customFrom, customTo)
 
   const { data, isLoading, refetch } = useCafeBookings(activeCafeId, {
-    date: selectedDate,
+    date: period.date,
+    from: period.from,
+    to: period.to,
+    status: statusFilter === "ALL" ? undefined : statusFilter,
     page,
     limit,
   })
   const bookings = data?.data ?? []
   const total = data?.total ?? 0
+  const summary = data?.summary
 
   const cancelMutation = useCancelBooking()
-
-  const confirmedCount = bookings.filter((b) => b.status === "CONFIRMED").length
-  const pendingCount = bookings.filter((b) => b.status === "PENDING").length
-  const noShowRisk = bookings.filter((b) => {
-    if (b.status !== "CONFIRMED") return false
-    const diff = (new Date(b.slotStart).getTime() - now) / 60000
-    return diff < 30 && diff > 0
-  }).length
+  const pendingPaymentCount = (summary?.pendingPaymentCount ?? 0) + (summary?.awaitingAdditionalPaymentCount ?? 0)
 
   const handleCancelConfirm = (reason: string) => {
     if (!cancelTarget) return
@@ -517,37 +565,49 @@ export function ProviderBookingsPage() {
     <ProviderShell>
       <ProviderPageHeader
         title="Danh sách đặt lịch"
-        description="Quản lý đặt lịch theo trạng thái thanh toán, khung giờ và cơ sở."
+        description="Theo dõi lịch đặt theo ngày, cơ sở và trạng thái xử lý."
       />
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard
-          label="Hôm nay"
-          value={String(bookings.length)}
-          helper={`${confirmedCount} confirmed, ${pendingCount} pending`}
+          label="Tổng lịch"
+          value={summary ? String(summary.totalBookings) : "--"}
+          helper={
+            summary
+              ? `Trong ${period.label} · ${summary.confirmedBookingCount} đã xác nhận`
+              : "Đang tải tổng lịch"
+          }
           icon={<CalendarClock />}
           tone="info"
         />
         <MetricCard
-          label="Tổng booking"
-          value={String(total)}
-          helper={`Trang ${page}/${Math.ceil(total / limit) || 1}`}
-          icon={<CreditCard />}
-          tone="success"
+          label="Phiên đang diễn ra"
+          value={summary ? String(summary.activeSessionCount) : "--"}
+          helper={
+            summary?.activeSessionCount
+              ? `Có trong ${period.label}`
+              : `Không có trong ${period.label}`
+          }
+          icon={<PlayCircle />}
+          tone={summary?.activeSessionCount ? "info" : "neutral"}
         />
         <MetricCard
-          label="No-show risk"
-          value={String(noShowRisk)}
-          helper="Sắp quá 30 phút"
-          icon={<AlertTriangle />}
-          tone={noShowRisk > 0 ? "warning" : "success"}
+          label="Đơn chờ thanh toán"
+          value={summary ? String(pendingPaymentCount) : "--"}
+          helper={
+            summary
+              ? `${summary.pendingPaymentCount} chờ thanh toán lịch · ${summary.awaitingAdditionalPaymentCount} chờ phí phát sinh`
+              : "Đang tải trạng thái thanh toán"
+          }
+          icon={<CreditCard />}
+          tone={pendingPaymentCount > 0 ? "warning" : "success"}
         />
       </section>
 
       <Panel className="mt-4">
         <PanelTitle
           title="Danh sách đặt lịch"
-          subtitle="Theo dõi đặt lịch theo cơ sở, thời gian và trạng thái."
+          subtitle="Lọc theo cơ sở, thời gian và trạng thái xử lý."
           action={
             <div className="flex flex-wrap items-center gap-3">
               {cafes.length > 1 && (
@@ -564,12 +624,70 @@ export function ProviderBookingsPage() {
                   </SelectContent>
                 </Select>
               )}
-              <Input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => { setSelectedDate(e.target.value); setPage(1) }}
-                className="h-9 w-40 text-xs rounded-lg"
-              />
+              <Select
+                value={periodPreset}
+                onValueChange={(value) => {
+                  setPeriodPreset(value as BookingPeriodPreset)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="h-9 w-44 rounded-lg text-xs">
+                  <SelectValue placeholder="Chọn thời gian" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOOKING_PERIOD_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {periodPreset === "CUSTOM" && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-slate-500">Từ</span>
+                  <Input
+                    type="date"
+                    value={customFrom}
+                    max={customTo}
+                    aria-label="Từ ngày"
+                    onChange={(event) => {
+                      setCustomFrom(event.target.value)
+                      setPage(1)
+                    }}
+                    className="h-9 w-36 rounded-lg text-xs"
+                  />
+                  <span className="text-xs font-medium text-slate-500">đến</span>
+                  <Input
+                    type="date"
+                    value={customTo}
+                    min={customFrom}
+                    aria-label="Đến ngày"
+                    onChange={(event) => {
+                      setCustomTo(event.target.value)
+                      setPage(1)
+                    }}
+                    className="h-9 w-36 rounded-lg text-xs"
+                  />
+                </div>
+              )}
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value as BookingStatus | "ALL")
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="h-9 w-48 rounded-lg text-xs">
+                  <SelectValue placeholder="Tất cả trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BOOKING_STATUS_FILTERS.map((filter) => (
+                    <SelectItem key={filter.value} value={filter.value} className="text-xs">
+                      {filter.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           }
         />
@@ -578,7 +696,7 @@ export function ProviderBookingsPage() {
           <div className="py-12 text-center text-sm text-slate-500">Đang tải...</div>
         ) : bookings.length === 0 ? (
           <div className="py-12 text-center text-sm text-slate-400">
-            Không có đặt lịch nào cho ngày {selectedDate}
+            Không có lịch phù hợp trong {period.label}
           </div>
         ) : (
           <div className="overflow-x-auto">

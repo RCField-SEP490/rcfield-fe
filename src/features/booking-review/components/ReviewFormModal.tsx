@@ -8,9 +8,10 @@ import type { PendingBookingReview } from "../types"
 interface ReviewFormModalProps {
   booking: PendingBookingReview
   onClose: () => void
+  onSubmitted: () => void
 }
 
-export function ReviewFormModal({ booking, onClose }: ReviewFormModalProps) {
+export function ReviewFormModal({ booking, onClose, onSubmitted }: ReviewFormModalProps) {
   const [overallScore, setOverallScore] = useState(0)
   const [vehicleScore, setVehicleScore] = useState(0)
   const [staffScore, setStaffScore] = useState(0)
@@ -33,7 +34,7 @@ export function ReviewFormModal({ booking, onClose }: ReviewFormModalProps) {
         note: note.trim() || null,
       },
       {
-        onSuccess: onClose,
+        onSuccess: onSubmitted,
         onError: (err: unknown) => {
           if ((err as { response?: { data?: { code?: string } } })?.response?.data?.code === "REVIEW_PERIOD_EXPIRED") {
             setExpired(true)
@@ -57,7 +58,7 @@ export function ReviewFormModal({ booking, onClose }: ReviewFormModalProps) {
 
         {expired ? (
           <div className="space-y-4">
-            <p className="text-sm text-red-600">Thời hạn đánh giá đã hết (7 ngày)</p>
+            <p className="text-sm text-red-600">Thời hạn đánh giá đã hết (5 ngày)</p>
             <Button variant="outline" className="w-full" onClick={onClose}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Quay lại

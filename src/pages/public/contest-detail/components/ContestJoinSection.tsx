@@ -24,8 +24,8 @@ const BENEFITS = [
   },
   {
     icon: ShieldCheck,
-    title: "Miễn đặt cọc xe thuê",
-    body: "Xe thi đấu do ban tổ chức chuẩn bị và bảo đảm — bạn không phải đặt cọc trước.",
+    title: "Không yêu cầu tiền cọc",
+    body: "RCField không thu tiền cọc xe khi đặt lịch hoặc tham gia giải đấu.",
   },
   {
     icon: KeyRound,

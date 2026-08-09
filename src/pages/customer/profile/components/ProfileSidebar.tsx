@@ -51,7 +51,7 @@ export function ProfileSidebar() {
           ) : null}
           {passport ? (
             <p className="mt-2 text-xs text-muted-foreground">
-              @{passport.driver_handle} · Hộ chiếu {passport.passport_code}
+              @{passport.driver_handle}
             </p>
           ) : null}
           <div className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 text-sm">

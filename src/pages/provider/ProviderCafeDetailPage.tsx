@@ -215,7 +215,7 @@ export function ProviderCafeDetailPage() {
         {tab === "info" && (
           <>
             <section>
-              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#747878]">Tổng quan tháng này</p>
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#747878]">Tổng quan từ đầu tháng đến hiện tại</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
               <MetricCard
                 label="Doanh thu tháng"
@@ -231,7 +231,7 @@ export function ProviderCafeDetailPage() {
                 tone="neutral"
               />
               <MetricCard
-                label="Tỷ lệ lấp đầy"
+                label="Tỷ lệ khai thác sân"
                 value={
                   branchOperation?.occupancyRate !== null && branchOperation?.occupancyRate !== undefined
                     ? formatOccupancyRate(branchOperation.occupancyRate)
@@ -243,7 +243,7 @@ export function ProviderCafeDetailPage() {
                     : branchOperation?.occupancyRate === null
                       ? "Chưa có sức chứa slot khả dụng"
                       : branchOperation
-                        ? "Theo sức chứa slot tháng này"
+                        ? "Theo giờ mở cửa và sức chứa từ đầu tháng đến hiện tại"
                       : "Đang tải..."
                 }
                 icon={<TrendingUp />}

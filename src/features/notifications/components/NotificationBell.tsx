@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Bell, CheckCheck, X } from "lucide-react"
 import { useNavigate } from "react-router"
-import { bookingApi } from "@/features/booking/api/booking.api"
-import { staffApi } from "@/features/staff/api/staff.api"
 import { cn } from "@/shared/lib/utils"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { notificationApi } from "../api/notification.api"
+import { resolveNotificationRoute } from "../lib/notification-routing"
 import type { Notification } from "../types"
 
 
@@ -61,19 +60,22 @@ export function NotificationBell() {
   const notifications = data?.data ?? []
   const unreadCount = data?.unreadCount ?? 0
 
-  const handleNotificationClick = async (n: Notification) => {
+  const handleNotificationClick = (n: Notification) => {
     if (!n.readAt) markReadMutation.mutate(n.id)
     setOpen(false)
 
-    const directRoute = typeof n.data?.route === "string" ? n.data.route : null
-    if (directRoute?.startsWith("/")) {
+    const directRoute = resolveNotificationRoute(n.data?.route)
+    if (directRoute) {
       navigate(directRoute)
       return
     }
 
     const contestId = typeof n.data?.contest_id === "string" ? n.data.contest_id : null
+    const isProviderContestFeeNotification =
+      user?.role === "provider" && typeof n.data?.contest_fee_order_id === "string"
     const sessionId = typeof n.data?.sessionId === "string" ? n.data.sessionId : null
-    if (contestId && n.type.startsWith("CONTEST_")) {
+    const bookingId = typeof n.data?.bookingId === "string" ? n.data.bookingId : null
+    if (contestId && (n.type.startsWith("CONTEST_") || isProviderContestFeeNotification)) {
       if (user?.role === "customer") {
         navigate(`/contests/${contestId}`)
       } else if (user?.role === "provider") {
@@ -87,51 +89,31 @@ export function NotificationBell() {
       } else if (user?.role === "provider") {
         navigate("/provider/dashboard")
       }
-    } else if (n.type === "SESSION_CHECKOUT_INSPECTION") {
-      try {
-        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
-        const activeBooking = bookingsRes.data.find(
-          (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
-        )
-        if (activeBooking) {
-          const detail = await bookingApi.getBooking(activeBooking.id)
-          if (detail.session) {
-            navigate(`/customer/inspections/${detail.session.id}`)
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi điều hướng biên bản:", err)
+    } else if (
+      n.type === "SESSION_CHECKIN_INSPECTION" ||
+      n.type === "SESSION_CHECKOUT_INSPECTION"
+    ) {
+      if (sessionId) {
+        navigate(`/customer/inspections/${sessionId}`)
+      } else if (bookingId) {
+        navigate(`/customer/bookings/${bookingId}?section=handover`)
+      } else {
+        navigate("/customer/bookings")
       }
     } else if (n.type === "SESSION_EXTENSION_PROPOSED") {
-      try {
-        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
-        const activeBooking = bookingsRes.data.find((b) => b.status === "CONFIRMED")
-        if (activeBooking) {
-          const detail = await bookingApi.getBooking(activeBooking.id)
-          if (detail.session) {
-            navigate(`/customer/extension-response/${detail.session.id}`)
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi điều hướng gia hạn:", err)
-      }
+      navigate(sessionId ? `/customer/extension-response/${sessionId}` : "/customer/bookings")
     } else if (n.type === "SESSION_FNB_ORDER_ADDED") {
-      try {
-        const bookingsRes = await bookingApi.listMyBookings({ limit: 5 })
-        const activeBooking = bookingsRes.data.find(
-          (b) => b.status === "CONFIRMED" || b.status === "COMPLETED"
-        )
-        if (activeBooking) {
-          const detail = await bookingApi.getBooking(activeBooking.id)
-          if (detail.session) {
-            navigate(`/customer/sessions/${detail.session.id}`)
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi điều hướng gọi món:", err)
+      if (bookingId) {
+        navigate(`/booking/${bookingId}`)
+      } else {
+        navigate(sessionId ? `/customer/sessions/${sessionId}` : "/customer/bookings")
       }
     } else if (n.type === "BOOKING_REVIEW_REQUEST") {
-      navigate("/customer/bookings")
+      navigate(
+        bookingId
+          ? `/customer/bookings?reviewBookingId=${encodeURIComponent(bookingId)}`
+          : "/customer/bookings",
+      )
     } else if (
       n.type === "VEHICLE_MAINTENANCE_CREATED" ||
       n.type === "MAINTENANCE_LOG_UPDATED" ||
@@ -148,32 +130,9 @@ export function NotificationBell() {
       n.type === "CUSTOMER_PAYMENT_CONFIRMED"
     ) {
       if (user?.role === "customer") {
-        navigate("/customer/bookings")
-      } else {
-        try {
-          const match = n.message.match(/phiên chơi ([a-f0-9]{8})/i)
-          const prefix = match ? match[1] : null
-
-          const bookings = await staffApi.getTodayBookings()
-          let targetSessionId: string | null = null
-          for (const b of bookings) {
-            if (b.sessions) {
-              for (const s of b.sessions) {
-                if (prefix && s.sessionId.startsWith(prefix)) {
-                  targetSessionId = s.sessionId
-                  break
-                }
-              }
-            }
-            if (targetSessionId) break
-          }
-
-          if (targetSessionId) {
-            navigate(`/staff/sessions/${targetSessionId}`)
-          }
-        } catch (err) {
-          console.error("Lỗi điều hướng phiên chơi cho staff:", err)
-        }
+        navigate(bookingId ? `/customer/bookings/${bookingId}` : "/customer/bookings")
+      } else if (user?.role === "staff" && sessionId) {
+        navigate(`/staff/sessions/${sessionId}`)
       }
     }
   }

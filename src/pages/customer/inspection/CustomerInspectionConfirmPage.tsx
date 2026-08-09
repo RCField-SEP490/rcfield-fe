@@ -103,15 +103,11 @@ export function CustomerInspectionConfirmPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Check-in is an informational handover record, not a separate blocking
-  // customer flow. Old notifications can still target this route, so route
-  // them into the handover section of the booking once the session is active.
+  // Check-in is completed face-to-face before staff creates the record. Old
+  // notifications may still target this route, so always route them to the
+  // read-only handover section of the booking instead of exposing actions.
   useEffect(() => {
-    if (
-      session &&
-      inspection?.type === "CHECK_IN" &&
-      ["ACTIVE", "EXTENDING"].includes(session.status)
-    ) {
+    if (session && inspection?.type === "CHECK_IN") {
       navigate(`/customer/bookings/${session.bookingId}?section=handover`, { replace: true })
     }
   }, [inspection?.type, navigate, session])
@@ -151,17 +147,21 @@ export function CustomerInspectionConfirmPage() {
   }
 
   const isCheckoutInspection = inspection.type === "CHECK_OUT"
-  const isHandoverReview = !isCheckoutInspection && ["ACTIVE", "EXTENDING"].includes(session.status)
+  // A notification can be opened long after its action window. Keep the
+  // inspection accessible as evidence, but never offer an action that the
+  // server must reject once the session/inspection has already been completed.
+  const isHistoricalInspection =
+    inspection.customerConfirmed ||
+    ["COMPLETED", "CANCELLED"].includes(session.status)
 
   // Approve vehicle handler
   const handleApprove = async () => {
+    if (isHistoricalInspection) return
     setIsSubmitting(true)
     try {
       await customerSessionApi.confirmInspection(session.sessionId, inspection.inspectionId, { agreed: true })
-      toast.success(isCheckoutInspection ? "Xác nhận trả xe thành công!" : "Đã ghi nhận bạn đã xem biên bản!", {
-        description: isCheckoutInspection
-          ? "Phiên chơi đã được đóng sau khi đối chiếu biên bản."
-          : "Phiên chơi đang diễn ra. Cảm ơn bạn đã cùng đối chiếu tình trạng xe."
+      toast.success("Xác nhận trả xe thành công!", {
+        description: "Phiên chơi đã được đóng sau khi đối chiếu biên bản.",
       })
       await queryClient.invalidateQueries({ queryKey: bookingQueryKeys.detail(session.bookingId) })
       navigate(`/customer/bookings/${session.bookingId}`)
@@ -178,8 +178,9 @@ export function CustomerInspectionConfirmPage() {
 
   // Reject / Disagree handler
   const handleDisagree = async () => {
+    if (isHistoricalInspection) return
     if (!disagreeText.trim()) {
-      toast.error("Vui lòng nhập lý do từ chối bàn giao xe.")
+      toast.error("Vui lòng nhập lý do từ chối biên bản trả xe.")
       return
     }
     setIsSubmitting(true)
@@ -188,7 +189,7 @@ export function CustomerInspectionConfirmPage() {
         agreed: false,
         disagreementNote: disagreeText.trim(),
       })
-      toast.warning("Đã gửi phản hồi sai lệch cho nhân viên quầy!", {
+      toast.warning("Đã gửi phản hồi biên bản trả xe cho nhân viên quầy!", {
         description: "Staff phụ trách sẽ kiểm tra lại xe và liên hệ trực tiếp với bạn ngay."
       })
       setDisagreeMode(false)
@@ -204,6 +205,20 @@ export function CustomerInspectionConfirmPage() {
     }
   }
 
+  if (!isCheckoutInspection) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full text-center p-8 space-y-4">
+          <Clock className="h-10 w-10 text-orange-500 mx-auto animate-pulse" />
+          <h2 className="text-lg font-bold text-slate-900">Đang mở biên bản bàn giao</h2>
+          <p className="text-sm text-slate-500">
+            Biên bản giao xe được xác nhận trực tiếp tại quầy và chỉ xem lại trong chi tiết đơn đặt.
+          </p>
+        </Card>
+      </div>
+    )
+  }
+
   const activePhoto = inspection.photos[activePhotoIdx]
 
   return (
@@ -215,15 +230,22 @@ export function CustomerInspectionConfirmPage() {
           <div className="space-y-1">
             <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
               <ShieldCheck className="h-4 w-4 shrink-0" />
-              {isCheckoutInspection ? "Xác nhận trả xe" : "Biên bản bàn giao xe"}
+              {isHistoricalInspection ? "Biên bản lưu trữ" : "Xác nhận trả xe"}
             </span>
             <h1 className="text-xl font-black text-slate-950">
-              {isCheckoutInspection ? "Kiểm Tra Tình Trạng Trả Xe" : "Xem Tình Trạng Xe Đã Nhận"}
+              {isHistoricalInspection
+                ? "Xem Lại Biên Bản Trả Xe"
+                : "Kiểm Tra Tình Trạng Trả Xe"}
             </h1>
             <p className="text-xs text-slate-500 font-semibold">Phiên chơi: <strong className="text-slate-800">{session.sessionId}</strong> • Nhân viên bàn giao: <strong className="text-slate-800">{session.staffName}</strong></p>
           </div>
 
-          {isCheckoutInspection ? (
+          {isHistoricalInspection ? (
+            <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl self-end md:self-auto">
+              <CheckCircle2 className="h-5 w-5 text-slate-600 shrink-0" />
+              <p className="text-xs font-extrabold text-slate-700">Đã hoàn tất · Chỉ xem lại</p>
+            </div>
+          ) : (
             <div className="flex items-center gap-3 bg-rose-50 border border-rose-100 px-4 py-2.5 rounded-xl self-end md:self-auto">
               <Clock className="h-5 w-5 text-rose-500 animate-pulse shrink-0" />
               <div>
@@ -231,21 +253,22 @@ export function CustomerInspectionConfirmPage() {
                 <p className="text-base font-black text-rose-600 mt-1 leading-none">{formatTime(timeLeft)}</p>
               </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-xl self-end md:self-auto">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-              <p className="text-xs font-extrabold text-emerald-700">
-                {isHandoverReview ? "Phiên chơi đang diễn ra" : "Đang hoàn tất bàn giao"}
-              </p>
-            </div>
           )}
         </div>
 
         {/* Dynamic Stepper Info */}
-        <div className="bg-orange-500/5 border border-orange-200/50 p-4 rounded-xl text-xs font-semibold text-orange-950 flex gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
+        <div className={`${isHistoricalInspection ? "bg-slate-50 border-slate-200 text-slate-700" : "bg-orange-500/5 border-orange-200/50 text-orange-950"} border p-4 rounded-xl text-xs font-semibold flex gap-2`}>
+          {isHistoricalInspection ? (
+            <CheckCircle2 className="h-5 w-5 text-slate-500 shrink-0 mt-0.5" />
+          ) : (
+            <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0 mt-0.5" />
+          )}
           <p className="leading-relaxed">
-            <strong>Lưu ý:</strong> Vui lòng xem kỹ các góc ảnh chụp thực tế dưới đây. Nếu thấy sai lệch, hãy báo ngay để staff kiểm tra trực tiếp với bạn.
+            {isHistoricalInspection ? (
+              <><strong>Biên bản đã hoàn tất.</strong> Đây là bản ghi lưu trữ của phiên chơi đã kết thúc; bạn có thể xem lại ảnh và checklist, nhưng không thể xác nhận lại.</>
+            ) : (
+              <><strong>Lưu ý:</strong> Vui lòng đối chiếu biên bản trả xe với xe thực tế trước khi xác nhận.</>
+            )}
           </p>
         </div>
 
@@ -374,7 +397,26 @@ export function CustomerInspectionConfirmPage() {
             </Card>
 
             {/* Decision Area */}
-            {!disagreeMode ? (
+            {isHistoricalInspection ? (
+              <Card className="border-slate-200/80 bg-slate-50 p-5 space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" />
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-800">Không còn thao tác cần thực hiện</h4>
+                    <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">
+                      Biên bản này được giữ để bạn đối chiếu lịch sử của phiên chơi. Không còn thao tác xác nhận sau khi phiên đã hoàn tất.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full border-slate-300 text-xs font-bold"
+                  onClick={() => navigate(`/customer/bookings/${session.bookingId}`)}
+                >
+                  Xem chi tiết đơn đặt
+                </Button>
+              </Card>
+            ) : !disagreeMode ? (
               <div className="space-y-3">
                 <Button
                   onClick={handleApprove}
@@ -382,7 +424,7 @@ export function CustomerInspectionConfirmPage() {
                   className="w-full bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs h-12 rounded-xl shadow-md cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <CheckCircle2 className="h-4 w-4 text-orange-400" />
-                  {isCheckoutInspection ? "Tôi đồng ý biên bản trả xe & Hoàn tất phiên" : "Tôi đã xem biên bản bàn giao"}
+                  Tôi đồng ý biên bản trả xe & Hoàn tất phiên
                 </Button>
 
                 <Button
@@ -391,7 +433,7 @@ export function CustomerInspectionConfirmPage() {
                   className="w-full border-red-200 hover:bg-red-50 text-red-600 font-extrabold text-xs h-12 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-1.5"
                 >
                   <XCircle className="h-4 w-4" />
-                  {isCheckoutInspection ? "Tôi phát hiện sai lệch / Từ chối trả xe" : "Báo sai lệch bàn giao xe"}
+                  Tôi phát hiện sai lệch / Từ chối trả xe
                 </Button>
               </div>
             ) : (
@@ -399,7 +441,7 @@ export function CustomerInspectionConfirmPage() {
                 <div className="space-y-1">
                   <h4 className="text-xs font-black text-red-600 uppercase tracking-widest flex items-center gap-1">
                     <AlertTriangle className="h-4 w-4" />
-                    Báo cáo sai lệch xe
+                    Báo cáo sai lệch trả xe
                   </h4>
                   <p className="text-[10px] font-semibold text-slate-400 leading-normal">
                     Hãy ghi rõ điểm khác biệt bạn thấy trên thực tế (ví dụ: cản trước có vết xước sâu mà ảnh chụp không rõ) để Staff ghi nhận.

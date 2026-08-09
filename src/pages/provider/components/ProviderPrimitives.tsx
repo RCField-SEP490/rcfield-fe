@@ -321,7 +321,7 @@ export function BranchList({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <InlineMetric label="Phí slot" value={formatSlotFee(cafe.slotFeeRate)} />
-              <InlineMetric label="Lấp đầy" value={formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)} align="right" />
+              <InlineMetric label="Khai thác sân" value={formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)} align="right" />
             </div>
           </div>
         ))}
@@ -340,13 +340,15 @@ export function BranchList({
         >
           {/* Content */}
           <div className="flex flex-1 flex-wrap items-center gap-y-3 px-4 py-4 sm:flex-nowrap sm:gap-6">
-            {/* Name + location + badge */}
+            {/* Name + location */}
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</span>
-                <StatusBadge status={formatCafeStatus(cafe.status)} />
-              </div>
+              <span className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</span>
               <p className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</p>
+            </div>
+
+            {/* Fixed-width status column keeps every status badge aligned. */}
+            <div className="w-[112px] shrink-0 sm:w-[128px]">
+              <StatusBadge status={formatCafeStatus(cafe.status)} />
             </div>
 
             {/* Metrics */}
@@ -356,7 +358,7 @@ export function BranchList({
                 <p className="mt-0.5 text-sm font-bold tabular-nums text-[#1c1b1b]">{formatSlotFee(cafe.slotFeeRate)}</p>
               </div>
               <div className="min-w-0 px-3 sm:px-5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Lấp đầy</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Khai thác sân</p>
                 <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)}</p>
                 {operationsByCafe?.get(cafe.id) ? (
                   <p className="mt-0.5 text-[10px] font-medium text-[#747878]">
@@ -401,7 +403,8 @@ function formatSlotFee(value: BackendCafe["slotFeeRate"]) {
 export function formatOccupancyRate(rate: number | null | undefined) {
   if (rate === null || rate === undefined) return "--"
   const percentage = rate * 100
-  const fractionDigits = percentage > 0 && percentage < 0.1 ? 2 : percentage > 0 && percentage < 1 ? 1 : 0
+  if (percentage > 0 && percentage < 0.1) return "<0,1%"
+  const fractionDigits = percentage > 0 && percentage < 1 ? 1 : 0
   return `${new Intl.NumberFormat("vi-VN", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,

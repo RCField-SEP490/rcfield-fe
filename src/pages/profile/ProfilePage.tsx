@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import { toast } from "sonner"
-import { Camera, CreditCard, Mail, Phone } from "lucide-react"
+import { Camera, Mail, Phone } from "lucide-react"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import { AdminHeader } from "@/pages/admin/components/AdminPrimitives"
@@ -29,7 +29,6 @@ import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { Switch } from "@/shared/ui/switch"
 import { Textarea } from "@/shared/ui/textarea"
 
 export function ProfilePage() {
@@ -40,7 +39,7 @@ export function ProfilePage() {
       <ProviderShell>
         <ProviderPageHeader
           title="Hồ sơ cá nhân"
-          description="Quản lý thông tin tài khoản, bảo mật và phương thức thanh toán."
+          description="Quản lý thông tin tài khoản, doanh nghiệp và bảo mật."
         />
         <ProfileContent />
       </ProviderShell>
@@ -731,163 +730,30 @@ function ProfileContent() {
         </form>
       </ProfileCard>
 
-      {/* Admin: permissions */}
+      {/* Admin: role scope */}
       {role === "admin" && (
-        <ProfileCard title="Cấp độ quản trị & Quyền hạn hệ thống">
+        <ProfileCard title="Vai trò quản trị">
           <div className="space-y-3 text-sm text-[#1c1b1b]">
             <div className="flex justify-between py-2 border-b border-[#e5e2e1]">
               <span className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                Phân quyền tài khoản
+                Vai trò tài khoản
               </span>
               <span className="text-sm font-bold text-orange-600">
-                Super Administrator
+                Quản trị viên hệ thống
               </span>
             </div>
-            <div className="flex justify-between py-2 border-b border-[#e5e2e1]">
-              <span className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                Đăng nhập gần nhất
-              </span>
-              <span className="text-sm font-medium text-[#1c1b1b]">
-                Hôm nay, 22:15:34 (IP 14.226.45.18)
-              </span>
-            </div>
-            <div className="py-2">
-              <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-2">
-                Quyền được gán
+            <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+              <p className="text-sm font-semibold text-[#1c1b1b]">Có thể thực hiện</p>
+              <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-xs text-[#5d5f5f] sm:grid-cols-2">
+                <li>• Duyệt và quản lý Provider, cơ sở</li>
+                <li>• Xử lý yêu cầu thanh toán, phí giải</li>
+                <li>• Cấu hình gói, tiện ích, loại đường chạy</li>
+                <li>• Quản lý kênh, nội dung và cấu hình hệ thống</li>
+              </ul>
+              <p className="mt-3 border-t border-[#e5e2e1] pt-3 text-xs text-[#747878]">
+                Quyền áp dụng theo vai trò ADMIN; hiện chưa có phân quyền riêng theo từng tài khoản quản trị.
               </p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "PHÊ DUYỆT ĐỐI TÁC",
-                  "QUẢN LÝ CHI NHÁNH",
-                  "PHÂN XỬ TRANH CHẤP",
-                  "GIÁM SÁT GIAO DỊCH",
-                ].map((p) => (
-                  <span
-                    key={p}
-                    className="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-md border border-orange-100 text-[10px] font-bold"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
             </div>
-            <div className="flex justify-end pt-2 border-t border-[#e5e2e1]">
-              <Button
-                variant="outline"
-                className="rounded-lg border-[#e5e2e1] bg-white text-sm"
-              >
-                Nhật ký bảo mật hệ thống
-              </Button>
-            </div>
-          </div>
-        </ProfileCard>
-      )}
-
-      {/* Notifications */}
-      <ProfileCard title="Cài đặt thông báo">
-        <div className="space-y-3">
-          {role === "staff" && (
-            <>
-              <SettingRow
-                title="Thay đổi lịch trực"
-                description="Nhận thông báo khi quản lý điều chỉnh ca làm việc của bạn."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Báo cáo sự cố"
-                description="Cập nhật khẩn cấp khi có sự cố xảy ra tại chi nhánh đang trực."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Nhiệm vụ trực ca"
-                description="Nhận nhắc nhở và danh sách kiểm tra vệ sinh/bảo trì xe được giao."
-                toggle
-                enabled
-              />
-            </>
-          )}
-          {role === "provider" && (
-            <>
-              <SettingRow
-                title="Lịch đặt mới"
-                description="Thông báo khi khách hàng đặt lịch hoặc gọi món tại các chi nhánh."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Thông báo thanh toán"
-                description="Xác nhận thanh toán thành công và cảnh báo gia hạn gói dịch vụ."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Yêu cầu rút tiền"
-                description="Cập nhật trạng thái xử lý khi bạn thực hiện rút doanh thu (payout)."
-                toggle
-                enabled
-              />
-            </>
-          )}
-          {role === "admin" && (
-            <>
-              <SettingRow
-                title="Yêu cầu phê duyệt"
-                description="Yêu cầu đăng ký tài khoản đối tác mới từ các Provider."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Lỗi & Cảnh báo hệ thống"
-                description="Báo cáo downtime, lỗi máy chủ hoặc lưu lượng tải bất thường."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Phân xử khiếu nại"
-                description="Thông báo khi có tranh chấp cần phân xử giữa Provider và Khách hàng."
-                toggle
-                enabled
-              />
-            </>
-          )}
-          {(!role || role === "customer") && (
-            <>
-              <SettingRow
-                title="Cập nhật booking"
-                description="Nhận thông báo trạng thái booking, thanh toán và phiên chơi."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Email marketing"
-                description="Tin tức sản phẩm, khuyến mãi và cập nhật từ đối tác."
-                toggle
-              />
-            </>
-          )}
-        </div>
-      </ProfileCard>
-
-      {/* Payment - provider/customer only */}
-      {(role === "provider" || !role || role === "customer") && (
-        <ProfileCard title="Phương thức thanh toán">
-          <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-            <div className="flex items-center gap-3">
-              <CreditCard className="size-5 text-[#747878]" />
-              <div>
-                <p className="text-sm font-semibold text-[#1c1b1b]">
-                  Chưa có phương thức thanh toán
-                </p>
-                <p className="text-xs text-[#747878] mt-0.5">
-                  Thêm thẻ hoặc ví điện tử để thanh toán nhanh hơn.
-                </p>
-              </div>
-            </div>
-            <Button className="mt-4 rounded-lg bg-[#1c1b1b] text-sm text-white hover:bg-[#313030]">
-              Thêm phương thức thanh toán
-            </Button>
           </div>
         </ProfileCard>
       )}
@@ -996,36 +862,6 @@ function persistUser(user: {
   } catch {
     // ignore malformed storage
   }
-}
-
-function SettingRow({
-  title,
-  description,
-  action,
-  toggle = false,
-  enabled = false,
-}: {
-  title: string
-  description: string
-  action?: string
-  toggle?: boolean
-  enabled?: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-semibold text-[#1c1b1b]">{title}</p>
-        <p className="mt-0.5 text-xs text-[#5d5f5f]">{description}</p>
-      </div>
-      {toggle ? (
-        <Switch defaultChecked={enabled} />
-      ) : (
-        <Button variant="outline" className="rounded-lg bg-white text-sm">
-          {action}
-        </Button>
-      )}
-    </div>
-  )
 }
 
 function splitName(name: string) {
