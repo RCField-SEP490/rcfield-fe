@@ -17,7 +17,11 @@ import { toast } from "sonner"
 import { CustomerSubNav } from "./components/CustomerSubNav"
 import { CustomerPageShell } from "./components/CustomerPageShell"
 import { ReviewReminderBanner } from "@/features/booking-review/components/ReviewReminderBanner"
-import { useMyBookings, useCancelBooking, useCreateCheckout } from "@/features/booking/hooks/use-booking"
+import {
+  useMyBookings,
+  useCancelBooking,
+  useCreateCheckout,
+} from "@/features/booking/hooks/use-booking"
 import type { BookingStatus } from "@/features/booking/types/booking.types"
 import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
@@ -25,12 +29,30 @@ type FilterKey = "all" | BookingStatus
 type PlayModeFilter = "all" | "RENTAL" | "BYOC"
 
 const STATUS_LABELS: Record<BookingStatus, { label: string; badge: string }> = {
-  PENDING: { label: "Chờ thanh toán", badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" },
-  CONFIRMED: { label: "Đã xác nhận", badge: "bg-emerald-100 text-emerald-800 border-none font-bold text-xs" },
-  AWAITING_PAYMENT: { label: "Chờ thanh toán phí phát sinh", badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" },
-  NO_SHOW: { label: "Không đến", badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" },
-  COMPLETED: { label: "Hoàn thành", badge: "bg-indigo-100 text-indigo-800 border-none font-bold text-xs" },
-  CANCELLED: { label: "Đã hủy", badge: "bg-red-100 text-red-800 border-none font-bold text-xs" },
+  PENDING: {
+    label: "Chờ thanh toán",
+    badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs",
+  },
+  CONFIRMED: {
+    label: "Đã xác nhận",
+    badge: "bg-emerald-100 text-emerald-800 border-none font-bold text-xs",
+  },
+  AWAITING_PAYMENT: {
+    label: "Chờ thanh toán phí phát sinh",
+    badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs",
+  },
+  NO_SHOW: {
+    label: "Không đến",
+    badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs",
+  },
+  COMPLETED: {
+    label: "Hoàn thành",
+    badge: "bg-indigo-100 text-indigo-800 border-none font-bold text-xs",
+  },
+  CANCELLED: {
+    label: "Đã hủy",
+    badge: "bg-red-100 text-red-800 border-none font-bold text-xs",
+  },
 }
 
 const ACCENT: Record<BookingStatus, string> = {
@@ -79,7 +101,12 @@ export function CustomerBookingsPage() {
   const PAGE_SIZE = 10
   const status = activeFilter === "all" ? undefined : activeFilter
   const play_mode = playModeFilter === "all" ? undefined : playModeFilter
-  const { data, isLoading } = useMyBookings({ status, play_mode, page: currentPage, limit: PAGE_SIZE })
+  const { data, isLoading } = useMyBookings({
+    status,
+    play_mode,
+    page: currentPage,
+    limit: PAGE_SIZE,
+  })
   const cancelMutation = useCancelBooking()
   const checkoutMutation = useCreateCheckout()
 
@@ -102,19 +129,27 @@ export function CustomerBookingsPage() {
   }
 
   const bookings = data?.data ?? []
-  const cancelTargetBooking = bookings.find((booking) => booking.id === cancelTarget)
+  const cancelTargetBooking = bookings.find(
+    (booking) => booking.id === cancelTarget,
+  )
   const totalBookings = data?.total ?? 0
   const totalPages = Math.ceil(totalBookings / PAGE_SIZE)
 
   const handleCancelConfirm = () => {
     if (!cancelTarget) return
-    const isCancellingHold = bookings.find((booking) => booking.id === cancelTarget)?.status === "PENDING"
+    const isCancellingHold =
+      bookings.find((booking) => booking.id === cancelTarget)?.status ===
+      "PENDING"
     cancelMutation.mutate(
       { bookingId: cancelTarget },
       {
         onSuccess: () => {
           setCancelTarget(null)
-          toast.success(isCancellingHold ? "Đã hủy giữ chỗ." : "Đã hủy lịch đặt thành công!")
+          toast.success(
+            isCancellingHold
+              ? "Đã hủy giữ chỗ."
+              : "Đã hủy lịch đặt thành công!",
+          )
         },
         onError: (error) => {
           const { code, message } = getApiErrorInfo(error)
@@ -169,12 +204,18 @@ export function CustomerBookingsPage() {
       </div>
 
       {isLoading ? (
-        <div className="py-16 text-center text-sm text-slate-500">Đang tải dữ liệu...</div>
+        <div className="py-16 text-center text-sm text-slate-500">
+          Đang tải dữ liệu...
+        </div>
       ) : bookings.length === 0 ? (
         <div className="py-16 bg-white border border-dashed border-slate-200 rounded-2xl text-center space-y-3">
           <HelpCircle className="h-10 w-10 text-slate-300 mx-auto" />
-          <p className="text-sm font-semibold text-slate-500">Không tìm thấy lịch đặt nào</p>
-          <p className="text-xs text-slate-400 max-w-xs mx-auto">Bạn không có giao dịch đặt lịch nào khớp với bộ lọc đã chọn.</p>
+          <p className="text-sm font-semibold text-slate-500">
+            Không tìm thấy lịch đặt nào
+          </p>
+          <p className="text-xs text-slate-400 max-w-xs mx-auto">
+            Bạn không có giao dịch đặt lịch nào khớp với bộ lọc đã chọn.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -182,42 +223,84 @@ export function CustomerBookingsPage() {
             {bookings.map((booking) => {
               const sessStatus = booking.session?.status
               const checkInExpired = hasExpiredCheckInWindow(booking)
-              const sessionOverride: { label: string; badge: string } | null = checkInExpired
-                ? null
-                : sessStatus === "ACTIVE"
-                ? { label: "Đang chơi",      badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" }
-                : sessStatus === "EXTENDING"
-                ? { label: "Đang gia hạn",   badge: "bg-orange-100 text-orange-800 border-none font-bold text-xs" }
-                : sessStatus === "CHECKED_IN"
-                ? { label: "Đang check-in",  badge: "bg-amber-100 text-amber-800 border-none font-bold text-xs" }
-                : sessStatus === "CHECKING_OUT"
-                ? { label: "Đang checkout",  badge: "bg-blue-100 text-blue-800 border-none font-bold text-xs" }
-                : null
-              const effectiveStatus = checkInExpired ? "NO_SHOW" : booking.status
-              const statusInfo = sessionOverride ?? (STATUS_LABELS[effectiveStatus] ?? STATUS_LABELS.PENDING)
-              const accentOverride = !checkInExpired && (sessStatus === "ACTIVE" || sessStatus === "EXTENDING")
-                ? "bg-orange-400"
-                : !checkInExpired && (sessStatus === "CHECKED_IN" || sessStatus === "CHECKING_OUT")
-                ? "bg-amber-400"
-                : null
-              const accent = accentOverride ?? (ACCENT[effectiveStatus] ?? "bg-slate-300")
+              const sessionOverride: { label: string; badge: string } | null =
+                checkInExpired
+                  ? null
+                  : sessStatus === "ACTIVE"
+                    ? {
+                        label: "Đang chơi",
+                        badge:
+                          "bg-orange-100 text-orange-800 border-none font-bold text-xs",
+                      }
+                    : sessStatus === "EXTENDING"
+                      ? {
+                          label: "Đang gia hạn",
+                          badge:
+                            "bg-orange-100 text-orange-800 border-none font-bold text-xs",
+                        }
+                      : sessStatus === "CHECKED_IN"
+                        ? {
+                            label: "Đang check-in",
+                            badge:
+                              "bg-amber-100 text-amber-800 border-none font-bold text-xs",
+                          }
+                        : sessStatus === "CHECKING_OUT"
+                          ? {
+                              label: "Đang checkout",
+                              badge:
+                                "bg-blue-100 text-blue-800 border-none font-bold text-xs",
+                            }
+                          : null
+              const effectiveStatus = checkInExpired
+                ? "NO_SHOW"
+                : booking.status
+              const statusInfo =
+                sessionOverride ??
+                STATUS_LABELS[effectiveStatus] ??
+                STATUS_LABELS.PENDING
+              const accentOverride =
+                !checkInExpired &&
+                (sessStatus === "ACTIVE" || sessStatus === "EXTENDING")
+                  ? "bg-orange-400"
+                  : !checkInExpired &&
+                      (sessStatus === "CHECKED_IN" ||
+                        sessStatus === "CHECKING_OUT")
+                    ? "bg-amber-400"
+                    : null
+              const accent =
+                accentOverride ?? ACCENT[effectiveStatus] ?? "bg-slate-300"
               const slotStart = new Date(booking.slotStart)
               const slotEnd = new Date(booking.slotEnd)
               const shortId = booking.id.substring(0, 8).toUpperCase()
               const isPast = slotStart.getTime() < now
-              const paymentHoldIsActive = booking.status === "PENDING" && (
-                !booking.paymentExpiresAt || new Date(booking.paymentExpiresAt).getTime() > now
-              )
+              const paymentHoldIsActive =
+                booking.status === "PENDING" &&
+                (!booking.paymentExpiresAt ||
+                  new Date(booking.paymentExpiresAt).getTime() > now)
 
               return (
-                <div key={booking.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/70 transition-colors">
-                  <div className={cn("w-1 self-stretch rounded-full shrink-0", accent)} />
+                <div
+                  key={booking.id}
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50/70 transition-colors"
+                >
+                  <div
+                    className={cn(
+                      "w-1 self-stretch rounded-full shrink-0",
+                      accent,
+                    )}
+                  />
 
                   <div className="min-w-0 flex-1 grid grid-cols-1 sm:grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1 items-center">
                     {/* ID + status */}
                     <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-0.5 sm:w-28">
-                      <span className="text-sm font-extrabold text-slate-900 font-mono">#{shortId}</span>
-                      <Badge className={cn("text-[10px] shrink-0", statusInfo.badge)}>{statusInfo.label}</Badge>
+                      <span className="text-sm font-extrabold text-slate-900 font-mono">
+                        #{shortId}
+                      </span>
+                      <Badge
+                        className={cn("text-[10px] shrink-0", statusInfo.badge)}
+                      >
+                        {statusInfo.label}
+                      </Badge>
                     </div>
 
                     {/* Date, time, mode */}
@@ -226,19 +309,43 @@ export function CustomerBookingsPage() {
                         {slotStart.toLocaleDateString("vi-VN")}
                       </span>
                       <span className="text-slate-400 sm:w-28 shrink-0">
-                        {slotStart.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                        {slotStart.toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })}
                         {" – "}
-                        {slotEnd.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                        {slotEnd.toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        })}
                       </span>
-                      <Badge className={cn("text-[10px] border-none font-bold shrink-0", booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700")}>
-                        {booking.playMode === "RENTAL" ? "Thuê xe của quán" : "Mang xe cá nhân"}
+                      <Badge
+                        className={cn(
+                          "text-[10px] border-none font-bold shrink-0",
+                          booking.playMode === "RENTAL"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-blue-100 text-blue-700",
+                        )}
+                      >
+                        {booking.playMode === "RENTAL"
+                          ? "Thuê xe của quán"
+                          : "Mang xe cá nhân"}
                       </Badge>
-                      {booking.status === "PENDING" && booking.paymentExpiresAt && (
-                        <span className="flex items-center gap-1 text-amber-600 font-semibold ml-2">
-                          <Clock className="h-3 w-3" />
-    Giữ chỗ đến: {new Date(booking.paymentExpiresAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      )}
+                      {booking.status === "PENDING" &&
+                        booking.paymentExpiresAt && (
+                          <span className="flex items-center gap-1 text-amber-600 font-semibold ml-2">
+                            <Clock className="h-3 w-3" />
+                            Giữ chỗ đến:{" "}
+                            {new Date(
+                              booking.paymentExpiresAt,
+                            ).toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
                     </div>
 
                     {/* Actions */}
@@ -250,22 +357,34 @@ export function CustomerBookingsPage() {
                           onClick={() => handleResumePayment(booking.id)}
                           disabled={resumingId === booking.id}
                         >
-                          {resumingId === booking.id
-                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <><CreditCard className="h-3.5 w-3.5 mr-1" />Thanh toán lại</>}
+                          {resumingId === booking.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <CreditCard className="h-3.5 w-3.5 mr-1" />
+                              Thanh toán lại
+                            </>
+                          )}
                         </Button>
                       )}
-                      {(booking.status === "CONFIRMED" || booking.status === "PENDING") && !isPast && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => setCancelTarget(booking.id)}
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button asChild size="sm" variant="ghost" className="h-8 px-2 text-slate-500 hover:text-slate-800">
+                      {(booking.status === "CONFIRMED" ||
+                        booking.status === "PENDING") &&
+                        !isPast && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => setCancelTarget(booking.id)}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-slate-500 hover:text-slate-800"
+                      >
                         <Link to={`/customer/bookings/${booking.id}`}>
                           <ChevronRight className="h-4 w-4" />
                         </Link>
@@ -281,14 +400,19 @@ export function CustomerBookingsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
               <p className="text-xs font-bold text-slate-500">
-                Hiển thị {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalBookings)} - {Math.min(currentPage * PAGE_SIZE, totalBookings)} trong số {totalBookings} đơn đặt lịch
+                Hiển thị{" "}
+                {Math.min((currentPage - 1) * PAGE_SIZE + 1, totalBookings)} -{" "}
+                {Math.min(currentPage * PAGE_SIZE, totalBookings)} trong số{" "}
+                {totalBookings} đơn đặt lịch
               </p>
               <div className="flex items-center gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
                   className="h-8 rounded-lg text-xs font-bold border-slate-200 text-slate-600 hover:bg-zinc-50"
                 >
                   Trang trước
@@ -306,7 +430,7 @@ export function CustomerBookingsPage() {
                         "h-8 w-8 rounded-lg text-xs font-bold",
                         isCurrent
                           ? "bg-slate-900 text-white hover:bg-slate-850"
-                          : "border-slate-200 text-slate-600 hover:bg-zinc-50"
+                          : "border-slate-200 text-slate-600 hover:bg-zinc-50",
                       )}
                     >
                       {page}
@@ -317,7 +441,9 @@ export function CustomerBookingsPage() {
                   variant="outline"
                   size="sm"
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
                   className="h-8 rounded-lg text-xs font-bold border-slate-200 text-slate-600 hover:bg-zinc-50"
                 >
                   Trang sau
@@ -336,16 +462,29 @@ export function CustomerBookingsPage() {
             </div>
             <div className="space-y-2">
               <h3 className="text-lg font-black text-slate-950">
-                {cancelTargetBooking?.status === "PENDING" ? "Hủy giữ chỗ?" : "Xác nhận hủy đặt lịch sân?"}
+                {cancelTargetBooking?.status === "PENDING"
+                  ? "Hủy giữ chỗ?"
+                  : "Xác nhận hủy đặt lịch sân?"}
               </h3>
               <p className="text-xs font-semibold text-slate-500 leading-relaxed">
-                {cancelTargetBooking?.status === "PENDING"
-                  ? "Đơn chưa thanh toán. Vị trí đang giữ sẽ được trả lại ngay và không có khoản tiền nào cần hoàn."
-                  : <>Hủy trước <strong className="text-slate-800">24 giờ</strong>: hoàn 100% phí lịch. Hủy trong 12–24h: hoàn 50%. Dưới 12h: không hoàn phí lịch.</>}
+                {cancelTargetBooking?.status === "PENDING" ? (
+                  "Đơn chưa thanh toán. Vị trí đang giữ sẽ được trả lại ngay và không có khoản tiền nào cần hoàn."
+                ) : (
+                  <>
+                    Hủy trước <strong className="text-slate-800">24 giờ</strong>
+                    : hoàn 100% phí lịch. Hủy trong 12–24h: hoàn 50%. Dưới 12h:
+                    không hoàn phí lịch. Phí thuê xe và món chưa phục vụ được
+                    hoàn theo trạng thái thực tế.
+                  </>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-3 justify-end pt-2">
-              <Button variant="outline" className="border-slate-200 font-bold h-10 text-xs rounded-xl" onClick={() => setCancelTarget(null)}>
+              <Button
+                variant="outline"
+                className="border-slate-200 font-bold h-10 text-xs rounded-xl"
+                onClick={() => setCancelTarget(null)}
+              >
                 Không, giữ lịch
               </Button>
               <Button
@@ -353,7 +492,11 @@ export function CustomerBookingsPage() {
                 onClick={handleCancelConfirm}
                 disabled={cancelMutation.isPending}
               >
-                {cancelMutation.isPending ? "Đang hủy..." : cancelTargetBooking?.status === "PENDING" ? "Có, hủy giữ chỗ" : "Có, xác nhận hủy"}
+                {cancelMutation.isPending
+                  ? "Đang hủy..."
+                  : cancelTargetBooking?.status === "PENDING"
+                    ? "Có, hủy giữ chỗ"
+                    : "Có, xác nhận hủy"}
               </Button>
             </div>
           </div>

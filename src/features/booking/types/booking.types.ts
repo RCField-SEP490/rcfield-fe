@@ -1,32 +1,32 @@
-export type BookingPlayMode = 'RENTAL' | 'BYOC'
+export type BookingPlayMode = "RENTAL" | "BYOC"
 
 export type BookingStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'AWAITING_PAYMENT'
-  | 'NO_SHOW'
-  | 'COMPLETED'
-  | 'CANCELLED'
+  | "PENDING"
+  | "CONFIRMED"
+  | "AWAITING_PAYMENT"
+  | "NO_SHOW"
+  | "COMPLETED"
+  | "CANCELLED"
 
 export type PaymentComponentType =
-  | 'SLOT_FEE'
-  | 'RENTAL_FEE'
-  | 'CONTEST_ENTRY_FEE'
-  | 'FNB_PREORDER'
-  | 'FB_PREORDER'
-  | 'FNB_ON_SITE'
-  | 'EXTENSION_FEE'
-  | 'DAMAGE_CHARGE'
-  | 'PLATFORM_FEE'
+  | "SLOT_FEE"
+  | "RENTAL_FEE"
+  | "CONTEST_ENTRY_FEE"
+  | "FNB_PREORDER"
+  | "FB_PREORDER"
+  | "FNB_ON_SITE"
+  | "EXTENSION_FEE"
+  | "DAMAGE_CHARGE"
+  | "PLATFORM_FEE"
 
 export type PaymentComponentStatus =
-  | 'PENDING'
-  | 'HELD'
-  | 'CAPTURED'
-  | 'REFUNDED'
-  | 'DISBURSED'
-  | 'PENDING_REFUND'
-  | 'PARTIALLY_REFUNDED'
+  | "PENDING"
+  | "HELD"
+  | "CAPTURED"
+  | "REFUNDED"
+  | "DISBURSED"
+  | "PENDING_REFUND"
+  | "PARTIALLY_REFUNDED"
 
 export interface PaymentComponentResponse {
   id: string
@@ -39,9 +39,9 @@ export interface PaymentComponentResponse {
   refundedAt?: string | null
 }
 
-export type PaymentGateway = 'VNPAY' | 'DIRECT' | 'MOCK'
-export type PaymentTransactionType = 'PAYMENT' | 'REFUND' | 'CAPTURE' | 'HOLD'
-export type PaymentTransactionStatus = 'SUCCESS' | 'PENDING' | 'FAILED'
+export type PaymentGateway = "VNPAY" | "DIRECT" | "MOCK"
+export type PaymentTransactionType = "PAYMENT" | "REFUND" | "CAPTURE" | "HOLD"
+export type PaymentTransactionStatus = "SUCCESS" | "PENDING" | "FAILED"
 
 export interface PaymentTransactionResponse {
   id: string
@@ -59,7 +59,7 @@ export interface BookingFinancialLine {
   label: string
   amount: number
   status: PaymentComponentStatus
-  group: 'PREPAID' | 'ON_SITE'
+  group: "PREPAID" | "ON_SITE"
   payment?: {
     transactionId: string
     txnRef: string
@@ -96,6 +96,18 @@ export interface PaymentResultTransaction {
   paidAt: string
 }
 
+export interface CancellationQuote {
+  canCancel: boolean
+  reason?: string
+  refund: {
+    slotFeeRefund: number
+    rentalFeeRefund: number
+    depositRefund: number
+    fnbRefund: number
+    totalRefund: number
+  }
+}
+
 export interface AvailableVehicle {
   vehicle_id: string
   vehicle_identifier: string
@@ -115,7 +127,7 @@ export interface BookingParticipant {
   id: string
   bookingId: string
   userId: string | null
-  participantType: 'BOOKER' | 'REGISTERED_USER' | 'WALK_IN_GUEST'
+  participantType: "BOOKER" | "REGISTERED_USER" | "WALK_IN_GUEST"
   isPrimaryResponsible: boolean
   guestName: string | null
   guestPhone: string | null
@@ -181,7 +193,12 @@ export interface BookingResponse {
   fnb_orders?: FnbOrder[]
   /** @deprecated Use fnb_orders when available. Kept for older API payloads. */
   fnb_order: FnbOrder | null
-  cafe: { name: string; address: string; city: string; coverImageUrl: string | null } | null
+  cafe: {
+    name: string
+    address: string
+    city: string
+    coverImageUrl: string | null
+  } | null
   track_type_name: string | null
   track_type_cover_image?: string | null
   session: {
@@ -242,7 +259,7 @@ export interface FnbItemBody {
   notes?: string
 }
 
-export type BookingParticipantType = 'REGISTERED_USER' | 'WALK_IN_GUEST'
+export type BookingParticipantType = "REGISTERED_USER" | "WALK_IN_GUEST"
 
 export interface ParticipantBody {
   user_id?: string
@@ -323,10 +340,19 @@ export interface CafeBookingListResponse {
   total: number
   page: number
   limit: number
+  summary: {
+    totalBookings: number
+    pendingPaymentCount: number
+    awaitingAdditionalPaymentCount: number
+    confirmedBookingCount: number
+    activeSessionCount: number
+  }
 }
 
 export interface ListCafeBookingsParams {
-  date: string
+  date?: string
+  from?: string
+  to?: string
   status?: BookingStatus
   page?: number
   limit?: number
