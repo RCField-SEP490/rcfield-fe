@@ -182,6 +182,8 @@ export interface BookingResponse {
   contestId?: string | null
   discountAmount: number
   promotionId: string | null
+  cancellationReason?: string | null
+  cancelledBy?: string | null
   createdAt: string
   updatedAt: string
   participants: BookingParticipant[]
