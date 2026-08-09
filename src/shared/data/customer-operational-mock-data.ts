@@ -141,6 +141,7 @@ export interface CustomerBookingDetail {
   participantDetails?: { name: string; phone?: string; isBooker: boolean }[]
   plannedVehicles: string[]
   sessions: MockSessionDetail[]
+  hasPendingRefund?: boolean
 }
 
 // ----------------------------------------------------

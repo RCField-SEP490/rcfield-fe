@@ -1120,13 +1120,20 @@ export function BookingDetailPage() {
                     Ngày tạo: {formatDateTime(new Date(booking.createdAt))}
                   </p>
                 </div>
-                {displayStatusInfo && (
-                  <Badge
-                    className={`${displayStatusInfo.className} hover:${displayStatusInfo.className}`}
-                  >
-                    {displayStatusInfo.label}
-                  </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {displayStatusInfo && (
+                    <Badge
+                      className={`${displayStatusInfo.className} hover:${displayStatusInfo.className}`}
+                    >
+                      {displayStatusInfo.label}
+                    </Badge>
+                  )}
+                  {booking.status === "CANCELLED" && isRefundPending && (
+                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">
+                      Chờ xác nhận hoàn tiền
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {(() => {
