@@ -1,22 +1,74 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Star, X, MapPin, Clock } from "lucide-react"
+import { useSearchParams } from "react-router"
+import { toast } from "sonner"
 import { ReviewFormModal } from "./ReviewFormModal"
-import { useDismissReview } from "../hooks/useDismissReview"
 import { usePendingReviews } from "../hooks/usePendingReviews"
+import { useSnoozeReview } from "../hooks/useSnoozeReview"
 
 export function ReviewReminderBanner() {
-  const { data: pending } = usePendingReviews()
   const [dismissed, setDismissed] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const dismiss = useDismissReview()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const openedReviewRequest = useRef<string | null>(null)
+  const unavailableReviewRequest = useRef<string | null>(null)
+  const snooze = useSnoozeReview()
 
-  const booking = pending?.[0]
+  const requestedBookingId = searchParams.get("reviewBookingId")
+  // Snooze hides automatic reminders only. A customer who explicitly returns
+  // through their notification should still be able to submit a review.
+  const { data: pending } = usePendingReviews(Boolean(requestedBookingId))
+  const booking = requestedBookingId
+    ? pending?.find((item) => item.bookingId === requestedBookingId)
+    : pending?.[0]
+
+  const clearReviewRequest = () => {
+    if (!requestedBookingId) return
+    const next = new URLSearchParams(searchParams)
+    next.delete("reviewBookingId")
+    setSearchParams(next, { replace: true })
+  }
+
+  useEffect(() => {
+    if (
+      requestedBookingId &&
+      booking &&
+      openedReviewRequest.current !== requestedBookingId
+    ) {
+      openedReviewRequest.current = requestedBookingId
+      setShowForm(true)
+    }
+  }, [booking, requestedBookingId])
+
+  useEffect(() => {
+    if (
+      requestedBookingId &&
+      pending &&
+      !booking &&
+      unavailableReviewRequest.current !== requestedBookingId
+    ) {
+      unavailableReviewRequest.current = requestedBookingId
+      toast.info("Không thể mở biểu mẫu đánh giá", {
+        description: "Đơn này đã được đánh giá hoặc đã quá thời hạn 5 ngày.",
+      })
+      // Do not fall through to an unrelated pending review after an expired
+      // notification has been acknowledged.
+      setDismissed(true)
+      clearReviewRequest()
+    }
+  }, [booking, pending, requestedBookingId])
+
   if (!booking || dismissed) return null
 
-  const handleDismiss = () => {
+  const handleSnooze = () => {
+    if (snooze.isPending) return
     setDismissed(true)
-    dismiss.mutate(booking.bookingId)
+    setShowForm(false)
+    clearReviewRequest()
+    snooze.mutate(booking.bookingId, {
+      onError: () => setDismissed(false),
+    })
   }
 
   const slotDate = new Date(booking.slotStart)
@@ -27,7 +79,7 @@ export function ReviewReminderBanner() {
       {/* Backdrop — ẩn khi form đang mở */}
       {!showForm && <div
         className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
-        onClick={handleDismiss}
+        onClick={handleSnooze}
       >
         {/* Card */}
         <div
@@ -39,7 +91,7 @@ export function ReviewReminderBanner() {
           <div className="relative bg-gradient-to-br from-amber-400 via-orange-400 to-orange-500 px-6 pb-8 pt-6 text-center">
             {/* Close */}
             <button
-              onClick={handleDismiss}
+              onClick={handleSnooze}
               className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
               aria-label="Đóng"
             >
@@ -110,7 +162,8 @@ export function ReviewReminderBanner() {
             </button>
 
             <button
-              onClick={handleDismiss}
+              onClick={handleSnooze}
+              disabled={snooze.isPending}
               className="mt-3 w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600"
             >
               Để sau
@@ -129,9 +182,11 @@ export function ReviewReminderBanner() {
       {showForm && (
         <ReviewFormModal
           booking={booking}
-          onClose={() => {
+          onClose={handleSnooze}
+          onSubmitted={() => {
             setShowForm(false)
             setDismissed(true)
+            clearReviewRequest()
           }}
         />
       )}

@@ -17,8 +17,16 @@ export async function dismissReview(bookingId: string): Promise<void> {
   await api.post(`/v1/customer/reviews/${bookingId}/dismiss`);
 }
 
-export async function getPendingReviews(): Promise<PendingBookingReview[]> {
-  const { data } = await api.get('/v1/customer/reviews/pending');
+export async function snoozeReview(bookingId: string): Promise<void> {
+  await api.post(`/v1/customer/reviews/${bookingId}/snooze`);
+}
+
+export async function getPendingReviews(options?: {
+  includeSnoozed?: boolean;
+}): Promise<PendingBookingReview[]> {
+  const { data } = await api.get('/v1/customer/reviews/pending', {
+    params: options?.includeSnoozed ? { include_snoozed: true } : undefined,
+  });
   return data.data;
 }
 
