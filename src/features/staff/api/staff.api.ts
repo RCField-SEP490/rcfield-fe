@@ -150,6 +150,7 @@ export interface TodayBookingItem {
   participantDetails?: { name: string; phone?: string; isBooker: boolean }[]
   plannedVehicles: string[]
   sessions: any[]
+  hasPendingRefund?: boolean
 
   // Legacy aliases used by older UI widgets/mocks while the staff API was stabilizing.
   id?: string

@@ -1120,13 +1120,20 @@ export function BookingDetailPage() {
                     Ngày tạo: {formatDateTime(new Date(booking.createdAt))}
                   </p>
                 </div>
-                {displayStatusInfo && (
-                  <Badge
-                    className={`${displayStatusInfo.className} hover:${displayStatusInfo.className}`}
-                  >
-                    {displayStatusInfo.label}
-                  </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {displayStatusInfo && (
+                    <Badge
+                      className={`${displayStatusInfo.className} hover:${displayStatusInfo.className}`}
+                    >
+                      {displayStatusInfo.label}
+                    </Badge>
+                  )}
+                  {booking.status === "CANCELLED" && isRefundPending && (
+                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">
+                      Chờ xác nhận hoàn tiền
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {(() => {
@@ -1205,7 +1212,16 @@ export function BookingDetailPage() {
                     timelineStatus === "NO_SHOW"
                       ? "Khách không đến check-in đúng hạn"
                       : timelineStatus === "CANCELLED"
-                        ? "Đơn đã được hủy trước khi phiên chơi bắt đầu"
+                        ? (
+                            <div className="space-y-1">
+                              <div>Đơn đã được hủy trước khi phiên chơi bắt đầu</div>
+                              {booking.cancellationReason && (
+                                <div className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1 mt-1.5 inline-block">
+                                  Lý do hủy: {booking.cancellationReason}
+                                </div>
+                              )}
+                            </div>
+                          )
                       : isAwaitingAdditionalPayment
                         ? "Phiên chơi đã kết thúc. Vui lòng thanh toán phí phát sinh để hoàn tất đơn."
                         : timelineStatus === "COMPLETED" && sess?.actualEndAt
@@ -2084,7 +2100,7 @@ function TimelineItem({
 }: {
   icon: typeof CheckCircle2
   title: string
-  description: string
+  description: React.ReactNode
   done?: boolean
   active?: boolean
   failed?: boolean
