@@ -15,7 +15,10 @@ import {
   staffQueryKeys,
   type DamageLineItemInput,
 } from "@/features/staff/api/staff.api"
-import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
+import {
+  useWebSocket,
+  type WsMessage,
+} from "@/features/notifications/hooks/useWebSocket"
 import { toast } from "sonner"
 import { StaffCard, StaffButton } from "./components/StaffUI"
 import { useStaffOperations } from "./context/StaffOperationContext"
@@ -66,18 +69,21 @@ export default function StaffCheckoutSummaryPage() {
   const [editItems, setEditItems] = useState<DamageLineItemInput[]>([])
   const [savingItems, setSavingItems] = useState(false)
 
-  const loadSession = useCallback(async (showLoading = true) => {
-    try {
-      if (showLoading) setLoading(true)
-      const data = await staffApi.getSessionDetail(sessionId!)
-      setCheckoutInspection(data.checkoutInspection ?? null)
-      setSessionStatus(data.status ?? "")
-    } catch {
-      if (showLoading) toast.error("Không thể tải thông tin phiên chơi.")
-    } finally {
-      if (showLoading) setLoading(false)
-    }
-  }, [sessionId])
+  const loadSession = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) setLoading(true)
+        const data = await staffApi.getSessionDetail(sessionId!)
+        setCheckoutInspection(data.checkoutInspection ?? null)
+        setSessionStatus(data.status ?? "")
+      } catch {
+        if (showLoading) toast.error("Không thể tải thông tin phiên chơi.")
+      } finally {
+        if (showLoading) setLoading(false)
+      }
+    },
+    [sessionId],
+  )
 
   // Checkout changes the session, booking, fleet and today's booking list at
   // once. Keep every staff screen in sync immediately instead of waiting for
@@ -109,23 +115,26 @@ export default function StaffCheckoutSummaryPage() {
     return () => window.clearInterval(intervalId)
   }, [sessionId, sessionStatus, loadSession])
 
-  const handleCheckoutRealtime = useCallback((message: WsMessage) => {
-    const payload = message.data as { sessionId?: string } | undefined
-    if (payload?.sessionId && payload.sessionId !== sessionId) return
+  const handleCheckoutRealtime = useCallback(
+    (message: WsMessage) => {
+      const payload = message.data as { sessionId?: string } | undefined
+      if (payload?.sessionId && payload.sessionId !== sessionId) return
 
-    if (
-      [
-        "CUSTOMER_CHECKOUT_CONFIRMED",
-        "SESSION_CHECKOUT_COMPLETED",
-        "CUSTOMER_PAYMENT_CONFIRMED",
-        "BOOKING_PAYMENT_UPDATED",
-        "SESSION_UPDATED",
-        "CUSTOMER_INSPECTION_DISPUTED",
-      ].includes(message.event)
-    ) {
-      void syncOperationalState()
-    }
-  }, [sessionId, syncOperationalState])
+      if (
+        [
+          "CUSTOMER_CHECKOUT_CONFIRMED",
+          "SESSION_CHECKOUT_COMPLETED",
+          "CUSTOMER_PAYMENT_CONFIRMED",
+          "BOOKING_PAYMENT_UPDATED",
+          "SESSION_UPDATED",
+          "CUSTOMER_INSPECTION_DISPUTED",
+        ].includes(message.event)
+      ) {
+        void syncOperationalState()
+      }
+    },
+    [sessionId, syncOperationalState],
+  )
 
   useWebSocket(handleCheckoutRealtime, Boolean(sessionId))
 
@@ -216,8 +225,9 @@ export default function StaffCheckoutSummaryPage() {
       await syncOperationalState()
       navigate(`/staff/sessions/${sessionId}`, { replace: true })
     } catch (err: unknown) {
-      const response = (err as { response?: { data?: { message?: string; code?: string } } })
-        ?.response?.data?.message
+      const response = (
+        err as { response?: { data?: { message?: string; code?: string } } }
+      )?.response?.data?.message
       const code = (err as { response?: { data?: { code?: string } } })
         ?.response?.data?.code
       if (code === "INVALID_SESSION_STATE") {
@@ -365,7 +375,7 @@ export default function StaffCheckoutSummaryPage() {
                 Xe trả lại nguyên vẹn
               </p>
               <p className="text-xs text-emerald-700 font-semibold mt-0.5">
-                Không ghi nhận hư hỏng mới. Hoàn toàn ký quỹ.
+                Không ghi nhận hư hỏng mới. Không phát sinh phí bồi thường.
               </p>
             </div>
           </div>

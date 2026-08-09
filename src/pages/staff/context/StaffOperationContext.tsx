@@ -235,8 +235,8 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       }
 
       if (msg.event === "CUSTOMER_INSPECTION_DISPUTED") {
-        toast.warning("Khách phản hồi sai lệch biên bản", {
-          description: data?.note || "Cần kiểm tra lại xe và lập biên bản mới.",
+        toast.warning("Khách phản hồi biên bản trả xe", {
+          description: data?.note || "Cần kiểm tra lại xe trước khi hoàn tất phiên.",
         })
         void fetchData()
         return

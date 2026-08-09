@@ -56,7 +56,6 @@ const staffNavGroups: NavGroup[] = [
     heading: "Đội xe & Thiết bị",
     items: [
       { label: "Bảo trì đội xe", icon: Wrench, path: routePaths.staffMaintenance },
-      { label: "Quản lý sự cố", icon: AlertTriangle, path: routePaths.staffIncidents },
     ],
   },
 ]

@@ -411,7 +411,6 @@ export default function StaffSessionDetailPage() {
 
   const checkInInspection = session.inspections.find((inspection) => inspection.type === "CHECK_IN")
   const checkOutInspection = session.inspections.find((inspection) => inspection.type === "CHECK_OUT")
-  const checkInDisputed = Boolean(checkInInspection && !checkInInspection.customerConfirmed && checkInInspection.customerConfirmedAt)
   const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
   const extensionPending =
     session.extensionProposal?.status === "PENDING" ||
@@ -1055,25 +1054,6 @@ export default function StaffSessionDetailPage() {
           >
             <ClipboardCheck className="size-4" />
             Lập biên bản bàn giao xe
-          </StaffButton>
-        </StaffCard>
-      )}
-
-      {checkInDisputed && ["CHECKED_IN", "ACTIVE", "EXTENDING"].includes(session.status) && (
-        <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-blue-200 bg-blue-50">
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-blue-900">Khách phản hồi sai lệch biên bản nhận xe</h4>
-            <p className="text-xs text-blue-800 leading-relaxed">
-              Kiểm tra trực tiếp với khách và lập lại biên bản bàn giao nếu cần. Xe vẫn đang thuộc phiên chạy này.
-            </p>
-          </div>
-          <StaffButton
-            onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_IN`)}
-            variant="primary"
-            className="bg-blue-600 hover:bg-blue-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
-          >
-            <ClipboardCheck className="size-4" />
-            Lập lại biên bản bàn giao
           </StaffButton>
         </StaffCard>
       )}

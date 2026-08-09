@@ -124,10 +124,6 @@ export function ProviderCafesPage() {
   const suspendedCount = branchOperations.filter(
     (operation) => operation.cafeStatus === "SUSPENDED",
   ).length
-  const operationalAlertCount = branchOperations.reduce(
-    (total, operation) => total + operation.operationalAlertCount,
-    0,
-  )
   const cafesLoaded = !isLoading && !isError
   const operationsLoaded = !isLoadingOperations && !isOperationsError
   const occupancyValue =
@@ -140,15 +136,30 @@ export function ProviderCafesPage() {
   )
   const occupancyHelper =
     totalBookingCount > 0
-      ? `${totalBookingCount} lượt đặt · ${formatHours(totalOccupiedSlotMinutes)} giờ đã sử dụng`
-      : `Chưa có lượt đặt trong ${occupancyPeriodLabel}`
-  const alertHelper = [
-    suspendedCount > 0 ? `${suspendedCount} cơ sở tạm ngưng` : null,
-    maintenanceVehicleCount > 0 ? `${maintenanceVehicleCount} xe bảo trì` : null,
-    overdueSessionCount > 0 ? `${overdueSessionCount} phiên quá giờ` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ")
+      ? `Khách đã đặt: ${formatHours(totalOccupiedSlotMinutes)} giờ sân`
+      : `Chưa có lượt đặt`
+  const occupancyDetail = totalBookingCount > 0
+    ? `Tổng giờ sân có thể phục vụ: ${formatHours(totalBookableSlotMinutes)} · ${totalBookingCount} lượt đặt`
+    : `Tổng giờ sân có thể phục vụ: ${formatHours(totalBookableSlotMinutes)} · ${occupancyPeriodLabel}`
+  const operationalValue = overdueSessionCount > 0
+    ? `${overdueSessionCount} phiên quá giờ`
+    : suspendedCount > 0
+      ? `${suspendedCount} cơ sở tạm ngưng`
+      : maintenanceVehicleCount > 0
+        ? `${maintenanceVehicleCount} xe bảo trì`
+        : "Ổn định"
+  const operationalHelper = overdueSessionCount > 0
+    ? "Cần kiểm tra và xử lý ngay tại cơ sở"
+    : suspendedCount > 0
+      ? "Cơ sở này hiện không thể nhận đặt lịch"
+      : maintenanceVehicleCount > 0
+        ? "Các xe này đang tạm ngưng nhận đặt lịch"
+        : "Không có phiên quá giờ hay cơ sở tạm ngưng"
+  const operationalDetail = [
+    `Phiên quá giờ: ${overdueSessionCount}`,
+    `Xe bảo trì: ${maintenanceVehicleCount}`,
+    `Cơ sở tạm ngưng: ${suspendedCount}`,
+  ].join(" · ")
 
   return (
     <ProviderShell>
@@ -200,7 +211,7 @@ export function ProviderCafesPage() {
           tone={isError ? "danger" : "success"}
         />
         <CafeStatCard
-          label="Tỷ lệ lấp đầy TB"
+          label="Tỷ lệ khai thác sân"
           value={occupancyValue}
           helper={
             isLoadingOperations
@@ -211,22 +222,31 @@ export function ProviderCafesPage() {
                   ? "Chưa có sức chứa slot khả dụng"
                   : occupancyHelper
           }
-          detail={operationsLoaded && averageOccupancyRate !== null ? `Theo tổng sức chứa slot ${occupancyPeriodLabel}` : undefined}
+          detail={operationsLoaded && averageOccupancyRate !== null ? occupancyDetail : undefined}
           icon={<TrendingUp />}
           tone={isOperationsError ? "danger" : "neutral"}
         />
         <CafeStatCard
-          label="Cảnh báo vận hành"
-          value={operationsLoaded ? String(operationalAlertCount) : "--"}
+          label="Việc cần xử lý"
+          value={operationsLoaded ? operationalValue : "--"}
           helper={
             isLoadingOperations
               ? "Đang tải cảnh báo vận hành"
               : isOperationsError
                 ? "Không thể tải cảnh báo vận hành"
-                : alertHelper || "Không có cảnh báo"
+                : operationalHelper
           }
+          detail={operationsLoaded ? operationalDetail : undefined}
           icon={<AlertTriangle />}
-          tone={isOperationsError ? "danger" : operationalAlertCount > 0 ? "warning" : "success"}
+          tone={
+            isOperationsError
+              ? "danger"
+              : overdueSessionCount > 0 || suspendedCount > 0
+                ? "danger"
+                : maintenanceVehicleCount > 0
+                  ? "warning"
+                  : "success"
+          }
         />
       </section>
 
