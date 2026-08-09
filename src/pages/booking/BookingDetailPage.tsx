@@ -1212,7 +1212,16 @@ export function BookingDetailPage() {
                     timelineStatus === "NO_SHOW"
                       ? "Khách không đến check-in đúng hạn"
                       : timelineStatus === "CANCELLED"
-                        ? "Đơn đã được hủy trước khi phiên chơi bắt đầu"
+                        ? (
+                            <div className="space-y-1">
+                              <div>Đơn đã được hủy trước khi phiên chơi bắt đầu</div>
+                              {booking.cancellationReason && (
+                                <div className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1 mt-1.5 inline-block">
+                                  Lý do hủy: {booking.cancellationReason}
+                                </div>
+                              )}
+                            </div>
+                          )
                       : isAwaitingAdditionalPayment
                         ? "Phiên chơi đã kết thúc. Vui lòng thanh toán phí phát sinh để hoàn tất đơn."
                         : timelineStatus === "COMPLETED" && sess?.actualEndAt
@@ -2091,7 +2100,7 @@ function TimelineItem({
 }: {
   icon: typeof CheckCircle2
   title: string
-  description: string
+  description: React.ReactNode
   done?: boolean
   active?: boolean
   failed?: boolean
