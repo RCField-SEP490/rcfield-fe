@@ -173,6 +173,7 @@ html {
   body {
     @apply min-h-svh bg-background text-foreground antialiased;
     margin: 0;
+    margin-right: 0px !important;
   }
 
   /* Smooth transitions globally */
