@@ -335,6 +335,22 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         }
         return
       }
+
+      if (msg.event === "BOOKING_CANCELLED_OPERATIONAL") {
+        const payload = msg.data as { bookingId: string; title: string; message: string; routeStaff?: string }
+        toast.warning(payload.title || "Đơn đặt lịch bị hủy", {
+          description: payload.message || "Có đơn đặt lịch tại cơ sở vừa bị hủy.",
+          action: {
+            label: "Xem đơn",
+            onClick: () => navigate(payload.routeStaff || "/staff/today-bookings"),
+          },
+          duration: 10000,
+        })
+        void fetchData()
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
+        return
+      }
     },
     [fetchData, queryClient, navigate],
   )

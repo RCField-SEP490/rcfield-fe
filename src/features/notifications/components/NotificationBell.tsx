@@ -134,6 +134,14 @@ export function NotificationBell() {
       } else if (user?.role === "staff" && sessionId) {
         navigate(`/staff/sessions/${sessionId}`)
       }
+    } else if (n.type === "BOOKING_CANCELLED") {
+      if (user?.role === "customer") {
+        navigate(bookingId ? `/customer/bookings/${bookingId}` : "/customer/bookings")
+      } else if (user?.role === "staff") {
+        navigate(bookingId ? `/staff/bookings/${bookingId}` : "/staff/today-bookings")
+      } else if (user?.role === "provider") {
+        navigate("/provider/bookings")
+      }
     }
   }
 

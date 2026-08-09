@@ -15,8 +15,9 @@ export function resolveNotificationRoute(rawRoute: unknown): string | null {
     /^\/customer\/extension-response\/[^/?#]+$/,
     /^\/customer\/sessions\/[^/?#]+$/,
     /^\/staff\/sessions\/[^/?#]+$/,
-    /^\/staff\/(?:fnb-orders|maintenance)$/,
-    /^\/provider\/(?:dashboard|vehicles)$/,
+    /^\/staff\/bookings\/[^/?#]+$/,
+    /^\/staff\/(?:fnb-orders|maintenance|today-bookings)$/,
+    /^\/provider\/(?:dashboard|vehicles|bookings)$/,
     /^\/contests\/[^/?#]+$/,
     /^\/provider\/contests\/[^/?#]+\/overview$/,
     /^\/staff\/contests\/[^/?#]+\/check-in$/,
@@ -41,6 +42,7 @@ function normalizeLegacyNotificationRoute(route: string): string {
     return `/staff/sessions/${staffSessionMatch[1]}${staffSessionMatch[2] ?? ""}`
   }
 
+  if (route === "/staff/bookings") return "/staff/today-bookings"
   if (route === "/provider/cafe-vehicles") return "/provider/vehicles"
   return route
 }

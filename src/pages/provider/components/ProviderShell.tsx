@@ -154,8 +154,23 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
         void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
       }
+
+      if (msg.event === "BOOKING_CANCELLED_OPERATIONAL") {
+        const payload = msg.data as { bookingId: string; title: string; message: string; routeProvider?: string }
+        toast.warning(payload.title || "Đơn đặt lịch bị hủy", {
+          description: payload.message || "Có đơn đặt lịch tại cơ sở vừa bị hủy.",
+          action: {
+            label: "Xem đơn",
+            onClick: () => navigate(payload.routeProvider || "/provider/bookings"),
+          },
+          duration: 10000,
+        })
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      }
     },
-    [queryClient],
+    [queryClient, navigate],
   )
   useWebSocket(handleWsMessage)
 
