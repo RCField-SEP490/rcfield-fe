@@ -703,18 +703,18 @@ export function ProviderBookingsPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-slate-100 text-left text-slate-500 font-semibold">
-                  <th className="pb-3 pl-1">Mã</th>
-                  <th className="pb-3">Khách hàng</th>
-                  <th className="pb-3">Thời gian</th>
-                  <th className="pb-3">Chế độ</th>
-                  <th className="pb-3">Trạng thái</th>
-                  <th className="pb-3 text-right pr-1">Thao tác</th>
+                  <th className="pb-3 pl-1 w-[12%]">Mã</th>
+                  <th className="pb-3 w-[28%]">Khách hàng</th>
+                  <th className="pb-3 w-[18%]">Thời gian</th>
+                  <th className="pb-3 w-[12%]">Chế độ</th>
+                  <th className="pb-3 w-[15%]">Trạng thái</th>
+                  <th className="pb-3 text-right pr-1 w-[15%]">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {bookings.map((booking) => {
                   const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
-                  const canCancel = booking.status === "CONFIRMED" || booking.status === "PENDING"
+                  const canCancel = (booking.status === "CONFIRMED" || booking.status === "PENDING") && !booking.sessionStatus
                   return (
                     <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="py-3 pl-1 font-mono font-bold text-slate-800">
