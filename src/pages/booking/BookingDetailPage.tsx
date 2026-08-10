@@ -649,7 +649,10 @@ export function BookingDetailPage() {
     additionalLines
       .filter((line) => line.status === "PENDING")
       .reduce((sum, line) => sum + Number(line.amount), 0)
-  const totalPaidAmount = financialSummary?.totalPaidAmount ?? prepaidPaidAmount
+  const totalPaidAmount =
+    financialSummary?.totalPaidAmount ??
+    (prepaidPaidAmount +
+      Math.max(0, additionalTotal - additionalOutstandingAmount))
   const isPaid =
     financialSummary?.isSettled ?? additionalOutstandingAmount === 0
   const customerFnbOrders = (

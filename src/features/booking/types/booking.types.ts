@@ -80,6 +80,7 @@ export interface BookingFinancialSummary {
   additionalOutstandingAmount: number
   totalPaidAmount: number
   totalRefundedAmount: number
+  netPaidAmount?: number
   outstandingAmount: number
   isSettled: boolean
 }
