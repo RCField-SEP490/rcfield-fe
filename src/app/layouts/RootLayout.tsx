@@ -106,6 +106,7 @@ function AuthInitializer() {
 }
 
 import { useSessionNotifications } from "@/features/customer-session/hooks/useSessionNotifications"
+import { CompleteProfileBanner } from "@/shared/components/CompleteProfileBanner"
 
 export function RootLayout() {
   const role = useAuthStore((state) => state.role)
@@ -115,7 +116,9 @@ export function RootLayout() {
     <>
       <AuthInitializer />
       <Outlet />
+      <CompleteProfileBanner />
       <Toaster richColors position="top-right" closeButton />
     </>
   )
 }
+

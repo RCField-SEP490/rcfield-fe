@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { Camera, LockKeyhole, Mail, Phone, Save, Trash2 } from "lucide-react"
 import { getMe, updateMe } from "@/features/auth/api/auth.api"
@@ -16,6 +17,20 @@ export function ProfileSettingsCard() {
   const role = useAuthStore((state) => state.role)
   const setUser = useAuthStore((state) => state.setUser)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const phoneInputRef = useRef<HTMLInputElement | null>(null)
+  const [searchParams] = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get("focus") === "phone") {
+      const timer = setTimeout(() => {
+        if (phoneInputRef.current) {
+          phoneInputRef.current.focus()
+          phoneInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [searchParams])
 
   const displayName = user?.fullName ?? user?.email ?? "RCField User"
   const email = user?.email ?? "user@rcfield.vn"
@@ -162,7 +177,12 @@ export function ProfileSettingsCard() {
               <Label>Số điện thoại</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-9" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} />
+                <Input
+                  ref={phoneInputRef}
+                  className="pl-9"
+                  value={form.phone}
+                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                />
               </div>
             </label>
           </div>
