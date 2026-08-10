@@ -10,7 +10,7 @@ import {
   ShieldAlert,
   TrendingUp,
 } from "lucide-react"
-import { useNavigate, useParams, useSearchParams } from "react-router"
+import { Link, useNavigate, useParams, useSearchParams } from "react-router"
 import { toast } from "sonner"
 
 import { routePaths } from "@/app/router/route-paths"
@@ -217,19 +217,27 @@ export function ProviderCafeDetailPage() {
             <section>
               <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#747878]">Tổng quan từ đầu tháng đến hiện tại</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <MetricCard
-                label="Doanh thu tháng"
-                value={branchOperation ? formatCurrency(branchOperation.totalRevenue) : "--"}
-                helper={
-                  isBranchOperationsError
-                    ? "Không thể tải dữ liệu vận hành"
-                    : branchOperation
-                      ? `${branchOperation.bookingCount} lượt đặt lịch`
-                      : "Đang tải..."
-                }
-                icon={<BarChart3 />}
-                tone="neutral"
-              />
+              <Link
+                to={`/provider/dashboard?cafeId=${cafe.id}`}
+                className="group block transition-transform hover:-translate-y-0.5 focus:outline-none"
+                title="Bấm để xem chi tiết doanh thu trên Bảng điều khiển"
+              >
+                <MetricCard
+                  label="Doanh thu tháng"
+                  value={branchOperation ? formatCurrency(branchOperation.totalRevenue) : "--"}
+                  helper={
+                    isBranchOperationsError
+                      ? "Không thể tải dữ liệu"
+                      : branchOperation
+                        ? `${branchOperation.bookingCount} lượt đặt lịch`
+                        : "Đang tải..."
+                  }
+                  actionLabel="Xem Dashboard"
+                  icon={<BarChart3 className="transition-colors group-hover:text-orange-600" />}
+                  tone="neutral"
+                  className="transition-colors group-hover:border-orange-300 group-hover:shadow-md"
+                />
+              </Link>
               <MetricCard
                 label="Tỷ lệ khai thác sân"
                 value={
@@ -239,11 +247,11 @@ export function ProviderCafeDetailPage() {
                 }
                 helper={
                   isBranchOperationsError
-                    ? "Không thể tải dữ liệu vận hành"
+                    ? "Không thể tải dữ liệu"
                     : branchOperation?.occupancyRate === null
-                      ? "Chưa có sức chứa slot khả dụng"
+                      ? "Chưa có sức chứa khả dụng"
                       : branchOperation
-                        ? "Theo giờ mở cửa và sức chứa từ đầu tháng đến hiện tại"
+                        ? "Theo công suất tháng này"
                       : "Đang tải..."
                 }
                 icon={<TrendingUp />}
@@ -254,7 +262,7 @@ export function ProviderCafeDetailPage() {
                 value={branchOperation ? `${branchOperation.totalVehicles} xe` : "--"}
                 helper={
                   isBranchOperationsError
-                    ? "Không thể tải dữ liệu vận hành"
+                    ? "Không thể tải dữ liệu"
                     : branchOperation
                       ? `${branchOperation.availableVehicles} sẵn sàng · ${branchOperation.maintenanceVehicles} bảo trì`
                       : "Đang tải..."
@@ -265,7 +273,13 @@ export function ProviderCafeDetailPage() {
               <MetricCard
                 label="Trạng thái"
                 value={formatCafeStatus(cafe.status)}
-                helper="Theo dữ liệu backend"
+                helper={
+                  cafe.status === "ACTIVE"
+                    ? "Sẵn sàng đón khách"
+                    : cafe.status === "PENDING"
+                      ? "Đang chờ admin duyệt"
+                      : "Tạm ngưng nhận lịch"
+                }
                 icon={<CheckCircle2 />}
                 tone={cafe.status === "SUSPENDED" || cafe.status === "PENDING" ? "warning" : "success"}
               />

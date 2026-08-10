@@ -1,5 +1,13 @@
-import { useMemo } from "react"
-import { CheckCircle2, ImageOff, CalendarDays } from "lucide-react"
+import { useMemo, useState } from "react"
+import {
+  CheckCircle2,
+  ImageOff,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Images,
+} from "lucide-react"
 import { useTrackConfigs } from "@/features/cafes/hooks/useTrackConfigs"
 import type { TrackConfig } from "@/features/cafes/types"
 import { useDailyAvailability } from "@/features/booking/hooks/use-booking"
@@ -12,6 +20,7 @@ import {
 } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
 import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
 import { SlotPriceLabel } from "@/shared/components/SlotPriceLabel"
+import { TrackAlbumDialog } from "@/shared/components/TrackAlbumDialog"
 
 type PlayMode = "RENTAL" | "BYOC"
 
@@ -359,65 +368,165 @@ function TrackCard({
   isSelected: boolean
   onSelect: () => void
 }) {
-  const coverImage = config.images[0] ?? null
+  const [imageIdx, setImageIdx] = useState(0)
+  const [showAlbum, setShowAlbum] = useState(false)
+  const images = config.images ?? []
+  const hasImages = images.length > 0
+  const currentImage = images[imageIdx] || images[0]
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setImageIdx((prev) => (prev > 0 ? prev - 1 : images.length - 1))
+  }
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setImageIdx((prev) => (prev < images.length - 1 ? prev + 1 : 0))
+  }
+
+  const handleOpenAlbum = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setShowAlbum(true)
+  }
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "relative overflow-hidden rounded-xl border-2 text-left transition-all",
-        isSelected
-          ? "border-orange-500 shadow-[0_0_0_3px_rgba(249,115,22,0.15)]"
-          : "border-border hover:border-orange-300 hover:shadow-sm",
-      )}
-    >
-      {/* Cover image fixed 16:9 */}
-      <div
-        className="relative w-full overflow-hidden bg-muted"
-        style={{ aspectRatio: "16/9" }}
+    <>
+      <button
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "group relative overflow-hidden rounded-xl border-2 text-left transition-all",
+          isSelected
+            ? "border-orange-500 shadow-[0_0_0_3px_rgba(249,115,22,0.15)]"
+            : "border-border hover:border-orange-300 hover:shadow-sm",
+        )}
       >
-        {coverImage ? (
-          <img
-            src={coverImage}
-            alt={config.track_type?.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <ImageOff className="size-8 text-muted-foreground/40" />
-          </div>
-        )}
-        {isSelected && (
-          <div className="absolute right-2 top-2 rounded-full bg-orange-500 p-0.5">
-            <CheckCircle2 className="size-4 text-white" />
-          </div>
-        )}
-      </div>
-
-      <div className="p-3">
-        <p className="font-bold text-[#1c1b1b]">
-          {config.track_type?.name ?? "Loại sân"}
-        </p>
-        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-          {config.max_concurrent > 0 ? (
-            <span>{config.max_concurrent} chỗ thuê xe</span>
+        {/* Cover image fixed 16:9 */}
+        <div
+          className="relative w-full overflow-hidden bg-muted"
+          style={{ aspectRatio: "16/9" }}
+        >
+          {hasImages ? (
+            <img
+              src={currentImage}
+              alt={config.track_type?.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-102"
+            />
           ) : (
-            <span className="text-[#c4c7c8]">Không có xe thuê</span>
+            <div className="flex h-full items-center justify-center">
+              <ImageOff className="size-8 text-muted-foreground/40" />
+            </div>
           )}
-          {config.byoc_capacity > 0 ? (
-            <span>{config.byoc_capacity} chỗ xe tự mang</span>
-          ) : (
-            <span className="text-[#c4c7c8]">Không nhận xe riêng</span>
+
+          {/* Selected Checkmark Badge */}
+          {isSelected && (
+            <div className="absolute right-2 top-2 z-10 rounded-full bg-orange-500 p-0.5 shadow">
+              <CheckCircle2 className="size-4 text-white" />
+            </div>
+          )}
+
+          {/* Photos Count & Album Open Button */}
+          {hasImages && (
+            <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={handleOpenAlbum}
+                className="flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-xs transition hover:bg-black/80 hover:scale-105"
+                title="Xem album ảnh"
+              >
+                <Images className="size-3" />
+                <span>{images.length} ảnh</span>
+              </button>
+            </div>
+          )}
+
+          {/* Carousel Next / Prev Controls */}
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={handlePrev}
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80"
+                title="Ảnh trước"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 flex size-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80"
+                title="Ảnh tiếp"
+              >
+                <ChevronRight className="size-4" />
+              </button>
+
+              {/* Dots indicator */}
+              <div className="absolute bottom-2 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/40 px-2 py-0.5 backdrop-blur-xs">
+                {images.slice(0, 5).map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={cn(
+                      "size-1.5 rounded-full transition-all",
+                      idx === imageIdx
+                        ? "w-3 bg-white"
+                        : "bg-white/60 hover:bg-white/90",
+                    )}
+                  />
+                ))}
+                {images.length > 5 && (
+                  <span className="text-[9px] font-bold text-white/80">
+                    +{images.length - 5}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Quick Expand Icon on Hover */}
+          {hasImages && (
+            <button
+              type="button"
+              onClick={handleOpenAlbum}
+              className="absolute bottom-2 right-2 z-10 flex size-6 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/80"
+              title="Phóng to album"
+            >
+              <Maximize2 className="size-3" />
+            </button>
           )}
         </div>
-        {config.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {config.description}
+
+        <div className="p-3">
+          <p className="font-bold text-[#1c1b1b]">
+            {config.track_type?.name ?? "Loại sân"}
           </p>
-        )}
-      </div>
-    </button>
+          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+            {config.max_concurrent > 0 ? (
+              <span>{config.max_concurrent} chỗ thuê xe</span>
+            ) : (
+              <span className="text-[#c4c7c8]">Không có xe thuê</span>
+            )}
+            {config.byoc_capacity > 0 ? (
+              <span>{config.byoc_capacity} chỗ xe tự mang</span>
+            ) : (
+              <span className="text-[#c4c7c8]">Không nhận xe riêng</span>
+            )}
+          </div>
+          {config.description && (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+              {config.description}
+            </p>
+          )}
+        </div>
+      </button>
+
+      {/* Lightbox Album Modal */}
+      <TrackAlbumDialog
+        trackConfig={config}
+        isOpen={showAlbum}
+        onClose={() => setShowAlbum(false)}
+        initialIndex={imageIdx}
+      />
+    </>
   )
 }
 

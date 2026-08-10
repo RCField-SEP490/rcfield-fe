@@ -186,6 +186,7 @@ export type UpdateTrackConfigBody = {
   max_concurrent?: number
   byoc_capacity?: number
   description?: string | null
+  images?: string[]
   sort_order?: number
   is_active?: boolean
 }

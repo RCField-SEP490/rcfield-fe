@@ -1,4 +1,4 @@
-import { Link } from "react-router"
+import { Link, useSearchParams } from "react-router"
 import { useState, useEffect, useCallback, useMemo } from "react"
 import {
   ArrowRight,
@@ -460,12 +460,25 @@ function FleetStatusItem({
 // ── Real Dashboard (hiển thị sau onboarding) ─────────────────────────────────
 
 function RealDashboard() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedCafeId = searchParams.get("cafeId") || null
   const [period, setPeriod] = useState<RevenuePeriod>("daily")
-  const [selectedCafeId, setSelectedCafeId] = useState<string | null>(null)
   const [customFrom, setCustomFrom] = useState("")
   const [customTo, setCustomTo] = useState("")
   const [hoveredSeries, setHoveredSeries] = useState<string | null>(null)
   const [hoveredPieType, setHoveredPieType] = useState<string | null>(null)
+
+  const handleCafeChange = (newCafeId: string | null) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (newCafeId) {
+        next.set("cafeId", newCafeId)
+      } else {
+        next.delete("cafeId")
+      }
+      return next
+    })
+  }
 
   // Sử dụng useMemo để tránh tính toán lại và thay đổi tham chiếu object ở mỗi lần render
   const defaultRange = useMemo(() => getDefaultDateRange(period), [period])
@@ -575,7 +588,7 @@ function RealDashboard() {
     const vehicleRate = (kpi.vehicleUtilizationRate * 100).toFixed(0)
 
     const kpiRows = [
-      ["Tổng doanh thu (đ)", kpi.totalRevenue, "HELD & đã giải ngân"],
+      ["Tổng doanh thu (đ)", kpi.totalRevenue, "Doanh thu thực tế"],
       ["Tổng lượt đặt", kpi.totalBookings, "Tất cả trạng thái"],
       ["Tỷ lệ hoàn thành đơn", `${completionRate}%`, `${kpi.completedBookings}/${kpi.totalBookings} lượt`],
       ["Tỷ lệ xe hoạt động", `${vehicleRate}%`, `${kpi.inUseVehicles}/${kpi.totalVehicles} xe`],
@@ -972,7 +985,7 @@ function RealDashboard() {
           <Building2 className="size-4 text-[#747878]" />
           <select
             value={selectedCafeId ?? ""}
-            onChange={(e) => setSelectedCafeId(e.target.value || null)}
+            onChange={(e) => handleCafeChange(e.target.value || null)}
             className="w-full sm:w-auto rounded-lg border border-[#c4c7c8] bg-white px-3 py-1.5 text-sm font-semibold text-[#1c1b1b] focus:border-orange-400 focus:outline-none"
           >
             <option value="">Tất cả chi nhánh</option>
@@ -1057,7 +1070,7 @@ function RealDashboard() {
             <KpiCard
               label="Tổng doanh thu"
               value={kpi ? formatCurrency(kpi.totalRevenue) : "—"}
-              sub="HELD & đã giải ngân"
+              sub="Doanh thu thực tế"
               icon={<BarChart3 />}
               accentColor="orange"
               trend={kpi && kpi.totalRevenue > 0 ? "up" : "neutral"}

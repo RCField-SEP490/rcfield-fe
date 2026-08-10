@@ -10,6 +10,7 @@ import type { BranchOperationsItem } from "@/features/dashboard/types/dashboard.
 import { NotificationBell } from "@/features/notifications/components/NotificationBell"
 import type { ProviderTone } from "@/pages/provider/data"
 import { storageKeys } from "@/shared/lib/storage"
+import { formatCurrency } from "@/shared/lib/format"
 import { cn } from "@/shared/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Badge } from "@/shared/ui/badge"
@@ -189,6 +190,8 @@ export function MetricCard({
   label,
   value,
   helper,
+  detail,
+  actionLabel,
   icon,
   tone,
   compact = false,
@@ -197,6 +200,8 @@ export function MetricCard({
   label: string
   value: string
   helper: string
+  detail?: string
+  actionLabel?: string
   icon: ReactNode
   tone: ProviderTone
   compact?: boolean
@@ -216,15 +221,22 @@ export function MetricCard({
           compact ? "mb-3" : "mb-4",
         )}
       >
-        <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">{label}</span>
-        <span className={cn("text-[#5d5f5f]", compact ? "[&_svg]:size-5" : "[&_svg]:size-6")}>{icon}</span>
+        <span className="text-xs font-bold uppercase tracking-wider text-[#747878] truncate">{label}</span>
+        <span className={cn("text-[#5d5f5f] shrink-0", compact ? "[&_svg]:size-5" : "[&_svg]:size-6")}>{icon}</span>
       </div>
       <div>
         <div className={cn("font-extrabold leading-tight tracking-tight text-[#1c1b1b]", compact ? "text-xl" : "text-2xl")}>{value}</div>
         <div className={cn("flex items-center gap-1.5 text-xs font-bold", compact ? "mt-2" : "mt-3", toneText(tone))}>
-          {tone === "danger" ? <TrendingDown className="size-4" /> : <TrendingUp className="size-4" />}
-          <span>{helper}</span>
+          {tone === "danger" ? <TrendingDown className="size-4 shrink-0" /> : <TrendingUp className="size-4 shrink-0" />}
+          <span className="leading-snug">{helper}</span>
         </div>
+        {detail ? <p className="mt-1 text-[11px] font-medium text-[#747878] leading-tight">{detail}</p> : null}
+        {actionLabel ? (
+          <p className="mt-2 text-xs font-bold text-orange-600 inline-flex items-center gap-1 leading-none group-hover:underline">
+            <span>{actionLabel}</span>
+            <span aria-hidden="true">→</span>
+          </p>
+        ) : null}
       </div>
     </article>
   )
@@ -310,73 +322,99 @@ export function BranchList({
   if (compact) {
     return (
       <div className="space-y-2">
-        {cafes.map((cafe) => (
-          <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <div className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</div>
-                <div className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</div>
+        {cafes.map((cafe) => {
+          const operation = operationsByCafe?.get(cafe.id)
+          return (
+            <div key={cafe.id} className="rounded-lg border border-[#e5e2e1] bg-white p-4 transition-colors hover:bg-[#fcf8f8]">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</div>
+                  <div className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</div>
+                </div>
+                <StatusBadge status={formatCafeStatus(cafe.status)} />
               </div>
-              <StatusBadge status={formatCafeStatus(cafe.status)} />
+              <div className="grid grid-cols-2 gap-3">
+                <InlineMetric
+                  label="Doanh thu"
+                  value={operation ? formatCurrency(operation.totalRevenue) : formatSlotFee(cafe.slotFeeRate)}
+                />
+                <InlineMetric label="Khai thác sân" value={formatOccupancyRate(operation?.occupancyRate)} align="right" />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <InlineMetric label="Phí slot" value={formatSlotFee(cafe.slotFeeRate)} />
-              <InlineMetric label="Khai thác sân" value={formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)} align="right" />
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     )
   }
 
   return (
     <div className="space-y-2">
-      {cafes.map((cafe) => (
-        <Link
-          key={cafe.id}
-          to={`/provider/cafes/${cafe.id}`}
-          aria-label={`Xem chi tiết ${cafe.name}`}
-          className="group flex overflow-hidden rounded-xl border border-[#e5e2e1] bg-white shadow-sm transition-all hover:border-[#b0adac] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1c1b1b]"
-        >
-          {/* Content */}
-          <div className="flex flex-1 flex-wrap items-center gap-y-3 px-4 py-4 sm:flex-nowrap sm:gap-6">
-            {/* Name + location */}
-            <div className="min-w-0 flex-1">
-              <span className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</span>
-              <p className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</p>
-            </div>
+      {cafes.map((cafe) => {
+        const operation = operationsByCafe?.get(cafe.id)
 
-            {/* Fixed-width status column keeps every status badge aligned. */}
-            <div className="w-[112px] shrink-0 sm:w-[128px]">
-              <StatusBadge status={formatCafeStatus(cafe.status)} />
-            </div>
-
-            {/* Metrics */}
-            <div className="grid w-full shrink-0 grid-cols-3 items-center divide-x divide-[#e5e2e1] sm:w-auto sm:grid-cols-[140px_190px_120px]">
-              <div className="min-w-0 pr-3 sm:pr-5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Phí slot</p>
-                <p className="mt-0.5 text-sm font-bold tabular-nums text-[#1c1b1b]">{formatSlotFee(cafe.slotFeeRate)}</p>
+        return (
+          <Link
+            key={cafe.id}
+            to={`/provider/cafes/${cafe.id}`}
+            aria-label={`Xem chi tiết ${cafe.name}`}
+            className="group flex overflow-hidden rounded-xl border border-[#e5e2e1] bg-white shadow-sm transition-all hover:border-[#b0adac] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1c1b1b]"
+          >
+            {/* Content */}
+            <div className="flex flex-1 flex-wrap items-center gap-y-3 px-4 py-4 sm:flex-nowrap sm:gap-6">
+              {/* Name + location */}
+              <div className="min-w-0 flex-1">
+                <span className="text-sm font-extrabold text-[#1c1b1b]">{cafe.name}</span>
+                <p className="mt-0.5 text-xs font-medium text-[#747878]">{cafe.district}, {cafe.city}</p>
               </div>
-              <div className="min-w-0 px-3 sm:px-5">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Khai thác sân</p>
-                <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatOccupancyRate(operationsByCafe?.get(cafe.id)?.occupancyRate)}</p>
-                {operationsByCafe?.get(cafe.id) ? (
-                  <p className="mt-0.5 text-[10px] font-medium text-[#747878]">
-                    {formatOccupancyUsage(operationsByCafe.get(cafe.id)!)}
+
+              {/* Fixed-width status column keeps every status badge aligned. */}
+              <div className="w-[112px] shrink-0 sm:w-[128px]">
+                <StatusBadge status={formatCafeStatus(cafe.status)} />
+              </div>
+
+              {/* Metrics */}
+              <div className="grid w-full shrink-0 grid-cols-2 gap-y-2 items-center sm:w-auto sm:grid-cols-[140px_160px_130px_110px] sm:divide-x sm:divide-[#e5e2e1]">
+                <div className="min-w-0 pr-3 sm:pr-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-orange-600">Doanh thu</p>
+                  <p className="mt-0.5 text-sm font-bold tabular-nums text-[#1c1b1b]">
+                    {operation ? formatCurrency(operation.totalRevenue) : "--"}
                   </p>
-                ) : null}
+                  {operation ? (
+                    <p className="mt-0.5 text-[10px] font-medium text-[#747878]">
+                      {operation.bookingCount} lượt đặt
+                    </p>
+                  ) : null}
+                </div>
+                <div className="min-w-0 px-3 sm:px-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Khai thác sân</p>
+                  <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatOccupancyRate(operation?.occupancyRate)}</p>
+                  {operation ? (
+                    <p className="mt-0.5 text-[10px] font-medium text-[#747878]">
+                      {formatOccupancyUsage(operation)}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="min-w-0 px-3 sm:px-4" title={formatFleetDetail(operation)}>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Đội xe</p>
+                  <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatFleetCount(operation)}</p>
+                  {operation ? (
+                    <p className="mt-0.5 text-[10px] font-medium text-[#747878]">
+                      {operation.availableVehicles} sẵn sàng
+                    </p>
+                  ) : null}
+                </div>
+                <div className="min-w-0 pl-3 sm:pl-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Phí slot</p>
+                  <p className="mt-0.5 text-sm font-bold tabular-nums text-[#1c1b1b]">{formatSlotFee(cafe.slotFeeRate)}</p>
+                </div>
               </div>
-              <div className="min-w-0 pl-3 sm:pl-5" title={formatFleetDetail(operationsByCafe?.get(cafe.id))}>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#c4c7c8]">Đội xe</p>
-                <p className="mt-0.5 text-sm font-bold text-[#1c1b1b]">{formatFleetCount(operationsByCafe?.get(cafe.id))}</p>
-              </div>
-            </div>
 
-            {/* Arrow */}
-            <ArrowRight className="ml-auto size-4 shrink-0 text-[#c4c7c8] transition-all group-hover:translate-x-0.5 group-hover:text-[#1c1b1b]" />
-          </div>
-        </Link>
-      ))}
+              {/* Arrow */}
+              <ArrowRight className="ml-auto size-4 shrink-0 text-[#c4c7c8] transition-all group-hover:translate-x-0.5 group-hover:text-[#1c1b1b]" />
+            </div>
+          </Link>
+        )
+      })}
     </div>
   )
 }

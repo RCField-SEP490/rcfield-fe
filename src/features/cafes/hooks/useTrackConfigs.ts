@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import axios from "axios"
 import { trackConfigApi, cafeQueryKeys } from "../api/cafe.api"
-import type { CreateTrackConfigBody, UpdateTrackConfigBody } from "../types"
+import type { CreateTrackConfigBody, UpdateTrackConfigBody, TrackConfig } from "../types"
 
 export function useTrackConfigs(cafeId: string) {
   return useQuery({
@@ -42,6 +42,7 @@ export function useUpdateTrackConfig(cafeId: string) {
     onSuccess: () => {
       toast.success("Cập nhật loại sân thành công")
       void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.detail(cafeId) })
     },
     onError: (error: unknown) => {
       let msg = "Đã xảy ra lỗi khi cập nhật loại sân"
@@ -67,9 +68,15 @@ export function useUploadTrackConfigImages(cafeId: string) {
   return useMutation({
     mutationFn: ({ configId, files }: { configId: string; files: File[] }) =>
       trackConfigApi.uploadTrackConfigImages(cafeId, configId, files),
-    onSuccess: () => {
-      toast.success("Upload ảnh thành công")
+    onSuccess: (images, variables) => {
+      toast.success("Upload ảnh loại sân thành công")
+      // Immediate cache sync
+      queryClient.setQueryData<TrackConfig[]>(cafeQueryKeys.trackConfigs(cafeId), (old) => {
+        if (!old) return old
+        return old.map((c) => (c.id === variables.configId || c.track_type_id === variables.configId ? { ...c, images } : c))
+      })
       void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.detail(cafeId) })
     },
     onError: (error: unknown) => {
       let msg = "Đã xảy ra lỗi khi upload ảnh"
