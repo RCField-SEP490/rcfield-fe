@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
+import * as z from "zod"
 import { toast } from "sonner"
 import { Camera, LockKeyhole, Mail, Phone, Save, Trash2 } from "lucide-react"
 import { getMe, updateMe } from "@/features/auth/api/auth.api"
@@ -12,6 +13,14 @@ import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Separator } from "@/shared/ui/separator"
 
+const updateProfileSchema = z.object({
+  phone: z
+    .string()
+    .refine((val) => !val || /^(84|0[3|5|7|8|9])([0-9]{8})$/.test(val), {
+      message: "Số điện thoại không đúng định dạng. Định dạng hợp lệ ví dụ: 0987654321",
+    }),
+})
+
 export function ProfileSettingsCard() {
   const user = useAuthStore((state) => state.user)
   const role = useAuthStore((state) => state.role)
@@ -19,6 +28,7 @@ export function ProfileSettingsCard() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const phoneInputRef = useRef<HTMLInputElement | null>(null)
   const [searchParams] = useSearchParams()
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (searchParams.get("focus") === "phone") {
@@ -73,6 +83,14 @@ export function ProfileSettingsCard() {
   }, [email, firstName, lastName, user?.avatarUrl, user?.phone])
 
   const saveProfile = async (nextAvatarUrl = form.avatarUrl) => {
+    const validation = updateProfileSchema.safeParse({ phone: form.phone })
+    if (!validation.success) {
+      const err = validation.error.format()
+      setFieldErrors((prev) => ({ ...prev, phone: err.phone?._errors[0] ?? "" }))
+      toast.error("Vui lòng sửa các lỗi nhập liệu trước khi lưu.")
+      return
+    }
+
     setSaving(true)
     try {
       const profile = await updateMe({
@@ -83,6 +101,24 @@ export function ProfileSettingsCard() {
       setUser({ ...profile, role: profile.role ?? role ?? "customer" })
       persistUser(profile)
       toast.success("Đã cập nhật hồ sơ.")
+      setFieldErrors((prev) => ({ ...prev, phone: "" }))
+    } catch (error: unknown) {
+      const err = error as {
+        response?: {
+          data?: {
+            code?: string;
+            message?: string;
+          };
+        };
+      }
+      const code = err?.response?.data?.code
+      const message = err?.response?.data?.message
+      if (code === "PHONE_ALREADY_EXISTS") {
+        setFieldErrors((prev) => ({ ...prev, phone: "Số điện thoại này đã được sử dụng bởi tài khoản khác" }))
+        toast.error("Số điện thoại này đã được sử dụng bởi tài khoản khác.")
+      } else {
+        toast.error(message ?? "Cập nhật hồ sơ thất bại. Vui lòng thử lại.")
+      }
     } finally {
       setSaving(false)
     }
@@ -181,9 +217,22 @@ export function ProfileSettingsCard() {
                   ref={phoneInputRef}
                   className="pl-9"
                   value={form.phone}
-                  onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                  onChange={(event) => {
+                    const val = event.target.value
+                    setForm((current) => ({ ...current, phone: val }))
+                    const res = updateProfileSchema.safeParse({ phone: val })
+                    if (!res.success) {
+                      const err = res.error.format()
+                      setFieldErrors((prev) => ({ ...prev, phone: err.phone?._errors[0] ?? "" }))
+                    } else {
+                      setFieldErrors((prev) => ({ ...prev, phone: "" }))
+                    }
+                  }}
                 />
               </div>
+              {fieldErrors.phone && (
+                <p className="text-[11px] font-bold text-red-500 leading-tight mt-1">{fieldErrors.phone}</p>
+              )}
             </label>
           </div>
         </section>

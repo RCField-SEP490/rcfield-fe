@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
+import * as z from "zod"
 import { toast } from "sonner"
 import { Camera, Mail, Phone } from "lucide-react"
 
@@ -30,6 +31,14 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Textarea } from "@/shared/ui/textarea"
+
+const updateProfileSchema = z.object({
+  phone: z
+    .string()
+    .refine((val) => !val || /^(84|0[3|5|7|8|9])([0-9]{8})$/.test(val), {
+      message: "Số điện thoại không đúng định dạng. Định dạng hợp lệ ví dụ: 0987654321",
+    }),
+})
 
 export function ProfilePage() {
   const role = useAuthStore((state) => state.role)
@@ -263,6 +272,7 @@ function ProfileContent() {
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let mounted = true
@@ -292,6 +302,14 @@ function ProfileContent() {
   }, [email, firstName, lastName, user?.avatarUrl, user?.phone])
 
   const saveProfile = async (nextAvatarUrl = form.avatarUrl) => {
+    const validation = updateProfileSchema.safeParse({ phone: form.phone })
+    if (!validation.success) {
+      const err = validation.error.format()
+      setFieldErrors((prev) => ({ ...prev, phone: err.phone?._errors[0] ?? "" }))
+      toast.error("Vui lòng sửa các lỗi nhập liệu trước khi lưu.")
+      return
+    }
+
     setSaving(true)
     try {
       const profile = await updateMe({
@@ -302,6 +320,24 @@ function ProfileContent() {
       setUser({ ...profile, role: profile.role ?? role ?? "customer" })
       persistUser(profile)
       toast.success("Đã cập nhật hồ sơ.")
+      setFieldErrors((prev) => ({ ...prev, phone: "" }))
+    } catch (error: unknown) {
+      const err = error as {
+        response?: {
+          data?: {
+            code?: string;
+            message?: string;
+          };
+        };
+      }
+      const code = err?.response?.data?.code
+      const message = err?.response?.data?.message
+      if (code === "PHONE_ALREADY_EXISTS") {
+        setFieldErrors((prev) => ({ ...prev, phone: "Số điện thoại này đã được sử dụng bởi tài khoản khác" }))
+        toast.error("Số điện thoại này đã được sử dụng bởi tài khoản khác.")
+      } else {
+        toast.error(message ?? "Cập nhật hồ sơ thất bại. Vui lòng thử lại.")
+      }
     } finally {
       setSaving(false)
     }
@@ -417,9 +453,17 @@ function ProfileContent() {
             id="phone"
             type="tel"
             value={form.phone}
-            onChange={(value) =>
+            onChange={(value) => {
               setForm((current) => ({ ...current, phone: value }))
-            }
+              const res = updateProfileSchema.safeParse({ phone: value })
+              if (!res.success) {
+                const err = res.error.format()
+                setFieldErrors((prev) => ({ ...prev, phone: err.phone?._errors[0] ?? "" }))
+              } else {
+                setFieldErrors((prev) => ({ ...prev, phone: "" }))
+              }
+            }}
+            error={fieldErrors.phone}
             icon={<Phone className="size-4" />}
             className="md:col-span-2"
           />
@@ -801,6 +845,7 @@ function Field({
   icon,
   className,
   disabled = false,
+  error,
 }: {
   label: string
   id: string
@@ -810,6 +855,7 @@ function Field({
   icon?: React.ReactNode
   className?: string
   disabled?: boolean
+  error?: string
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
@@ -834,9 +880,13 @@ function Field({
           className={cn(
             "h-10 rounded-lg border-[#e5e2e1] bg-white px-3.5 text-sm text-[#1c1b1b] focus:border-[#747878] focus:ring-[#747878]",
             icon && "pl-10",
+            error && "border-red-500 focus:border-red-500",
           )}
         />
       </div>
+      {error && (
+        <p className="text-[11px] font-bold text-red-500 leading-tight mt-0.5">{error}</p>
+      )}
     </div>
   )
 }
