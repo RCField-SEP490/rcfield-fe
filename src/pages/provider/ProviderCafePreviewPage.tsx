@@ -14,8 +14,9 @@ import {
   CafeAboutSection,
   CafeRulesSection,
 } from "@/pages/customer/cafe-detail/components/CafeDetailContent"
-import { SectionRule } from "@/pages/customer/cafe-detail/components/SectionShell"
+import { CafeSection, SectionRule } from "@/pages/customer/cafe-detail/components/SectionShell"
 import { CafeDetailHero } from "@/pages/customer/cafe-detail/components/CafeDetailHero"
+import { TrackConfigList } from "@/pages/customer/cafe-detail/components/TrackConfigList"
 import { CafeFnbSection } from "@/pages/customer/cafe-detail/components/CafeFnbSection"
 import { CafeVehiclesSection } from "@/pages/customer/cafe-detail/components/CafeVehiclesSection"
 import type { BookingMode } from "@/features/booking/data/booking-options"
@@ -124,8 +125,10 @@ export function ProviderCafePreviewPage() {
 
             <div className="mt-6 lg:hidden">{bookingCard}</div>
 
-            {/* Cùng thứ tự với trang khách thấy: giới thiệu → xe → đồ ăn → quy định */}
+            {/* Cùng thứ tự với trang khách thấy: loại sân → giới thiệu → xe → đồ ăn → quy định */}
             <div className="mt-12 space-y-12">
+              <TrackSection cafeId={cafeId!} />
+              <SectionRule />
               <CafeAboutSection
                 description={cafe.description}
                 amenities={cafeDetail.amenities}
@@ -153,6 +156,20 @@ export function ProviderCafePreviewPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+function TrackSection({ cafeId }: { cafeId: string }) {
+  const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
+  if (!isLoading && configs.length === 0) return null
+
+  return (
+    <CafeSection
+      title="Loại sân tại cơ sở"
+      lead="Mỗi loại sân có mặt đường và sức chứa riêng — chọn loại phù hợp ở bước đặt lịch."
+    >
+      <TrackConfigList cafeId={cafeId} />
+    </CafeSection>
   )
 }
 
