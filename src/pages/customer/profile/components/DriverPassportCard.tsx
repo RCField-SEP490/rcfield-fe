@@ -12,8 +12,6 @@ import {
 import { toast } from "sonner"
 import { racingApi, racingQueryKeys } from "@/features/racing/api/racing.api"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
-import { routePaths } from "@/app/router/route-paths"
-import { Link } from "react-router"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
@@ -111,15 +109,7 @@ export function DriverPassportCard() {
               @{passport?.driver_handle ?? "--"}
             </p>
           </div>
-          <Button
-            asChild
-            variant="outline"
-            className="rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-          >
-            <Link to={routePaths.globalLeaderboard}>
-              Xem bảng xếp hạng
-            </Link>
-          </Button>
+          {/* TẠM ẨN cùng mục BXH trên thanh điều hướng — xem PublicHeader.tsx */}
         </div>
       </div>
 

@@ -21,7 +21,6 @@ export const routePaths = {
   customerBookingDetail: "/customer/bookings/:bookingId",
   customerPackages: "/customer/packages",
   customerSubscriptions: "/customer/subscriptions",
-  customerVehicles: "/customer/vehicles",
   customerReviews: "/customer/reviews",
   customerActiveSession: "/customer/sessions/:sessionId",
   customerInspection: "/customer/inspections/:sessionId",
