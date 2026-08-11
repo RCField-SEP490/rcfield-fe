@@ -12,6 +12,7 @@ export function PayosCallbackPage() {
   const [loading, setLoading] = useState(true)
   const [verifyStatus, setVerifyStatus] = useState<"success" | "cancel" | "error">("error")
   const [errorMessage, setErrorMessage] = useState("")
+  const [paymentRequest, setPaymentRequest] = useState<any>(null)
 
   const orderCode = searchParams.get("orderCode")
   const status = searchParams.get("status")
@@ -43,13 +44,23 @@ export function PayosCallbackPage() {
           orderCode: Number(orderCode),
         })
 
-        if (response.success && response.data.status === "CONFIRMED") {
-          setVerifyStatus("success")
-        } else if (response.data?.status === "REJECTED") {
-          setVerifyStatus("cancel")
+        if (response.success && response.data) {
+          setPaymentRequest(response.data)
+          
+          const isConfirmed = response.data.status === "CONFIRMED"
+          const isPendingPaid = response.data.status === "PENDING" && response.data.adminNotes?.includes("Đã thanh toán")
+          
+          if (isConfirmed || isPendingPaid) {
+            setVerifyStatus("success")
+          } else if (response.data.status === "REJECTED") {
+            setVerifyStatus("cancel")
+          } else {
+            setVerifyStatus("error")
+            setErrorMessage(response.data.adminNotes ?? "Giao dịch chưa được xác nhận thanh toán.")
+          }
         } else {
           setVerifyStatus("error")
-          setErrorMessage(response.data?.adminNotes ?? "Giao dịch chưa được xác nhận thanh toán.")
+          setErrorMessage("Không thể đối soát giao dịch thanh toán.")
         }
       } catch (err) {
         console.error("Verify payment failed:", err)
@@ -116,7 +127,7 @@ export function PayosCallbackPage() {
             </h2>
             
             <p className="text-sm font-medium text-slate-500 mt-3 leading-relaxed">
-              Tuyệt vời! Gói hội viên của bạn đã được kích hoạt thành công tự động. Hệ thống đã cập nhật đầy đủ quyền lợi mới cho bạn.
+              Đơn hàng của bạn đã được thanh toán thành công qua PayOS và đang chờ Admin phê duyệt. Vui lòng chờ.
             </p>
 
             <div className="mt-6 rounded-2xl bg-emerald-50/50 border border-emerald-100 p-4 text-left">
@@ -130,7 +141,9 @@ export function PayosCallbackPage() {
               </div>
               <div className="flex justify-between items-center text-xs font-semibold text-slate-600 mt-2">
                 <span>Trạng thái:</span>
-                <span className="font-bold text-emerald-600">Đã kích hoạt</span>
+                <span className={`font-bold ${paymentRequest?.status === "CONFIRMED" ? "text-emerald-600" : "text-amber-600"}`}>
+                  {paymentRequest?.status === "CONFIRMED" ? "Đã kích hoạt" : "Chờ Admin duyệt"}
+                </span>
               </div>
             </div>
           </>

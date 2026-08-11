@@ -201,6 +201,25 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         void queryClient.invalidateQueries({ queryKey: ["bookings"] })
         void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
       }
+
+      if (msg.event === "notification") {
+        const payload = msg.data as { type: string; title: string; message: string }
+        
+        toast.success(`🔔 ${payload.title}`, {
+          description: payload.message,
+          duration: 10000,
+        })
+
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        
+        if (
+          payload.type === "PAYMENT_REQUEST_CONFIRMED" ||
+          payload.type === "PAYMENT_REQUEST_REJECTED"
+        ) {
+          void queryClient.invalidateQueries({ queryKey: ["provider-subscription"] })
+          void queryClient.invalidateQueries({ queryKey: ["my-payment-requests"] })
+        }
+      }
     },
     [queryClient, navigate, currentUserId],
   )

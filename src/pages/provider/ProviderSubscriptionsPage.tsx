@@ -433,7 +433,7 @@ export function ProviderSubscriptionsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">{request.adminNotes ?? "-"}</td>
                       <td className="px-4 py-3">
-                        {(request.status === "PENDING" || request.status === "REJECTED") && (
+                        {(request.status === "REJECTED" || (request.status === "PENDING" && !request.adminNotes?.includes("Đã thanh toán"))) && (
                           <Button
                             disabled={payMutation.isPending}
                             onClick={() => payMutation.mutate(request.id)}
