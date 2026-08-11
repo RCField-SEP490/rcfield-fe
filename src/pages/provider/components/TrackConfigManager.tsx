@@ -57,7 +57,11 @@ interface TrackConfigManagerProps {
 const EMPTY_FORM = { track_type_id: "", max_concurrent: "5", byoc_capacity: "0", description: "", sort_order: "0" }
 
 export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
-  const { data: configs = [], isLoading } = useTrackConfigs(cafeId)
+  // Màn quản lý là nơi duy nhất cần thấy sân đã tắt — không thấy thì không bật
+  // lại được.
+  const { data: configs = [], isLoading } = useTrackConfigs(cafeId, {
+    includeInactive: true,
+  })
   const { data: trackTypes = [], isLoading: trackTypesLoading } = useQuery({
     queryKey: trackTypeQueryKeys.all,
     queryFn: () => trackTypeApi.listAll(),

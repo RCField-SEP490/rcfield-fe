@@ -1,10 +1,26 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
-import { ImageIcon, ImagePlus, Info, Loader2, MapPin, Plus, Trash2, X } from "lucide-react"
+import {
+  ImageIcon,
+  ImagePlus,
+  Info,
+  Loader2,
+  MapPin,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 
 import { LocationPickerDialog } from "@/shared/components/LocationPickerDialog"
 
-import { amenityApi, amenityQueryKeys, cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  amenityApi,
+  amenityQueryKeys,
+  cafeApi,
+  cafeQueryKeys,
+  trackTypeApi,
+  trackTypeQueryKeys,
+} from "@/features/cafes/api/cafe.api"
 import {
   closingTimeInputPattern,
   getOperatingHoursValidationError,
@@ -13,7 +29,15 @@ import {
   normalizeOperatingTime,
   openingTimeInputPattern,
 } from "@/features/cafes/lib/operating-hours"
-import type { BackendCafe, CafeImage, CafeOperatingHour, CafeOperatingHours, CafeUpsertBody } from "@/features/cafes/types"
+import type {
+  BackendCafe,
+  CafeImage,
+  CafeOperatingHour,
+  CafeOperatingHours,
+  CafeUpsertBody,
+} from "@/features/cafes/types"
+import { BANNER_MIN_WIDTH, BANNER_RECOMMENDED } from "@/shared/lib/cloudinary"
+import { toast } from "sonner"
 import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
@@ -31,9 +55,11 @@ async function fetchProvinces(): Promise<Province[]> {
 }
 
 async function fetchWards(provinceCode: number): Promise<Ward[]> {
-  const res = await fetch(`https://provinces.open-api.vn/api/v2/p/${provinceCode}?depth=2`)
+  const res = await fetch(
+    `https://provinces.open-api.vn/api/v2/p/${provinceCode}?depth=2`,
+  )
   if (!res.ok) throw new Error("Cannot load wards")
-  const data = await res.json() as { wards?: Ward[] }
+  const data = (await res.json()) as { wards?: Ward[] }
   return data.wards ?? []
 }
 
@@ -43,11 +69,14 @@ type ProviderCafeFormProps = {
   cafe?: BackendCafe | null
   isPending: boolean
   submitLabel?: string
-  onSubmit: (values: ProviderCafeFormValues, galleryFiles: File[], coverFile: File | null) => Promise<void>
+  onSubmit: (
+    values: ProviderCafeFormValues,
+    galleryFiles: File[],
+    coverFile: File | null,
+  ) => Promise<void>
   onCancel?: () => void
   onDeleteImage?: (image: CafeImage) => Promise<void>
 }
-
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
 
@@ -62,7 +91,12 @@ const dayLabels: Record<string, string> = {
 }
 
 function buildDefaultHours(): CafeOperatingHours {
-  return Object.fromEntries(dayKeys.map((day) => [day, { open: "09:00", close: "22:00", is_closed: false }]))
+  return Object.fromEntries(
+    dayKeys.map((day) => [
+      day,
+      { open: "09:00", close: "22:00", is_closed: false },
+    ]),
+  )
 }
 
 const defaultValues: ProviderCafeFormValues = {
@@ -85,6 +119,53 @@ const defaultValues: ProviderCafeFormValues = {
   byoc_capacity: 3,
   amenity_ids: [],
   rules: [],
+}
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+/** Đọc kích thước thật của ảnh trước khi nhận. */
+function readImageSize(
+  file: File,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve({ width: image.naturalWidth, height: image.naturalHeight })
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve(null)
+    }
+    image.src = objectUrl
+  })
+}
+
+/**
+ * Chặn ảnh quá nhỏ ngay tại chỗ chọn.
+ *
+ * Ảnh hẹp hơn khung hiển thị sẽ bị phóng to và vỡ nét trên trang khách. Báo
+ * ngay lúc chọn rẻ hơn nhiều so với để chủ quán phát hiện sau khi đã lưu.
+ */
+async function acceptImage(file: File): Promise<boolean> {
+  if (file.size > MAX_IMAGE_BYTES) {
+    toast.error(`"${file.name}" nặng hơn 5MB`)
+    return false
+  }
+  const size = await readImageSize(file)
+  if (size && size.width < BANNER_MIN_WIDTH) {
+    toast.error(
+      `"${file.name}" rộng ${size.width}px, quá nhỏ nên sẽ bị vỡ nét. Cần tối thiểu ${BANNER_MIN_WIDTH}px.`,
+    )
+    return false
+  }
+  if (size && size.height > size.width) {
+    toast.warning(
+      `"${file.name}" đang dạng dọc. Ảnh hiển thị dạng ngang nên sẽ bị cắt nhiều.`,
+    )
+  }
+  return true
 }
 
 export function ProviderCafeForm({
@@ -199,24 +280,31 @@ export function ProviderCafeForm({
   }, [cafe?.city, provinces])
 
   const selectedFileLabel = useMemo(() => {
-    if (files.length === 0) return "Chưa chọn ảnh"
+    if (files.length === 0) return "Chọn ảnh để tải lên"
     return `${files.length} ảnh đã chọn`
   }, [files.length])
 
   const isDirty = useMemo(() => {
     if (files.length > 0) return true
     if (coverFile !== null) return true
-    return (Object.keys(values) as Array<keyof ProviderCafeFormValues>).some((key) => {
-      const a = values[key]
-      const b = snap[key]
-      if (Array.isArray(a) && Array.isArray(b)) {
-        return JSON.stringify([...a].sort()) !== JSON.stringify([...b].sort())
-      }
-      if (a !== null && b !== null && typeof a === "object" && typeof b === "object") {
-        return JSON.stringify(a) !== JSON.stringify(b)
-      }
-      return a !== b
-    })
+    return (Object.keys(values) as Array<keyof ProviderCafeFormValues>).some(
+      (key) => {
+        const a = values[key]
+        const b = snap[key]
+        if (Array.isArray(a) && Array.isArray(b)) {
+          return JSON.stringify([...a].sort()) !== JSON.stringify([...b].sort())
+        }
+        if (
+          a !== null &&
+          b !== null &&
+          typeof a === "object" &&
+          typeof b === "object"
+        ) {
+          return JSON.stringify(a) !== JSON.stringify(b)
+        }
+        return a !== b
+      },
+    )
   }, [values, snap, files, coverFile])
   const hasValidCoordinates =
     values.latitude !== null &&
@@ -225,25 +313,40 @@ export function ProviderCafeForm({
     Number.isFinite(values.longitude) &&
     values.latitude !== 0 &&
     values.longitude !== 0
-  const operatingHoursError = getOperatingHoursValidationError(values.operating_hours)
+  const operatingHoursError = getOperatingHoursValidationError(
+    values.operating_hours,
+  )
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!hasValidCoordinates || operatingHoursError) return
     const body: ProviderCafeFormValues = {
       ...values,
-      description: values.description?.trim() ? values.description.trim() : null,
+      description: values.description?.trim()
+        ? values.description.trim()
+        : null,
       phone: values.phone?.trim() ? values.phone.trim() : null,
-      cover_image_url: values.cover_image_url?.trim() ? values.cover_image_url.trim() : null,
-      latitude: values.latitude === null || Number.isNaN(values.latitude) ? null : Number(values.latitude),
-      longitude: values.longitude === null || Number.isNaN(values.longitude) ? null : Number(values.longitude),
+      cover_image_url: values.cover_image_url?.trim()
+        ? values.cover_image_url.trim()
+        : null,
+      latitude:
+        values.latitude === null || Number.isNaN(values.latitude)
+          ? null
+          : Number(values.latitude),
+      longitude:
+        values.longitude === null || Number.isNaN(values.longitude)
+          ? null
+          : Number(values.longitude),
     }
     await onSubmit(body, files, coverFile)
     setFiles([])
     setCoverFile(null)
   }
 
-  const setField = <K extends keyof ProviderCafeFormValues>(field: K, value: ProviderCafeFormValues[K]) => {
+  const setField = <K extends keyof ProviderCafeFormValues>(
+    field: K,
+    value: ProviderCafeFormValues[K],
+  ) => {
     setValues((current) => ({ ...current, [field]: value }))
   }
 
@@ -270,31 +373,59 @@ export function ProviderCafeForm({
   const addRule = () => {
     const trimmed = newRule.trim()
     if (!trimmed) return
-    setValues((current) => ({ ...current, rules: [...(current.rules ?? []), trimmed] }))
+    setValues((current) => ({
+      ...current,
+      rules: [...(current.rules ?? []), trimmed],
+    }))
     setNewRule("")
   }
 
   const removeRule = (index: number) => {
-    setValues((current) => ({ ...current, rules: (current.rules ?? []).filter((_, i) => i !== index) }))
+    setValues((current) => ({
+      ...current,
+      rules: (current.rules ?? []).filter((_, i) => i !== index),
+    }))
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-[#c4c7c8] bg-white">
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-xl border border-[#c4c7c8] bg-white"
+    >
       <div className="border-b border-[#e5e2e1] px-5 py-4">
-        <h3 className="text-xl font-bold text-[#1c1b1b]">{cafe ? "Cập nhật cơ sở" : "Thêm cơ sở"}</h3>
+        <h3 className="text-xl font-bold text-[#1c1b1b]">
+          {cafe ? "Cập nhật cơ sở" : "Thêm cơ sở"}
+        </h3>
         {/* <p className="mt-1 text-sm font-medium text-[#444748]">Quản lý dữ liệu cơ sở trực tiếp trên trang, không dùng popup.</p> */}
       </div>
 
       <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <TextField label="Tên cơ sở" tooltip="Tên hiển thị trên trang khám phá và trang đặt lịch của cơ sở" value={values.name} onChange={(value) => setField("name", value)} required minLength={2} maxLength={255} />
-            <TextField label="Số điện thoại" tooltip="Số liên lạc hiển thị cho khách hàng khi xem trang chi tiết cơ sở" value={values.phone ?? ""} onChange={(value) => setField("phone", value)} minLength={9} maxLength={20} />
+            <TextField
+              label="Tên cơ sở"
+              tooltip="Tên hiển thị trên trang khám phá và trang đặt lịch của cơ sở"
+              value={values.name}
+              onChange={(value) => setField("name", value)}
+              required
+              minLength={2}
+              maxLength={255}
+            />
+            <TextField
+              label="Số điện thoại"
+              tooltip="Số liên lạc hiển thị cho khách hàng khi xem trang chi tiết cơ sở"
+              value={values.phone ?? ""}
+              onChange={(value) => setField("phone", value)}
+              minLength={9}
+              maxLength={20}
+            />
 
             <label className="block space-y-2">
               <span className="flex items-center gap-1.5 text-sm font-bold text-[#1c1b1b]">
                 Tỉnh / Thành phố
-                {loadingProvinces && <Loader2 className="size-3 animate-spin text-[#747878]" />}
+                {loadingProvinces && (
+                  <Loader2 className="size-3 animate-spin text-[#747878]" />
+                )}
               </span>
               <select
                 required
@@ -311,11 +442,14 @@ export function ProviderCafeForm({
               >
                 <option value="">— Chọn tỉnh/thành —</option>
                 {/* Preserve existing value if not in list (old data) */}
-                {values.city && !provinces.some((p) => p.name === values.city) && (
-                  <option value={values.city}>{values.city}</option>
-                )}
+                {values.city &&
+                  !provinces.some((p) => p.name === values.city) && (
+                    <option value={values.city}>{values.city}</option>
+                  )}
                 {provinces.map((p) => (
-                  <option key={p.code} value={p.name}>{p.name}</option>
+                  <option key={p.code} value={p.name}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </label>
@@ -323,7 +457,9 @@ export function ProviderCafeForm({
             <label className="block space-y-2">
               <span className="flex items-center gap-1.5 text-sm font-bold text-[#1c1b1b]">
                 Phường / Xã
-                {loadingWards && <Loader2 className="size-3 animate-spin text-[#747878]" />}
+                {loadingWards && (
+                  <Loader2 className="size-3 animate-spin text-[#747878]" />
+                )}
               </span>
               <select
                 required
@@ -334,20 +470,31 @@ export function ProviderCafeForm({
               >
                 <option value="">— Chọn phường/xã —</option>
                 {/* Preserve existing value if not in list (old data) */}
-                {values.district && !wards.some((w) => w.name === values.district) && (
-                  <option value={values.district}>{values.district}</option>
-                )}
+                {values.district &&
+                  !wards.some((w) => w.name === values.district) && (
+                    <option value={values.district}>{values.district}</option>
+                  )}
                 {wards.map((w) => (
-                  <option key={w.code} value={w.name}>{w.name}</option>
+                  <option key={w.code} value={w.name}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </label>
           </div>
 
-          <TextField label="Địa chỉ cụ thể" tooltip="Số nhà, tên đường (VD: 277B Cách Mạng Tháng 8). Hiển thị trên trang chi tiết và dùng để điều hướng bản đồ" value={values.address} onChange={(value) => setField("address", value)} required />
+          <TextField
+            label="Địa chỉ cụ thể"
+            tooltip="Số nhà, tên đường (VD: 277B Cách Mạng Tháng 8). Hiển thị trên trang chi tiết và dùng để điều hướng bản đồ"
+            value={values.address}
+            onChange={(value) => setField("address", value)}
+            required
+          />
 
           <label className="block space-y-2">
-            <FieldLabel tooltip="Giới thiệu đường đua, tiện ích, quy định — hiển thị nổi bật trên trang chi tiết cơ sở">Mô tả</FieldLabel>
+            <FieldLabel tooltip="Giới thiệu đường đua, tiện ích, quy định — hiển thị nổi bật trên trang chi tiết cơ sở">
+              Mô tả
+            </FieldLabel>
             <Textarea
               value={values.description ?? ""}
               onChange={(event) => setField("description", event.target.value)}
@@ -357,12 +504,16 @@ export function ProviderCafeForm({
           </label>
 
           <div className="rounded-lg border border-[#e5e2e1] p-3">
-            <div className="mb-2 text-sm font-bold text-[#1c1b1b]">Vị trí địa lý</div>
+            <div className="mb-2 text-sm font-bold text-[#1c1b1b]">
+              Vị trí địa lý
+            </div>
             <div className="flex items-center gap-3">
               <div className="flex-1 rounded-lg border border-[#c4c7c8] bg-[#f6f3f2] px-3 py-2 text-sm font-semibold text-[#444748]">
-                {values.latitude != null && values.longitude != null
-                  ? `${Number(values.latitude).toFixed(7)}, ${Number(values.longitude).toFixed(7)}`
-                  : <span className="text-[#747878]">Chưa chọn vị trí</span>}
+                {values.latitude != null && values.longitude != null ? (
+                  `${Number(values.latitude).toFixed(7)}, ${Number(values.longitude).toFixed(7)}`
+                ) : (
+                  <span className="text-[#747878]">Chưa chọn vị trí</span>
+                )}
               </div>
               <Button
                 type="button"
@@ -389,21 +540,31 @@ export function ProviderCafeForm({
 
           <div className="rounded-lg border border-[#e5e2e1] p-3">
             <div className="mb-3">
-              <FieldLabel tooltip="Loại đường đua cơ sở hỗ trợ. Ảnh hưởng đến bộ lọc tìm kiếm — khách có thể lọc cơ sở theo loại track mong muốn">Loại track</FieldLabel>
+              <FieldLabel tooltip="Loại đường đua cơ sở hỗ trợ. Ảnh hưởng đến bộ lọc tìm kiếm — khách có thể lọc cơ sở theo loại track mong muốn">
+                Loại track
+              </FieldLabel>
             </div>
             {loadingTrackTypes ? (
               <div className="flex items-center gap-2 text-sm text-[#747878] font-semibold">
-                <Loader2 className="size-4 animate-spin" /> Đang tải danh sách track...
+                <Loader2 className="size-4 animate-spin" /> Đang tải danh sách
+                track...
               </div>
             ) : trackTypes.length === 0 ? (
-              <span className="text-xs text-[#747878]">Chưa có dữ liệu loại track.</span>
+              <span className="text-xs text-[#747878]">
+                Chưa có dữ liệu loại track.
+              </span>
             ) : (
               <div className="flex flex-wrap gap-3">
                 {trackTypes.map((item) => (
-                  <Label key={item.id} className="rounded-lg border border-[#e5e2e1] px-3 py-2 cursor-pointer hover:bg-[#f6f3f2]">
+                  <Label
+                    key={item.id}
+                    className="rounded-lg border border-[#e5e2e1] px-3 py-2 cursor-pointer hover:bg-[#f6f3f2]"
+                  >
                     <Checkbox
                       checked={values.track_types.includes(item.id)}
-                      onCheckedChange={(checked) => toggleTrack(item.id, checked === true)}
+                      onCheckedChange={(checked) =>
+                        toggleTrack(item.id, checked === true)
+                      }
                     />
                     <span className="font-semibold">{item.name}</span>
                   </Label>
@@ -415,18 +576,27 @@ export function ProviderCafeForm({
           {amenityCatalog.length > 0 && (
             <div className="rounded-lg border border-[#e5e2e1] p-3">
               <div className="mb-3">
-                <FieldLabel tooltip="Trang thiết bị và tiện ích cơ sở hỗ trợ. Admin cấu hình danh sách — bạn chọn những gì cơ sở này có">Trang thiết bị & Tiện ích</FieldLabel>
+                <FieldLabel tooltip="Trang thiết bị và tiện ích cơ sở hỗ trợ. Admin cấu hình danh sách — bạn chọn những gì cơ sở này có">
+                  Trang thiết bị & Tiện ích
+                </FieldLabel>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {amenityCatalog.map((item) => (
-                  <Label key={item.id} className="rounded-lg border border-[#e5e2e1] px-3 py-2 cursor-pointer hover:bg-[#f6f3f2]">
+                  <Label
+                    key={item.id}
+                    className="rounded-lg border border-[#e5e2e1] px-3 py-2 cursor-pointer hover:bg-[#f6f3f2]"
+                  >
                     <Checkbox
                       checked={(values.amenity_ids ?? []).includes(item.id)}
-                      onCheckedChange={(checked) => toggleAmenity(item.id, checked === true)}
+                      onCheckedChange={(checked) =>
+                        toggleAmenity(item.id, checked === true)
+                      }
                     />
                     <span className="font-semibold">{item.title}</span>
                     {item.description && (
-                      <span className="ml-1 text-[#747878] text-xs font-normal">— {item.description}</span>
+                      <span className="ml-1 text-[#747878] text-xs font-normal">
+                        — {item.description}
+                      </span>
                     )}
                   </Label>
                 ))}
@@ -436,14 +606,27 @@ export function ProviderCafeForm({
 
           <div className="rounded-lg border border-[#e5e2e1] p-3">
             <div className="mb-3">
-              <FieldLabel tooltip="Nội quy cơ sở hiển thị cho khách trước khi đặt lịch. Mỗi dòng là một quy định riêng">Quy định cơ sở</FieldLabel>
+              <FieldLabel tooltip="Nội quy cơ sở hiển thị cho khách trước khi đặt lịch. Mỗi dòng là một quy định riêng">
+                Quy định cơ sở
+              </FieldLabel>
             </div>
             <div className="space-y-2">
               {(values.rules ?? []).map((rule, index) => (
-                <div key={index} className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-3 py-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#e5e2e1] text-[10px] font-bold text-[#444748]">{index + 1}</span>
+                <div
+                  key={index}
+                  className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-[#f6f3f2] px-3 py-2"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[#e5e2e1] text-[10px] font-bold text-[#444748]">
+                    {index + 1}
+                  </span>
                   <span className="flex-1 text-sm text-[#1c1b1b]">{rule}</span>
-                  <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeRule(index)} className="text-red-500 hover:bg-red-50 hover:text-red-700">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => removeRule(index)}
+                    className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                  >
                     <X className="size-4" />
                   </Button>
                 </div>
@@ -452,12 +635,23 @@ export function ProviderCafeForm({
                 <Input
                   value={newRule}
                   onChange={(e) => setNewRule(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addRule() } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      addRule()
+                    }
+                  }}
                   placeholder="Thêm quy định mới..."
                   className="rounded-lg border-[#c4c7c8] text-sm"
                   maxLength={500}
                 />
-                <Button type="button" variant="outline" onClick={addRule} disabled={!newRule.trim()} className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] font-bold text-sm">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addRule}
+                  disabled={!newRule.trim()}
+                  className="h-9 gap-1.5 rounded-lg border-[#c4c7c8] font-bold text-sm"
+                >
                   <Plus className="size-4" />
                   Thêm
                 </Button>
@@ -466,7 +660,9 @@ export function ProviderCafeForm({
           </div>
 
           <div className="space-y-2">
-            <span className="text-sm font-bold text-[#1c1b1b]">Giờ hoạt động</span>
+            <span className="text-sm font-bold text-[#1c1b1b]">
+              Giờ hoạt động
+            </span>
             <OperatingHoursField
               value={values.operating_hours}
               onChange={(updated) => setField("operating_hours", updated)}
@@ -478,10 +674,19 @@ export function ProviderCafeForm({
         <aside className="space-y-4">
           {/* Cover image */}
           <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#1c1b1b]">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#1c1b1b]">
               <ImageIcon className="size-4" />
               Ảnh bìa
             </div>
+            <p className="mt-1 mb-3 text-xs leading-5 text-[#747878]">
+              Ảnh đại diện của cơ sở. Xuất hiện ở thẻ chi nhánh trên trang khám
+              phá, ảnh đầu tiên ở trang chi tiết, và trong đơn đặt của khách.{" "}
+              <span className="font-semibold text-[#5d5f5f]">
+                Chọn ảnh nằm ngang, rộng tối thiểu {BANNER_MIN_WIDTH}px
+              </span>{" "}
+              — khuyến nghị {BANNER_RECOMMENDED.width}×
+              {BANNER_RECOMMENDED.height}px.
+            </p>
 
             {coverPreview ? (
               <div className="relative overflow-hidden rounded-lg border border-[#e5e2e1]">
@@ -489,7 +694,9 @@ export function ProviderCafeForm({
                   src={coverPreview}
                   alt="Ảnh bìa"
                   className="h-36 w-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
+                  onError={(e) => {
+                    ;(e.target as HTMLImageElement).style.display = "none"
+                  }}
                 />
                 {coverFile && (
                   <div className="absolute bottom-1.5 left-1.5 rounded bg-orange-600 px-2 py-0.5 text-[10px] font-bold text-white">
@@ -499,7 +706,9 @@ export function ProviderCafeForm({
               </div>
             ) : (
               <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-[#c4c7c8] bg-white">
-                <span className="text-xs font-medium text-[#747878]">Chưa có ảnh bìa</span>
+                <span className="text-xs font-medium text-[#747878]">
+                  Chưa có ảnh bìa
+                </span>
               </div>
             )}
 
@@ -509,17 +718,26 @@ export function ProviderCafeForm({
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return setCoverFile(null)
+                  void acceptImage(file).then((ok) => ok && setCoverFile(file))
+                }}
               />
             </label>
           </div>
 
           {/* Gallery */}
           <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#1c1b1b]">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#1c1b1b]">
               <ImagePlus className="size-4" />
               Ảnh gallery
             </div>
+            <p className="mt-1 mb-3 text-xs leading-5 text-[#747878]">
+              Bộ ảnh khách xem khi bấm vào chi nhánh — không gian quán, đường
+              đua, khu pit. Chọn được nhiều ảnh cùng lúc. Ảnh bìa vẫn luôn đứng
+              đầu, nên đừng tải lại ảnh bìa vào đây.
+            </p>
             <label className="block cursor-pointer rounded-lg border border-dashed border-[#c4c7c8] bg-white p-4 text-center text-sm font-semibold text-[#444748] hover:bg-[#f6f3f2]">
               {selectedFileLabel}
               <input
@@ -527,32 +745,58 @@ export function ProviderCafeForm({
                 accept="image/jpeg,image/png,image/webp"
                 multiple
                 className="sr-only"
-                onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+                onChange={(event) => {
+                  const picked = Array.from(event.target.files ?? [])
+                  void Promise.all(picked.map(acceptImage)).then((results) =>
+                    setFiles(picked.filter((_, index) => results[index])),
+                  )
+                }}
               />
             </label>
             {cafe ? (
               <div className="mt-4 space-y-2">
-                <div className="text-xs font-bold uppercase tracking-wide text-[#747878]">Ảnh hiện tại</div>
+                <div className="text-xs font-bold uppercase tracking-wide text-[#747878]">
+                  Ảnh hiện tại
+                </div>
                 {loadingImages ? (
                   <div className="h-24 animate-pulse rounded-lg bg-[#e5e2e1]" />
                 ) : images.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-[#c4c7c8] p-3 text-xs font-medium text-[#747878]">Chưa có ảnh gallery.</div>
+                  <div className="rounded-lg border border-dashed border-[#c4c7c8] p-3 text-xs font-medium text-[#747878]">
+                    Chưa có ảnh gallery.
+                  </div>
                 ) : (
-                  images.map((image) => (
-                    <div key={image.id} className="flex items-center gap-2 rounded-lg border border-[#e5e2e1] bg-white p-2">
-                      <img src={sanitizeImageUrl(image.url)!} alt="" className="size-12 rounded-md object-cover" />
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-[#444748]">{image.url}</span>
-                      {onDeleteImage ? (
-                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => void onDeleteImage(image)} className="text-red-600 hover:bg-red-50 hover:text-red-700">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  ))
+                  /* Lưới thumbnail thay cho danh sách URL thô: đường dẫn
+                     Cloudinary không nói cho chủ quán biết đó là ảnh nào. */
+                  <div className="grid grid-cols-3 gap-2">
+                    {images.map((image, index) => (
+                      <div
+                        key={image.id}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-[#e5e2e1] bg-white"
+                      >
+                        <img
+                          src={sanitizeImageUrl(image.url)!}
+                          alt={`Ảnh gallery ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        {onDeleteImage ? (
+                          <button
+                            type="button"
+                            aria-label={`Xoá ảnh ${index + 1}`}
+                            onClick={() => void onDeleteImage(image)}
+                            className="absolute right-1 top-1 rounded-md bg-white/90 p-1 text-red-600 opacity-0 shadow-sm transition group-hover:opacity-100 focus-visible:opacity-100"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             ) : (
-              <p className="mt-3 text-xs font-medium text-[#747878]">Ảnh sẽ được upload sau khi cơ sở được tạo thành công.</p>
+              <p className="mt-3 text-xs font-medium text-[#747878]">
+                Ảnh sẽ được upload sau khi cơ sở được tạo thành công.
+              </p>
             )}
           </div>
         </aside>
@@ -560,12 +804,30 @@ export function ProviderCafeForm({
 
       <div className="flex flex-wrap justify-end gap-3 border-t border-[#e5e2e1] px-5 py-4">
         {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={isPending} className="font-bold">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isPending}
+            className="font-bold"
+          >
             Hủy
           </Button>
         ) : null}
-        <Button type="submit" disabled={isPending || values.track_types.length === 0 || !hasValidCoordinates || !!operatingHoursError || (cafe !== null && !isDirty)} className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold">
-          {isPending ? "Đang lưu..." : submitLabel ?? (cafe ? "Lưu thay đổi" : "Tạo cơ sở")}
+        <Button
+          type="submit"
+          disabled={
+            isPending ||
+            values.track_types.length === 0 ||
+            !hasValidCoordinates ||
+            !!operatingHoursError ||
+            (cafe !== null && !isDirty)
+          }
+          className="bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold"
+        >
+          {isPending
+            ? "Đang lưu..."
+            : (submitLabel ?? (cafe ? "Lưu thay đổi" : "Tạo cơ sở"))}
         </Button>
       </div>
     </form>
@@ -588,23 +850,37 @@ function OperatingHoursField({
   return (
     <div className="overflow-hidden rounded-lg border border-[#e5e2e1]">
       <div className="grid grid-cols-[100px_1fr_1fr_40px] gap-0 border-b border-[#e5e2e1] bg-[#f6f3f2] px-3 py-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Ngày</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Mở cửa</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Đóng cửa</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">Nghỉ</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">
+          Ngày
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">
+          Mở cửa
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">
+          Đóng cửa
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#747878]">
+          Nghỉ
+        </span>
       </div>
       {dayKeys.map((day) => {
-        const h = value[day] ?? { open: "09:00", close: "22:00", is_closed: false }
+        const h = value[day] ?? {
+          open: "09:00",
+          close: "22:00",
+          is_closed: false,
+        }
         const isClosed = h.is_closed ?? false
         return (
           <div
             key={day}
             className={cn(
               "grid grid-cols-[100px_1fr_1fr_40px] items-center gap-3 border-b border-[#e5e2e1] px-3 py-2 last:border-0 hover:bg-[#fcf8f8]",
-              isClosed && "opacity-50"
+              isClosed && "opacity-50",
             )}
           >
-            <span className="text-sm font-semibold text-[#1c1b1b]">{dayLabels[day]}</span>
+            <span className="text-sm font-semibold text-[#1c1b1b]">
+              {dayLabels[day]}
+            </span>
             <Input
               type="text"
               inputMode="numeric"
@@ -614,7 +890,9 @@ function OperatingHoursField({
               value={h.open ?? "09:00"}
               disabled={isClosed}
               onChange={(e) => setDay(day, { open: e.target.value })}
-              onBlur={(e) => setDay(day, { open: normalizeOperatingTime(e.target.value) })}
+              onBlur={(e) =>
+                setDay(day, { open: normalizeOperatingTime(e.target.value) })
+              }
               aria-invalid={!isClosed && !isValidOpeningTime(h.open)}
               className="h-8 rounded-lg border-[#c4c7c8] text-sm"
             />
@@ -627,13 +905,17 @@ function OperatingHoursField({
               value={h.close ?? "22:00"}
               disabled={isClosed}
               onChange={(e) => setDay(day, { close: e.target.value })}
-              onBlur={(e) => setDay(day, { close: normalizeOperatingTime(e.target.value) })}
+              onBlur={(e) =>
+                setDay(day, { close: normalizeOperatingTime(e.target.value) })
+              }
               aria-invalid={!isClosed && !isValidClosingTime(h.close)}
               className="h-8 rounded-lg border-[#c4c7c8] text-sm"
             />
             <Checkbox
               checked={isClosed}
-              onCheckedChange={(checked) => setDay(day, { is_closed: checked === true })}
+              onCheckedChange={(checked) =>
+                setDay(day, { is_closed: checked === true })
+              }
               title="Đóng cửa ngày này"
             />
           </div>
@@ -641,9 +923,14 @@ function OperatingHoursField({
       })}
       <div className="border-t border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2">
         <p className="text-xs text-[#5d5f5f]">
-          Nhập theo định dạng HH:mm. Giờ đóng có thể là <strong>24:00</strong> để biểu thị nửa đêm ngày kế tiếp.
+          Nhập theo định dạng HH:mm. Giờ đóng có thể là <strong>24:00</strong>{" "}
+          để biểu thị nửa đêm ngày kế tiếp.
         </p>
-        {error ? <p role="alert" className="mt-1 text-xs font-semibold text-red-600">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="mt-1 text-xs font-semibold text-red-600">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   )
@@ -660,7 +947,13 @@ function TooltipIcon({ text }: { text: string }) {
   )
 }
 
-function FieldLabel({ children, tooltip }: { children: React.ReactNode; tooltip?: string }) {
+function FieldLabel({
+  children,
+  tooltip,
+}: {
+  children: React.ReactNode
+  tooltip?: string
+}) {
   return (
     <span className="flex items-center gap-1.5 text-sm font-bold text-[#1c1b1b]">
       {children}
@@ -691,7 +984,15 @@ function TextField({
   return (
     <label className="block space-y-2">
       <FieldLabel tooltip={tooltip}>{label}</FieldLabel>
-      <Input type={type} value={value} onChange={(event) => onChange(event.target.value)} required={required} minLength={minLength} maxLength={maxLength} className="rounded-lg border-[#c4c7c8]" />
+      <Input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required={required}
+        minLength={minLength}
+        maxLength={maxLength}
+        className="rounded-lg border-[#c4c7c8]"
+      />
     </label>
   )
 }
