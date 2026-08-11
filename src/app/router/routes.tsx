@@ -37,7 +37,6 @@ import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { CustomerHomePage } from "@/pages/customer/CustomerHomePage"
 import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
-import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePage"
@@ -229,10 +228,6 @@ export const router = createBrowserRouter([
           {
             path: routePaths.customerSubscriptions,
             element: <PlaceholderPage title="Customer subscriptions" />,
-          },
-          {
-            path: routePaths.customerVehicles,
-            element: <CustomerVehiclesPage />,
           },
           {
             path: routePaths.customerReviews,

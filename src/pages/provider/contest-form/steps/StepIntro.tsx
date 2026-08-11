@@ -5,6 +5,7 @@ import { toast } from "sonner"
 
 import { contestApi } from "@/features/contests/api/contest.api"
 import { uploadImage } from "@/features/uploads/api/upload.api"
+import { BANNER_MIN_WIDTH, BANNER_RECOMMENDED } from "@/shared/lib/cloudinary"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Textarea } from "@/shared/ui/textarea"
@@ -85,7 +86,28 @@ export function StepIntro({
     },
   })
 
-  const handleBannerFileChange = (
+  /**
+   * Đọc kích thước thật của ảnh trước khi upload.
+   *
+   * Ảnh nhỏ hơn khung hiển thị sẽ bị phóng to và vỡ nét — chặn từ đây rẻ hơn
+   * nhiều so với để provider phát hiện lúc giải đã lên trang.
+   */
+  const readImageSize = (file: File) =>
+    new Promise<{ width: number; height: number } | null>((resolve) => {
+      const objectUrl = URL.createObjectURL(file)
+      const image = new Image()
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl)
+        resolve({ width: image.naturalWidth, height: image.naturalHeight })
+      }
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        resolve(null)
+      }
+      image.src = objectUrl
+    })
+
+  const handleBannerFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0]
@@ -98,6 +120,20 @@ export function StepIntro({
       toast.error("Chỉ hỗ trợ JPG, PNG, WEBP")
       return
     }
+
+    const size = await readImageSize(file)
+    if (size && size.width < BANNER_MIN_WIDTH) {
+      toast.error(
+        `Ảnh rộng ${size.width}px, quá nhỏ nên sẽ bị vỡ nét. Cần tối thiểu ${BANNER_MIN_WIDTH}px.`,
+      )
+      return
+    }
+    // Ảnh dọc vẫn upload được nhưng cảnh báo, vì mọi khung hiển thị đều nằm
+    // ngang — cắt ra sẽ mất phần lớn nội dung.
+    if (size && size.height > size.width) {
+      toast.warning("Ảnh đang dạng dọc. Banner hiển thị dạng ngang nên sẽ bị cắt nhiều.")
+    }
+
     uploadBannerMutation.mutate(file)
   }
 
@@ -254,6 +290,15 @@ export function StepIntro({
                 Chọn ảnh từ máy, hoặc dán sẵn đường dẫn ảnh vào ô trên. JPG, PNG
                 hoặc WEBP, tối đa 5MB.
               </p>
+            </div>
+            <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2.5 text-xs leading-5 text-[#5d5f5f]">
+              <span className="font-bold text-[#1c1b1b]">
+                Khuyến nghị {BANNER_RECOMMENDED.width}×{BANNER_RECOMMENDED.height}px
+                (tỉ lệ 16:9), ảnh nằm ngang.
+              </span>{" "}
+              Banner được cắt lại theo từng vị trí hiển thị, nên hãy để nội dung
+              quan trọng (tên giải, logo) vào giữa khung. Ảnh hẹp hơn{" "}
+              {BANNER_MIN_WIDTH}px sẽ bị từ chối vì hiển thị sẽ vỡ nét.
             </div>
             {form.banner_image_url ? (
               <div className="overflow-hidden rounded-xl border border-[#e5e2e1]">
