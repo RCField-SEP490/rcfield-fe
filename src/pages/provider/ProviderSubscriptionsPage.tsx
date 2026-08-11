@@ -13,6 +13,7 @@ import {
   Network,
   Sparkles,
   Store,
+  Flame,
 } from "lucide-react"
 
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -252,7 +253,13 @@ export function ProviderSubscriptionsPage() {
               variants={pricingContainer}
               initial="hidden"
               animate="show"
-              className="mx-auto flex flex-wrap justify-center gap-8 2xl:gap-12"
+              className={`mx-auto grid grid-cols-1 sm:grid-cols-2 ${
+                sortedPlans.length === 4
+                  ? "lg:grid-cols-4"
+                  : sortedPlans.length === 3
+                    ? "lg:grid-cols-3"
+                    : "lg:grid-cols-2"
+              } gap-4 xl:gap-6 2xl:gap-8 w-full max-w-fit justify-center justify-items-center`}
             >
               {sortedPlans.map((plan) => {
                 const copy = PLAN_COPY[plan.name]
@@ -279,17 +286,28 @@ export function ProviderSubscriptionsPage() {
                         handleChoosePlan(plan)
                       }
                     }}
-                    className={`relative flex h-[492px] w-full transform-gpu flex-col rounded-[32px] border border-white/80 bg-[#f6fbff]/95 px-7 py-6 text-center shadow-[0_18px_38px_rgba(91,124,153,0.18)] outline-none will-change-transform focus-visible:ring-2 focus-visible:ring-[#8ea6ff]/70 sm:w-[318px] 2xl:h-[520px] 2xl:w-[clamp(350px,20vw,430px)] 2xl:px-9 2xl:py-7 ${
+                    className={`relative flex h-[492px] w-full max-w-[280px] transform-gpu flex-col rounded-[32px] border border-white/80 bg-[#f6fbff]/95 px-4 py-6 text-center shadow-[0_18px_38px_rgba(91,124,153,0.18)] outline-none will-change-transform focus-visible:ring-2 focus-visible:ring-[#8ea6ff]/70 sm:max-w-[260px] md:max-w-[270px] lg:max-w-[225px] xl:max-w-[250px] 2xl:h-[520px] 2xl:max-w-[280px] 2xl:px-7 2xl:py-7 ${
                       isCurrent ? "cursor-default" : "cursor-pointer"
                     } ${
                       isSelected ? "ring-2 ring-[#8ea6ff]/70" : ""
                     }`}
                   >
+                    {plan.name === "GROWTH" && (
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-md animate-pulse z-10"
+                      >
+                        <Flame className="size-3 fill-white" />
+                        Nổi bật
+                      </motion.div>
+                    )}
+
                     {isCurrent && (
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="absolute right-4 top-4 rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#12b76a] shadow-sm"
+                        className="absolute right-4 top-4 rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#12b76a] shadow-sm z-10"
                       >
                         Đang sử dụng
                       </motion.div>
@@ -409,7 +427,7 @@ export function ProviderSubscriptionsPage() {
                         {new Date(request.transferDate).toLocaleDateString("vi-VN")}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge className={`border text-[11px] font-bold ${PR_STATUS_COLORS[request.status]}`}>
+                        <Badge className={`border text-[11px] font-semibold ${PR_STATUS_COLORS[request.status]}`}>
                           {PR_STATUS_LABELS[request.status]}
                         </Badge>
                       </td>
