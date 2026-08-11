@@ -4,10 +4,19 @@ import axios from "axios"
 import { trackConfigApi, cafeQueryKeys } from "../api/cafe.api"
 import type { CreateTrackConfigBody, UpdateTrackConfigBody, TrackConfig } from "../types"
 
-export function useTrackConfigs(cafeId: string) {
+/**
+ * @param options.includeInactive Chỉ bật ở màn quản lý cấu hình sân. Mọi màn
+ * hướng tới khách — trang chi nhánh, luồng đặt lịch — phải để mặc định, nếu
+ * không sân đã tắt sẽ hiện ra và đặt được.
+ */
+export function useTrackConfigs(
+  cafeId: string,
+  options?: { includeInactive?: boolean },
+) {
+  const includeInactive = options?.includeInactive ?? false
   return useQuery({
-    queryKey: cafeQueryKeys.trackConfigs(cafeId),
-    queryFn: () => trackConfigApi.listTrackConfigs(cafeId),
+    queryKey: cafeQueryKeys.trackConfigs(cafeId, includeInactive),
+    queryFn: () => trackConfigApi.listTrackConfigs(cafeId, { includeInactive }),
     enabled: !!cafeId,
   })
 }

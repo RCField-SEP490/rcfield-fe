@@ -54,6 +54,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 import { ContestAuditPanel } from "./components/ContestAuditPanel"
+import { ContestFinancePanel } from "./components/ContestFinancePanel"
 import { ContestStaffPanel } from "./components/ContestStaffPanel"
 import { ContestFeePanel } from "./components/ContestFeePanel"
 import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
@@ -73,6 +74,7 @@ const sectionSummaries: Record<ContestWorkspaceSectionKey, string> = {
     "Duyệt đăng ký, xử lý lệ phí, điểm danh và kỷ luật người chơi.",
   bracket: "Bốc thăm sơ đồ, theo dõi từng trận và nhập kết quả.",
   leaderboard: "Theo dõi bản nháp, công bố và đồng bộ bảng xếp hạng.",
+  finance: "Thu chi của giải: lệ phí đã thu, phí tổ chức và số dư lãi lỗ.",
   audit: "Xem lại toàn bộ nhật ký thao tác phát sinh trong contest.",
   staff: "Phân công nhân viên được vận hành giải này.",
 }
@@ -753,6 +755,10 @@ export function ProviderContestWorkspacePage({
           metrics={metrics}
           runtime={workspace.runtime}
         />
+      ) : null}
+
+      {section === "finance" ? (
+        <ContestFinancePanel contestId={contestId} />
       ) : null}
 
       {section === "audit" ? (

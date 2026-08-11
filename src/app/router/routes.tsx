@@ -145,12 +145,15 @@ export const router = createBrowserRouter([
         element: <ExploreLayout />,
         children: [{ path: routePaths.cafes, element: <ExplorePage /> }],
       },
+      // Chat toàn màn hình tự chiếm trọn viewport và có thanh tiêu đề riêng, nên
+      // KHÔNG bọc trong PublicLayout — chồng thêm header + footer công khai lên
+      // một trang `h-screen` làm tổng chiều cao vượt màn hình và sinh cuộn kép.
+      { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
       {
         element: <PublicLayout />,
         children: [
           { index: true, element: <LandingPage /> },
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
-          { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
           {
             path: routePaths.vehicleDetail,
             element: <PlaceholderPage title="Vehicle detail" />,
@@ -485,6 +488,12 @@ export const router = createBrowserRouter([
             path: routePaths.providerContestLeaderboard,
             element: providerGuardRoute(
               <ProviderContestWorkspacePage section="leaderboard" />,
+            ),
+          },
+          {
+            path: routePaths.providerContestFinance,
+            element: providerGuardRoute(
+              <ProviderContestWorkspacePage section="finance" />,
             ),
           },
           {

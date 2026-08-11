@@ -16,7 +16,9 @@ export function ContestCheckInLookupCard({
     <StaffCard className="space-y-4">
       <div className="flex items-center gap-2 text-[#ea580c]">
         <QrCode className="size-5" />
-        <h3 className="text-base font-extrabold text-[#1c1b1b]">Tra cứu người đăng ký</h3>
+        <h3 className="text-base font-extrabold text-[#1c1b1b]">
+          Tra cứu người đăng ký
+        </h3>
       </div>
       <div className="flex flex-col gap-3 md:flex-row">
         <input

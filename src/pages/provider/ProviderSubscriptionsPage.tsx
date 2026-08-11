@@ -159,6 +159,9 @@ export function ProviderSubscriptionsPage() {
   })
 
   const subscription = subData?.data ?? null
+  // Gói dùng thử cấp tự động một lần khi duyệt hồ sơ. Đã tiêu rồi thì không
+  // chọn lại được — backend cũng chặn, đây chỉ là để giao diện nói đúng sự thật.
+  const trialUsed = Boolean(subData?.trial_used_at)
   const requests = prData?.data ?? []
   const hasPending = requests.some((request) => request.status === "PENDING")
   const branchCount = cafeData?.meta.total ?? 0
@@ -180,6 +183,7 @@ export function ProviderSubscriptionsPage() {
 
   const getActionLabel = (plan: SubscriptionPlan) => {
     if (plan.id === currentPlanId) return "Gói đang sử dụng"
+    if (plan.isTrial && trialUsed) return "Đã dùng thử"
     const rank = PLAN_ORDER[plan.name]
     if (currentRank >= 0 && rank < currentRank) return "Downgrade gói"
     if (currentRank >= 0 && rank > currentRank) return "Nâng cấp gói"
@@ -188,6 +192,7 @@ export function ProviderSubscriptionsPage() {
 
   const getActionIcon = (plan: SubscriptionPlan) => {
     if (plan.id === currentPlanId) return CheckCircle2
+    if (plan.isTrial && trialUsed) return CheckCircle2
     const rank = PLAN_ORDER[plan.name]
     if (currentRank >= 0 && rank < currentRank) return ArrowDownCircle
     if (currentRank >= 0 && rank > currentRank) return ArrowUpCircle
@@ -265,22 +270,25 @@ export function ProviderSubscriptionsPage() {
                 const copy = PLAN_COPY[plan.name]
                 const isCurrent = plan.id === currentPlanId
                 const isSelected = plan.id === selectedPlanId
+                // Gói dùng thử đã tiêu thì khoá luôn, không cho mở form thanh toán.
+                const isLocked = plan.isTrial && trialUsed && !isCurrent
+                const isDisabled = isCurrent || isLocked
                 const ActionIcon = getActionIcon(plan)
 
                 return (
                   <motion.article
                     key={plan.id}
-                    role={isCurrent ? undefined : "button"}
-                    tabIndex={isCurrent ? undefined : 0}
+                    role={isDisabled ? undefined : "button"}
+                    tabIndex={isDisabled ? undefined : 0}
                     variants={pricingCard}
                     whileHover={{ y: -5 }}
                     whileTap={{ y: -1 }}
                     transition={{ duration: 0.18, ease: "easeOut" }}
                     onClick={() => {
-                      if (!isCurrent) handleChoosePlan(plan)
+                      if (!isDisabled) handleChoosePlan(plan)
                     }}
                     onKeyDown={(event) => {
-                      if (isCurrent) return
+                      if (isDisabled) return
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault()
                         handleChoosePlan(plan)
@@ -355,13 +363,14 @@ export function ProviderSubscriptionsPage() {
 
                     <Button
                       type="button"
-                      disabled={isCurrent}
+                      disabled={isDisabled}
                       onClick={(event) => {
                         event.stopPropagation()
+                        if (isDisabled) return
                         handleChoosePlan(plan)
                       }}
                       className={`mt-auto h-9 rounded-full border-0 bg-gradient-to-r px-5 text-xs font-black text-white shadow-[0_10px_24px_rgba(137,120,255,0.28)] transition ${
-                        isCurrent ? "from-slate-200 to-slate-300 text-slate-500 shadow-none" : copy.button
+                        isDisabled ? "from-slate-200 to-slate-300 text-slate-500 shadow-none" : copy.button
                       }`}
                     >
                       <ActionIcon className="size-3.5" />

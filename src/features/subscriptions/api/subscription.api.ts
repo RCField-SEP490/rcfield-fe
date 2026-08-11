@@ -22,10 +22,13 @@ export const subscriptionApi = {
   getSubscriptionStatus: async (): Promise<{
     success: boolean
     data: ProviderSubscription | null
+    /** Thời điểm đã tiêu suất dùng thử; null nghĩa là chưa dùng. */
+    trial_used_at: string | null
   }> => {
     const res = await api.get<{
       success: boolean
       data: ProviderSubscription | null
+      trial_used_at: string | null
     }>("/v1/provider/subscription")
     return res.data
   },
