@@ -91,6 +91,7 @@ import {
   ProviderPackagesPage,
 } from "@/pages/provider/ProviderPackagesPage"
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
+import { PayosCallbackPage } from "@/pages/provider/PayosCallbackPage"
 import {
   ProviderPromotionCopyPage,
   ProviderPromotionCreatePage,
@@ -405,6 +406,10 @@ export const router = createBrowserRouter([
           {
             path: routePaths.providerSubscriptions,
             element: providerGuardRoute(<ProviderSubscriptionsPage />),
+          },
+          {
+            path: routePaths.providerSubscriptionsCallback,
+            element: providerGuardRoute(<PayosCallbackPage />),
           },
           {
             path: routePaths.providerPromotions,

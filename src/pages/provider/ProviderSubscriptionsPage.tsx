@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
 import {
   ArrowDownCircle,
@@ -132,6 +133,23 @@ export function ProviderSubscriptionsPage() {
   const { data: prData } = useQuery({
     queryKey: ["my-payment-requests"],
     queryFn: () => subscriptionApi.listMyPaymentRequests(),
+  })
+
+  const payMutation = useMutation({
+    mutationFn: (requestId: string) =>
+      subscriptionApi.getPayOSLink({ payment_request_id: requestId }),
+    onSuccess: (res) => {
+      if (res.data?.checkoutUrl) {
+        toast.success("Tạo link thanh toán thành công! Đang chuyển hướng...")
+        window.location.href = res.data.checkoutUrl
+      } else {
+        toast.error("Không tạo được liên kết thanh toán")
+      }
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? "Thanh toán lại thất bại. Vui lòng thử lại sau.")
+    },
   })
 
   const { data: cafeData } = useQuery({
@@ -373,26 +391,46 @@ export function ProviderSubscriptionsPage() {
                   <th className="px-4 py-3 text-left">Ngày CK</th>
                   <th className="px-4 py-3 text-left">Trạng thái</th>
                   <th className="px-4 py-3 text-left">Ghi chú Admin</th>
+                  <th className="px-4 py-3 text-left">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e5e2e1]">
-                {requests.map((request) => (
-                  <tr key={request.id} className="transition-colors hover:bg-[#fcf8f8]">
-                    <td className="px-4 py-3 font-bold text-[#1c1b1b]">{request.planId}</td>
-                    <td className="px-4 py-3 font-bold text-[#1c1b1b]">
-                      {formatPaymentAmount(request.transferAmount)}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">
-                      {new Date(request.transferDate).toLocaleDateString("vi-VN")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge className={`border text-[11px] font-bold ${PR_STATUS_COLORS[request.status]}`}>
-                        {PR_STATUS_LABELS[request.status]}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">{request.adminNotes ?? "-"}</td>
-                  </tr>
-                ))}
+                {requests.map((request) => {
+                  const plan = plans.find((p) => p.id === request.planId)
+                  const planName = plan ? plan.name : "Gói không rõ"
+
+                  return (
+                    <tr key={request.id} className="transition-colors hover:bg-[#fcf8f8]">
+                      <td className="px-4 py-3 font-bold text-[#1c1b1b]">{planName}</td>
+                      <td className="px-4 py-3 font-bold text-[#1c1b1b]">
+                        {formatPaymentAmount(request.transferAmount)}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">
+                        {new Date(request.transferDate).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={`border text-[11px] font-bold ${PR_STATUS_COLORS[request.status]}`}>
+                          {PR_STATUS_LABELS[request.status]}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">{request.adminNotes ?? "-"}</td>
+                      <td className="px-4 py-3">
+                        {(request.status === "PENDING" || request.status === "REJECTED") && (
+                          <Button
+                            disabled={payMutation.isPending}
+                            onClick={() => payMutation.mutate(request.id)}
+                            className="h-7 text-[10px] px-2.5 rounded-full font-extrabold bg-[#7891a5] hover:bg-[#607587] text-white transition-all shadow-sm flex items-center gap-1 w-fit"
+                          >
+                            {payMutation.isPending && payMutation.variables === request.id ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : null}
+                            {request.status === "PENDING" ? "Thanh toán" : "Thanh toán lại"}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

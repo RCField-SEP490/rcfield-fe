@@ -65,6 +65,7 @@ export const routePaths = {
   providerPackageCopy: "/provider/packages/copy",
   providerPackageEdit: "/provider/packages/:packageId/edit",
   providerSubscriptions: "/provider/subscriptions",
+  providerSubscriptionsCallback: "/provider/subscriptions/callback",
   providerPromotions: "/provider/promotions",
   providerPromotionCreate: "/provider/promotions/new",
   providerPromotionCopy: "/provider/promotions/copy",

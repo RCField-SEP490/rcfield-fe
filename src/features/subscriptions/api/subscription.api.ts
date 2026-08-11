@@ -56,6 +56,27 @@ export const subscriptionApi = {
     return res.data
   },
 
+  getPayOSLink: async (body: {
+    plan_id?: string
+    payment_request_id?: string
+  }): Promise<{ success: boolean; data: { checkoutUrl: string; orderCode: number } }> => {
+    const res = await api.post<{
+      success: boolean
+      data: { checkoutUrl: string; orderCode: number }
+    }>("/v1/provider/payment-requests/payos-link", body)
+    return res.data
+  },
+
+  verifyPayOSPayment: async (body: {
+    orderCode: number
+  }): Promise<{ success: boolean; data: PaymentRequest }> => {
+    const res = await api.post<{
+      success: boolean
+      data: PaymentRequest
+    }>("/v1/payments/payos/verify-payment", body)
+    return res.data
+  },
+
   /**
    * Tra mã số thuế trên dữ liệu Cục Thuế (qua backend, không gọi thẳng bên thứ ba).
    *
