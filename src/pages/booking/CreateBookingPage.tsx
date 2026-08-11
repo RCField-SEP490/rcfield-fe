@@ -836,7 +836,7 @@ export function CreateBookingPage() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
-          {currentStep !== "track" && !isMockId && (
+          {currentStep !== "track" && !isMockId && !bankTransfer && (
             <BookingPackageSelector
               cafeId={cafeId}
               cafeSlug={cafe.slug}
@@ -955,11 +955,9 @@ export function CreateBookingPage() {
             <BankTransferQrPanel
               bookingId={bankTransfer.bookingId}
               checkout={bankTransfer.checkout}
-              onPaid={() => {
-                toast.success("Đã nhận được thanh toán!")
-                setTimeout(() => {
-                  window.location.href = "/customer/bookings"
-                }, 1500)
+              onPaid={() => toast.success("Đã nhận được thanh toán!")}
+              onContinue={() => {
+                window.location.href = "/customer/bookings"
               }}
             />
           )}
@@ -1015,6 +1013,7 @@ export function CreateBookingPage() {
               selectedVehicleIds.length < participants)
           }
           selectedTrackConfig={selectedTrackConfig}
+          hideActions={Boolean(bankTransfer)}
         />
       </div>
 

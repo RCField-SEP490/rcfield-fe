@@ -45,15 +45,22 @@ function useCountdown(expiresAt: string): number {
   return remaining
 }
 
+/** Số giây để khách kịp đọc màn hình thành công trước khi chuyển trang. */
+const REDIRECT_SECONDS = 10
+
 export function BankTransferQrPanel({
   bookingId,
   checkout,
   onPaid,
+  onContinue,
   onExpired,
 }: {
   bookingId: string
   checkout: BankTransferCheckout
+  /** Chạy đúng một lần ngay khi phát hiện tiền về. */
   onPaid: () => void
+  /** Chạy khi hết đếm ngược, hoặc khi khách bấm đi ngay. */
+  onContinue?: () => void
   onExpired?: () => void
 }) {
   // Chỉ giữ đúng một mẩu state: "realtime đã báo tiền về chưa". Hết hạn và
@@ -102,15 +109,7 @@ export function BankTransferQrPanel({
   }, [phase, onPaid, onExpired])
 
   if (phase === "paid") {
-    return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
-        <CheckCircle2 className="mx-auto size-14 text-emerald-600" />
-        <h3 className="mt-4 text-xl font-black text-emerald-900">Đã thanh toán</h3>
-        <p className="mt-1.5 text-sm text-emerald-800">
-          Quán đã nhận được tiền. Đơn của bạn được xác nhận.
-        </p>
-      </div>
-    )
+    return <PaidPanel onContinue={onContinue} />
   }
 
   if (phase === "expired") {
@@ -218,6 +217,60 @@ function Row({
           </Button>
         )}
       </dd>
+    </div>
+  )
+}
+
+/**
+ * Màn thành công, tự chuyển trang sau vài giây.
+ *
+ * Chuyển ngay lập tức thì khách chưa kịp đọc gì đã thấy trang khác — với một
+ * giao dịch vừa trừ tiền thật, khoảnh khắc xác nhận rõ ràng đáng giá hơn vài
+ * giây tiết kiệm được. Vẫn để nút đi ngay cho người không muốn chờ.
+ */
+function PaidPanel({ onContinue }: { onContinue?: () => void }) {
+  const [remaining, setRemaining] = useState(REDIRECT_SECONDS)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRemaining((current) => (current <= 0 ? 0 : current - 1))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const done = remaining <= 0
+  useEffect(() => {
+    if (done) onContinue?.()
+  }, [done, onContinue])
+
+  return (
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
+      <CheckCircle2 className="mx-auto size-14 text-emerald-600" />
+      <h3 className="mt-4 text-xl font-black text-emerald-900">Đã thanh toán</h3>
+      <p className="mt-1.5 text-sm text-emerald-800">
+        Quán đã nhận được tiền. Đơn của bạn được xác nhận.
+      </p>
+
+      {onContinue && (
+        <>
+          <p
+            className="mt-5 text-sm text-emerald-800"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            Chuyển sang đơn của bạn sau{" "}
+            <span className="font-black tabular-nums">{remaining}</span> giây
+          </p>
+
+          <Button
+            type="button"
+            className="mt-3 h-10 bg-emerald-600 hover:bg-emerald-700"
+            onClick={onContinue}
+          >
+            Xem đơn của tôi ngay
+          </Button>
+        </>
+      )}
     </div>
   )
 }

@@ -21,6 +21,15 @@ type CheckoutSummaryCardProps = {
   onNext: () => void
   onBack: () => void
   onConfirmPayment?: () => void
+  /**
+   * Ẩn hẳn khối nút hành động.
+   *
+   * Dùng khi đơn đã rời khỏi tay khách — đang chờ tiền chuyển khoản hoặc đã
+   * thanh toán xong. Để nút "Xác nhận thanh toán" nằm đó cạnh màn hình báo
+   * thành công vừa mâu thuẫn vừa nguy hiểm: bấm nhầm là mở thêm một phiên
+   * thanh toán nữa.
+   */
+  hideActions?: boolean
   isSubmitting?: boolean
   isNextDisabled?: boolean
   selectedTrackConfig?: TrackConfig | null
@@ -42,6 +51,7 @@ export function CheckoutSummaryCard({
   onNext,
   onBack,
   onConfirmPayment,
+  hideActions = false,
   isSubmitting = false,
   isNextDisabled = false,
   selectedTrackConfig,
@@ -59,7 +69,11 @@ export function CheckoutSummaryCard({
     <Card className="sticky top-20 rounded-xl shadow-sm">
       <CardHeader>
         <CardTitle>Tóm tắt đơn đặt</CardTitle>
-        <p className="text-sm text-muted-foreground">Giá sẽ được chốt tại thời điểm thanh toán.</p>
+        <p className="text-sm text-muted-foreground">
+          {hideActions
+            ? "Giá đã được chốt cho đơn này."
+            : "Giá sẽ được chốt tại thời điểm thanh toán."}
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-3">
@@ -137,6 +151,7 @@ export function CheckoutSummaryCard({
 
 
       </CardContent>
+      {hideActions ? null : (
       <CardFooter className="grid gap-2">
         <Button
           type="button"
@@ -162,6 +177,7 @@ export function CheckoutSummaryCard({
           </Button>
         )}
       </CardFooter>
+      )}
     </Card>
   )
 }

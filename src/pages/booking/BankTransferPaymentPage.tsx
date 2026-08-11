@@ -65,10 +65,8 @@ export function BankTransferPaymentPage() {
       <BankTransferQrPanel
         bookingId={bookingId!}
         checkout={data.bank_transfer}
-        onPaid={() => {
-          toast.success("Đã nhận được thanh toán!")
-          setTimeout(() => void navigate("/customer/bookings"), 1500)
-        }}
+        onPaid={() => toast.success("Đã nhận được thanh toán!")}
+        onContinue={() => void navigate("/customer/bookings")}
       />
     </div>
   )
