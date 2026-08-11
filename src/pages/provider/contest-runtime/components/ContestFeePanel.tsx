@@ -44,7 +44,13 @@ function formatVnd(value: number) {
  * hẳn khi đã trả và giải đã rời bản nháp, để khỏi chiếm chỗ ở màn tổng quan khi
  * việc đã xong.
  */
-export function ContestFeePanel({ contest }: { contest: ContestItem }) {
+export function ContestFeePanel({
+  contest,
+  action,
+}: {
+  contest: ContestItem
+  action?: React.ReactNode
+}) {
   const queryClient = useQueryClient()
   const feeQuery = useQuery({
     queryKey: contestQueryKeys.fee(contest.id),
@@ -94,6 +100,7 @@ export function ContestFeePanel({ contest }: { contest: ContestItem }) {
       <PanelTitle
         title="Phí tổ chức giải"
         subtitle="Tính theo từng giải, tách riêng khỏi gói đăng ký hằng tháng. Trả phí xong mới mở đăng ký được."
+        action={action}
       />
 
       {!order || order.status === "REJECTED" || order.status === "CANCELLED" ? (
