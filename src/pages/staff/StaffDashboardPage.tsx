@@ -30,6 +30,7 @@ import {
   StaffButton,
   StaffStatCard,
 } from "./components/StaffUI"
+import { StaffPendingTransfersCard } from "./components/StaffPendingTransfersCard"
 
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
@@ -411,6 +412,13 @@ export default function StaffDashboardPage() {
               Chi nhánh này hiện chưa được cấu hình đường đua nào.
             </div>
           )}
+
+          {/* Khách chuyển khoản mà hệ thống không tự ghép được vào đơn sẽ nằm
+              ở đây. Đặt cuối trang vì phần lớn ca trực sẽ trống, nhưng luôn
+              hiển thị để nhân viên biết chỗ tìm khi khách hỏi. */}
+          <div className="col-span-full">
+            <StaffPendingTransfersCard cafeId={assignedCafeId ?? undefined} />
+          </div>
         </div>
       </div>
     </div>

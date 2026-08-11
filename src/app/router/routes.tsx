@@ -49,6 +49,7 @@ import { CustomerInspectionConfirmPage } from "@/pages/customer/inspection/Custo
 import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamageReviewPage"
 import { CustomerExtensionResponsePage } from "@/pages/customer/extension/CustomerExtensionResponsePage"
 import { PaymentResultPage } from "@/pages/booking/PaymentResultPage"
+import { BankTransferPaymentPage } from "@/pages/booking/BankTransferPaymentPage"
 import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
@@ -170,6 +171,10 @@ export const router = createBrowserRouter([
             element: <PublicGlobalLeaderboardPage />,
           },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
+          {
+            path: routePaths.paymentBankTransfer,
+            element: <BankTransferPaymentPage />,
+          },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
           { path: routePaths.customerPolicy, element: <CustomerPolicyPage /> },
         ],

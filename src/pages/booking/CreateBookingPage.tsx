@@ -51,6 +51,11 @@ import {
   isPhoneOkOrEmpty,
 } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
+import { BankTransferQrPanel } from "./components/checkout/BankTransferQrPanel"
+import type {
+  BankTransferCheckout,
+  CafePaymentMethodOption,
+} from "@/features/booking/types/booking.types"
 import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
 import { BookingPackageSelector } from "./components/checkout/BookingPackageSelector"
 import type { AppliedPromo } from "./components/checkout/PromoCodeInput"
@@ -203,6 +208,14 @@ export function CreateBookingPage() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(
     orderedSteps.includes(stepParam!) ? stepParam! : orderedSteps[0],
   )
+  // Phương thức khách chọn ở bước thanh toán. Mặc định VNPay để chi nhánh chưa
+  // cấu hình gì chạy y hệt như trước.
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<CafePaymentMethodOption>("vnpay")
+  const [bankTransfer, setBankTransfer] = useState<{
+    bookingId: string
+    checkout: BankTransferCheckout
+  } | null>(null)
   const [mode] = useState<BookingMode>(modeParam ?? "hourly")
   const [planId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
   const [date, setDate] = useState(
@@ -610,15 +623,27 @@ export function CreateBookingPage() {
         ...(appliedPromo ? { promotion_code: appliedPromo.code } : {}),
       })
 
-      const checkout = await createCheckoutMutation.mutateAsync(
-        booking.booking_id,
-      )
+      const checkout = await createCheckoutMutation.mutateAsync({
+        bookingId: booking.booking_id,
+        paymentMethod: selectedPaymentMethod,
+      })
       if (checkout.confirmed) {
         // Zero-total: package covered slot_fee and no other charges — already confirmed
         toast.success("Đặt lịch thành công! Gói slot đã được áp dụng.")
         window.location.href = "/customer/bookings"
         return
       }
+
+      // Chuyển khoản giữ khách ở lại: màn hình tự đổi trạng thái khi tiền về.
+      // Mọi luồng còn lại chuyển hướng như trước, không đổi gì.
+      if (checkout.flow === "bank_transfer" && checkout.bank_transfer) {
+        setBankTransfer({
+          bookingId: booking.booking_id,
+          checkout: checkout.bank_transfer,
+        })
+        return
+      }
+
       window.location.href = checkout.payment_url!
     } catch (err) {
       let message = "Vui lòng thử lại."
@@ -926,7 +951,19 @@ export function CreateBookingPage() {
               }}
             />
           )}
-          {currentStep === "payment" && (
+          {currentStep === "payment" && bankTransfer && (
+            <BankTransferQrPanel
+              bookingId={bankTransfer.bookingId}
+              checkout={bankTransfer.checkout}
+              onPaid={() => {
+                toast.success("Đã nhận được thanh toán!")
+                setTimeout(() => {
+                  window.location.href = "/customer/bookings"
+                }, 1500)
+              }}
+            />
+          )}
+          {currentStep === "payment" && !bankTransfer && (
             <PaymentStep
               paymentMethod={paymentMethod}
               onPaymentMethodChange={setPaymentMethod}
@@ -940,6 +977,8 @@ export function CreateBookingPage() {
               appliedPromo={appliedPromo}
               onPromoApply={setAppliedPromo}
               onMockPayment={() => void handleMockPayment()}
+              selectedMethod={selectedPaymentMethod}
+              onMethodChange={setSelectedPaymentMethod}
             />
           )}
         </main>

@@ -24,6 +24,8 @@ import { ProviderCafeForm } from "@/pages/provider/components/ProviderCafeForm"
 import { WidgetConfigForm } from "@/pages/provider/components/WidgetConfigForm"
 import { KbDocumentsSection } from "@/pages/provider/components/KbDocumentsSection"
 import { TrackConfigManager } from "@/pages/provider/components/TrackConfigManager"
+import { CafePaymentSettingsCard } from "@/pages/provider/components/CafePaymentSettingsCard"
+import { BankTransactionsPanel } from "@/pages/provider/components/BankTransactionsPanel"
 import { ProviderCafeVehiclesSection } from "@/pages/provider/components/ProviderCafeVehiclesSection"
 import { formatOccupancyRate, MetricCard, ProviderPageHeader, StatusBadge } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -54,6 +56,10 @@ const TAB_META: Record<string, { label: string; description: string }> = {
   menu: { label: "Thực đơn", description: "Quản lý đồ ăn & thức uống" },
   packages: { label: "Gói & Giá", description: "Gói dịch vụ và ưu đãi" },
   promotions: { label: "Ưu đãi", description: "Chương trình khuyến mãi" },
+  payments: {
+    label: "Nhận thanh toán",
+    description: "Tài khoản nhận tiền và đối soát chuyển khoản",
+  },
   channel: { label: "Kênh Messenger", description: "Kết nối kênh nhắn tin" },
   reviews: { label: "Đánh giá", description: "Phản hồi từ khách hàng" },
 }
@@ -137,6 +143,7 @@ export function ProviderCafeDetailPage() {
     | "menu"
     | "packages"
     | "promotions"
+    | "payments"
     | "channel"
     | "reviews"
 
@@ -338,6 +345,12 @@ export function ProviderCafeDetailPage() {
           )}
           {tab === "promotions" && (
             <ProviderPromotionsPage cafeId={cafe.id} />
+          )}
+          {tab === "payments" && (
+            <div className="space-y-5">
+              <CafePaymentSettingsCard cafeId={cafe.id} />
+              <BankTransactionsPanel cafeId={cafe.id} />
+            </div>
           )}
           {tab === "channel" && <ChannelSettingsTab cafeId={cafe.id} />}
           {tab === "reviews" && <ProviderReviewsTab cafeId={cafe.id} />}

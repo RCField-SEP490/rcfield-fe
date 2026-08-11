@@ -105,6 +105,7 @@ function gatewayLabel(gateway?: string | null) {
   if (gateway.toUpperCase() === "VNPAY") return "VNPay"
   if (gateway.toUpperCase() === "DIRECT" || gateway.toUpperCase() === "CASH") return "Tiền mặt / Tại quầy"
   if (gateway.toUpperCase() === "MOCK") return "Mock Gateway"
+  if (gateway.toUpperCase() === "BANK_TRANSFER") return "Chuyển khoản ngân hàng"
   return gateway
 }
 

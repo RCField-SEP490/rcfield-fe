@@ -9,6 +9,7 @@ export const routePaths = {
   contestDetail: "/contests/:contestId",
   globalLeaderboard: "/leaderboards/global",
   paymentResult: "/payment/result",
+  paymentBankTransfer: "/payment/bank-transfer/:bookingId",
   login: "/auth/login",
   register: "/auth/register",
   forgotPassword: "/auth/forgot-password",

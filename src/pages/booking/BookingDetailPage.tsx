@@ -773,12 +773,23 @@ export function BookingDetailPage() {
       </section>
     )
   }
-  const gatewayLabel = (gateway?: string) =>
-    gateway === "DIRECT"
-      ? "tiền mặt"
-      : gateway === "MOCK"
-        ? "DEV Mock"
-        : "VNPAY"
+  // Rơi về VNPAY cho mọi giá trị lạ là sai: đơn trả bằng chuyển khoản sẽ hiện
+  // "Đã thanh toán qua VNPAY", và khách khiếu nại thì không ai lần ra được tiền
+  // thật đã đi đường nào.
+  const gatewayLabel = (gateway?: string) => {
+    switch (gateway?.toUpperCase()) {
+      case "DIRECT":
+        return "tiền mặt"
+      case "MOCK":
+        return "DEV Mock"
+      case "BANK_TRANSFER":
+        return "chuyển khoản ngân hàng"
+      case "VNPAY":
+        return "VNPAY"
+      default:
+        return gateway ?? "cổng thanh toán"
+    }
+  }
 
   const refundComponents =
     booking?.payment_components?.filter(
@@ -1746,7 +1757,7 @@ export function BookingDetailPage() {
                         }`}
                       >
                         {booking.status === "PENDING"
-                          ? "Chờ khách thanh toán qua VNPay"
+                          ? "Chờ khách thanh toán"
                           : isCancelledBeforePayment
                             ? "Đơn đã hủy trước khi thanh toán"
                             : `Đã thanh toán qua ${gatewayLabel(initialPaymentGateway)}`}

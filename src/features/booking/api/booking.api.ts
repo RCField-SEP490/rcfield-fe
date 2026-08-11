@@ -7,6 +7,7 @@ import type {
   CancellationQuote,
   CafeBookingListResponse,
   CheckAvailabilityParams,
+  CafePaymentMethodOption,
   CheckoutResponse,
   CreateBookingBody,
   CreateBookingResult,
@@ -115,9 +116,14 @@ export const bookingApi = {
     return res.data.data
   },
 
-  createCheckout: async (bookingId: string): Promise<CheckoutResponse> => {
+  createCheckout: async (
+    bookingId: string,
+    paymentMethod?: CafePaymentMethodOption,
+  ): Promise<CheckoutResponse> => {
+    // Không truyền `payment_method` nghĩa là VNPay — giữ nguyên hành vi cũ.
     const res = await api.post<ApiEnvelope<CheckoutResponse>>(
       `/v1/bookings/${bookingId}/checkout`,
+      paymentMethod ? { payment_method: paymentMethod } : undefined,
     )
     return res.data.data
   },

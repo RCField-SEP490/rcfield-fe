@@ -77,11 +77,12 @@ export function StaffExpenseFormCard({
 
   if (!contestId) return null
 
-  // Giải chưa chạy hoặc đã kết thúc thì ẩn hẳn, không hiện thẻ báo "không dùng
-  // được". Nhân viên chỉ ghi được đúng lúc giải đang chạy, mà đó cũng là lúc
-  // duy nhất họ ở màn này — một thẻ vô hiệu thường trực chỉ chiếm chỗ của việc
-  // chính là vận hành trận đấu.
-  if (!isRunning && myEntries.length === 0) return null
+  // Cố ý LUÔN hiện thẻ, kể cả khi chưa ghi được.
+  //
+  // Bản trước ẩn hẳn lúc giải chưa chạy để khỏi chiếm chỗ, nhưng hệ quả là nhân
+  // viên không biết tính năng tồn tại và đi tìm khắp nơi. Thẻ đã nằm cuối trang
+  // nên không còn cạnh tranh với sơ đồ đấu; giữ nó hiển thị kèm dòng giải thích
+  // dạy được người dùng khi nào thì ghi được.
 
   const numericAmount = Number(amount)
   const canSubmit =
@@ -100,8 +101,10 @@ export function StaffExpenseFormCard({
       </h3>
       {!isRunning ? (
         <p className="rounded-lg bg-[#fcf8f8] px-3 py-2.5 text-sm text-[#747878]">
-          Chỉ ghi được khi giải đang chạy. Khoản mua sắm chuẩn bị trước hoặc thu
-          dọn sau khi bế mạc phải báo chủ quán ghi.
+          Đây là chỗ ghi tiền bạn ứng ra trong lúc chạy giải — mua pin, taxi chở
+          đồ, in lại bảng đấu. Ô nhập mở khi giải chuyển sang{" "}
+          <span className="font-semibold text-[#5d5f5f]">đang diễn ra</span>.
+          Khoản chuẩn bị trước hoặc thu dọn sau khi bế mạc thì báo chủ quán ghi.
         </p>
       ) : (
         <div className="space-y-3">

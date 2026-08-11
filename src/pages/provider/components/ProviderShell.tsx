@@ -22,6 +22,7 @@ import {
   Compass,
   DollarSign,
   Coffee,
+  Landmark,
   BadgePercent,
   Car,
   Package,
@@ -407,6 +408,19 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
           </button>
           {openGroups.business && (
             <div className="mt-1 ml-1 space-y-0.5">
+              <button
+                type="button"
+                onClick={() => goToTab("payments")}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "payments"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Landmark className="size-3.5" />
+                Nhận thanh toán
+              </button>
               <button
                 type="button"
                 onClick={() => goToTab("menu")}
