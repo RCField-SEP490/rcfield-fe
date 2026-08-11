@@ -18,6 +18,8 @@ import {
 import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
+import { useQuery } from "@tanstack/react-query"
+import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
 import {
   applyStagedParticipants,
   formatMatchLabel,
@@ -180,6 +182,14 @@ export function ProviderContestWorkspacePage({
       "KNOCKOUT",
   )
   const isKnockoutRuntime = runtimeFormat === "KNOCKOUT"
+
+  const feeQuery = useQuery({
+    queryKey: contestQueryKeys.fee(contestId),
+    queryFn: () => contestApi.getContestFeeStatus(contestId!),
+    enabled: Boolean(contestId) && section === "overview",
+  })
+  const order = feeQuery.data?.order ?? null
+
   const isQualifyingFinalRuntime = runtimeFormat === "QUALIFYING_FINAL"
   const { final: finalPhaseMatches } = useMemo(
     () => splitMatchesByPhase(matches),
@@ -446,6 +456,55 @@ export function ProviderContestWorkspacePage({
   // chính nút công bố trong tab Bảng xếp hạng.
   const editAvailability = getContestEditAvailability(contest)
 
+  const showFeePanel = !(order?.status === "PAID" && contest.status !== "DRAFT")
+
+  const moreAction = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2] rounded-lg"
+        >
+          <MoreHorizontal className="size-4" />
+          <span className="sr-only">Thao tác khác</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-52 rounded-xl p-1.5 border border-[#c4c7c8] bg-white shadow-md z-50"
+      >
+        <DropdownMenuItem
+          disabled={!editAvailability.allowed}
+          title={
+            editAvailability.allowed
+              ? undefined
+              : editAvailability.reason
+          }
+          className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onClick={() =>
+            navigate(
+              routePaths.providerContestEdit.replace(
+                ":contestId",
+                contest.id,
+              ),
+            )
+          }
+        >
+          Chỉnh sửa giải đấu
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!metrics?.leaderboard.published}
+          className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          onClick={() => void handleSyncRaceRecords()}
+        >
+          Đồng bộ toàn hệ thống
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <ProviderShell contentClassName="max-w-none">
       <ProviderPageHeader
@@ -465,59 +524,11 @@ export function ProviderContestWorkspacePage({
         }
         titleClassName="w-full"
         contentClassName="sm:items-center"
-        actions={
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2] rounded-lg"
-                >
-                  <MoreHorizontal className="size-4" />
-                  <span className="sr-only">Thao tác khác</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="w-52 rounded-xl p-1.5 border border-[#c4c7c8] bg-white shadow-md z-50"
-              >
-                <DropdownMenuItem
-                  disabled={!editAvailability.allowed}
-                  title={
-                    editAvailability.allowed
-                      ? undefined
-                      : editAvailability.reason
-                  }
-                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  onClick={() =>
-                    navigate(
-                      routePaths.providerContestEdit.replace(
-                        ":contestId",
-                        contest.id,
-                      ),
-                    )
-                  }
-                >
-                  Chỉnh sửa giải đấu
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!metrics?.leaderboard.published}
-                  className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  onClick={() => void handleSyncRaceRecords()}
-                >
-                  Đồng bộ toàn hệ thống
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
       />
 
-      {section === "overview" ? (
+      {section === "overview" && showFeePanel ? (
         <div className="mb-4">
-          <ContestFeePanel contest={contest} />
+          <ContestFeePanel contest={contest} action={moreAction} />
         </div>
       ) : null}
 
@@ -612,6 +623,7 @@ export function ProviderContestWorkspacePage({
           registrations={registrations}
           matches={matches}
           metrics={metrics}
+          action={!showFeePanel ? moreAction : undefined}
         />
       ) : null}
 

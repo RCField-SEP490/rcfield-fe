@@ -90,7 +90,7 @@ export function useContestForm() {
 
   // Bước đang xem và bước xa nhất đã mở khoá. Ở chế độ sửa, dữ liệu đã đầy đủ
   // nên mở hết ngay từ đầu — bắt provider đi lại từ bước 1 chỉ để đổi lệ phí là vô lý.
-  const [stepIndex, setStepIndex] = useState(0)
+  const [stepIndex, setStepIndex] = useState(() => (isEdit ? LAST_STEP_INDEX : 0))
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(() =>
     isEdit ? LAST_STEP_INDEX : 0,
   )

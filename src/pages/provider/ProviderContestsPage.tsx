@@ -22,6 +22,7 @@ import {
 import {
   getContestEditAvailability,
   getContestStatusClass,
+  getContestStatusLabel,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem, ContestStatus } from "@/features/contests/types"
 import {
@@ -129,24 +130,23 @@ export function ProviderContestsPage() {
   return (
     <ProviderShell>
       <ProviderPageHeader
-        title="Contest"
+        title="Giải đấu"
         description="Tạo và vận hành các giải đấu theo catalog loại giải, format và template lấy trực tiếp từ hệ thống."
-        actions={
-          <Button
-            type="button"
-            onClick={() => navigate(routePaths.providerContestCreate)}
-            className="h-10 gap-2 rounded-lg bg-[#1c1b1b] px-4 text-white hover:bg-[#313030] font-bold"
-          >
-            <Plus className="size-4" />
-            Tạo contest
-          </Button>
-        }
       />
 
       <Panel className="mt-4">
         <PanelTitle
-          title="Danh sách contest"
-          subtitle="Danh sách này dùng dữ liệu thật từ BE, không có mock hoặc danh mục hardcode ở FE."
+          title="Danh sách giải đấu"
+          action={
+            <Button
+              type="button"
+              onClick={() => navigate(routePaths.providerContestCreate)}
+              className="h-10 gap-2 rounded-lg bg-[#1c1b1b] px-4 text-white hover:bg-[#313030] font-bold"
+            >
+              <Plus className="size-4" />
+              Tạo giải đấu
+            </Button>
+          }
         />
         <div className="mb-4 grid gap-3 lg:grid-cols-3">
           <input
@@ -156,7 +156,7 @@ export function ProviderContestsPage() {
                 query: event.target.value,
               })
             }
-            placeholder="Tìm theo tên contest"
+            placeholder="Tìm theo tên giải đấu"
             className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
           />
           <select
@@ -169,12 +169,12 @@ export function ProviderContestsPage() {
             className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
           >
             <option value="">Tất cả trạng thái</option>
-            <option value="DRAFT">DRAFT</option>
-            <option value="OPEN">OPEN</option>
-            <option value="CLOSED">CLOSED</option>
-            <option value="RUNNING">RUNNING</option>
-            <option value="COMPLETED">COMPLETED</option>
-            <option value="CANCELLED">CANCELLED</option>
+            <option value="DRAFT">Bản nháp</option>
+            <option value="OPEN">Đang mở đăng ký</option>
+            <option value="CLOSED">Đã đóng đăng ký</option>
+            <option value="RUNNING">Đang diễn ra</option>
+            <option value="COMPLETED">Đã hoàn thành</option>
+            <option value="CANCELLED">Đã hủy</option>
           </select>
           <select
             value={formatId}
@@ -243,13 +243,13 @@ export function ProviderContestsPage() {
           </div>
         ) : contestsQuery.isError ? (
           <p className="rounded-xl border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
-            Không tải được danh sách contest.
+            Không tải được danh sách giải đấu.
           </p>
         ) : contests.length === 0 ? (
           <div className="rounded-xl border border-dashed border-[#c4c7c8] p-10 text-center">
             <Flag className="mx-auto size-8 text-[#c4c7c8]" />
             <p className="mt-3 text-sm font-semibold text-[#747878]">
-              Chưa có contest nào.
+              Chưa có giải đấu nào.
             </p>
           </div>
         ) : (
@@ -263,10 +263,7 @@ export function ProviderContestsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link
-                        to={routePaths.providerContestEdit.replace(
-                          ":contestId",
-                          contest.id,
-                        )}
+                        to={getContestWorkspacePath(contest.id, "overview")}
                         className="text-lg font-extrabold text-[#1c1b1b] hover:text-[#c2410c]"
                       >
                         {contest.name}
@@ -274,11 +271,11 @@ export function ProviderContestsPage() {
                       <Badge
                         className={`border ${getContestStatusClass(contest.status)}`}
                       >
-                        {contest.status}
+                        {getContestStatusLabel(contest.status)}
                       </Badge>
                     </div>
                     <p className="mt-2 text-sm font-medium text-[#5d5f5f]">
-                      {contest.description || "Chưa có mô tả contest."}
+                      {contest.description || "Chưa có mô tả giải đấu."}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-[#747878]">
                       <span>Loại: {contest.contest_type?.name ?? "--"}</span>
@@ -386,12 +383,12 @@ export function ProviderContestsPage() {
 }
 
 const contestStatusLanes = [
-  { label: "Tất cả", value: "", hint: "Toàn bộ contest" },
-  { label: "Draft", value: "DRAFT", hint: "Chuẩn bị cấu hình" },
-  { label: "Open", value: "OPEN", hint: "Đang nhận đăng ký" },
-  { label: "Running", value: "RUNNING", hint: "Vận hành sơ đồ đấu" },
-  { label: "Completed", value: "COMPLETED", hint: "Leaderboard/kết quả" },
-  { label: "Cancelled", value: "CANCELLED", hint: "Đã hủy" },
+  { label: "Tất cả", value: "", hint: "Toàn bộ giải đấu" },
+  { label: "Bản nháp", value: "DRAFT", hint: "Chuẩn bị cấu hình" },
+  { label: "Đang mở", value: "OPEN", hint: "Đang nhận đăng ký" },
+  { label: "Đang diễn ra", value: "RUNNING", hint: "Vận hành sơ đồ đấu" },
+  { label: "Đã hoàn thành", value: "COMPLETED", hint: "Bảng xếp hạng/kết quả" },
+  { label: "Đã hủy", value: "CANCELLED", hint: "Đã hủy" },
 ] as const
 
 function ContestHealthBadges({ contest }: { contest: ContestItem }) {

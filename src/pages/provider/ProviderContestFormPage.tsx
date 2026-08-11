@@ -43,6 +43,7 @@ export function ProviderContestFormPage() {
     templatesQuery,
     trackTypesQuery,
     cafesQuery,
+    contestQuery,
     selectedTemplate,
     selectedFormat,
     runtimeFormat,
@@ -157,40 +158,38 @@ export function ProviderContestFormPage() {
       <ProviderPageHeader
         title={isEdit ? "Chỉnh sửa giải đấu" : "Tạo giải đấu"}
         description="Đi lần lượt từng bước — mỗi bước chỉ hỏi những gì cần cho bước tiếp theo."
-        actions={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]"
-              onClick={() => navigate(routePaths.providerContests)}
-            >
-              <ArrowLeft className="size-4" />
-              Thoát
-            </Button>
-            {isEdit && contestId ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 gap-2 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                onClick={() =>
-                  navigate(getContestWorkspacePath(contestId, "overview"))
-                }
-              >
-                <PlayCircle className="size-4" />
-                Mở vận hành giải đấu
-              </Button>
-            ) : null}
-          </>
-        }
       />
 
-      <div className="mt-4 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4 shadow-sm">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4 shadow-sm">
         <ContestWizardNav
           currentIndex={stepIndex}
           maxUnlockedIndex={maxUnlockedIndex}
           onSelect={goToStep}
         />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-[#f6f3f2] text-[#1c1b1b] hover:bg-[#ebe7e7]"
+            onClick={() => navigate(routePaths.providerContests)}
+          >
+            <ArrowLeft className="size-4" />
+            Thoát
+          </Button>
+          {isEdit && contestId ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 gap-2 rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              onClick={() =>
+                navigate(getContestWorkspacePath(contestId, "overview"))
+              }
+            >
+              <PlayCircle className="size-4" />
+              Mở vận hành giải đấu
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm">
@@ -213,6 +212,8 @@ export function ProviderContestFormPage() {
             errors={validationErrors}
             cafes={cafes}
             isLoading={cafesQuery.isLoading}
+            isEdit={isEdit}
+            contestStatus={contestQuery.data?.status}
           />
         ) : null}
 
