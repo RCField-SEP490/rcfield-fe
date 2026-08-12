@@ -157,7 +157,7 @@ export function BookingPackageSelector({
           Dùng gói slot của bạn
         </CardTitle>
         <p className="mt-0.5 text-xs text-slate-500">
-          Áp dụng gói để phí lịch chơi = 0. Các khoản khác (thuê xe, đồ ăn & thức uống) vẫn thanh toán qua VNPay.
+          Áp dụng gói để phí lịch chơi = 0. Các khoản khác (thuê xe, đồ ăn & thức uống) vẫn thanh toán như bình thường.
         </p>
       </CardHeader>
       <CardContent className="space-y-2 pt-0">

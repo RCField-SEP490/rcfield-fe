@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  PlayCircle,
   Settings,
   ShieldCheck,
   Share2,
@@ -23,6 +22,7 @@ import {
   Compass,
   DollarSign,
   Coffee,
+  Landmark,
   BadgePercent,
   Car,
   Package,
@@ -62,7 +62,6 @@ const providerNavGroups: NavGroup[] = [
     items: [
       { label: "Cơ sở", icon: Building2, to: routePaths.providerCafes },
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
-      { label: "Phiên chạy", icon: PlayCircle, to: routePaths.providerSessions },
       { label: "Giải đấu", icon: Trophy, to: routePaths.providerContests },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
     ],
@@ -117,13 +116,8 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     "Vận hành": true,
     "Hệ thống": true,
   })
-  const [isContestMenuExpanded, setIsContestMenuExpanded] = useState(false)
-  const [collapsedContestPath, setCollapsedContestPath] = useState<string | null>(null)
-  const isOnContestRoute = location.pathname.startsWith(routePaths.providerContests)
-  const isContestMenuOpen = isOnContestRoute
-    ? collapsedContestPath !== location.pathname
-    : isContestMenuExpanded
   const clearAuthenticated = useAuthStore((state) => state.clearAuthenticated)
+  const currentUserId = useAuthStore((state) => state.user?.id)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const desktopNavRef = useRef<HTMLElement | null>(null)
   const mobileNavRef = useRef<HTMLElement | null>(null)
@@ -143,20 +137,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
   const queryClient = useQueryClient()
   const handleWsMessage = useCallback(
     (msg: { event: string; data: unknown }) => {
-      if (msg.event === "booking.new") {
-        const data = msg.data as { cafeName?: string; slotStart?: string }
-        const slotLabel = data.slotStart
-          ? new Date(data.slotStart).toLocaleString("vi-VN", { dateStyle: "short", timeStyle: "short" })
-          : ""
-        toast.success(`Đặt lịch mới${data.cafeName ? ` — ${data.cafeName}` : ""}`, {
-          description: slotLabel || undefined,
-        })
-        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
-        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
-      } else if (msg.event === "BOOKING_UPDATED") {
-        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
-        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
-      } else if (
+      if (
         msg.event === "MAINTENANCE_COMPLETED_NOTIFICATION" ||
         msg.event === "VEHICLE_MAINTENANCE_COMPLETED"
       ) {
@@ -174,13 +155,74 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
         // Invalidate vehicles để cập nhật trạng thái ngay lập tức
         void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
         void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
-      } else if (msg.event === "VEHICLE_STATUS_CHANGED") {
-        // Cập nhật realtime trạng thái xe (IN_USE / AVAILABLE / MAINTENANCE)
-        // khi customer bắt đầu chơi, trả xe, hoặc staff thực hiện bảo trì
-        void queryClient.invalidateQueries({ queryKey: ["vehicles"] })
+      }
+
+      if (msg.event === "BOOKING_CANCELLED_OPERATIONAL") {
+        const payload = msg.data as { bookingId: string; title: string; message: string; routeProvider?: string; cancelledBy?: string }
+        if (payload.cancelledBy !== currentUserId) {
+          toast.warning(payload.title || "Đơn đặt lịch bị hủy", {
+            description: payload.message || "Có đơn đặt lịch tại cơ sở vừa bị hủy.",
+            action: {
+              label: "Xem đơn",
+              onClick: () => navigate(payload.routeProvider || "/provider/bookings"),
+            },
+            duration: 10000,
+          })
+        }
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      }
+
+      if (msg.event === "NEW_BOOKING") {
+        const payload = msg.data as { bookingId: string; cafeName: string; slotStart: string }
+        const formattedTime = new Date(payload.slotStart).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          day: "2-digit",
+          month: "2-digit",
+        })
+        toast.success("🔔 Có đơn đặt lịch mới!", {
+          description: `Đơn #${payload.bookingId.substring(0, 8).toUpperCase()} tại cơ sở ${payload.cafeName} lúc ${formattedTime}`,
+          action: {
+            label: "Xem",
+            onClick: () => navigate(`/provider/bookings`),
+          },
+          duration: 8000,
+        })
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      }
+
+      if (
+        msg.event === "BOOKING_PAYMENT_UPDATED" ||
+        msg.event === "BOOKING_UPDATED" ||
+        msg.event === "SESSION_UPDATED"
+      ) {
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] })
+        void queryClient.invalidateQueries({ queryKey: ["provider-dashboard"] })
+      }
+
+      if (msg.event === "notification") {
+        const payload = msg.data as { type: string; title: string; message: string }
+        
+        toast.success(`🔔 ${payload.title}`, {
+          description: payload.message,
+          duration: 10000,
+        })
+
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        
+        if (
+          payload.type === "PAYMENT_REQUEST_CONFIRMED" ||
+          payload.type === "PAYMENT_REQUEST_REJECTED"
+        ) {
+          void queryClient.invalidateQueries({ queryKey: ["provider-subscription"] })
+          void queryClient.invalidateQueries({ queryKey: ["my-payment-requests"] })
+        }
       }
     },
-    [queryClient],
+    [queryClient, navigate, currentUserId],
   )
   useWebSocket(handleWsMessage)
 
@@ -216,17 +258,6 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     sessionStorage.removeItem(storageKeys.auth)
     toast.success("Đã đăng xuất khỏi khu vực nhà cung cấp.")
     navigate(routePaths.login, { replace: true })
-  }
-
-  const toggleContestMenu = () => {
-    if (isOnContestRoute) {
-      setCollapsedContestPath((current) =>
-        current === location.pathname ? null : location.pathname,
-      )
-      return
-    }
-
-    setIsContestMenuExpanded((current) => !current)
   }
 
   const renderSubMenu = (isMobile: boolean) => {
@@ -379,6 +410,19 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             <div className="mt-1 ml-1 space-y-0.5">
               <button
                 type="button"
+                onClick={() => goToTab("payments")}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
+                  tab === "payments"
+                    ? "bg-orange-100/50 text-orange-700 font-extrabold"
+                    : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700"
+                )}
+              >
+                <Landmark className="size-3.5" />
+                Nhận thanh toán
+              </button>
+              <button
+                type="button"
                 onClick={() => goToTab("menu")}
                 className={cn(
                   "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
@@ -436,21 +480,23 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
     )
   }
 
-  const renderContestSubMenu = (isMobile: boolean) => {
+  const renderContestWorkspaceSubMenu = (isMobile: boolean) => {
     const context = parseContestWorkspaceContext(location.pathname)
     const contestId = context?.contestId ?? ""
-    const isContestContext = Boolean(contestId)
-    // Tạo giải đã có nút ngay trong danh sách nên không nhân đôi ở sidebar.
-    const generalLinks = [{ label: "Danh sách contest", to: routePaths.providerContests }]
+    if (!contestId) return null
 
     return (
       <div className="mt-1.5 ml-6 space-y-1 border-l border-[#e5e2e1] pl-3">
-        {generalLinks.map((link) => {
-          const active = location.pathname === link.to
+        <div className="px-2 pt-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#b0b4b4]">
+          Workspace giải đấu
+        </div>
+        {contestWorkspaceSections.map((link) => {
+          const to = getContestWorkspacePath(contestId, link.key)
+          const active = location.pathname === to
           return (
             <Link
-              key={link.to}
-              to={link.to}
+              key={to}
+              to={to}
               onClick={() => {
                 if (isMobile) setMobileMenuOpen(false)
               }}
@@ -463,32 +509,6 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
             </Link>
           )
         })}
-        {isContestContext ? (
-          <>
-            <div className="px-2 pt-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#b0b4b4]">
-              Workspace giải đấu
-            </div>
-            {contestWorkspaceSections.map((link) => {
-              const to = getContestWorkspacePath(contestId, link.key)
-              const active = location.pathname === to
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  onClick={() => {
-                    if (isMobile) setMobileMenuOpen(false)
-                  }}
-                  className={cn(
-                    "flex rounded-md px-2 py-1.5 text-xs font-bold transition-colors",
-                    active ? "bg-orange-100/50 text-orange-700" : "text-[#5d5f5f] hover:bg-orange-50/70 hover:text-orange-700",
-                  )}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-          </>
-        ) : null}
       </div>
     )
   }
@@ -544,32 +564,17 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                             : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700",
                         )}
                       >
-                        {item.to === routePaths.providerContests ? (
-                          <button
-                            type="button"
-                            aria-label={isContestMenuOpen ? "Thu gọn Contest" : "Mở rộng Contest"}
-                            aria-expanded={isContestMenuOpen}
-                            onClick={toggleContestMenu}
-                            className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-left"
-                          >
-                            <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                            {item.label}
-                          </button>
-                        ) : (
-                          <Link
-                            to={item.to}
-                            onClick={() => saveProviderSidebarScroll(desktopNavRef.current)}
-                            className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
-                          >
-                            <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                            {item.label}
-                          </Link>
-                        )}
+                        <Link
+                          to={item.to}
+                          onClick={() => saveProviderSidebarScroll(desktopNavRef.current)}
+                          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
+                        >
+                          <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                          {item.label}
+                        </Link>
                       </div>
                       {item.to === routePaths.providerCafes && renderSubMenu(false)}
-                      {item.to === routePaths.providerContests && isContestMenuOpen
-                        ? renderContestSubMenu(false)
-                        : null}
+                      {item.to === routePaths.providerContests && renderContestWorkspaceSubMenu(false)}
                     </div>
                   )
                 })}
@@ -661,35 +666,20 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
                                 : "text-[#444748] hover:bg-orange-50/70 hover:text-orange-700",
                             )}
                           >
-                            {item.to === routePaths.providerContests ? (
-                              <button
-                                type="button"
-                                aria-label={isContestMenuOpen ? "Thu gọn Contest" : "Mở rộng Contest"}
-                                aria-expanded={isContestMenuOpen}
-                                onClick={toggleContestMenu}
-                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5 text-left"
-                              >
-                                <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                                {item.label}
-                              </button>
-                            ) : (
-                              <Link
-                                to={item.to}
-                                onClick={() => {
-                                  saveProviderSidebarScroll(mobileNavRef.current)
-                                  setMobileMenuOpen(false)
-                                }}
-                                className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
-                              >
-                                <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
-                                {item.label}
-                              </Link>
-                            )}
+                            <Link
+                              to={item.to}
+                              onClick={() => {
+                                saveProviderSidebarScroll(mobileNavRef.current)
+                                setMobileMenuOpen(false)
+                              }}
+                              className="flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
+                            >
+                              <Icon className={cn("size-4.5", active ? "text-orange-600" : "text-[#747878]")} />
+                              {item.label}
+                            </Link>
                           </div>
                           {item.to === routePaths.providerCafes && renderSubMenu(true)}
-                          {item.to === routePaths.providerContests && isContestMenuOpen
-                            ? renderContestSubMenu(true)
-                            : null}
+                          {item.to === routePaths.providerContests && renderContestWorkspaceSubMenu(true)}
                         </div>
                       )
                     })}

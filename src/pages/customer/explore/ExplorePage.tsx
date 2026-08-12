@@ -36,11 +36,6 @@ import { Map } from "lucide-react"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { favoriteApi } from "@/features/explore/api/favorite.api"
 import { Dialog, DialogContent } from "@/shared/ui/dialog"
-import {
-  getContestRegistrationAvailability,
-  getEffectiveContestStatus,
-} from "@/features/contests/lib/contest-status"
-import type { ContestItem } from "@/features/contests/types"
 
 // emphasizedEase + cardVariants nay nằm ở shared/lib/motion để trang chi tiết cơ sở
 // dùng đúng cùng bộ giá trị — sửa một chỗ là cả hai trang đổi theo.
@@ -192,29 +187,16 @@ export function ExplorePage() {
     enabled: filters.searchTarget === "contests",
   })
 
-  const { data: contestRailData } = useQuery({
-    queryKey: contestQueryKeys.list({
-      public: true,
-      placement: "explore-rail",
-    }),
-    queryFn: () => contestApi.listContests({ limit: 6 }),
+  const contests = useMemo(() => contestsData?.data ?? [], [contestsData?.data])
+
+  // Dải giải đấu chỉ hiển thị suất provider đã trả phí quảng bá và admin đã
+  // duyệt. Backend đã lọc sẵn nên ở đây không rank/slice gì thêm — thứ tự do
+  // `priority` của suất quyết định.
+  const { data: featuredContestSlots = [] } = useQuery({
+    queryKey: featuredPopupQueryKeys.activeList(),
+    queryFn: featuredPopupApi.listActive,
   })
 
-  const contests = useMemo(() => contestsData?.data ?? [], [contestsData?.data])
-  const contestRailItems = useMemo(() => {
-    const statusRank = (contest: ContestItem) => {
-      const effectiveStatus = getEffectiveContestStatus(contest)
-      const availability = getContestRegistrationAvailability(contest)
-      if (effectiveStatus === "RUNNING") return 0
-      if (availability === "AVAILABLE") return 1
-      if (availability === "NOT_OPEN_YET") return 2
-      if (effectiveStatus === "COMPLETED") return 3
-      return 4
-    }
-    return [...(contestRailData?.data ?? [])]
-      .sort((a, b) => statusRank(a) - statusRank(b))
-      .slice(0, 3)
-  }, [contestRailData?.data])
   const featuredPopupQuery = useQuery({
     queryKey: featuredPopupQueryKeys.active(),
     queryFn: featuredPopupApi.getActive,
@@ -311,6 +293,13 @@ export function ExplorePage() {
         onDateChange={filters.setDate}
         query={filters.query}
         onQueryChange={filters.setQuery}
+        onSubmit={() => {
+          void refetch()
+          listRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          })
+        }}
       />
 
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
@@ -421,7 +410,7 @@ export function ExplorePage() {
                   />
                 </div>
 
-                <ContestDiscoveryRail contests={contestRailItems} />
+                <ContestDiscoveryRail slots={featuredContestSlots} />
 
                 {/* Card list */}
                 <AnimatePresence mode="popLayout">

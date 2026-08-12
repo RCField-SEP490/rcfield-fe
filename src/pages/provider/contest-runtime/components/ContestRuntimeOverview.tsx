@@ -44,11 +44,13 @@ export function ContestRuntimeOverview({
   registrations,
   matches,
   metrics,
+  action,
 }: {
   contest: ContestItem
   registrations: ContestRegistration[]
   matches: ContestMatch[]
   metrics: ContestMetrics | undefined
+  action?: ReactNode
 }) {
   const runtimeFormat = getContestRuntimeFormat(contest)
   const formatLabel = getContestFormatLabel(
@@ -62,6 +64,7 @@ export function ContestRuntimeOverview({
       <PanelTitle
         title="Tóm tắt giải đấu"
         subtitle="Thông tin và tham số vận hành đang áp dụng."
+        action={action}
       />
 
       <NextStep

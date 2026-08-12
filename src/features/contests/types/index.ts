@@ -43,7 +43,92 @@ export type ContestRuntimeTab =
   | "event-day"
   | "matches"
   | "leaderboard"
+  | "finance"
   | "audit"
+
+/** Chiều tiền của một bút toán trong sổ thu chi giải. */
+export type ContestLedgerDirection = "IN" | "OUT"
+
+export type ContestLedgerIncomeCategory =
+  | "ENTRY_FEE_ADJUSTMENT"
+  | "SPONSORSHIP"
+  | "TICKET"
+  | "FNB"
+  | "OTHER"
+
+export type ContestLedgerExpenseCategory =
+  | "PRIZE_CASH"
+  | "PRIZE_ITEM"
+  | "VENUE"
+  | "STAFF"
+  | "MARKETING"
+  | "FNB"
+  | "OTHER"
+
+export type ContestEntryFeePaymentMethod = "ONLINE" | "CASH" | "TRANSFER"
+
+export type ContestLedgerEntry = {
+  id: string
+  direction: ContestLedgerDirection
+  category: string
+  title: string
+  amount: number
+  occurred_at: string
+  note: string | null
+  receipt_url: string | null
+  created_by: { id: string; full_name: string | null; role: string }
+  created_at: string
+  updated_at: string
+}
+
+export type ContestFinanceCategoryTotal = {
+  category: string
+  total: number
+  count: number
+}
+
+/**
+ * Báo cáo tài chính của một giải. Không phải dữ liệu lưu trữ — backend gộp tại
+ * chỗ từ ba nguồn: lệ phí trên đăng ký, bút toán thủ công, và phí tổ chức đã
+ * trả cho nền tảng.
+ */
+export type ContestFinanceReport = {
+  contest_id: string
+  entry_fee: {
+    collected_total: number
+    collected_by_method: {
+      ONLINE: number
+      CASH: number
+      TRANSFER: number
+      /** Đăng ký cũ chưa ghi phương thức — hiển thị riêng, không gán bừa. */
+      UNKNOWN: number
+    }
+    pending_total: number
+    /** Doanh thu bỏ qua. Con số tham khảo, KHÔNG cộng vào tổng thu. */
+    waived_total: number
+    counts: { collected: number; pending: number; waived: number }
+  }
+  income: {
+    total: number
+    by_category: ContestFinanceCategoryTotal[]
+  }
+  expense: {
+    /** Đã bao gồm platform_fee.amount. */
+    total: number
+    /** KHÔNG chứa phí tổ chức — dòng đó tính động, tách riêng. */
+    by_category: ContestFinanceCategoryTotal[]
+    platform_fee: {
+      amount: number
+      plan_name: string | null
+      editable: false
+    }
+  }
+  summary: {
+    total_income: number
+    total_expense: number
+    net: number
+  }
+}
 export type CustomerJourneyStatus =
   | "PENDING_APPROVAL"
   | "APPROVED_WAITING_CHECKIN"

@@ -4,18 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import { CreditCard } from "lucide-react"
+import { CreditCard, Loader2 } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { subscriptionApi } from "../api/subscription.api"
 
 const schema = z.object({
   plan_id: z.string().min(1, "Chọn gói"),
-  transfer_reference: z.string().min(1, "Nhập nội dung chuyển khoản"),
-  transfer_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Định dạng YYYY-MM-DD"),
-  transfer_amount: z.coerce.number().min(0, "Số tiền không hợp lệ"),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -27,19 +23,8 @@ interface Props {
   onSelectedPlanChange?: (planId: string) => void
 }
 
-function todayInputValue() {
-  const now = new Date()
-  const timezoneOffset = now.getTimezoneOffset() * 60000
-  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10)
-}
-
-function parseVndInput(value: string) {
-  const digits = value.replace(/\D/g, "")
-  return digits ? Number(digits) : 0
-}
-
-function formatVndInput(value?: number) {
-  if (value === undefined || Number.isNaN(value)) return ""
+function formatVnd(value?: number) {
+  if (value === undefined || Number.isNaN(value)) return "0 đ"
   return `${value.toLocaleString("vi-VN")} đ`
 }
 
@@ -54,19 +39,16 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess, selectedPlanI
     register,
     handleSubmit,
     control,
-    reset,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
       plan_id: selectedPlanId ?? "",
-      transfer_date: todayInputValue(),
     },
   })
 
   const watchedPlanId = useWatch({ control, name: "plan_id" })
-  const watchedTransferAmount = useWatch({ control, name: "transfer_amount" })
   const activePlanId = selectedPlanId || watchedPlanId
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === activePlanId),
@@ -78,39 +60,31 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess, selectedPlanI
     setValue("plan_id", selectedPlanId, { shouldValidate: true })
   }, [selectedPlanId, setValue])
 
-  useEffect(() => {
-    if (!selectedPlan) return
-    setValue("transfer_amount", selectedPlan.pricePerMonth, { shouldValidate: true })
-    setValue("transfer_reference", `RCFIELD ${selectedPlan.isTrial ? "TRIAL" : "SUBSCRIPTION"} ${selectedPlan.name}`, {
-      shouldValidate: true,
-    })
-    setValue("transfer_date", todayInputValue(), { shouldValidate: true })
-  }, [selectedPlan, setValue])
-
   const mutation = useMutation({
     mutationFn: (data: FormValues) =>
-      subscriptionApi.submitPaymentRequest({
+      subscriptionApi.getPayOSLink({
         plan_id: data.plan_id,
-        transfer_reference: data.transfer_reference,
-        transfer_date: data.transfer_date,
-        transfer_amount: data.transfer_amount,
       }),
-    onSuccess: () => {
-      toast.success("Đã gửi yêu cầu thanh toán. Admin sẽ xác nhận trong vòng 1-2 ngày làm việc.")
-      reset({ plan_id: "", transfer_date: todayInputValue() })
+    onSuccess: (res) => {
+      if (res.data?.checkoutUrl) {
+        toast.success("Tạo link thanh toán thành công! Đang chuyển hướng sang PayOS...")
+        window.location.href = res.data.checkoutUrl
+      } else {
+        toast.error("Không nhận được liên kết thanh toán từ máy chủ")
+      }
       qc.invalidateQueries({ queryKey: ["my-payment-requests"] })
       onSuccess?.()
     },
     onError: (err: unknown) => {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      toast.error(msg ?? "Gửi yêu cầu thất bại")
+      toast.error(msg ?? "Gửi yêu cầu thanh toán thất bại")
     },
   })
 
   if (hasPendingRequest) {
     return (
       <div className="rounded-xl border border-yellow-100 bg-yellow-50 px-5 py-4 text-sm font-semibold text-yellow-800">
-        Bạn đang có yêu cầu thanh toán chờ xử lý. Vui lòng đợi Admin xác nhận trước khi gửi yêu cầu mới.
+        Bạn đang có yêu cầu thanh toán chờ xử lý. Vui lòng hoàn tất thanh toán hoặc đợi hệ thống xử lý trước khi gửi yêu cầu mới.
       </div>
     )
   }
@@ -119,10 +93,10 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess, selectedPlanI
     <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
       <div className="flex items-center gap-2">
         <CreditCard className="size-4 text-slate-500" />
-        <h3 className="text-sm font-bold text-slate-700">Gửi yêu cầu thay đổi gói</h3>
+        <h3 className="text-sm font-bold text-slate-700">Thanh toán đăng ký gói hội viên</h3>
       </div>
       <p className="text-xs text-slate-500">
-        Chọn gói ở phía trên, chuyển khoản đến tài khoản RCField, sau đó gửi thông tin để Admin xác nhận.
+        Chọn gói ở phía trên và nhấn nút bên dưới để tiến hành thanh toán an toàn qua cổng PayOS.
       </p>
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
@@ -147,38 +121,27 @@ export function PaymentRequestForm({ hasPendingRequest, onSuccess, selectedPlanI
           {errors.plan_id && <p className="text-[11px] font-bold text-red-500">{errors.plan_id.message}</p>}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold">Nội dung chuyển khoản</Label>
-            <Input {...register("transfer_reference")} placeholder="VD: RCFIELD UPGRADE PRO" className="h-9 rounded-lg" />
-            {errors.transfer_reference && (
-              <p className="text-[11px] font-bold text-red-500">{errors.transfer_reference.message}</p>
-            )}
+        {selectedPlan && (
+          <div className="rounded-lg bg-slate-50 p-4 border border-slate-100">
+            <div className="flex justify-between items-center text-sm font-semibold">
+              <span className="text-slate-600">Số tiền cần thanh toán:</span>
+              <span className="text-[#d92d20] text-lg font-black">{formatVnd(selectedPlan.pricePerMonth)}</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Giao dịch sẽ được xử lý tự động và cập nhật gói dịch vụ ngay khi bạn chuyển tiền thành công.
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold">Ngày chuyển khoản</Label>
-            <Input type="date" {...register("transfer_date")} className="h-9 rounded-lg" />
-            {errors.transfer_date && <p className="text-[11px] font-bold text-red-500">{errors.transfer_date.message}</p>}
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold">Số tiền đã chuyển (VNĐ)</Label>
-          <input type="hidden" {...register("transfer_amount")} />
-          <Input
-            inputMode="numeric"
-            value={formatVndInput(watchedTransferAmount)}
-            onChange={(event) => {
-              setValue("transfer_amount", parseVndInput(event.target.value), { shouldValidate: true })
-            }}
-            placeholder="299.000 đ"
-            className="h-9 rounded-lg"
-          />
-          {errors.transfer_amount && <p className="text-[11px] font-bold text-red-500">{errors.transfer_amount.message}</p>}
-        </div>
+        )}
 
         <Button type="submit" disabled={mutation.isPending} className="h-10 w-full font-bold">
-          {mutation.isPending ? "Đang gửi..." : "Gửi yêu cầu thanh toán"}
+          {mutation.isPending ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="size-4 animate-spin" />
+              Đang chuyển hướng sang PayOS...
+            </span>
+          ) : (
+            "Thanh toán qua PayOS"
+          )}
         </Button>
       </form>
     </div>

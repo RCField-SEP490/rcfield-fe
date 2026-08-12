@@ -16,6 +16,7 @@ import { cn } from "@/shared/lib/utils"
 
 import {
   formatCurrency,
+  formatPrizeReward,
   getVehiclePolicyBlurb,
   getVehiclePolicyLabel,
 } from "../utils"
@@ -462,8 +463,8 @@ function PodiumColumn({ entry, place }: { entry: PrizeEntry; place: number }) {
       <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
         {entry.rank}
       </p>
-      <p className="mt-2 text-lg font-black leading-snug text-slate-900">
-        {entry.reward}
+      <p className="mt-2 text-lg font-black leading-snug tabular-nums text-slate-900">
+        {formatPrizeReward(entry.reward)}
       </p>
       {entry.note ? (
         <p className="mt-1 text-xs font-semibold text-slate-500">

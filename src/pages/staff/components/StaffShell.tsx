@@ -12,7 +12,6 @@ import {
   AlertTriangle,
   Wrench,
   Search,
-  Flag,
   UserRound,
   CircleHelp,
   Menu,
@@ -43,12 +42,11 @@ const staffNavGroups: NavGroup[] = [
     items: [
       { label: "Tổng quan", icon: LayoutDashboard, path: routePaths.staffDashboard },
       { label: "Đặt lịch ngày", icon: CalendarDays, path: routePaths.staffTodayBookings },
-      { label: "Danh sách contest", icon: Flag, path: routePaths.staffContests },
+      { label: "Danh sách giải đấu", icon: Trophy, path: routePaths.staffContests },
       { label: "Gọi món", icon: Coffee, path: routePaths.staffFnbOrders },
       // { label: "Đăng ký xe tự mang", icon: ShieldCheck, path: routePaths.staffByoc },
       // { label: "Gọi món F&B", icon: Coffee, path: routePaths.staffFnbOrders },
       // { label: "Đăng ký xe BYOC", icon: ShieldCheck, path: routePaths.staffByoc },
-      { label: "Giải đấu", icon: Trophy, path: routePaths.staffContests },
       { label: "Tra cứu gói chơi", icon: Search, path: routePaths.staffPackages },
     ],
   },
@@ -56,7 +54,6 @@ const staffNavGroups: NavGroup[] = [
     heading: "Đội xe & Thiết bị",
     items: [
       { label: "Bảo trì đội xe", icon: Wrench, path: routePaths.staffMaintenance },
-      { label: "Quản lý sự cố", icon: AlertTriangle, path: routePaths.staffIncidents },
     ],
   },
 ]

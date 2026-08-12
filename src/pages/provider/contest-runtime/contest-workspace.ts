@@ -6,6 +6,8 @@ export const contestWorkspaceSections = [
   { key: "registrations", label: "Người chơi" },
   { key: "bracket", label: "Nhánh đấu" },
   { key: "leaderboard", label: "Bảng xếp hạng" },
+  // Chỉ chủ doanh nghiệp sở hữu giải mở được — nhân viên gọi API sẽ nhận 403.
+  { key: "finance", label: "Tài chính" },
   { key: "audit", label: "Nhật ký" },
   // Nhãn cũ là "Kỷ luật / Nhân sự" — dấu gạch chéo trong tên tab gần như luôn
   // là dấu hiệu hai việc không liên quan bị nhét chung. Loại khỏi giải và cấm

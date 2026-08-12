@@ -22,10 +22,13 @@ export const subscriptionApi = {
   getSubscriptionStatus: async (): Promise<{
     success: boolean
     data: ProviderSubscription | null
+    /** Thời điểm đã tiêu suất dùng thử; null nghĩa là chưa dùng. */
+    trial_used_at: string | null
   }> => {
     const res = await api.get<{
       success: boolean
       data: ProviderSubscription | null
+      trial_used_at: string | null
     }>("/v1/provider/subscription")
     return res.data
   },
@@ -53,6 +56,27 @@ export const subscriptionApi = {
         params: { page, limit },
       },
     )
+    return res.data
+  },
+
+  getPayOSLink: async (body: {
+    plan_id?: string
+    payment_request_id?: string
+  }): Promise<{ success: boolean; data: { checkoutUrl: string; orderCode: number } }> => {
+    const res = await api.post<{
+      success: boolean
+      data: { checkoutUrl: string; orderCode: number }
+    }>("/v1/provider/payment-requests/payos-link", body)
+    return res.data
+  },
+
+  verifyPayOSPayment: async (body: {
+    orderCode: number
+  }): Promise<{ success: boolean; data: PaymentRequest }> => {
+    const res = await api.post<{
+      success: boolean
+      data: PaymentRequest
+    }>("/v1/payments/payos/verify-payment", body)
     return res.data
   },
 

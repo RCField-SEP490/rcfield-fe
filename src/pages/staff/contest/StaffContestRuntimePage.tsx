@@ -16,6 +16,8 @@ import { ContestMatchDetailPanel } from "@/pages/provider/contest-runtime/compon
 import { StaffSearchInput } from "../components/StaffSearchInput"
 import { StaffSelect } from "../components/StaffSelect"
 import { StaffCard, StaffHeader } from "../components/StaffUI"
+import { StaffContestOverview } from "./components/StaffContestOverview"
+import { StaffExpenseFormCard } from "./components/StaffExpenseFormCard"
 
 const matchStatusOptions = [
   { value: "DRAFT", label: getMatchStatusLabel("DRAFT") },
@@ -114,6 +116,14 @@ export default function StaffContestRuntimePage() {
         </StaffCard>
       )}
 
+      {/* Tổng quan đặt đầu tiên: nhân viên cần biết mình đang trực giải nào, ở
+          đâu, khách mang xe hay thuê xe, còn ai chưa tới — trước khi nhìn sơ đồ. */}
+      <StaffContestOverview
+        contest={contest}
+        metrics={runtime.metricsQuery.data}
+        contestId={contestId}
+      />
+
       <div className="space-y-4">
         {/* Đấu loại: nhân viên xem sơ đồ cây giống ban tổ chức, nhưng không sắp
             lại được cặp đấu — bốc thăm là việc của ban tổ chức. */}
@@ -144,6 +154,13 @@ export default function StaffContestRuntimePage() {
           match={selectedMatch}
           runtime={runtime}
           isKnockoutRuntime={isKnockoutRuntime}
+        />
+
+        {/* Đặt cuối trang: việc chính của màn này là vận hành trận đấu. Thẻ chi
+            phí tự ẩn khi giải chưa chạy nên không chiếm chỗ vô ích. */}
+        <StaffExpenseFormCard
+          contestId={contestId}
+          contestStatus={contest?.status}
         />
       </div>
     </div>

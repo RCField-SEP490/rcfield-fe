@@ -14,7 +14,6 @@ import {
 } from "@/features/contests/lib/contest-status"
 import type { ContestStatus } from "@/features/contests/types"
 import { formatContestDateTime } from "@/features/contests/lib/contest-runtime"
-import { useStaffOperations } from "../context/StaffOperationContext"
 import { StaffSearchInput } from "../components/StaffSearchInput"
 import { StaffSelect } from "../components/StaffSelect"
 import { StaffBadge, StaffCard, StaffHeader } from "../components/StaffUI"
@@ -26,7 +25,6 @@ const statusOptions = [
 ]
 
 export default function StaffContestsPage() {
-  const { assignedCafeId } = useStaffOperations()
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get("query") ?? ""
   const status = searchParams.get("status") ?? ""
@@ -39,22 +37,29 @@ export default function StaffContestsPage() {
     queryFn: contestApi.listContestFormats,
   })
 
+  // Lấy theo PHÂN CÔNG GIẢI, không theo chi nhánh đang trực.
+  //
+  // Trước đây màn này hỏi "chi nhánh tôi trực có giải nào" nên giải ở chi nhánh
+  // khác mà nhân viên được phân công vào lại không hiện — thao tác "phân công
+  // staff vào giải" của chủ quán gần như không có tác dụng nhìn thấy được.
+  // Backend đã hiểu đúng từ đầu: `assertContestOperator` cho qua dựa trên
+  // `contest_staff_assignments` chứ không xét chi nhánh.
   const contestsQuery = useQuery({
     queryKey: contestQueryKeys.list({
-      cafeId: assignedCafeId,
+      scope: "managed",
       staff: true,
       query,
       status,
       contest_format_id: formatId,
     }),
     queryFn: () =>
-      contestApi.listCafeContests(assignedCafeId!, {
+      contestApi.listContests({
+        scope: "managed",
         limit: 100,
         query: query || undefined,
         status: (status || undefined) as ContestStatus | undefined,
         contest_format_id: formatId || undefined,
       }),
-    enabled: Boolean(assignedCafeId),
   })
 
   const contests = useMemo(

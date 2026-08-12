@@ -1,32 +1,32 @@
-export type BookingPlayMode = 'RENTAL' | 'BYOC'
+export type BookingPlayMode = "RENTAL" | "BYOC"
 
 export type BookingStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'AWAITING_PAYMENT'
-  | 'NO_SHOW'
-  | 'COMPLETED'
-  | 'CANCELLED'
+  | "PENDING"
+  | "CONFIRMED"
+  | "AWAITING_PAYMENT"
+  | "NO_SHOW"
+  | "COMPLETED"
+  | "CANCELLED"
 
 export type PaymentComponentType =
-  | 'SLOT_FEE'
-  | 'RENTAL_FEE'
-  | 'CONTEST_ENTRY_FEE'
-  | 'FNB_PREORDER'
-  | 'FB_PREORDER'
-  | 'FNB_ON_SITE'
-  | 'EXTENSION_FEE'
-  | 'DAMAGE_CHARGE'
-  | 'PLATFORM_FEE'
+  | "SLOT_FEE"
+  | "RENTAL_FEE"
+  | "CONTEST_ENTRY_FEE"
+  | "FNB_PREORDER"
+  | "FB_PREORDER"
+  | "FNB_ON_SITE"
+  | "EXTENSION_FEE"
+  | "DAMAGE_CHARGE"
+  | "PLATFORM_FEE"
 
 export type PaymentComponentStatus =
-  | 'PENDING'
-  | 'HELD'
-  | 'CAPTURED'
-  | 'REFUNDED'
-  | 'DISBURSED'
-  | 'PENDING_REFUND'
-  | 'PARTIALLY_REFUNDED'
+  | "PENDING"
+  | "HELD"
+  | "CAPTURED"
+  | "REFUNDED"
+  | "DISBURSED"
+  | "PENDING_REFUND"
+  | "PARTIALLY_REFUNDED"
 
 export interface PaymentComponentResponse {
   id: string
@@ -39,9 +39,9 @@ export interface PaymentComponentResponse {
   refundedAt?: string | null
 }
 
-export type PaymentGateway = 'VNPAY' | 'DIRECT' | 'MOCK'
-export type PaymentTransactionType = 'PAYMENT' | 'REFUND' | 'CAPTURE' | 'HOLD'
-export type PaymentTransactionStatus = 'SUCCESS' | 'PENDING' | 'FAILED'
+export type PaymentGateway = "VNPAY" | "DIRECT" | "MOCK"
+export type PaymentTransactionType = "PAYMENT" | "REFUND" | "CAPTURE" | "HOLD"
+export type PaymentTransactionStatus = "SUCCESS" | "PENDING" | "FAILED"
 
 export interface PaymentTransactionResponse {
   id: string
@@ -59,7 +59,7 @@ export interface BookingFinancialLine {
   label: string
   amount: number
   status: PaymentComponentStatus
-  group: 'PREPAID' | 'ON_SITE'
+  group: "PREPAID" | "ON_SITE"
   payment?: {
     transactionId: string
     txnRef: string
@@ -80,6 +80,7 @@ export interface BookingFinancialSummary {
   additionalOutstandingAmount: number
   totalPaidAmount: number
   totalRefundedAmount: number
+  netPaidAmount?: number
   outstandingAmount: number
   isSettled: boolean
 }
@@ -94,6 +95,18 @@ export interface PaymentResultTransaction {
   components: { type: string; amount: number }[]
   createdAt: string
   paidAt: string
+}
+
+export interface CancellationQuote {
+  canCancel: boolean
+  reason?: string
+  refund: {
+    slotFeeRefund: number
+    rentalFeeRefund: number
+    depositRefund: number
+    fnbRefund: number
+    totalRefund: number
+  }
 }
 
 export interface AvailableVehicle {
@@ -115,7 +128,7 @@ export interface BookingParticipant {
   id: string
   bookingId: string
   userId: string | null
-  participantType: 'BOOKER' | 'REGISTERED_USER' | 'WALK_IN_GUEST'
+  participantType: "BOOKER" | "REGISTERED_USER" | "WALK_IN_GUEST"
   isPrimaryResponsible: boolean
   guestName: string | null
   guestPhone: string | null
@@ -170,6 +183,8 @@ export interface BookingResponse {
   contestId?: string | null
   discountAmount: number
   promotionId: string | null
+  cancellationReason?: string | null
+  cancelledBy?: string | null
   createdAt: string
   updatedAt: string
   participants: BookingParticipant[]
@@ -181,7 +196,12 @@ export interface BookingResponse {
   fnb_orders?: FnbOrder[]
   /** @deprecated Use fnb_orders when available. Kept for older API payloads. */
   fnb_order: FnbOrder | null
-  cafe: { name: string; address: string; city: string; coverImageUrl: string | null } | null
+  cafe: {
+    name: string
+    address: string
+    city: string
+    coverImageUrl: string | null
+  } | null
   track_type_name: string | null
   track_type_cover_image?: string | null
   session: {
@@ -242,7 +262,7 @@ export interface FnbItemBody {
   notes?: string
 }
 
-export type BookingParticipantType = 'REGISTERED_USER' | 'WALK_IN_GUEST'
+export type BookingParticipantType = "REGISTERED_USER" | "WALK_IN_GUEST"
 
 export interface ParticipantBody {
   user_id?: string
@@ -279,6 +299,33 @@ export interface CreateBookingResult {
   }
 }
 
+/** Phương thức nhận tiền khả dụng của một chi nhánh. */
+export type CafePaymentMethodOption = "vnpay" | "bank_transfer"
+
+/**
+ * Cách màn hình thanh toán xử lý kết quả checkout.
+ *
+ * `redirect` là hành vi có từ trước — chuyển hướng sang cổng thanh toán.
+ * `bank_transfer` giữ khách ở lại và hiện mã QR, màn hình tự đổi trạng thái
+ * khi tiền về. Mặc định phải là `redirect` để booking cũ không đổi hành vi.
+ */
+export type CheckoutFlow = "redirect" | "bank_transfer"
+
+export interface BankTransferCheckout {
+  qr_payload: string
+  qr_image_data_url: string
+  ref_code: string
+  bank_name: string
+  account_number: string
+  account_name: string
+  amount: number
+  expires_at: string
+  /** True khi đang chạy ngân hàng mô phỏng — giao diện phải nói rõ với khách. */
+  is_sandbox: boolean
+  /** Đường dẫn trang ngân hàng mô phỏng, chỉ có khi `is_sandbox`. */
+  sandbox_url?: string
+}
+
 export interface CheckoutResponse {
   payment_url: string | null
   txn_ref: string
@@ -286,6 +333,32 @@ export interface CheckoutResponse {
   confirmed?: boolean
   slots_used?: number
   slots_remaining_after?: number
+  flow?: CheckoutFlow
+  bank_transfer?: BankTransferCheckout
+}
+
+export interface CafePaymentSettings {
+  method: "VNPAY" | "BANK_TRANSFER"
+  bank_code: string | null
+  bank_name: string | null
+  /** Che bớt ở mọi màn hiển thị; số đầy đủ chỉ trả ở endpoint chỉnh sửa. */
+  account_number: string | null
+  account_name: string | null
+  is_verified: boolean
+  verified_at: string | null
+}
+
+export interface BankTransactionItem {
+  id: string
+  amount: number
+  content: string
+  ref_code: string | null
+  transaction_date: string
+  match_status: "MATCHED" | "NEEDS_REVIEW" | "IGNORED"
+  match_reason: string | null
+  booking_id: string | null
+  resolved_by: string | null
+  resolved_at: string | null
 }
 
 export interface CheckAvailabilityParams {
@@ -323,10 +396,19 @@ export interface CafeBookingListResponse {
   total: number
   page: number
   limit: number
+  summary: {
+    totalBookings: number
+    pendingPaymentCount: number
+    awaitingAdditionalPaymentCount: number
+    confirmedBookingCount: number
+    activeSessionCount: number
+  }
 }
 
 export interface ListCafeBookingsParams {
-  date: string
+  date?: string
+  from?: string
+  to?: string
   status?: BookingStatus
   page?: number
   limit?: number

@@ -14,7 +14,6 @@ import StaffTodayBookingsPage from "@/pages/staff/StaffTodayBookingsPage"
 import StaffSessionDetailPage from "@/pages/staff/StaffSessionDetailPage"
 import StaffInspectionPage from "@/pages/staff/StaffInspectionPage"
 import StaffFnbOrdersPage from "@/pages/staff/StaffFnbOrdersPage"
-import StaffIncidentsPage from "@/pages/staff/StaffIncidentsPage"
 import StaffMaintenancePage from "@/pages/staff/StaffMaintenancePage"
 import StaffByocPage from "@/pages/staff/StaffByocPage"
 import StaffPackagesPage from "@/pages/staff/StaffPackagesPage"
@@ -38,7 +37,6 @@ import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage"
 import { ProfilePage } from "@/pages/profile/ProfilePage"
 import { CustomerHomePage } from "@/pages/customer/CustomerHomePage"
 import { CustomerBookingsPage } from "@/pages/customer/CustomerBookingsPage"
-import { CustomerVehiclesPage } from "@/pages/customer/CustomerVehiclesPage"
 import { CustomerPackagesPage } from "@/pages/customer/CustomerPackagesPage"
 import { CustomerReviewsPage } from "@/pages/customer/CustomerReviewsPage"
 import { CustomerProfilePage } from "@/pages/customer/profile/CustomerProfilePage"
@@ -51,6 +49,7 @@ import { CustomerInspectionConfirmPage } from "@/pages/customer/inspection/Custo
 import { CustomerDamageReviewPage } from "@/pages/customer/damage/CustomerDamageReviewPage"
 import { CustomerExtensionResponsePage } from "@/pages/customer/extension/CustomerExtensionResponsePage"
 import { PaymentResultPage } from "@/pages/booking/PaymentResultPage"
+import { BankTransferPaymentPage } from "@/pages/booking/BankTransferPaymentPage"
 import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
@@ -93,6 +92,7 @@ import {
   ProviderPackagesPage,
 } from "@/pages/provider/ProviderPackagesPage"
 import { ProviderSubscriptionsPage } from "@/pages/provider/ProviderSubscriptionsPage"
+import { PayosCallbackPage } from "@/pages/provider/PayosCallbackPage"
 import {
   ProviderPromotionCopyPage,
   ProviderPromotionCreatePage,
@@ -146,12 +146,15 @@ export const router = createBrowserRouter([
         element: <ExploreLayout />,
         children: [{ path: routePaths.cafes, element: <ExplorePage /> }],
       },
+      // Chat toàn màn hình tự chiếm trọn viewport và có thanh tiêu đề riêng, nên
+      // KHÔNG bọc trong PublicLayout — chồng thêm header + footer công khai lên
+      // một trang `h-screen` làm tổng chiều cao vượt màn hình và sinh cuộn kép.
+      { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
       {
         element: <PublicLayout />,
         children: [
           { index: true, element: <LandingPage /> },
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
-          { path: routePaths.cafeChat, element: <CafeFullPageChatPage /> },
           {
             path: routePaths.vehicleDetail,
             element: <PlaceholderPage title="Vehicle detail" />,
@@ -168,6 +171,10 @@ export const router = createBrowserRouter([
             element: <PublicGlobalLeaderboardPage />,
           },
           { path: routePaths.paymentResult, element: <PaymentResultPage /> },
+          {
+            path: routePaths.paymentBankTransfer,
+            element: <BankTransferPaymentPage />,
+          },
           { path: routePaths.partnerLanding, element: <PartnerLandingPage /> },
           { path: routePaths.customerPolicy, element: <CustomerPolicyPage /> },
         ],
@@ -230,10 +237,6 @@ export const router = createBrowserRouter([
           {
             path: routePaths.customerSubscriptions,
             element: <PlaceholderPage title="Customer subscriptions" />,
-          },
-          {
-            path: routePaths.customerVehicles,
-            element: <CustomerVehiclesPage />,
           },
           {
             path: routePaths.customerReviews,
@@ -301,7 +304,11 @@ export const router = createBrowserRouter([
             element: <StaffCheckoutSummaryPage />,
           },
           { path: routePaths.staffFnbOrders, element: <StaffFnbOrdersPage /> },
-          { path: routePaths.staffIncidents, element: <StaffIncidentsPage /> },
+          // Legacy route: incident handling is consolidated in fleet maintenance.
+          {
+            path: routePaths.staffIncidents,
+            element: <Navigate to={routePaths.staffMaintenance} replace />,
+          },
           {
             path: routePaths.staffMaintenance,
             element: <StaffMaintenancePage />,
@@ -409,6 +416,10 @@ export const router = createBrowserRouter([
             element: providerGuardRoute(<ProviderSubscriptionsPage />),
           },
           {
+            path: routePaths.providerSubscriptionsCallback,
+            element: providerGuardRoute(<PayosCallbackPage />),
+          },
+          {
             path: routePaths.providerPromotions,
             element: providerGuardRoute(<ProviderPromotionsPage />),
           },
@@ -482,6 +493,12 @@ export const router = createBrowserRouter([
             path: routePaths.providerContestLeaderboard,
             element: providerGuardRoute(
               <ProviderContestWorkspacePage section="leaderboard" />,
+            ),
+          },
+          {
+            path: routePaths.providerContestFinance,
+            element: providerGuardRoute(
+              <ProviderContestWorkspacePage section="finance" />,
             ),
           },
           {

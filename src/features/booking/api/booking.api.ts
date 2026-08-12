@@ -1,11 +1,13 @@
-import { api } from '@/shared/lib/axios'
-import { sanitizeImageUrl } from '@/shared/lib/utils'
+import { api } from "@/shared/lib/axios"
+import { sanitizeImageUrl } from "@/shared/lib/utils"
 import type {
   AvailabilityResponse,
   BookingListResponse,
   BookingResponse,
+  CancellationQuote,
   CafeBookingListResponse,
   CheckAvailabilityParams,
+  CafePaymentMethodOption,
   CheckoutResponse,
   CreateBookingBody,
   CreateBookingResult,
@@ -15,7 +17,7 @@ import type {
   CafeSessionListResponse,
   ListCafeSessionsParams,
   CafeSessionStatsResponse,
-} from '../types/booking.types'
+} from "../types/booking.types"
 
 interface ApiEnvelope<T> {
   success: boolean
@@ -23,17 +25,18 @@ interface ApiEnvelope<T> {
 }
 
 export const bookingQueryKeys = {
-  all: ['bookings'] as const,
-  mine: (params?: ListMyBookingsParams) => [...bookingQueryKeys.all, 'mine', params ?? {}] as const,
-  detail: (id?: string) => [...bookingQueryKeys.all, 'detail', id] as const,
+  all: ["bookings"] as const,
+  mine: (params?: ListMyBookingsParams) =>
+    [...bookingQueryKeys.all, "mine", params ?? {}] as const,
+  detail: (id?: string) => [...bookingQueryKeys.all, "detail", id] as const,
   cafe: (cafeId: string, params?: ListCafeBookingsParams) =>
-    [...bookingQueryKeys.all, 'cafe', cafeId, params ?? {}] as const,
+    [...bookingQueryKeys.all, "cafe", cafeId, params ?? {}] as const,
   availability: (cafeId: string, params: CheckAvailabilityParams) =>
-    ['availability', cafeId, params] as const,
+    ["availability", cafeId, params] as const,
   sessions: (cafeId: string, params?: ListCafeSessionsParams) =>
-    [...bookingQueryKeys.all, 'sessions', cafeId, params ?? {}] as const,
+    [...bookingQueryKeys.all, "sessions", cafeId, params ?? {}] as const,
   sessionsStats: (cafeId: string, date: string) =>
-    [...bookingQueryKeys.all, 'sessions-stats', cafeId, date] as const,
+    [...bookingQueryKeys.all, "sessions-stats", cafeId, date] as const,
 }
 
 export const bookingApi = {
@@ -42,14 +45,14 @@ export const bookingApi = {
     params: CheckAvailabilityParams,
   ): Promise<AvailabilityResponse> => {
     const searchParams = new URLSearchParams()
-    searchParams.append('slot_start', params.slot_start)
-    searchParams.append('slot_end', params.slot_end)
-    searchParams.append('play_mode', params.play_mode)
+    searchParams.append("slot_start", params.slot_start)
+    searchParams.append("slot_end", params.slot_end)
+    searchParams.append("play_mode", params.play_mode)
     if (params.track_type_id) {
-      searchParams.append('track_type_id', params.track_type_id)
+      searchParams.append("track_type_id", params.track_type_id)
     }
     if (params.track_config_id) {
-      searchParams.append('track_config_id', params.track_config_id)
+      searchParams.append("track_config_id", params.track_config_id)
     }
 
     const res = await api.get<ApiEnvelope<AvailabilityResponse>>(
@@ -59,13 +62,20 @@ export const bookingApi = {
     return res.data.data
   },
 
-  createBooking: async (body: CreateBookingBody): Promise<CreateBookingResult> => {
-    const res = await api.post<ApiEnvelope<CreateBookingResult>>('/v1/bookings', body)
+  createBooking: async (
+    body: CreateBookingBody,
+  ): Promise<CreateBookingResult> => {
+    const res = await api.post<ApiEnvelope<CreateBookingResult>>(
+      "/v1/bookings",
+      body,
+    )
     return res.data.data
   },
 
   getBooking: async (id: string): Promise<BookingResponse> => {
-    const res = await api.get<ApiEnvelope<BookingResponse>>(`/v1/bookings/${id}`)
+    const res = await api.get<ApiEnvelope<BookingResponse>>(
+      `/v1/bookings/${id}`,
+    )
     const booking = res.data.data
     return {
       ...booking,
@@ -76,15 +86,22 @@ export const bookingApi = {
     }
   },
 
-  getPaymentTransaction: async (txnRef: string): Promise<PaymentResultTransaction> => {
+  getPaymentTransaction: async (
+    txnRef: string,
+  ): Promise<PaymentResultTransaction> => {
     const res = await api.get<ApiEnvelope<PaymentResultTransaction>>(
       `/v1/bookings/payment-transactions/${encodeURIComponent(txnRef)}`,
     )
     return res.data.data
   },
 
-  listMyBookings: async (params: ListMyBookingsParams = {}): Promise<BookingListResponse> => {
-    const res = await api.get<ApiEnvelope<BookingListResponse>>('/v1/bookings', { params })
+  listMyBookings: async (
+    params: ListMyBookingsParams = {},
+  ): Promise<BookingListResponse> => {
+    const res = await api.get<ApiEnvelope<BookingListResponse>>(
+      "/v1/bookings",
+      { params },
+    )
     return res.data as unknown as BookingListResponse
   },
 
@@ -99,14 +116,21 @@ export const bookingApi = {
     return res.data.data
   },
 
-  createCheckout: async (bookingId: string): Promise<CheckoutResponse> => {
+  createCheckout: async (
+    bookingId: string,
+    paymentMethod?: CafePaymentMethodOption,
+  ): Promise<CheckoutResponse> => {
+    // Không truyền `payment_method` nghĩa là VNPay — giữ nguyên hành vi cũ.
     const res = await api.post<ApiEnvelope<CheckoutResponse>>(
       `/v1/bookings/${bookingId}/checkout`,
+      paymentMethod ? { payment_method: paymentMethod } : undefined,
     )
     return res.data.data
   },
 
-  createCheckoutAdditionalPayment: async (bookingId: string): Promise<CheckoutResponse> => {
+  createCheckoutAdditionalPayment: async (
+    bookingId: string,
+  ): Promise<CheckoutResponse> => {
     const res = await api.post<ApiEnvelope<CheckoutResponse>>(
       `/v1/bookings/${bookingId}/checkout-additional-payment`,
     )
@@ -117,10 +141,22 @@ export const bookingApi = {
     await api.post(`/v1/bookings/${bookingId}/mock-checkout`)
   },
 
-  cancelBooking: async (bookingId: string, reason?: string): Promise<BookingResponse> => {
+  cancelBooking: async (
+    bookingId: string,
+    reason?: string,
+  ): Promise<BookingResponse> => {
     const res = await api.post<ApiEnvelope<BookingResponse>>(
       `/v1/bookings/${bookingId}/cancel`,
       { reason },
+    )
+    return res.data.data
+  },
+
+  getCancellationQuote: async (
+    bookingId: string,
+  ): Promise<CancellationQuote> => {
+    const res = await api.get<ApiEnvelope<CancellationQuote>>(
+      `/v1/bookings/${bookingId}/cancellation-quote`,
     )
     return res.data.data
   },

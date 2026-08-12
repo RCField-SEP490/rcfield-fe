@@ -15,7 +15,8 @@ export const cafeQueryKeys = {
   images: (cafeId?: string) => [...cafeQueryKeys.all, "images", cafeId] as const,
   widgetConfig: (cafeId?: string) => [...cafeQueryKeys.all, "widget-config", cafeId] as const,
   kbDocuments: (cafeId?: string) => [...cafeQueryKeys.all, "kb-documents", cafeId] as const,
-  trackConfigs: (cafeId?: string) => [...cafeQueryKeys.all, "track-configs", cafeId] as const,
+  trackConfigs: (cafeId?: string, includeInactive?: boolean) =>
+    [...cafeQueryKeys.all, "track-configs", cafeId, includeInactive ?? false] as const,
 }
 
 // Customer booking screens need to reflect schedule changes made by providers
@@ -239,9 +240,15 @@ async function getFallbackTrackConfigs(cafeId: string): Promise<TrackConfig[]> {
 }
 
 export const trackConfigApi = {
-  listTrackConfigs: async (cafeId: string): Promise<TrackConfig[]> => {
+  listTrackConfigs: async (
+    cafeId: string,
+    options?: { includeInactive?: boolean },
+  ): Promise<TrackConfig[]> => {
     try {
-      const res = await api.get<ApiEnvelope<TrackConfig[]>>(`/v1/cafes/${cafeId}/track-configs`)
+      const res = await api.get<ApiEnvelope<TrackConfig[]>>(
+        `/v1/cafes/${cafeId}/track-configs`,
+        options?.includeInactive ? { params: { include_inactive: true } } : undefined,
+      )
       if (res.data.data.length > 0) return res.data.data
       return getFallbackTrackConfigs(cafeId)
     } catch (error) {

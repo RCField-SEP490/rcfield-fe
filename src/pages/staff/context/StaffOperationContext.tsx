@@ -235,8 +235,8 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       }
 
       if (msg.event === "CUSTOMER_INSPECTION_DISPUTED") {
-        toast.warning("Khách phản hồi sai lệch biên bản", {
-          description: data?.note || "Cần kiểm tra lại xe và lập biên bản mới.",
+        toast.warning("Khách phản hồi biên bản trả xe", {
+          description: data?.note || "Cần kiểm tra lại xe trước khi hoàn tất phiên.",
         })
         void fetchData()
         return
@@ -333,6 +333,22 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
             duration: 8000,
           })
         }
+        return
+      }
+
+      if (msg.event === "BOOKING_CANCELLED_OPERATIONAL") {
+        const payload = msg.data as { bookingId: string; title: string; message: string; routeStaff?: string }
+        toast.warning(payload.title || "Đơn đặt lịch bị hủy", {
+          description: payload.message || "Có đơn đặt lịch tại cơ sở vừa bị hủy.",
+          action: {
+            label: "Xem đơn",
+            onClick: () => navigate(payload.routeStaff || "/staff/today-bookings"),
+          },
+          duration: 10000,
+        })
+        void fetchData()
+        void queryClient.invalidateQueries({ queryKey: ["notifications"] })
+        void queryClient.invalidateQueries({ queryKey: staffQueryKeys.all })
         return
       }
     },

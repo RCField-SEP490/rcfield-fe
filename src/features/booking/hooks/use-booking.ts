@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { bookingApi, bookingQueryKeys } from "../api/booking.api"
 import type {
   AvailabilityResponse,
+  CafePaymentMethodOption,
   CheckAvailabilityParams,
   CreateBookingBody,
   CreateBookingResult,
@@ -171,7 +172,7 @@ export function useCafeBookings(
   return useQuery({
     queryKey: bookingQueryKeys.cafe(cafeId ?? "", params),
     queryFn: () => bookingApi.listCafeBookings(cafeId!, params),
-    enabled: !!cafeId && !!params.date,
+    enabled: !!cafeId,
     staleTime: 0,
   })
 }
@@ -189,7 +190,14 @@ export function useCreateBooking() {
 
 export function useCreateCheckout() {
   return useMutation({
-    mutationFn: (bookingId: string) => bookingApi.createCheckout(bookingId),
+    // Nhận cả dạng chuỗi (gọi cũ) lẫn dạng đối tượng có phương thức thanh toán,
+    // để mọi chỗ đang gọi `mutateAsync(bookingId)` chạy y nguyên.
+    mutationFn: (
+      input: string | { bookingId: string; paymentMethod?: CafePaymentMethodOption },
+    ) =>
+      typeof input === "string"
+        ? bookingApi.createCheckout(input)
+        : bookingApi.createCheckout(input.bookingId, input.paymentMethod),
   })
 }
 

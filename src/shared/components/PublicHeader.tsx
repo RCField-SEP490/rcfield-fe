@@ -1,4 +1,4 @@
-import { CalendarCheck, Car, LogOut, Menu, Package, UserRound, X, Trophy } from "lucide-react"
+import { CalendarCheck, LogOut, Menu, Package, UserRound, X, Trophy } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { NavLink, useNavigate } from "react-router"
@@ -30,7 +30,10 @@ const publicNavItems = [
   { label: "Chính sách", to: routePaths.customerPolicy },
   { label: "Giải đấu", to: routePaths.contests },
   { label: "Hợp tác đối tác", to: routePaths.partnerLanding },
-  { label: "BXH Toàn Hệ Thống", to: routePaths.globalLeaderboard },
+  // TẠM ẨN — bảng xếp hạng toàn hệ thống đang xếp theo `recorded_at` chứ không
+  // theo thành tích, vì record của giải knockout không có lap time nên mọi khoá
+  // sắp xếp phía trước đều hoà. Mở lại sau khi chốt cách xếp hạng.
+  // { label: "BXH Toàn Hệ Thống", to: routePaths.globalLeaderboard },
 ]
 
 // Items only for specific authenticated roles
@@ -45,7 +48,6 @@ const customerMenuItems = [
   { label: "Hồ sơ cá nhân", to: routePaths.profile, icon: UserRound },
   { label: "Lịch đặt sân", to: routePaths.customerBookings, icon: CalendarCheck },
   { label: "Giải đấu tham gia", to: routePaths.customerContestRegistrations, icon: Trophy },
-  { label: "Xe cá nhân", to: routePaths.customerVehicles, icon: Car },
   { label: "Gói hội viên", to: routePaths.customerPackages, icon: Package },
 ]
 

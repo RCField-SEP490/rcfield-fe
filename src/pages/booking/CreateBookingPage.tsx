@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react"
 import { useMemo, useState, useEffect, useRef } from "react"
 import { Link, useSearchParams } from "react-router"
+import { routePaths } from "@/app/router/route-paths"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import { bookingCatalog } from "@/features/booking/data/booking-options"
 import type {
@@ -51,6 +52,11 @@ import {
   isPhoneOkOrEmpty,
 } from "./components/checkout/ParticipantsStep"
 import { PaymentStep } from "./components/checkout/PaymentStep"
+import { BankTransferQrPanel } from "./components/checkout/BankTransferQrPanel"
+import type {
+  BankTransferCheckout,
+  CafePaymentMethodOption,
+} from "@/features/booking/types/booking.types"
 import { TrackSelectionStep } from "./components/checkout/TrackSelectionStep"
 import { BookingPackageSelector } from "./components/checkout/BookingPackageSelector"
 import type { AppliedPromo } from "./components/checkout/PromoCodeInput"
@@ -203,6 +209,14 @@ export function CreateBookingPage() {
   const [currentStep, setCurrentStep] = useState<CheckoutStep>(
     orderedSteps.includes(stepParam!) ? stepParam! : orderedSteps[0],
   )
+  // Phương thức khách chọn ở bước thanh toán. Mặc định VNPay để chi nhánh chưa
+  // cấu hình gì chạy y hệt như trước.
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<CafePaymentMethodOption>("vnpay")
+  const [bankTransfer, setBankTransfer] = useState<{
+    bookingId: string
+    checkout: BankTransferCheckout
+  } | null>(null)
   const [mode] = useState<BookingMode>(modeParam ?? "hourly")
   const [planId] = useState(getDefaultPlanId(modeParam ?? "hourly"))
   const [date, setDate] = useState(
@@ -610,15 +624,30 @@ export function CreateBookingPage() {
         ...(appliedPromo ? { promotion_code: appliedPromo.code } : {}),
       })
 
-      const checkout = await createCheckoutMutation.mutateAsync(
-        booking.booking_id,
-      )
+      const checkout = await createCheckoutMutation.mutateAsync({
+        bookingId: booking.booking_id,
+        paymentMethod: selectedPaymentMethod,
+      })
       if (checkout.confirmed) {
         // Zero-total: package covered slot_fee and no other charges — already confirmed
         toast.success("Đặt lịch thành công! Gói slot đã được áp dụng.")
-        window.location.href = "/customer/bookings"
+        window.location.href = routePaths.customerBookingDetail.replace(
+          ":bookingId",
+          booking.booking_id,
+        )
         return
       }
+
+      // Chuyển khoản giữ khách ở lại: màn hình tự đổi trạng thái khi tiền về.
+      // Mọi luồng còn lại chuyển hướng như trước, không đổi gì.
+      if (checkout.flow === "bank_transfer" && checkout.bank_transfer) {
+        setBankTransfer({
+          bookingId: booking.booking_id,
+          checkout: checkout.bank_transfer,
+        })
+        return
+      }
+
       window.location.href = checkout.payment_url!
     } catch (err) {
       let message = "Vui lòng thử lại."
@@ -746,7 +775,10 @@ export function CreateBookingPage() {
       toast.success("Mock thanh toán thành công!", {
         description: "Booking đã được xác nhận.",
       })
-      window.location.href = "/customer/bookings"
+      window.location.href = routePaths.customerBookingDetail.replace(
+        ":bookingId",
+        booking.booking_id,
+      )
     } catch (err) {
       const response = (
         err as { response?: { data?: { code?: string; message?: string } } }
@@ -811,7 +843,7 @@ export function CreateBookingPage() {
 
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <main className="min-w-0">
-          {currentStep !== "track" && !isMockId && (
+          {currentStep !== "track" && !isMockId && !bankTransfer && (
             <BookingPackageSelector
               cafeId={cafeId}
               cafeSlug={cafe.slug}
@@ -906,27 +938,26 @@ export function CreateBookingPage() {
                 })
               }
               onNoteChange={(key, note) => setFnbNotes((current) => ({ ...current, [key]: note }))}
-              onVariantChange={(fromKey, menuItemId, variantId) => {
-                const toKey = fnbSelectionKey(menuItemId, variantId)
-                if (fromKey === toKey) return
-                setFnbQuantities((current) => {
-                  const quantity = current[fromKey] ?? 0
-                  const next = { ...current }
-                  delete next[fromKey]
-                  next[toKey] = (next[toKey] ?? 0) + quantity
-                  return next
-                })
-                setFnbNotes((current) => {
-                  const note = current[fromKey]
-                  const next = { ...current }
-                  delete next[fromKey]
-                  if (note && !next[toKey]) next[toKey] = note
-                  return next
-                })
+            />
+          )}
+          {currentStep === "payment" && bankTransfer && (
+            <BankTransferQrPanel
+              bookingId={bankTransfer.bookingId}
+              checkout={bankTransfer.checkout}
+              onPaid={() => toast.success("Đã nhận được thanh toán!")}
+              onContinue={() => {
+                // Về thẳng đơn vừa trả tiền chứ không về danh sách: khách vừa
+                // chuyển tiền xong, thứ họ muốn xem là đơn đó — bắt tự dò lại
+                // trong danh sách là bắt làm thừa một việc.
+                window.location.href =
+                  routePaths.customerBookingDetail.replace(
+                    ":bookingId",
+                    bankTransfer.bookingId,
+                  )
               }}
             />
           )}
-          {currentStep === "payment" && (
+          {currentStep === "payment" && !bankTransfer && (
             <PaymentStep
               paymentMethod={paymentMethod}
               onPaymentMethodChange={setPaymentMethod}
@@ -940,6 +971,8 @@ export function CreateBookingPage() {
               appliedPromo={appliedPromo}
               onPromoApply={setAppliedPromo}
               onMockPayment={() => void handleMockPayment()}
+              selectedMethod={selectedPaymentMethod}
+              onMethodChange={setSelectedPaymentMethod}
             />
           )}
         </main>
@@ -976,6 +1009,7 @@ export function CreateBookingPage() {
               selectedVehicleIds.length < participants)
           }
           selectedTrackConfig={selectedTrackConfig}
+          hideActions={Boolean(bankTransfer)}
         />
       </div>
 

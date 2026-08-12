@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query"
 import {
   ArrowRight,
   CalendarCheck,
-  Car,
   ChevronRight,
   Clock,
   CreditCard,
@@ -78,7 +77,6 @@ function QuickActions() {
         { icon: Trophy,       label: "Giải đấu",     to: routePaths.contests,           color: "bg-brand-indigo" },
         { icon: CalendarCheck,label: "Lịch đặt",     to: routePaths.customerBookings,   color: "bg-emerald-500" },
         { icon: Package,      label: "Gói hội viên", to: routePaths.customerPackages,   color: "bg-violet-500" },
-        { icon: Car,          label: "Đội xe",        to: routePaths.customerVehicles,   color: "bg-sky-500" },
       ].map(({ icon: Icon, label, to, color }) => (
         <Link
           key={to}

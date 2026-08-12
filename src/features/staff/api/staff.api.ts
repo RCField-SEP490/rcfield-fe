@@ -2,14 +2,14 @@
 import { api } from "@/shared/lib/axios"
 
 export type DamagePartType =
-  | 'TIRE_WHEEL'
-  | 'SPOILER'
-  | 'CHASSIS'
-  | 'MOTOR'
-  | 'SHELL'
-  | 'SERVO'
-  | 'REMOTE'
-  | 'OTHER'
+  | "TIRE_WHEEL"
+  | "SPOILER"
+  | "CHASSIS"
+  | "MOTOR"
+  | "SHELL"
+  | "SERVO"
+  | "REMOTE"
+  | "OTHER"
 
 export interface DamageLineItemInput {
   partType: DamagePartType
@@ -47,7 +47,12 @@ export interface StaffMaintenanceLogItem {
   createdAt: string
   completedAt: string | null
   inspectionPhotos?: { angle: string; url: string }[]
-  damagedChecklist?: { itemKey: string; itemLabel: string; status: string; note?: string }[]
+  damagedChecklist?: {
+    itemKey: string
+    itemLabel: string
+    status: string
+    note?: string
+  }[]
 }
 
 export interface StaffListItem {
@@ -77,7 +82,13 @@ export interface InviteStaffResult extends StaffListItem {
 
 export interface StaffImpersonateResponse {
   token: string
-  staff: { id: string; email: string; fullName: string; cafeName: string; cafeId: string }
+  staff: {
+    id: string
+    email: string
+    fullName: string
+    cafeName: string
+    cafeId: string
+  }
 }
 
 export interface CreateWalkInBookingInput {
@@ -116,7 +127,13 @@ export interface TodayBookingItem {
   playMode: "RENTAL" | "BYOC" | "MIXED"
   source: "APP" | "STAFF_MANUAL" | "CONTEST"
   contestId?: string | null
-  status: "PENDING" | "CONFIRMED" | "CANCELLED" | "NO_SHOW" | "AWAITING_PAYMENT" | "COMPLETED"
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "CANCELLED"
+    | "NO_SHOW"
+    | "AWAITING_PAYMENT"
+    | "COMPLETED"
   slotStart: string
   slotEnd: string
   slotCount: number
@@ -133,6 +150,7 @@ export interface TodayBookingItem {
   participantDetails?: { name: string; phone?: string; isBooker: boolean }[]
   plannedVehicles: string[]
   sessions: any[]
+  hasPendingRefund?: boolean
 
   // Legacy aliases used by older UI widgets/mocks while the staff API was stabilizing.
   id?: string
@@ -221,28 +239,44 @@ export interface StaffActivityPage {
 
 export const staffQueryKeys = {
   all: ["staff"] as const,
-  list: (cafeId?: string) => [...staffQueryKeys.all, "list", cafeId ?? "all"] as const,
+  list: (cafeId?: string) =>
+    [...staffQueryKeys.all, "list", cafeId ?? "all"] as const,
   todayBookings: () => [...staffQueryKeys.all, "today-bookings"] as const,
   bookingLists: () => [...staffQueryKeys.all, "bookings"] as const,
   bookings: (date: string) => [...staffQueryKeys.bookingLists(), date] as const,
   fnbOrders: () => [...staffQueryKeys.all, "fnb-orders"] as const,
-  staffDetail: (staffId: string) => [...staffQueryKeys.all, "detail", staffId] as const,
-  staffKpi: (staffId: string, period: string) => [...staffQueryKeys.all, "kpi", staffId, period] as const,
-  staffActivity: (staffId: string) => [...staffQueryKeys.all, "activity", staffId] as const,
+  staffDetail: (staffId: string) =>
+    [...staffQueryKeys.all, "detail", staffId] as const,
+  staffKpi: (staffId: string, period: string) =>
+    [...staffQueryKeys.all, "kpi", staffId, period] as const,
+  staffActivity: (staffId: string) =>
+    [...staffQueryKeys.all, "activity", staffId] as const,
   maintenanceLogs: (cafeId?: string, status?: string, search?: string) =>
-    [...staffQueryKeys.all, "maintenance-logs", cafeId ?? "all", status ?? "all", search ?? "none"] as const,
+    [
+      ...staffQueryKeys.all,
+      "maintenance-logs",
+      cafeId ?? "all",
+      status ?? "all",
+      search ?? "none",
+    ] as const,
 }
 
 export const staffApi = {
   listStaff: async (cafeId?: string): Promise<StaffListItem[]> => {
-    const res = await api.get<{ success: boolean; data: StaffListItem[] }>("/v1/provider/staff", {
-      params: cafeId ? { cafe_id: cafeId } : undefined,
-    })
+    const res = await api.get<{ success: boolean; data: StaffListItem[] }>(
+      "/v1/provider/staff",
+      {
+        params: cafeId ? { cafe_id: cafeId } : undefined,
+      },
+    )
     return res.data.data
   },
 
   inviteStaff: async (body: InviteStaffBody): Promise<InviteStaffResult> => {
-    const res = await api.post<{ success: boolean; data: InviteStaffResult }>("/v1/provider/staff", body)
+    const res = await api.post<{ success: boolean; data: InviteStaffResult }>(
+      "/v1/provider/staff",
+      body,
+    )
     return res.data.data
   },
 
@@ -258,32 +292,44 @@ export const staffApi = {
     await api.patch(`/v1/provider/staff/${staffId}/branch`, { cafe_id: cafeId })
   },
 
-  impersonateStaff: async (staffId: string): Promise<StaffImpersonateResponse> => {
-    const res = await api.post<StaffImpersonateResponse>(`/v1/provider/staff/${staffId}/impersonate`)
+  impersonateStaff: async (
+    staffId: string,
+  ): Promise<StaffImpersonateResponse> => {
+    const res = await api.post<StaffImpersonateResponse>(
+      `/v1/provider/staff/${staffId}/impersonate`,
+    )
     return res.data
   },
 
   resendInvite: async (staffId: string): Promise<{ emailSent: boolean }> => {
-    const res = await api.post<{ success: boolean; data: { emailSent: boolean } }>(
-      `/v1/provider/staff/${staffId}/resend-invite`,
-    )
+    const res = await api.post<{
+      success: boolean
+      data: { emailSent: boolean }
+    }>(`/v1/provider/staff/${staffId}/resend-invite`)
     return res.data.data
   },
 
   getTodayBookings: async (): Promise<TodayBookingItem[]> => {
-    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/today-bookings")
+    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>(
+      "/v1/staff/today-bookings",
+    )
     return res.data.data
   },
 
   getBookings: async (date: string): Promise<TodayBookingItem[]> => {
-    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>("/v1/staff/bookings", {
-      params: { date },
-    })
+    const res = await api.get<{ success: boolean; data: TodayBookingItem[] }>(
+      "/v1/staff/bookings",
+      {
+        params: { date },
+      },
+    )
     return res.data.data
   },
 
   getFnbOrders: async (): Promise<TodayFnbOrderItem[]> => {
-    const res = await api.get<{ success: boolean; data: TodayFnbOrderItem[] }>("/v1/staff/fnb-orders")
+    const res = await api.get<{ success: boolean; data: TodayFnbOrderItem[] }>(
+      "/v1/staff/fnb-orders",
+    )
     return res.data.data
   },
 
@@ -291,63 +337,109 @@ export const staffApi = {
     await api.patch(`/v1/staff/fnb-orders/${orderId}`, { status })
   },
 
-  validateInviteToken: async (token: string): Promise<{ email: string; fullName: string }> => {
-    const res = await api.get<{ success: boolean; data: { email: string; fullName: string } }>(
-      "/v1/auth/staff-invite/validate",
-      { params: { token } },
-    )
+  validateInviteToken: async (
+    token: string,
+  ): Promise<{ email: string; fullName: string }> => {
+    const res = await api.get<{
+      success: boolean
+      data: { email: string; fullName: string }
+    }>("/v1/auth/staff-invite/validate", { params: { token } })
     return res.data.data
   },
 
   activateAccount: async (
     token: string,
     password: string,
-  ): Promise<{ access_token: string; refresh_token: string; user: { id: string; email: string; fullName: string; role: string; cafeId: string | null } }> => {
-    const res = await api.post("/v1/auth/staff-invite/activate", { token, password })
+  ): Promise<{
+    access_token: string
+    refresh_token: string
+    user: {
+      id: string
+      email: string
+      fullName: string
+      role: string
+      cafeId: string | null
+    }
+  }> => {
+    const res = await api.post("/v1/auth/staff-invite/activate", {
+      token,
+      password,
+    })
     return res.data.data
   },
 
   getStaffDetail: async (staffId: string): Promise<StaffDetailProfile> => {
-    const res = await api.get<{ success: boolean; data: StaffDetailProfile }>(`/v1/provider/staff/${staffId}`)
+    const res = await api.get<{ success: boolean; data: StaffDetailProfile }>(
+      `/v1/provider/staff/${staffId}`,
+    )
     return res.data.data
   },
 
-  getStaffKpi: async (staffId: string, period: "7d" | "30d" | "90d"): Promise<StaffKpiSummary> => {
-    const res = await api.get<{ success: boolean; data: StaffKpiSummary }>(`/v1/provider/staff/${staffId}/kpi`, { params: { period } })
+  getStaffKpi: async (
+    staffId: string,
+    period: "7d" | "30d" | "90d",
+  ): Promise<StaffKpiSummary> => {
+    const res = await api.get<{ success: boolean; data: StaffKpiSummary }>(
+      `/v1/provider/staff/${staffId}/kpi`,
+      { params: { period } },
+    )
     return res.data.data
   },
 
-  getStaffActivity: async (staffId: string, limit = 20, offset = 0): Promise<StaffActivityPage> => {
-    const res = await api.get<{ success: boolean; data: StaffActivityPage }>(`/v1/provider/staff/${staffId}/activity`, { params: { limit, offset } })
+  getStaffActivity: async (
+    staffId: string,
+    limit = 20,
+    offset = 0,
+  ): Promise<StaffActivityPage> => {
+    const res = await api.get<{ success: boolean; data: StaffActivityPage }>(
+      `/v1/provider/staff/${staffId}/activity`,
+      { params: { limit, offset } },
+    )
     return res.data.data
   },
 
   checkIn: async (bookingId: string): Promise<StaffCheckInResponse> => {
-    const res = await api.post<{ success: boolean; data: StaffCheckInResponse }>(`/v1/staff/bookings/${bookingId}/check-in`)
+    const res = await api.post<{
+      success: boolean
+      data: StaffCheckInResponse
+    }>(`/v1/staff/bookings/${bookingId}/check-in`)
     return res.data.data
   },
 
   getSessionDetail: async (sessionId: string): Promise<any> => {
-    const res = await api.get<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}`)
+    const res = await api.get<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}`,
+    )
     return res.data.data
   },
 
   submitInspection: async (
     sessionId: string,
     data: {
-      type: 'CHECK_IN' | 'CHECK_OUT'
+      type: "CHECK_IN" | "CHECK_OUT"
       photos?: { angle: string; url: string; notes?: string }[]
-      checklist?: { itemKey: string; itemLabel: string; status: string; note?: string }[]
+      checklist?: {
+        itemKey: string
+        itemLabel: string
+        status: string
+        note?: string
+      }[]
       staffNotes?: string
       damageFlagged: boolean
       damageLineItems?: DamageLineItemInput[]
     },
   ): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/inspections`, data)
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/inspections`,
+      data,
+    )
     return res.data.data
   },
 
-  confirmCheckout: async (sessionId: string, inspectionId: string): Promise<any> => {
+  confirmCheckout: async (
+    sessionId: string,
+    inspectionId: string,
+  ): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(
       `/v1/staff/sessions/${sessionId}/confirm-checkout`,
       { inspectionId },
@@ -359,66 +451,123 @@ export const staffApi = {
     sessionId: string,
     inspectionId: string,
     damageLineItems: DamageLineItemInput[],
-  ): Promise<{ damageLineItems: DamageLineItemDetail[]; totalDamageCharge: number }> => {
-    const res = await api.put<{ success: boolean; data: { inspectionId: string; damageLineItems: DamageLineItemDetail[]; totalDamageCharge: number } }>(
+  ): Promise<{
+    damageLineItems: DamageLineItemDetail[]
+    totalDamageCharge: number
+  }> => {
+    const res = await api.put<{
+      success: boolean
+      data: {
+        inspectionId: string
+        damageLineItems: DamageLineItemDetail[]
+        totalDamageCharge: number
+      }
+    }>(
       `/v1/staff/sessions/${sessionId}/inspections/${inspectionId}/damage-items`,
       { damageLineItems },
     )
     return res.data.data
   },
 
-  proposeExtension: async (sessionId: string, data: { extraMinutes: number; additionalFee?: number; direct?: boolean }): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/extensions`, data)
+  proposeExtension: async (
+    sessionId: string,
+    data: { extraMinutes: number; additionalFee?: number; direct?: boolean },
+  ): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/extensions`,
+      data,
+    )
     return res.data.data
   },
 
-  addSessionFnbOrder: async (sessionId: string, data: { items: { menu_item_id: string; variant_id?: string; quantity: number; notes?: string }[] }): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/fnb-orders`, data)
+  addSessionFnbOrder: async (
+    sessionId: string,
+    data: {
+      items: {
+        menu_item_id: string
+        variant_id?: string
+        quantity: number
+        notes?: string
+      }[]
+    },
+  ): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/fnb-orders`,
+      data,
+    )
     return res.data.data
   },
 
   swapSessionVehicle: async (
     sessionId: string,
-    data: { oldVehicleId: string; newVehicleId: string; oldVehicleNewStatus: string }
+    data: {
+      oldVehicleId: string
+      newVehicleId: string
+      oldVehicleNewStatus: string
+    },
   ): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/swap-vehicle`, data)
-    return res.data.data
-  },
-
-  simulateClientCheckIn: async (sessionId: string): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/simulate-check-in-response`)
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/swap-vehicle`,
+      data,
+    )
     return res.data.data
   },
 
   simulateClientCheckOut: async (sessionId: string): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/simulate-check-out-response`)
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/simulate-check-out-response`,
+    )
     return res.data.data
   },
 
-  simulateClientExtension: async (sessionId: string, data: { approved: boolean }): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/sessions/${sessionId}/simulate-extension-response`, data)
+  simulateClientExtension: async (
+    sessionId: string,
+    data: { approved: boolean },
+  ): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/simulate-extension-response`,
+      data,
+    )
     return res.data.data
   },
 
   settlePendingPayments: async (bookingId: string): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/settle-pending-payments`)
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/bookings/${bookingId}/settle-pending-payments`,
+    )
     return res.data.data
   },
 
-  confirmRefund: async (bookingId: string): Promise<any> => {
-    const res = await api.post<{ success: boolean; data: any }>(`/v1/staff/bookings/${bookingId}/confirm-refund`)
+  confirmRefund: async (
+    bookingId: string,
+    confirmation: { method: "CASH" | "BANK_TRANSFER" },
+  ): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/bookings/${bookingId}/confirm-refund`,
+      confirmation,
+    )
     return res.data.data
   },
 
-  createWalkInBooking: async (body: CreateWalkInBookingInput): Promise<CreateWalkInBookingResponse> => {
-    const res = await api.post<{ success: boolean; data: CreateWalkInBookingResponse }>("/v1/staff/bookings", body)
+  createWalkInBooking: async (
+    body: CreateWalkInBookingInput,
+  ): Promise<CreateWalkInBookingResponse> => {
+    const res = await api.post<{
+      success: boolean
+      data: CreateWalkInBookingResponse
+    }>("/v1/staff/bookings", body)
     return res.data.data
   },
 
-  getMaintenanceLogs: async (
-    params?: { cafe_id?: string; status?: string; search?: string }
-  ): Promise<StaffMaintenanceLogItem[]> => {
-    const res = await api.get<{ success: boolean; data: StaffMaintenanceLogItem[] }>("/v1/staff/maintenance-logs", {
+  getMaintenanceLogs: async (params?: {
+    cafe_id?: string
+    status?: string
+    search?: string
+  }): Promise<StaffMaintenanceLogItem[]> => {
+    const res = await api.get<{
+      success: boolean
+      data: StaffMaintenanceLogItem[]
+    }>("/v1/staff/maintenance-logs", {
       params,
     })
     return res.data.data
@@ -431,37 +580,52 @@ export const staffApi = {
     performedBy?: string
     staffNotes?: string
   }): Promise<StaffMaintenanceLogItem> => {
-    const res = await api.post<{ success: boolean; data: StaffMaintenanceLogItem }>("/v1/staff/maintenance-logs", body)
+    const res = await api.post<{
+      success: boolean
+      data: StaffMaintenanceLogItem
+    }>("/v1/staff/maintenance-logs", body)
     return res.data.data
   },
 
   updateMaintenanceStatus: async (
     logId: string,
-    body: { status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"; cost?: number; staffNotes?: string }
+    body: {
+      status: "SENT_TO_PROVIDER" | "PENDING_REPAIR" | "RECEIVED" | "COMPLETED"
+      cost?: number
+      staffNotes?: string
+    },
   ): Promise<{ success: boolean; logId: string; status: string }> => {
-    const res = await api.patch<{ success: boolean; data: { success: boolean; logId: string; status: string } }>(
-      `/v1/staff/maintenance-logs/${logId}/status`,
-      body
-    )
+    const res = await api.patch<{
+      success: boolean
+      data: { success: boolean; logId: string; status: string }
+    }>(`/v1/staff/maintenance-logs/${logId}/status`, body)
     return res.data.data
   },
 
   lookupCustomerPackages: async (query: string): Promise<any> => {
-    const res = await api.get<{ success: boolean; data: any }>("/v1/staff/packages/lookup", {
-      params: { query },
-    })
+    const res = await api.get<{ success: boolean; data: any }>(
+      "/v1/staff/packages/lookup",
+      {
+        params: { query },
+      },
+    )
     return res.data.data
   },
 
   getTopCustomers: async (): Promise<any> => {
-    const res = await api.get<{ success: boolean; data: any }>("/v1/staff/packages/top-customers")
+    const res = await api.get<{ success: boolean; data: any }>(
+      "/v1/staff/packages/top-customers",
+    )
     return res.data.data
   },
 
   searchCustomers: async (query: string): Promise<any[]> => {
-    const res = await api.get<{ success: boolean; data: any[] }>("/v1/staff/packages/search-customers", {
-      params: { query },
-    })
+    const res = await api.get<{ success: boolean; data: any[] }>(
+      "/v1/staff/packages/search-customers",
+      {
+        params: { query },
+      },
+    )
     return res.data.data
   },
 }

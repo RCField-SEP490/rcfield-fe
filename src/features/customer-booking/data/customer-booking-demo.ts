@@ -18,7 +18,6 @@ export type PaymentComponentLine = {
   type:
     | "SLOT_FEE"
     | "RENTAL_FEE"
-    | "SECURITY_DEPOSIT"
     | "FNB_PREORDER"
     | "PACKAGE_PURCHASE"
     | "PROMOTION"
@@ -53,12 +52,6 @@ export type CustomerProfileSnapshot = {
   trustScore: number
   bookingCount: number
   joinedAt: string
-  savedPaymentMethods: Array<{
-    id: string
-    label: string
-    provider: string
-    masked: string
-  }>
 }
 
 export const fnbMenuItems: FnbMenuItem[] = [
@@ -107,10 +100,6 @@ export const demoCustomerProfile: CustomerProfileSnapshot = {
   trustScore: 98,
   bookingCount: 42,
   joinedAt: "2026-01-12",
-  savedPaymentMethods: [
-    { id: "pm-1", label: "Ví VNPAY", provider: "VNPAY", masked: "Liên kết mặc định" },
-    { id: "pm-2", label: "Thẻ Visa", provider: "Visa", masked: "•••• 4242" },
-  ],
 }
 
 export function getDemoBookingSnapshot(): CustomerBookingSnapshot {
@@ -130,7 +119,6 @@ export function getDemoBookingSnapshot(): CustomerBookingSnapshot {
     checkInCode: "RC8492-TXM",
     paymentComponents: [
       { id: "pc-1", type: "SLOT_FEE", label: "Gói trải nghiệm", amount: 500000, status: "CAPTURED" },
-      { id: "pc-2", type: "SECURITY_DEPOSIT", label: "Cọc xe dự phòng", amount: 0, status: "HELD" },
       { id: "pc-3", type: "VAT", label: "Thuế VAT 10%", amount: 60000, status: "CAPTURED" },
     ],
   }

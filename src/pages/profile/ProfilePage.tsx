@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
+import * as z from "zod"
 import { toast } from "sonner"
-import { Camera, CreditCard, Mail, Phone } from "lucide-react"
+import { Camera, Mail, Phone } from "lucide-react"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import { AdminHeader } from "@/pages/admin/components/AdminPrimitives"
@@ -24,13 +25,27 @@ import type { BackendCafe } from "@/features/cafes/types"
 import { PublicPageShell } from "@/shared/components/PublicPageShell"
 import { storageKeys } from "@/shared/lib/storage"
 import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
-import type { ProviderDetail } from "@/features/subscriptions/types"
+import type {
+  ProviderDetail,
+  ProviderSubscription,
+  SubscriptionStatus,
+} from "@/features/subscriptions/types"
+import { routePaths } from "@/app/router/route-paths"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
-import { Switch } from "@/shared/ui/switch"
 import { Textarea } from "@/shared/ui/textarea"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+
+const updateProfileSchema = z.object({
+  phone: z
+    .string()
+    .refine((val) => !val || /^(84|0[3|5|7|8|9])([0-9]{8})$/.test(val), {
+      message:
+        "Số điện thoại không đúng định dạng. Định dạng hợp lệ ví dụ: 0987654321",
+    }),
+})
 
 export function ProfilePage() {
   const role = useAuthStore((state) => state.role)
@@ -40,7 +55,7 @@ export function ProfilePage() {
       <ProviderShell>
         <ProviderPageHeader
           title="Hồ sơ cá nhân"
-          description="Quản lý thông tin tài khoản, bảo mật và phương thức thanh toán."
+          description="Quản lý thông tin tài khoản, doanh nghiệp và bảo mật."
         />
         <ProfileContent />
       </ProviderShell>
@@ -194,6 +209,33 @@ function ProfileContent() {
   const [savingBusiness, setSavingBusiness] = useState(false)
   const [businessError, setBusinessError] = useState<string | null>(null)
 
+  const [subscription, setSubscription] = useState<ProviderSubscription | null>(
+    null,
+  )
+  const [branchCount, setBranchCount] = useState<number | null>(null)
+  const [loadingSubscription, setLoadingSubscription] = useState(false)
+
+  useEffect(() => {
+    if (role !== "provider") return
+    queueMicrotask(() => setLoadingSubscription(true))
+    // Số chi nhánh đã dùng không nằm trong endpoint gói dịch vụ, phải đếm riêng.
+    // `limit: 1` vì chỉ cần con số tổng, không cần danh sách.
+    Promise.all([
+      subscriptionApi.getSubscriptionStatus(),
+      cafeApi.listCafes({ scope: "managed", limit: 1 }),
+    ])
+      .then(([sub, cafes]) =>
+        queueMicrotask(() => {
+          setSubscription(sub.data)
+          setBranchCount(cafes.meta?.total ?? null)
+        }),
+      )
+      .catch((err: unknown) =>
+        console.error("Error loading provider subscription", err),
+      )
+      .finally(() => queueMicrotask(() => setLoadingSubscription(false)))
+  }, [role])
+
   useEffect(() => {
     if (role !== "provider") return
     // queueMicrotask giống hệt effect tải chi nhánh của staff ở trên: đặt state
@@ -264,6 +306,7 @@ function ProfileContent() {
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let mounted = true
@@ -293,6 +336,17 @@ function ProfileContent() {
   }, [email, firstName, lastName, user?.avatarUrl, user?.phone])
 
   const saveProfile = async (nextAvatarUrl = form.avatarUrl) => {
+    const validation = updateProfileSchema.safeParse({ phone: form.phone })
+    if (!validation.success) {
+      const err = validation.error.format()
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: err.phone?._errors[0] ?? "",
+      }))
+      toast.error("Vui lòng sửa các lỗi nhập liệu trước khi lưu.")
+      return
+    }
+
     setSaving(true)
     try {
       const profile = await updateMe({
@@ -303,6 +357,27 @@ function ProfileContent() {
       setUser({ ...profile, role: profile.role ?? role ?? "customer" })
       persistUser(profile)
       toast.success("Đã cập nhật hồ sơ.")
+      setFieldErrors((prev) => ({ ...prev, phone: "" }))
+    } catch (error: unknown) {
+      const err = error as {
+        response?: {
+          data?: {
+            code?: string
+            message?: string
+          }
+        }
+      }
+      const code = err?.response?.data?.code
+      const message = err?.response?.data?.message
+      if (code === "PHONE_ALREADY_EXISTS") {
+        setFieldErrors((prev) => ({
+          ...prev,
+          phone: "Số điện thoại này đã được sử dụng bởi tài khoản khác",
+        }))
+        toast.error("Số điện thoại này đã được sử dụng bởi tài khoản khác.")
+      } else {
+        toast.error(message ?? "Cập nhật hồ sơ thất bại. Vui lòng thử lại.")
+      }
     } finally {
       setSaving(false)
     }
@@ -323,575 +398,441 @@ function ProfileContent() {
   const isDashboardRole =
     role === "admin" || role === "provider" || role === "staff"
 
+  /*
+    Chia tab thay vì xếp dọc 6 thẻ.
+
+    Bản cũ bắt provider cuộn qua ảnh đại diện, thông tin cá nhân, doanh nghiệp,
+    gói dịch vụ rồi mới tới đổi mật khẩu — mỗi thẻ một nút Lưu riêng, và không
+    có gì cho biết còn bao nhiêu phần phía dưới. Ba nhóm này gần như không bao
+    giờ được sửa cùng lúc, nên tách ra thì mỗi lần chỉ nhìn một nhóm.
+
+    Tab "Doanh nghiệp" chỉ dựng cho provider; admin và staff không có nhóm này.
+  */
   const pageContent = (
-    <div className="space-y-6">
-      {/* Avatar */}
-      <ProfileCard title="Ảnh đại diện">
-        <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-          <button
-            type="button"
-            className="group relative size-20 overflow-hidden rounded-full border-2 border-[#e5e2e1]"
-            aria-label="Change profile picture"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {form.avatarUrl ? (
-              <img
-                alt="Current avatar"
-                className="size-full rounded-full object-cover transition-opacity group-hover:opacity-75"
-                src={form.avatarUrl}
-              />
-            ) : (
-              <span className="flex size-full items-center justify-center rounded-full bg-[#f6f3f2] text-xl font-bold text-[#8a3218]">
-                {getInitials(displayName)}
-              </span>
-            )}
-            <span className="absolute inset-0 flex items-center justify-center bg-[#1c1b1b]/10 opacity-0 transition-opacity group-hover:opacity-100">
-              <Camera className="size-5 text-[#1c1b1b]" />
-            </span>
-          </button>
-          <input
-            ref={fileInputRef}
-            className="hidden"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/jpg"
-            onChange={(event) =>
-              void handleAvatarChange(event.target.files?.[0])
-            }
-          />
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                disabled={uploading}
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-lg bg-[#1c1b1b] px-4 text-sm text-white hover:bg-[#313030]"
-              >
-                {uploading ? "Đang tải..." : "Tải ảnh mới"}
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-lg border-[#e5e2e1] bg-white px-4 text-sm text-[#1c1b1b] hover:bg-[#f6f3f2]"
-                onClick={() => {
-                  setForm((current) => ({ ...current, avatarUrl: "" }))
-                  void saveProfile("")
-                }}
-              >
-                Xóa ảnh
-              </Button>
-            </div>
-            <p className="text-xs text-[#747878]">
-              Định dạng JPG, PNG. Tối đa 5MB.
-            </p>
-          </div>
-        </div>
-      </ProfileCard>
+    <Tabs defaultValue="account" className="w-full">
+      <TabsList>
+        <TabsTrigger value="account">Tài khoản</TabsTrigger>
+        {role === "provider" && (
+          <TabsTrigger value="business">Doanh nghiệp</TabsTrigger>
+        )}
+        <TabsTrigger value="security">Bảo mật</TabsTrigger>
+      </TabsList>
 
-      {/* Basic Info */}
-      <ProfileCard title="Thông tin cá nhân">
-        <form className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <Field
-            label="Họ"
-            id="firstName"
-            value={form.firstName}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, firstName: value }))
-            }
-          />
-          <Field
-            label="Tên"
-            id="lastName"
-            value={form.lastName}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, lastName: value }))
-            }
-          />
-          <Field
-            label="Email"
-            id="email"
-            type="email"
-            value={form.email}
-            icon={<Mail className="size-4" />}
-            className="md:col-span-2"
-            disabled
-          />
-          <Field
-            label="Số điện thoại"
-            id="phone"
-            type="tel"
-            value={form.phone}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, phone: value }))
-            }
-            icon={<Phone className="size-4" />}
-            className="md:col-span-2"
-          />
-          <div className="mt-2 flex justify-end border-t border-[#e5e2e1] pt-5 md:col-span-2">
-            <Button
-              disabled={saving}
+      <TabsContent value="account" className="mt-6 space-y-6">
+        {/* Avatar */}
+        <ProfileCard title="Ảnh đại diện">
+          <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center">
+            <button
               type="button"
-              onClick={() => void saveProfile()}
-              className="rounded-lg bg-[#1c1b1b] px-5 text-sm text-white hover:bg-[#313030]"
+              className="group relative size-20 overflow-hidden rounded-full border-2 border-[#e5e2e1]"
+              aria-label="Change profile picture"
+              onClick={() => fileInputRef.current?.click()}
             >
-              {saving ? "Đang lưu..." : "Lưu thay đổi"}
-            </Button>
-          </div>
-        </form>
-      </ProfileCard>
-
-      {/* Staff: work info */}
-      {role === "staff" && (
-        <>
-          <ProfileCard title="Thông tin phân công chi nhánh">
-            {loadingCafe ? (
-              <div className="text-center py-6 text-sm text-[#747878]">
-                Đang tải thông tin chi nhánh...
-              </div>
-            ) : user?.assignedCafeId ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
-                    Chi nhánh làm việc
-                  </p>
-                  <p className="text-sm font-semibold text-[#1c1b1b]">
-                    {assignedCafe?.name || "Chi nhánh đã phân công"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
-                    Mã nhân viên
-                  </p>
-                  <p className="text-sm font-semibold text-[#1c1b1b]">
-                    EMP-{(user?.id || "staff").slice(0, 8).toUpperCase()}
-                  </p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
-                    Địa chỉ
-                  </p>
-                  <p className="text-sm text-[#5d5f5f]">
-                    {assignedCafe?.address || "Đang cập nhật địa chỉ..."}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
-                    Vị trí công việc
-                  </p>
-                  <p className="text-sm font-semibold text-[#1c1b1b]">
-                    Nhân viên trực ca (Staff)
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
-                    Trạng thái hoạt động
-                  </p>
-                  <p className="text-sm flex items-center gap-1.5 text-emerald-600 font-semibold">
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-                    </span>
-                    Đang làm việc
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
-                <p className="text-sm font-semibold text-yellow-800">
-                  Chưa được phân công chi nhánh
-                </p>
-                <p className="mt-1 text-xs text-yellow-700">
-                  Liên hệ với Quản lý của bạn (Provider) để được cập nhật phân
-                  công ca trực.
-                </p>
-              </div>
-            )}
-          </ProfileCard>
-
-          <ProfileCard title="Hiệu suất trực ca">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 text-center">
-                <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                  Số ca tuần này
-                </p>
-                <p className="mt-2 text-2xl font-bold text-[#1c1b1b]">5 ca</p>
-              </div>
-              <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 text-center">
-                <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                  Đánh giá chung
-                </p>
-                <p className="mt-2 text-2xl font-bold text-emerald-600">
-                  4.9 / 5.0
-                </p>
-              </div>
-              <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 text-center">
-                <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                  Check-in đúng giờ
-                </p>
-                <p className="mt-2 text-2xl font-bold text-[#1c1b1b]">100%</p>
-              </div>
-            </div>
-          </ProfileCard>
-        </>
-      )}
-
-      {/* Provider: business info */}
-      {role === "provider" && (
-        <>
-          <ProfileCard title="Thông tin doanh nghiệp">
-            {loadingBusiness ? (
-              <div className="h-40 animate-pulse rounded-lg bg-[#f6f3f2]" />
-            ) : (
-              <form
-                className="space-y-5"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  void handleSaveBusiness()
-                }}
-              >
-                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                  <Field
-                    label="Tên doanh nghiệp / Hộ kinh doanh"
-                    id="companyName"
-                    value={businessForm.business_name}
-                    onChange={(value) =>
-                      setBusinessForm((prev) => ({
-                        ...prev,
-                        business_name: value,
-                      }))
-                    }
-                  />
-                  <Field
-                    label="Mã số thuế"
-                    id="taxCode"
-                    value={businessForm.tax_code}
-                    onChange={(value) =>
-                      setBusinessForm((prev) => ({ ...prev, tax_code: value }))
-                    }
-                  />
-                  <Field
-                    label="Email liên hệ doanh nghiệp"
-                    id="businessEmail"
-                    type="email"
-                    value={businessForm.business_email}
-                    onChange={(value) =>
-                      setBusinessForm((prev) => ({
-                        ...prev,
-                        business_email: value,
-                      }))
-                    }
-                    className="md:col-span-2"
-                  />
-                </div>
-                <div>
-                  <Label className="mb-2 block text-sm font-bold text-[#1c1b1b]">
-                    Giới thiệu
-                  </Label>
-                  <Textarea
-                    rows={4}
-                    value={businessForm.business_description}
-                    placeholder="Giới thiệu sơ lược về sân đua, số lượng xe cho thuê, dịch vụ đi kèm..."
-                    onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
-                      setBusinessForm((prev) => ({
-                        ...prev,
-                        business_description: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                {businessError ? (
-                  <p className="text-sm font-semibold text-red-600">
-                    {businessError}
-                  </p>
-                ) : null}
-                <div className="flex justify-end pt-2 border-t border-[#e5e2e1]">
-                  <Button
-                    type="submit"
-                    disabled={savingBusiness}
-                    className="rounded-lg bg-[#1c1b1b] px-5 text-sm text-white hover:bg-[#313030]"
-                  >
-                    {savingBusiness ? "Đang lưu..." : "Lưu thông tin"}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </ProfileCard>
-
-          <ProfileCard title="Gói dịch vụ đăng ký (Subscription)">
-            <div className="rounded-lg border border-[#e5e2e1] p-5 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold text-orange-600">
-                    Premium Track Partner
-                  </p>
-                  <p className="text-xs text-[#5d5f5f] mt-1">
-                    Gói dịch vụ cao cấp dành cho nhà vận hành chuyên nghiệp.
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold w-fit">
-                  ĐANG HOẠT ĐỘNG
+              {form.avatarUrl ? (
+                <img
+                  alt="Current avatar"
+                  className="size-full rounded-full object-cover transition-opacity group-hover:opacity-75"
+                  src={form.avatarUrl}
+                />
+              ) : (
+                <span className="flex size-full items-center justify-center rounded-full bg-[#f6f3f2] text-xl font-bold text-[#8a3218]">
+                  {getInitials(displayName)}
                 </span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 border-t border-[#e5e2e1] pt-4 text-sm">
-                <div>
-                  <p className="text-xs text-[#747878]">
-                    Ngày hết hạn / gia hạn tiếp theo
-                  </p>
-                  <p className="font-semibold text-[#1c1b1b] mt-0.5">
-                    31/12/2026
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#747878]">
-                    Tổng số chi nhánh cho phép
-                  </p>
-                  <p className="font-semibold text-[#1c1b1b] mt-0.5">
-                    5 chi nhánh (Đã dùng 3/5)
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#747878]">
-                    Phương thức thanh toán gia hạn
-                  </p>
-                  <p className="font-semibold text-[#1c1b1b] mt-0.5">
-                    Thẻ Visa (Đuôi *8829)
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#747878]">
-                    Giới hạn nhân viên trực ca
-                  </p>
-                  <p className="font-semibold text-[#1c1b1b] mt-0.5">
-                    30 nhân viên (Đã dùng 12/30)
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end pt-2 border-t border-[#e5e2e1]">
+              )}
+              <span className="absolute inset-0 flex items-center justify-center bg-[#1c1b1b]/10 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="size-5 text-[#1c1b1b]" />
+              </span>
+            </button>
+            <input
+              ref={fileInputRef}
+              className="hidden"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/jpg"
+              onChange={(event) =>
+                void handleAvatarChange(event.target.files?.[0])
+              }
+            />
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-lg bg-[#1c1b1b] px-4 text-sm text-white hover:bg-[#313030]"
+                >
+                  {uploading ? "Đang tải..." : "Tải ảnh mới"}
+                </Button>
                 <Button
                   variant="outline"
-                  className="rounded-lg border-[#e5e2e1] bg-white text-sm"
+                  className="rounded-lg border-[#e5e2e1] bg-white px-4 text-sm text-[#1c1b1b] hover:bg-[#f6f3f2]"
+                  onClick={() => {
+                    setForm((current) => ({ ...current, avatarUrl: "" }))
+                    void saveProfile("")
+                  }}
                 >
-                  Quản lý gói dịch vụ
+                  Xóa ảnh
                 </Button>
+              </div>
+              <p className="text-xs text-[#747878]">
+                Định dạng JPG, PNG. Tối đa 5MB.
+              </p>
+            </div>
+          </div>
+        </ProfileCard>
+
+        {/* Basic Info */}
+        <ProfileCard title="Thông tin cá nhân">
+          <form className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <Field
+              label="Họ"
+              id="firstName"
+              value={form.firstName}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, firstName: value }))
+              }
+            />
+            <Field
+              label="Tên"
+              id="lastName"
+              value={form.lastName}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, lastName: value }))
+              }
+            />
+            <Field
+              label="Email"
+              id="email"
+              type="email"
+              value={form.email}
+              icon={<Mail className="size-4" />}
+              className="md:col-span-2"
+              disabled
+            />
+            <Field
+              label="Số điện thoại"
+              id="phone"
+              type="tel"
+              value={form.phone}
+              onChange={(value) => {
+                setForm((current) => ({ ...current, phone: value }))
+                const res = updateProfileSchema.safeParse({ phone: value })
+                if (!res.success) {
+                  const err = res.error.format()
+                  setFieldErrors((prev) => ({
+                    ...prev,
+                    phone: err.phone?._errors[0] ?? "",
+                  }))
+                } else {
+                  setFieldErrors((prev) => ({ ...prev, phone: "" }))
+                }
+              }}
+              error={fieldErrors.phone}
+              icon={<Phone className="size-4" />}
+              className="md:col-span-2"
+            />
+            <div className="mt-2 flex justify-end border-t border-[#e5e2e1] pt-5 md:col-span-2">
+              <Button
+                disabled={saving}
+                type="button"
+                onClick={() => void saveProfile()}
+                className="rounded-lg bg-[#1c1b1b] px-5 text-sm text-white hover:bg-[#313030]"
+              >
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </div>
+          </form>
+        </ProfileCard>
+
+        {/* Staff: work info */}
+        {role === "staff" && (
+          <>
+            <ProfileCard title="Thông tin phân công chi nhánh">
+              {loadingCafe ? (
+                <div className="text-center py-6 text-sm text-[#747878]">
+                  Đang tải thông tin chi nhánh...
+                </div>
+              ) : user?.assignedCafeId ? (
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
+                      Chi nhánh làm việc
+                    </p>
+                    <p className="text-sm font-semibold text-[#1c1b1b]">
+                      {assignedCafe?.name || "Chi nhánh đã phân công"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
+                      Mã nhân viên
+                    </p>
+                    <p className="text-sm font-semibold text-[#1c1b1b]">
+                      EMP-{(user?.id || "staff").slice(0, 8).toUpperCase()}
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
+                      Địa chỉ
+                    </p>
+                    <p className="text-sm text-[#5d5f5f]">
+                      {assignedCafe?.address || "Đang cập nhật địa chỉ..."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
+                      Vị trí công việc
+                    </p>
+                    <p className="text-sm font-semibold text-[#1c1b1b]">
+                      Nhân viên trực ca (Staff)
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-1">
+                      Trạng thái hoạt động
+                    </p>
+                    <p className="text-sm flex items-center gap-1.5 text-emerald-600 font-semibold">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                      </span>
+                      Đang làm việc
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                  <p className="text-sm font-semibold text-yellow-800">
+                    Chưa được phân công chi nhánh
+                  </p>
+                  <p className="mt-1 text-xs text-yellow-700">
+                    Liên hệ với Quản lý của bạn (Provider) để được cập nhật phân
+                    công ca trực.
+                  </p>
+                </div>
+              )}
+            </ProfileCard>
+
+            <ProfileCard title="Hiệu suất trực ca">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 text-center">
+                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
+                    Số ca tuần này
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-[#1c1b1b]">5 ca</p>
+                </div>
+                <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 text-center">
+                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
+                    Đánh giá chung
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-emerald-600">
+                    4.9 / 5.0
+                  </p>
+                </div>
+                <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 text-center">
+                  <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
+                    Check-in đúng giờ
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-[#1c1b1b]">100%</p>
+                </div>
+              </div>
+            </ProfileCard>
+          </>
+        )}
+
+        {/* Admin: role scope */}
+        {role === "admin" && (
+          <ProfileCard title="Vai trò quản trị">
+            <div className="space-y-3 text-sm text-[#1c1b1b]">
+              <div className="flex justify-between py-2 border-b border-[#e5e2e1]">
+                <span className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
+                  Vai trò tài khoản
+                </span>
+                <span className="text-sm font-bold text-orange-600">
+                  Quản trị viên hệ thống
+                </span>
+              </div>
+              <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+                <p className="text-sm font-semibold text-[#1c1b1b]">
+                  Có thể thực hiện
+                </p>
+                <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-xs text-[#5d5f5f] sm:grid-cols-2">
+                  <li>• Duyệt và quản lý Provider, cơ sở</li>
+                  <li>• Xử lý yêu cầu thanh toán, phí giải</li>
+                  <li>• Cấu hình gói, tiện ích, loại đường chạy</li>
+                  <li>• Quản lý kênh, nội dung và cấu hình hệ thống</li>
+                </ul>
+                <p className="mt-3 border-t border-[#e5e2e1] pt-3 text-xs text-[#747878]">
+                  Quyền áp dụng theo vai trò ADMIN; hiện chưa có phân quyền
+                  riêng theo từng tài khoản quản trị.
+                </p>
               </div>
             </div>
           </ProfileCard>
-        </>
-      )}
+        )}
+      </TabsContent>
 
-      {/* Security */}
-      <ProfileCard title="Đổi mật khẩu">
-        <form
-          className="grid grid-cols-1 gap-5 md:grid-cols-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void handleResetPassword()
-          }}
-        >
-          <Field
-            label="Mật khẩu hiện tại"
-            id="currentPassword"
-            type="password"
-            value={passwordForm.currentPassword}
-            onChange={(value) =>
-              setPasswordForm((current) => ({
-                ...current,
-                currentPassword: value,
-              }))
-            }
-            className="md:col-span-2"
-          />
-          <Field
-            label="Mật khẩu mới"
-            id="newPassword"
-            type="password"
-            value={passwordForm.newPassword}
-            onChange={(value) =>
-              setPasswordForm((current) => ({ ...current, newPassword: value }))
-            }
-          />
-          <Field
-            label="Nhập lại mật khẩu mới"
-            id="confirmNewPassword"
-            type="password"
-            value={passwordForm.confirmNewPassword}
-            onChange={(value) =>
-              setPasswordForm((current) => ({
-                ...current,
-                confirmNewPassword: value,
-              }))
-            }
-          />
-          <div className="mt-2 flex justify-end border-t border-[#e5e2e1] pt-5 md:col-span-2">
-            <Button
-              disabled={resettingPassword}
-              type="submit"
-              className="rounded-lg bg-[#1c1b1b] px-5 text-sm text-white hover:bg-[#313030]"
-            >
-              {resettingPassword ? "Đang xử lý..." : "Đổi mật khẩu"}
-            </Button>
-          </div>
-        </form>
-      </ProfileCard>
-
-      {/* Admin: permissions */}
-      {role === "admin" && (
-        <ProfileCard title="Cấp độ quản trị & Quyền hạn hệ thống">
-          <div className="space-y-3 text-sm text-[#1c1b1b]">
-            <div className="flex justify-between py-2 border-b border-[#e5e2e1]">
-              <span className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                Phân quyền tài khoản
-              </span>
-              <span className="text-sm font-bold text-orange-600">
-                Super Administrator
-              </span>
-            </div>
-            <div className="flex justify-between py-2 border-b border-[#e5e2e1]">
-              <span className="text-xs font-semibold text-[#747878] uppercase tracking-wider">
-                Đăng nhập gần nhất
-              </span>
-              <span className="text-sm font-medium text-[#1c1b1b]">
-                Hôm nay, 22:15:34 (IP 14.226.45.18)
-              </span>
-            </div>
-            <div className="py-2">
-              <p className="text-xs font-semibold text-[#747878] uppercase tracking-wider mb-2">
-                Quyền được gán
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "PHÊ DUYỆT ĐỐI TÁC",
-                  "QUẢN LÝ CHI NHÁNH",
-                  "PHÂN XỬ TRANH CHẤP",
-                  "GIÁM SÁT GIAO DỊCH",
-                ].map((p) => (
-                  <span
-                    key={p}
-                    className="px-2.5 py-1 bg-orange-50 text-orange-700 rounded-md border border-orange-100 text-[10px] font-bold"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="flex justify-end pt-2 border-t border-[#e5e2e1]">
-              <Button
-                variant="outline"
-                className="rounded-lg border-[#e5e2e1] bg-white text-sm"
-              >
-                Nhật ký bảo mật hệ thống
-              </Button>
-            </div>
-          </div>
-        </ProfileCard>
-      )}
-
-      {/* Notifications */}
-      <ProfileCard title="Cài đặt thông báo">
-        <div className="space-y-3">
-          {role === "staff" && (
-            <>
-              <SettingRow
-                title="Thay đổi lịch trực"
-                description="Nhận thông báo khi quản lý điều chỉnh ca làm việc của bạn."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Báo cáo sự cố"
-                description="Cập nhật khẩn cấp khi có sự cố xảy ra tại chi nhánh đang trực."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Nhiệm vụ trực ca"
-                description="Nhận nhắc nhở và danh sách kiểm tra vệ sinh/bảo trì xe được giao."
-                toggle
-                enabled
-              />
-            </>
-          )}
+      {role === "provider" && (
+        <TabsContent value="business" className="mt-6 space-y-6">
+          {/* Provider: business info */}
           {role === "provider" && (
             <>
-              <SettingRow
-                title="Lịch đặt mới"
-                description="Thông báo khi khách hàng đặt lịch hoặc gọi món tại các chi nhánh."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Thông báo thanh toán"
-                description="Xác nhận thanh toán thành công và cảnh báo gia hạn gói dịch vụ."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Yêu cầu rút tiền"
-                description="Cập nhật trạng thái xử lý khi bạn thực hiện rút doanh thu (payout)."
-                toggle
-                enabled
-              />
-            </>
-          )}
-          {role === "admin" && (
-            <>
-              <SettingRow
-                title="Yêu cầu phê duyệt"
-                description="Yêu cầu đăng ký tài khoản đối tác mới từ các Provider."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Lỗi & Cảnh báo hệ thống"
-                description="Báo cáo downtime, lỗi máy chủ hoặc lưu lượng tải bất thường."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Phân xử khiếu nại"
-                description="Thông báo khi có tranh chấp cần phân xử giữa Provider và Khách hàng."
-                toggle
-                enabled
-              />
-            </>
-          )}
-          {(!role || role === "customer") && (
-            <>
-              <SettingRow
-                title="Cập nhật booking"
-                description="Nhận thông báo trạng thái booking, thanh toán và phiên chơi."
-                toggle
-                enabled
-              />
-              <SettingRow
-                title="Email marketing"
-                description="Tin tức sản phẩm, khuyến mãi và cập nhật từ đối tác."
-                toggle
-              />
-            </>
-          )}
-        </div>
-      </ProfileCard>
+              <ProfileCard title="Thông tin doanh nghiệp">
+                {loadingBusiness ? (
+                  <div className="h-40 animate-pulse rounded-lg bg-[#f6f3f2]" />
+                ) : (
+                  <form
+                    className="space-y-5"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void handleSaveBusiness()
+                    }}
+                  >
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <Field
+                        label="Tên doanh nghiệp / Hộ kinh doanh"
+                        id="companyName"
+                        value={businessForm.business_name}
+                        onChange={(value) =>
+                          setBusinessForm((prev) => ({
+                            ...prev,
+                            business_name: value,
+                          }))
+                        }
+                      />
+                      <Field
+                        label="Mã số thuế"
+                        id="taxCode"
+                        value={businessForm.tax_code}
+                        onChange={(value) =>
+                          setBusinessForm((prev) => ({
+                            ...prev,
+                            tax_code: value,
+                          }))
+                        }
+                      />
+                      <Field
+                        label="Email liên hệ doanh nghiệp"
+                        id="businessEmail"
+                        type="email"
+                        value={businessForm.business_email}
+                        onChange={(value) =>
+                          setBusinessForm((prev) => ({
+                            ...prev,
+                            business_email: value,
+                          }))
+                        }
+                        className="md:col-span-2"
+                      />
+                    </div>
+                    <div>
+                      <Label className="mb-2 block text-sm font-bold text-[#1c1b1b]">
+                        Giới thiệu
+                      </Label>
+                      <Textarea
+                        rows={4}
+                        value={businessForm.business_description}
+                        placeholder="Giới thiệu sơ lược về sân đua, số lượng xe cho thuê, dịch vụ đi kèm..."
+                        onChange={(
+                          event: React.ChangeEvent<HTMLTextAreaElement>,
+                        ) =>
+                          setBusinessForm((prev) => ({
+                            ...prev,
+                            business_description: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    {businessError ? (
+                      <p className="text-sm font-semibold text-red-600">
+                        {businessError}
+                      </p>
+                    ) : null}
+                    <div className="flex justify-end pt-2 border-t border-[#e5e2e1]">
+                      <Button
+                        type="submit"
+                        disabled={savingBusiness}
+                        className="rounded-lg bg-[#1c1b1b] px-5 text-sm text-white hover:bg-[#313030]"
+                      >
+                        {savingBusiness ? "Đang lưu..." : "Lưu thông tin"}
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </ProfileCard>
 
-      {/* Payment - provider/customer only */}
-      {(role === "provider" || !role || role === "customer") && (
-        <ProfileCard title="Phương thức thanh toán">
-          <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-            <div className="flex items-center gap-3">
-              <CreditCard className="size-5 text-[#747878]" />
-              <div>
-                <p className="text-sm font-semibold text-[#1c1b1b]">
-                  Chưa có phương thức thanh toán
-                </p>
-                <p className="text-xs text-[#747878] mt-0.5">
-                  Thêm thẻ hoặc ví điện tử để thanh toán nhanh hơn.
-                </p>
-              </div>
-            </div>
-            <Button className="mt-4 rounded-lg bg-[#1c1b1b] text-sm text-white hover:bg-[#313030]">
-              Thêm phương thức thanh toán
-            </Button>
-          </div>
-        </ProfileCard>
+              <ProfileCard title="Gói dịch vụ đăng ký (Subscription)">
+                <SubscriptionPanel
+                  subscription={subscription}
+                  branchCount={branchCount}
+                  loading={loadingSubscription}
+                  onManage={() =>
+                    void navigate(routePaths.providerSubscriptions)
+                  }
+                />
+              </ProfileCard>
+            </>
+          )}
+        </TabsContent>
       )}
-    </div>
+
+      <TabsContent value="security" className="mt-6 space-y-6">
+        {/* Security */}
+        <ProfileCard title="Đổi mật khẩu">
+          <form
+            className="grid grid-cols-1 gap-5 md:grid-cols-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void handleResetPassword()
+            }}
+          >
+            <Field
+              label="Mật khẩu hiện tại"
+              id="currentPassword"
+              type="password"
+              value={passwordForm.currentPassword}
+              onChange={(value) =>
+                setPasswordForm((current) => ({
+                  ...current,
+                  currentPassword: value,
+                }))
+              }
+              className="md:col-span-2"
+            />
+            <Field
+              label="Mật khẩu mới"
+              id="newPassword"
+              type="password"
+              value={passwordForm.newPassword}
+              onChange={(value) =>
+                setPasswordForm((current) => ({
+                  ...current,
+                  newPassword: value,
+                }))
+              }
+            />
+            <Field
+              label="Nhập lại mật khẩu mới"
+              id="confirmNewPassword"
+              type="password"
+              value={passwordForm.confirmNewPassword}
+              onChange={(value) =>
+                setPasswordForm((current) => ({
+                  ...current,
+                  confirmNewPassword: value,
+                }))
+              }
+            />
+            <div className="mt-2 flex justify-end border-t border-[#e5e2e1] pt-5 md:col-span-2">
+              <Button
+                disabled={resettingPassword}
+                type="submit"
+                className="rounded-lg bg-[#1c1b1b] px-5 text-sm text-white hover:bg-[#313030]"
+              >
+                {resettingPassword ? "Đang xử lý..." : "Đổi mật khẩu"}
+              </Button>
+            </div>
+          </form>
+        </ProfileCard>
+      </TabsContent>
+    </Tabs>
   )
 
   if (isDashboardRole) {
@@ -935,6 +876,7 @@ function Field({
   icon,
   className,
   disabled = false,
+  error,
 }: {
   label: string
   id: string
@@ -944,6 +886,7 @@ function Field({
   icon?: React.ReactNode
   className?: string
   disabled?: boolean
+  error?: string
 }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
@@ -968,9 +911,15 @@ function Field({
           className={cn(
             "h-10 rounded-lg border-[#e5e2e1] bg-white px-3.5 text-sm text-[#1c1b1b] focus:border-[#747878] focus:ring-[#747878]",
             icon && "pl-10",
+            error && "border-red-500 focus:border-red-500",
           )}
         />
       </div>
+      {error && (
+        <p className="text-[11px] font-bold text-red-500 leading-tight mt-0.5">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -998,36 +947,6 @@ function persistUser(user: {
   }
 }
 
-function SettingRow({
-  title,
-  description,
-  action,
-  toggle = false,
-  enabled = false,
-}: {
-  title: string
-  description: string
-  action?: string
-  toggle?: boolean
-  enabled?: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-sm font-semibold text-[#1c1b1b]">{title}</p>
-        <p className="mt-0.5 text-xs text-[#5d5f5f]">{description}</p>
-      </div>
-      {toggle ? (
-        <Switch defaultChecked={enabled} />
-      ) : (
-        <Button variant="outline" className="rounded-lg bg-white text-sm">
-          {action}
-        </Button>
-      )}
-    </div>
-  )
-}
-
 function splitName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length <= 1) return [parts[0] ?? "", ""]
@@ -1041,4 +960,159 @@ function getInitials(name: string) {
     .join("")
     .slice(-2)
     .toUpperCase()
+}
+
+const SUBSCRIPTION_STATUS_STYLE: Record<
+  SubscriptionStatus,
+  { label: string; className: string }
+> = {
+  TRIAL: { label: "DÙNG THỬ", className: "bg-sky-100 text-sky-700" },
+  ACTIVE: {
+    label: "ĐANG HOẠT ĐỘNG",
+    className: "bg-emerald-100 text-emerald-700",
+  },
+  GRACE_PERIOD: {
+    label: "CẦN GIA HẠN",
+    className: "bg-amber-100 text-amber-800",
+  },
+  EXPIRED: { label: "ĐÃ HẾT HẠN", className: "bg-rose-100 text-rose-700" },
+}
+
+/** `-1` trong dữ liệu nghĩa là không giới hạn, không phải trừ một chi nhánh. */
+function formatQuota(limit: number, used: number | null, unit: string): string {
+  if (limit === -1)
+    return `Không giới hạn${used !== null ? ` (đang dùng ${used})` : ""}`
+  if (used === null) return `${limit} ${unit}`
+  return `${limit} ${unit} (đã dùng ${used}/${limit})`
+}
+
+/**
+ * Gói dịch vụ của provider — dữ liệu thật từ `GET /provider/subscription`.
+ *
+ * Bản trước hardcode toàn bộ, kể cả hai dòng mô tả những thứ hệ thống không hề
+ * có: "Thẻ Visa (Đuôi *8829)" — nền tảng không lưu thẻ, gia hạn đi qua yêu cầu
+ * thanh toán được admin duyệt tay — và "Giới hạn nhân viên trực ca", một hạn
+ * mức không tồn tại trong `subscription_plans`. Hai dòng đó bị bỏ hẳn thay vì
+ * nối vào dữ liệu giả khác: hứa một tính năng không có còn tệ hơn là im lặng.
+ */
+function SubscriptionPanel({
+  subscription,
+  branchCount,
+  loading,
+  onManage,
+}: {
+  subscription: ProviderSubscription | null
+  branchCount: number | null
+  loading: boolean
+  onManage: () => void
+}) {
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-[#e5e2e1] p-5 text-sm text-[#747878]">
+        Đang tải thông tin gói dịch vụ...
+      </div>
+    )
+  }
+
+  if (!subscription) {
+    return (
+      <div className="rounded-lg border border-dashed border-[#e5e2e1] p-5 text-center">
+        <p className="text-sm font-semibold text-[#1c1b1b]">
+          Chưa có gói dịch vụ nào đang hoạt động
+        </p>
+        <p className="mt-1 text-xs text-[#747878]">
+          Đăng ký một gói để tiếp tục vận hành chi nhánh.
+        </p>
+        <Button className="mt-4 rounded-lg text-sm" onClick={onManage}>
+          Chọn gói dịch vụ
+        </Button>
+      </div>
+    )
+  }
+
+  const status = SUBSCRIPTION_STATUS_STYLE[subscription.status]
+  const plan = subscription.plan
+  const expiresAt = new Date(subscription.expiresAt)
+  const graceEndsAt = subscription.graceEndsAt
+    ? new Date(subscription.graceEndsAt)
+    : null
+
+  return (
+    <div className="rounded-lg border border-[#e5e2e1] p-5 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-orange-600">
+            {plan ? `Gói ${plan.name}` : "Gói dịch vụ"}
+          </p>
+          {plan && (
+            <p className="text-xs text-[#5d5f5f] mt-1">
+              {plan.pricePerMonth > 0
+                ? `${plan.pricePerMonth.toLocaleString("vi-VN")}đ / tháng`
+                : "Miễn phí"}
+            </p>
+          )}
+        </div>
+        <span
+          className={cn(
+            "px-2.5 py-1 rounded-full text-[10px] font-bold w-fit",
+            status.className,
+          )}
+        >
+          {status.label}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[#e5e2e1] pt-4 text-sm">
+        <div>
+          <p className="text-xs text-[#747878]">
+            {graceEndsAt
+              ? "Hạn chót gia hạn"
+              : "Ngày hết hạn / gia hạn tiếp theo"}
+          </p>
+          <p className="font-semibold text-[#1c1b1b] mt-0.5">
+            {(graceEndsAt ?? expiresAt).toLocaleDateString("vi-VN")}
+          </p>
+        </div>
+
+        {plan && (
+          <>
+            <div>
+              <p className="text-xs text-[#747878]">
+                Tổng số chi nhánh cho phép
+              </p>
+              <p className="font-semibold text-[#1c1b1b] mt-0.5">
+                {formatQuota(plan.branchLimit, branchCount, "chi nhánh")}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[#747878]">Tin nhắn AI trong tháng</p>
+              <p className="font-semibold text-[#1c1b1b] mt-0.5">
+                {formatQuota(
+                  plan.aiQuotaPerMonth,
+                  subscription.aiMessagesUsed,
+                  "tin nhắn",
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-[#747878]">Kênh kết nối cho phép</p>
+              <p className="font-semibold text-[#1c1b1b] mt-0.5">
+                {formatQuota(plan.channelLimit, null, "kênh")}
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex justify-end pt-2 border-t border-[#e5e2e1]">
+        <Button
+          variant="outline"
+          className="rounded-lg border-[#e5e2e1] bg-white text-sm"
+          onClick={onManage}
+        >
+          Quản lý gói dịch vụ
+        </Button>
+      </div>
+    </div>
+  )
 }

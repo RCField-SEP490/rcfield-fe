@@ -10,17 +10,6 @@ export interface MockBooking {
   status: "pending" | "confirmed" | "completed" | "cancelled"
 }
 
-export interface MockVehicle {
-  vehicleId: string
-  name: string
-  scale: string // e.g., "1/10", "1/8"
-  chassisType: "Drift" | "Touring" | "Crawler" | "Off-Road"
-  frequency: string // e.g., "2.4 GHz"
-  status: "approved" | "pending" | "rejected"
-  imageUrl: string
-  registeredDate: string
-}
-
 export interface MockPackage {
   packageId: string
   name: string
@@ -86,40 +75,6 @@ export const mockCustomerBookings: MockBooking[] = [
     depositAmount: 150000,
     totalAmount: 320000,
     status: "cancelled"
-  }
-]
-
-// 2. Mock Vehicles Dataset (BYOC - Bring Your Own Car)
-export const mockCustomerVehicles: MockVehicle[] = [
-  {
-    vehicleId: "VH-091",
-    name: "Yokomo YD-2ZX Drift Special",
-    scale: "1/10",
-    chassisType: "Drift",
-    frequency: "2.4 GHz (Sanwa)",
-    status: "approved",
-    imageUrl: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400",
-    registeredDate: "2026-01-12"
-  },
-  {
-    vehicleId: "VH-182",
-    name: "Traxxas Slash 4X4 VXL Short Course",
-    scale: "1/8",
-    chassisType: "Off-Road",
-    frequency: "2.4 GHz (TQi)",
-    status: "pending",
-    imageUrl: "https://images.unsplash.com/photo-1531384441138-2736e62e0919?auto=format&fit=crop&q=80&w=400",
-    registeredDate: "2026-05-20"
-  },
-  {
-    vehicleId: "VH-045",
-    name: "Tamiya TT-02 Subaru Impreza",
-    scale: "1/10",
-    chassisType: "Touring",
-    frequency: "2.4 GHz (Futaba)",
-    status: "approved",
-    imageUrl: "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?auto=format&fit=crop&q=80&w=400",
-    registeredDate: "2025-11-05"
   }
 ]
 

@@ -96,10 +96,9 @@ A: [Có — cơ sở phục vụ cà phê, trà, nước ngọt và đồ ăn nh
 - Không hút thuốc trong khu vực sân và khu pit.
 - Trẻ em dưới [VD: 12 tuổi] cần có người lớn đi kèm.
 
-## Chính sách đặt cọc xe thuê
-- Khi thuê xe của cơ sở, khách đặt cọc [VD: 200.000đ/xe].
-- Tiền cọc hoàn lại toàn bộ sau khi trả xe nguyên vẹn.
-- Nếu xe bị hư hỏng: staff lập biên bản ghi nhận linh kiện hỏng và mức đền bù. Khách xác nhận trước khi rời đi.
+## Bồi thường hư hỏng xe thuê
+- Không thu tiền cọc xe khi đặt lịch.
+- Nếu xe phát sinh hư hỏng: staff lập biên bản ghi nhận linh kiện hỏng và mức bồi thường. Khách xác nhận trước khi rời đi.
 
 ## Chính sách hủy lịch & hoàn tiền
 - Hủy trước [VD: 24 giờ]: hoàn 100%.

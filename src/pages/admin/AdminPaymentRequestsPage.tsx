@@ -118,7 +118,7 @@ export function AdminPaymentRequestsPage() {
                       </td>
                       <td className="px-4 py-3 text-slate-500 text-xs max-w-[160px] truncate">{r.transfer_reference}</td>
                       <td className="px-4 py-3">
-                        <Badge className={`text-[11px] font-bold ${STATUS_COLORS[r.status]}`}>
+                        <Badge className={`text-[11px] font-semibold ${STATUS_COLORS[r.status]}`}>
                           {STATUS_LABELS[r.status]}
                         </Badge>
                       </td>

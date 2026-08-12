@@ -121,6 +121,21 @@ export function useSessionNotifications(enabled = true): void {
         })
         return
       }
+
+      if (msg.event === "BOOKING_CANCELLED") {
+        const payload = msg.data as { bookingId: string; title: string; message: string; route?: string }
+        toast.error(payload.title || "Đơn đặt lịch bị hủy", {
+          description: payload.message || "Đơn hàng của bạn đã bị hủy bởi nhà cung cấp.",
+          action: {
+            label: "Xem",
+            onClick: () => navigate(payload.route || `/customer/bookings/${payload.bookingId}`),
+          },
+          duration: 10000,
+        })
+        void qc.invalidateQueries({ queryKey: ["notifications"] })
+        void qc.invalidateQueries({ queryKey: ["bookings"] })
+        return
+      }
     },
     [navigate, qc],
   )

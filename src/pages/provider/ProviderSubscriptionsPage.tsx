@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation } from "@tanstack/react-query"
+import { toast } from "sonner"
 import { AnimatePresence, motion, type Variants } from "framer-motion"
 import {
   ArrowDownCircle,
@@ -12,6 +13,7 @@ import {
   Network,
   Sparkles,
   Store,
+  Flame,
 } from "lucide-react"
 
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -134,12 +136,32 @@ export function ProviderSubscriptionsPage() {
     queryFn: () => subscriptionApi.listMyPaymentRequests(),
   })
 
+  const payMutation = useMutation({
+    mutationFn: (requestId: string) =>
+      subscriptionApi.getPayOSLink({ payment_request_id: requestId }),
+    onSuccess: (res) => {
+      if (res.data?.checkoutUrl) {
+        toast.success("Tạo link thanh toán thành công! Đang chuyển hướng...")
+        window.location.href = res.data.checkoutUrl
+      } else {
+        toast.error("Không tạo được liên kết thanh toán")
+      }
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(msg ?? "Thanh toán lại thất bại. Vui lòng thử lại sau.")
+    },
+  })
+
   const { data: cafeData } = useQuery({
     queryKey: cafeQueryKeys.list({ limit: 1, scope: "managed" }),
     queryFn: () => cafeApi.listCafes({ limit: 1, scope: "managed" }),
   })
 
   const subscription = subData?.data ?? null
+  // Gói dùng thử cấp tự động một lần khi duyệt hồ sơ. Đã tiêu rồi thì không
+  // chọn lại được — backend cũng chặn, đây chỉ là để giao diện nói đúng sự thật.
+  const trialUsed = Boolean(subData?.trial_used_at)
   const requests = prData?.data ?? []
   const hasPending = requests.some((request) => request.status === "PENDING")
   const branchCount = cafeData?.meta.total ?? 0
@@ -161,6 +183,7 @@ export function ProviderSubscriptionsPage() {
 
   const getActionLabel = (plan: SubscriptionPlan) => {
     if (plan.id === currentPlanId) return "Gói đang sử dụng"
+    if (plan.isTrial && trialUsed) return "Đã dùng thử"
     const rank = PLAN_ORDER[plan.name]
     if (currentRank >= 0 && rank < currentRank) return "Downgrade gói"
     if (currentRank >= 0 && rank > currentRank) return "Nâng cấp gói"
@@ -169,6 +192,7 @@ export function ProviderSubscriptionsPage() {
 
   const getActionIcon = (plan: SubscriptionPlan) => {
     if (plan.id === currentPlanId) return CheckCircle2
+    if (plan.isTrial && trialUsed) return CheckCircle2
     const rank = PLAN_ORDER[plan.name]
     if (currentRank >= 0 && rank < currentRank) return ArrowDownCircle
     if (currentRank >= 0 && rank > currentRank) return ArrowUpCircle
@@ -234,44 +258,64 @@ export function ProviderSubscriptionsPage() {
               variants={pricingContainer}
               initial="hidden"
               animate="show"
-              className="mx-auto flex flex-wrap justify-center gap-8 2xl:gap-12"
+              className={`mx-auto grid grid-cols-1 sm:grid-cols-2 ${
+                sortedPlans.length === 4
+                  ? "lg:grid-cols-4"
+                  : sortedPlans.length === 3
+                    ? "lg:grid-cols-3"
+                    : "lg:grid-cols-2"
+              } gap-4 xl:gap-6 2xl:gap-8 w-full max-w-fit justify-center justify-items-center`}
             >
               {sortedPlans.map((plan) => {
                 const copy = PLAN_COPY[plan.name]
                 const isCurrent = plan.id === currentPlanId
                 const isSelected = plan.id === selectedPlanId
+                // Gói dùng thử đã tiêu thì khoá luôn, không cho mở form thanh toán.
+                const isLocked = plan.isTrial && trialUsed && !isCurrent
+                const isDisabled = isCurrent || isLocked
                 const ActionIcon = getActionIcon(plan)
 
                 return (
                   <motion.article
                     key={plan.id}
-                    role={isCurrent ? undefined : "button"}
-                    tabIndex={isCurrent ? undefined : 0}
+                    role={isDisabled ? undefined : "button"}
+                    tabIndex={isDisabled ? undefined : 0}
                     variants={pricingCard}
                     whileHover={{ y: -5 }}
                     whileTap={{ y: -1 }}
                     transition={{ duration: 0.18, ease: "easeOut" }}
                     onClick={() => {
-                      if (!isCurrent) handleChoosePlan(plan)
+                      if (!isDisabled) handleChoosePlan(plan)
                     }}
                     onKeyDown={(event) => {
-                      if (isCurrent) return
+                      if (isDisabled) return
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault()
                         handleChoosePlan(plan)
                       }
                     }}
-                    className={`relative flex h-[492px] w-full transform-gpu flex-col rounded-[32px] border border-white/80 bg-[#f6fbff]/95 px-7 py-6 text-center shadow-[0_18px_38px_rgba(91,124,153,0.18)] outline-none will-change-transform focus-visible:ring-2 focus-visible:ring-[#8ea6ff]/70 sm:w-[318px] 2xl:h-[520px] 2xl:w-[clamp(350px,20vw,430px)] 2xl:px-9 2xl:py-7 ${
+                    className={`relative flex h-[492px] w-full max-w-[280px] transform-gpu flex-col rounded-[32px] border border-white/80 bg-[#f6fbff]/95 px-4 py-6 text-center shadow-[0_18px_38px_rgba(91,124,153,0.18)] outline-none will-change-transform focus-visible:ring-2 focus-visible:ring-[#8ea6ff]/70 sm:max-w-[260px] md:max-w-[270px] lg:max-w-[225px] xl:max-w-[250px] 2xl:h-[520px] 2xl:max-w-[280px] 2xl:px-7 2xl:py-7 ${
                       isCurrent ? "cursor-default" : "cursor-pointer"
                     } ${
                       isSelected ? "ring-2 ring-[#8ea6ff]/70" : ""
                     }`}
                   >
+                    {plan.name === "GROWTH" && (
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="absolute left-4 top-4 flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-md animate-pulse z-10"
+                      >
+                        <Flame className="size-3 fill-white" />
+                        Nổi bật
+                      </motion.div>
+                    )}
+
                     {isCurrent && (
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="absolute right-4 top-4 rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#12b76a] shadow-sm"
+                        className="absolute right-4 top-4 rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-[#12b76a] shadow-sm z-10"
                       >
                         Đang sử dụng
                       </motion.div>
@@ -319,13 +363,14 @@ export function ProviderSubscriptionsPage() {
 
                     <Button
                       type="button"
-                      disabled={isCurrent}
+                      disabled={isDisabled}
                       onClick={(event) => {
                         event.stopPropagation()
+                        if (isDisabled) return
                         handleChoosePlan(plan)
                       }}
                       className={`mt-auto h-9 rounded-full border-0 bg-gradient-to-r px-5 text-xs font-black text-white shadow-[0_10px_24px_rgba(137,120,255,0.28)] transition ${
-                        isCurrent ? "from-slate-200 to-slate-300 text-slate-500 shadow-none" : copy.button
+                        isDisabled ? "from-slate-200 to-slate-300 text-slate-500 shadow-none" : copy.button
                       }`}
                     >
                       <ActionIcon className="size-3.5" />
@@ -373,26 +418,46 @@ export function ProviderSubscriptionsPage() {
                   <th className="px-4 py-3 text-left">Ngày CK</th>
                   <th className="px-4 py-3 text-left">Trạng thái</th>
                   <th className="px-4 py-3 text-left">Ghi chú Admin</th>
+                  <th className="px-4 py-3 text-left">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e5e2e1]">
-                {requests.map((request) => (
-                  <tr key={request.id} className="transition-colors hover:bg-[#fcf8f8]">
-                    <td className="px-4 py-3 font-bold text-[#1c1b1b]">{request.planId}</td>
-                    <td className="px-4 py-3 font-bold text-[#1c1b1b]">
-                      {formatPaymentAmount(request.transferAmount)}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">
-                      {new Date(request.transferDate).toLocaleDateString("vi-VN")}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge className={`border text-[11px] font-bold ${PR_STATUS_COLORS[request.status]}`}>
-                        {PR_STATUS_LABELS[request.status]}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">{request.adminNotes ?? "-"}</td>
-                  </tr>
-                ))}
+                {requests.map((request) => {
+                  const plan = plans.find((p) => p.id === request.planId)
+                  const planName = plan ? plan.name : "Gói không rõ"
+
+                  return (
+                    <tr key={request.id} className="transition-colors hover:bg-[#fcf8f8]">
+                      <td className="px-4 py-3 font-bold text-[#1c1b1b]">{planName}</td>
+                      <td className="px-4 py-3 font-bold text-[#1c1b1b]">
+                        {formatPaymentAmount(request.transferAmount)}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">
+                        {new Date(request.transferDate).toLocaleDateString("vi-VN")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={`border text-[11px] font-semibold ${PR_STATUS_COLORS[request.status]}`}>
+                          {PR_STATUS_LABELS[request.status]}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-[#5d5f5f]">{request.adminNotes ?? "-"}</td>
+                      <td className="px-4 py-3">
+                        {(request.status === "REJECTED" || (request.status === "PENDING" && !request.adminNotes?.includes("Đã thanh toán"))) && (
+                          <Button
+                            disabled={payMutation.isPending}
+                            onClick={() => payMutation.mutate(request.id)}
+                            className="h-7 text-[10px] px-2.5 rounded-full font-extrabold bg-[#7891a5] hover:bg-[#607587] text-white transition-all shadow-sm flex items-center gap-1 w-fit"
+                          >
+                            {payMutation.isPending && payMutation.variables === request.id ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : null}
+                            {request.status === "PENDING" ? "Thanh toán" : "Thanh toán lại"}
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

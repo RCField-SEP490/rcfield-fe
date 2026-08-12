@@ -1,9 +1,25 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ChevronDown, ChevronUp, Maximize2, RotateCcw } from "lucide-react"
+import {
+  ChevronDown,
+  ChevronUp,
+  Flag,
+  Maximize2,
+  RotateCcw,
+} from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { trackTypeApi, trackTypeQueryKeys, amenityApi, amenityQueryKeys } from "@/features/cafes/api/cafe.api"
-import { PRICE_SLIDER_MAX, PRICE_SLIDER_MIN, PRICE_SLIDER_STEP } from "../constants"
+import {
+  trackTypeApi,
+  trackTypeQueryKeys,
+  amenityApi,
+  amenityQueryKeys,
+} from "@/features/cafes/api/cafe.api"
+import { AmenityIcon } from "@/features/cafes/lib/amenity-icon"
+import {
+  PRICE_SLIDER_MAX,
+  PRICE_SLIDER_MIN,
+  PRICE_SLIDER_STEP,
+} from "../constants"
 import { ExploreMapPanel } from "./ExploreMapPanel"
 import type { Cafe } from "@/shared/data/explore-data"
 import type { UserLocation, MapBounds } from "../explore-utils"
@@ -13,8 +29,8 @@ const emphasizedEase: [number, number, number, number] = [0.22, 1, 0.36, 1]
 interface ExploreLeftSidebarProps {
   cafes: Cafe[]
   onSelectCafe: (cafe: Cafe) => void
-  userLocation: UserLocation | null;
-  onUserLocation: (loc: UserLocation | null) => void;
+  userLocation: UserLocation | null
+  onUserLocation: (loc: UserLocation | null) => void
   hoveredCafeId: string | null
   onBoundsChange: (bounds: MapBounds) => void
   searchOnMove: boolean
@@ -43,7 +59,11 @@ const sidebarVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: emphasizedEase } },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: emphasizedEase },
+  },
 }
 
 export function ExploreLeftSidebar({
@@ -79,26 +99,33 @@ export function ExploreLeftSidebar({
   })
 
   const popularOptions = useMemo(() => {
+    // `icon` của tiện ích là TỪ KHOÁ ("timer", "tool"...), không phải emoji.
+    // Trước đây đưa thẳng ra JSX nên bộ lọc hiện chữ "timer" cạnh tên tiện ích.
+    // Giữ nguyên từ khoá ở đây, để `AmenityIcon` dịch sang icon lúc render.
     const trackTags = trackTypes
       .filter((t) => t.isActive)
       .map((t) => ({
         id: t.id,
         label: t.name,
-        icon: "🏁",
+        kind: "track" as const,
+        iconKeyword: null,
       }))
 
     const amenityTags = amenities.map((a) => ({
       id: a.title,
       label: a.title,
-      icon: a.icon || "✨",
+      kind: "amenity" as const,
+      iconKeyword: a.icon ?? null,
     }))
 
     return [...trackTags, ...amenityTags]
   }, [trackTypes, amenities])
 
-  const visibleOptions = showAllPopular ? popularOptions : popularOptions.slice(0, 5)
-  const isPriceModified = priceMin > PRICE_SLIDER_MIN || priceMax < PRICE_SLIDER_MAX
-
+  const visibleOptions = showAllPopular
+    ? popularOptions
+    : popularOptions.slice(0, 5)
+  const isPriceModified =
+    priceMin > PRICE_SLIDER_MIN || priceMax < PRICE_SLIDER_MAX
 
   return (
     <motion.aside
@@ -152,7 +179,10 @@ export function ExploreLeftSidebar({
       </motion.label>
 
       {/* Price range */}
-      <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <motion.div
+        variants={itemVariants}
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+      >
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-bold text-slate-900">Khoảng giá</h4>
           <AnimatePresence>
@@ -217,7 +247,8 @@ export function ExploreLeftSidebar({
               value={priceMin}
               onChange={(e) => {
                 const val = Number(e.target.value)
-                if (val >= PRICE_SLIDER_MIN && val < priceMax) onPriceMinChange(val)
+                if (val >= PRICE_SLIDER_MIN && val < priceMax)
+                  onPriceMinChange(val)
               }}
               className="w-full bg-transparent text-xs font-medium text-slate-700 outline-none"
             />
@@ -230,7 +261,8 @@ export function ExploreLeftSidebar({
               value={priceMax}
               onChange={(e) => {
                 const val = Number(e.target.value)
-                if (val <= PRICE_SLIDER_MAX && val > priceMin) onPriceMaxChange(val)
+                if (val <= PRICE_SLIDER_MAX && val > priceMin)
+                  onPriceMaxChange(val)
               }}
               className="w-full bg-transparent text-xs font-medium text-slate-700 outline-none"
             />
@@ -240,7 +272,10 @@ export function ExploreLeftSidebar({
       </motion.div>
 
       {/* Popular filters */}
-      <motion.div variants={itemVariants} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <motion.div
+        variants={itemVariants}
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+      >
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-bold text-slate-900">Lọc phổ biến</h4>
           <button
@@ -248,7 +283,11 @@ export function ExploreLeftSidebar({
             onClick={() => setShowAllPopular(!showAllPopular)}
             className="text-slate-400 hover:text-slate-600 transition-colors"
           >
-            {showAllPopular ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {showAllPopular ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </button>
         </div>
 
@@ -274,8 +313,19 @@ export function ExploreLeftSidebar({
                     onChange={() => onTogglePopularFilter(opt.id)}
                     className="h-4 w-4 rounded border-slate-300 text-orange-600 focus:ring-orange-200 accent-orange-600"
                   />
-                  <span className="text-sm leading-none">{opt.icon}</span>
-                  <span className="text-sm font-medium text-slate-700">{opt.label}</span>
+                  <span className="shrink-0 text-slate-500">
+                    {opt.kind === "track" ? (
+                      <Flag className="size-4" />
+                    ) : (
+                      <AmenityIcon
+                        keyword={opt.iconKeyword}
+                        className="size-4"
+                      />
+                    )}
+                  </span>
+                  <span className="text-sm font-medium text-slate-700">
+                    {opt.label}
+                  </span>
                 </motion.label>
               )
             })}
@@ -288,7 +338,9 @@ export function ExploreLeftSidebar({
             onClick={() => setShowAllPopular(!showAllPopular)}
             className="mt-2 text-xs font-semibold text-orange-600 hover:text-orange-700 transition-colors"
           >
-            {showAllPopular ? "Thu gọn" : `Xem Tất cả (${popularOptions.length})`}
+            {showAllPopular
+              ? "Thu gọn"
+              : `Xem Tất cả (${popularOptions.length})`}
           </button>
         )}
       </motion.div>
