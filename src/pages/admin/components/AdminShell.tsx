@@ -49,7 +49,10 @@ const adminNavGroups: NavGroup[] = [
   {
     heading: "Provider & SaaS",
     items: [
-      { label: "Duyệt đối tác", icon: Building2, to: routePaths.adminCafes },
+      // Trang này duyệt CƠ SỞ, không phải tài khoản đối tác — việc đó nằm ở
+      // "Quản lý Provider" ngay dưới. Nhãn cũ là "Duyệt đối tác" nên ai đi tìm
+      // chỗ duyệt cơ sở đều bấm nhầm sang mục kia rồi kết luận là chưa có.
+      { label: "Duyệt cơ sở", icon: Building2, to: routePaths.adminCafes },
       { label: "Quản lý Provider", icon: Users, to: routePaths.adminProviders },
       {
         label: "Yêu cầu thanh toán",

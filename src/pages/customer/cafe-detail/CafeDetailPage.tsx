@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link, useParams } from "react-router"
 import { motion } from "framer-motion"
 import { useSectionEntrance } from "@/shared/lib/motion"
+import { usePageMeta } from "@/shared/lib/use-page-meta"
 import { routePaths } from "@/app/router/route-paths"
 import {
   cafeApi,
@@ -103,6 +104,31 @@ export function CafeDetailPage() {
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
   const [bookingMode] = useState<BookingMode>("hourly")
   const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString("sv-SE"))
+
+  /*
+    Tiêu đề và mô tả riêng cho từng cơ sở.
+
+    Trước đây mọi trang dùng chung một tiêu đề trong `index.html`, nên kết quả
+    tìm kiếm của mười cơ sở khác nhau đọc lên y hệt nhau và Google không có lý
+    do gì để xếp trang nào lên trước.
+
+    Phải gọi trước các nhánh return sớm bên dưới — quy tắc hook.
+  */
+  usePageMeta(
+    cafe
+      ? {
+          title: `${cafe.name} — Sân RC tại ${cafe.city}`,
+          description: [
+            `Đặt lịch chơi xe RC tại ${cafe.name}, ${cafe.district ? `${cafe.district}, ` : ""}${cafe.city}.`,
+            cafe.minPrice ? `Giá từ ${cafe.minPrice.toLocaleString("vi-VN")}đ mỗi giờ.` : "",
+            "Xem khung giờ còn trống, thuê xe tại sân hoặc mang xe cá nhân.",
+          ]
+            .filter(Boolean)
+            .join(" "),
+          image: cafe.coverImage || undefined,
+        }
+      : null,
+  )
 
   // Cùng bộ biến thể với danh sách ở trang Khám phá, có tôn trọng reduced-motion.
   // Phải gọi trước mọi nhánh return sớm bên dưới (quy tắc hook).

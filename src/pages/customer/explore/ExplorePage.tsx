@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { usePageMeta } from "@/shared/lib/use-page-meta"
 import { useNavigate } from "react-router"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowRight, Trophy } from "lucide-react"
@@ -43,6 +44,12 @@ import { Dialog, DialogContent } from "@/shared/ui/dialog"
 export function ExplorePage() {
   const navigate = useNavigate()
   const filters = useExploreFilters()
+
+  usePageMeta({
+    title: "Tìm sân chơi xe RC gần bạn",
+    description:
+      "Danh sách sân chơi xe RC trên toàn quốc: xem giá theo giờ, loại đường đua, tiện ích và khung giờ còn trống. Lọc theo thành phố và đặt lịch trực tuyến.",
+  })
   const [quickViewCafe, setQuickViewCafe] = useState<Cafe | null>(null)
   const [showMap, setShowMap] = useState(false)
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null)
