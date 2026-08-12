@@ -92,8 +92,15 @@ export function AdminPaymentsPage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Thanh toán SaaS & Đối soát"
-        description="Đối soát hóa đơn định kỳ các chủ sân và dòng tiền 15% hoa hồng thu phí từ các đơn booking thành công."
+        title="Sổ giao dịch"
+        /*
+          Câu cũ nói tới "dòng tiền 15% hoa hồng thu phí từ các đơn booking".
+          Khoản đó không tồn tại: `payment.service.ts` đặt cứng
+          `platform_fee_pct: 0`, và doanh thu nền tảng là phí thuê bao SaaS chứ
+          không phải phần trăm trên booking. Mô tả một nguồn thu không có khiến
+          người đọc sổ này đi tìm những con số sẽ không bao giờ xuất hiện.
+        */
+        description="Tra cứu giao dịch đồng bộ từ luồng đặt lịch của khách và cổng thanh toán gói SaaS."
       />
 
       {/* Financial Metric Cards */}

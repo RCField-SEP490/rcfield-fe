@@ -504,7 +504,7 @@ export function CustomerInspectionConfirmPage() {
             
             {/* Info overlay */}
             <div className="absolute bottom-4 left-4 right-4 bg-black/60 border border-white/10 backdrop-blur-md p-4 rounded-xl text-white space-y-1 text-center">
-              <span className="text-[10px] font-black text-orange-400 tracking-wider uppercase">GÓC CHỤP: {activePhoto?.direction ?? "N/A"}</span>
+              <span className="text-[10px] font-black text-orange-400 tracking-wider uppercase">GÓC CHỤP: {activePhoto?.direction ?? "Không ghi"}</span>
               <p className="text-xs font-semibold text-white/90">{activePhoto?.notes || "Ảnh chất lượng cao kiểm tra chi tiết thiết bị."}</p>
             </div>
             <div className="absolute top-4 left-4 flex items-center gap-2 rounded-xl border border-white/20 bg-black/60 p-1.5 text-white">

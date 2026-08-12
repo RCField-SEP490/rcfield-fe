@@ -14,6 +14,9 @@ export type FeaturedPopupItem = {
   starts_at: string
   ends_at: string
   is_active: boolean
+  /** Nội dung phải được duyệt mới lên trang, kể cả khi `is_active` là true. */
+  review_status: "PENDING" | "APPROVED" | "REJECTED"
+  review_notes: string | null
   priority: number
   created_at: string
   updated_at: string

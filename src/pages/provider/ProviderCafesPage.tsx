@@ -6,6 +6,7 @@ import { useNavigate } from "react-router"
 import { routePaths } from "@/app/router/route-paths"
 import { providerDashboardApi } from "@/features/dashboard/api/provider-dashboard.api"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
 import { formatCurrency } from "@/shared/lib/format"
 import { BranchList, formatOccupancyRate, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
@@ -161,10 +162,25 @@ export function ProviderCafesPage() {
     staleTime: 15_000,
   })
 
+  /*
+    Hạn mức chi nhánh của gói.
+
+    Backend chặn ở `checkBranchQuota` khi tạo cơ sở, nhưng trước đây giao diện
+    không biết gì về hạn mức: provider bấm "Thêm cơ sở", điền hết một biểu mẫu
+    dài — địa chỉ, toạ độ, giờ hoạt động, loại đường — rồi mới ăn lỗi ở bước
+    cuối. Biết trước thì chặn ngay từ cái nút, kèm lý do.
+  */
+  const { data: subscription } = useQuery({
+    queryKey: ["provider-subscription", "branch-quota"],
+    queryFn: () => subscriptionApi.getSubscriptionStatus(),
+    staleTime: 60_000,
+  })
+
   const cafes = useMemo(() => data?.data ?? [], [data?.data])
 
   const activeCount = cafes.filter((c) => c.status === "ACTIVE").length
   const pendingCount = cafes.filter((c) => c.status === "PENDING").length
+
   const operationsByCafe = useMemo(
     () => new Map(branchOperations.map((operation) => [operation.cafeId, operation])),
     [branchOperations],
@@ -207,6 +223,13 @@ export function ProviderCafesPage() {
     (operation) => operation.cafeStatus === "SUSPENDED",
   ).length
   const cafesLoaded = !isLoading && !isError
+  // `-1` là quy ước "không giới hạn", không phải trừ một chi nhánh.
+  const branchLimit = subscription?.data?.plan?.branchLimit ?? null
+  const hasBranchLimit = branchLimit !== null && branchLimit >= 0
+  // Chưa tải xong danh sách thì chưa kết luận là đã hết hạn mức, tránh khoá
+  // nhầm nút trong lúc đang tải.
+  const branchQuotaReached =
+    cafesLoaded && hasBranchLimit && cafes.length >= (branchLimit as number)
   const operationsLoaded = !isLoadingOperations && !isOperationsError
   const occupancyValue =
     operationsLoaded && averageOccupancyRate !== null
@@ -280,7 +303,13 @@ export function ProviderCafesPage() {
                     ? `${pendingCount} cơ sở đang chờ duyệt`
                     : "Tất cả cơ sở đã kích hoạt"
           }
-          detail={cafesLoaded ? `Đang quản lý ${cafes.length} chi nhánh` : undefined}
+          detail={
+            cafesLoaded
+              ? hasBranchLimit
+                ? `Đang quản lý ${cafes.length}/${branchLimit} chi nhánh theo gói`
+                : `Đang quản lý ${cafes.length} chi nhánh`
+              : undefined
+          }
           icon={<Building2 />}
           tone={isError ? "danger" : "neutral"}
         />
@@ -358,14 +387,36 @@ export function ProviderCafesPage() {
           title="Danh sách cơ sở"
           subtitle={isOperationsError ? "Không thể tải số liệu vận hành để sắp xếp" : `Sắp xếp theo doanh thu (${periodLabel.toLowerCase()})`}
           action={
-            <Button
-              type="button"
-              onClick={() => navigate(routePaths.providerCafeCreate)}
-              className="h-9 gap-2 rounded-lg bg-[#1c1b1b] px-4 text-sm text-white hover:bg-[#313030] font-bold"
-            >
-              <Plus className="size-4" />
-              Thêm cơ sở
-            </Button>
+            branchQuotaReached ? (
+              /*
+                Hết hạn mức thì đổi hẳn nút thành lối nâng gói, không để một nút
+                bị khoá đứng trơ ra. Nút mờ chỉ nói "không được" mà không nói
+                vì sao và phải làm gì tiếp.
+              */
+              <div className="flex flex-col items-end gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => navigate(routePaths.providerSubscriptions)}
+                  className="h-9 gap-2 rounded-lg px-4 text-sm font-bold"
+                >
+                  Nâng gói để thêm cơ sở
+                </Button>
+                <span className="text-xs text-[#747878]">
+                  Gói hiện tại cho tối đa {branchLimit} chi nhánh, bạn đã dùng{" "}
+                  {cafes.length}.
+                </span>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => navigate(routePaths.providerCafeCreate)}
+                className="h-9 gap-2 rounded-lg bg-[#1c1b1b] px-4 text-sm text-white hover:bg-[#313030] font-bold"
+              >
+                <Plus className="size-4" />
+                Thêm cơ sở
+              </Button>
+            )
           }
         />
 

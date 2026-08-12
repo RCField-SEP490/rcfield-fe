@@ -52,6 +52,8 @@ export type BackendCafe = {
   rating?: number
   reviewsCount?: number
   minPrice?: number
+  /** Tên doanh nghiệp của chủ cơ sở. */
+  providerName?: string | null
   amenityIds: string[]
   rules: string[]
   amenities?: AmenityCatalogItem[]
