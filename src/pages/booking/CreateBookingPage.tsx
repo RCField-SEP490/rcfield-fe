@@ -1,6 +1,7 @@
 import { ChevronLeft } from "lucide-react"
 import { useMemo, useState, useEffect, useRef } from "react"
 import { Link, useSearchParams } from "react-router"
+import { routePaths } from "@/app/router/route-paths"
 import type { BookingMode } from "@/features/booking/data/booking-options"
 import { bookingCatalog } from "@/features/booking/data/booking-options"
 import type {
@@ -630,7 +631,10 @@ export function CreateBookingPage() {
       if (checkout.confirmed) {
         // Zero-total: package covered slot_fee and no other charges — already confirmed
         toast.success("Đặt lịch thành công! Gói slot đã được áp dụng.")
-        window.location.href = "/customer/bookings"
+        window.location.href = routePaths.customerBookingDetail.replace(
+          ":bookingId",
+          booking.booking_id,
+        )
         return
       }
 
@@ -771,7 +775,10 @@ export function CreateBookingPage() {
       toast.success("Mock thanh toán thành công!", {
         description: "Booking đã được xác nhận.",
       })
-      window.location.href = "/customer/bookings"
+      window.location.href = routePaths.customerBookingDetail.replace(
+        ":bookingId",
+        booking.booking_id,
+      )
     } catch (err) {
       const response = (
         err as { response?: { data?: { code?: string; message?: string } } }
@@ -931,24 +938,6 @@ export function CreateBookingPage() {
                 })
               }
               onNoteChange={(key, note) => setFnbNotes((current) => ({ ...current, [key]: note }))}
-              onVariantChange={(fromKey, menuItemId, variantId) => {
-                const toKey = fnbSelectionKey(menuItemId, variantId)
-                if (fromKey === toKey) return
-                setFnbQuantities((current) => {
-                  const quantity = current[fromKey] ?? 0
-                  const next = { ...current }
-                  delete next[fromKey]
-                  next[toKey] = (next[toKey] ?? 0) + quantity
-                  return next
-                })
-                setFnbNotes((current) => {
-                  const note = current[fromKey]
-                  const next = { ...current }
-                  delete next[fromKey]
-                  if (note && !next[toKey]) next[toKey] = note
-                  return next
-                })
-              }}
             />
           )}
           {currentStep === "payment" && bankTransfer && (
@@ -957,7 +946,14 @@ export function CreateBookingPage() {
               checkout={bankTransfer.checkout}
               onPaid={() => toast.success("Đã nhận được thanh toán!")}
               onContinue={() => {
-                window.location.href = "/customer/bookings"
+                // Về thẳng đơn vừa trả tiền chứ không về danh sách: khách vừa
+                // chuyển tiền xong, thứ họ muốn xem là đơn đó — bắt tự dò lại
+                // trong danh sách là bắt làm thừa một việc.
+                window.location.href =
+                  routePaths.customerBookingDetail.replace(
+                    ":bookingId",
+                    bankTransfer.bookingId,
+                  )
               }}
             />
           )}

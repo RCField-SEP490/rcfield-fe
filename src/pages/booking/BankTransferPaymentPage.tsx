@@ -1,9 +1,13 @@
 import { useNavigate, useParams } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
-import { bookingApi } from "@/features/booking/api/booking.api"
+import {
+  bookingApi,
+  bookingQueryKeys,
+} from "@/features/booking/api/booking.api"
+import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
 import { BankTransferQrPanel } from "./components/checkout/BankTransferQrPanel"
 
@@ -20,10 +24,26 @@ import { BankTransferQrPanel } from "./components/checkout/BankTransferQrPanel"
 export function BankTransferPaymentPage() {
   const { bookingId } = useParams<{ bookingId: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["bank-transfer-checkout", bookingId],
-    queryFn: () => bookingApi.createCheckout(bookingId!, "bank_transfer"),
+    queryFn: async () => {
+      const result = await bookingApi.createCheckout(
+        bookingId!,
+        "bank_transfer",
+      )
+      // Ném lỗi thay vì trả về phản hồi thiếu mã QR.
+      //
+      // `staleTime: Infinity` bên dưới sẽ giữ mãi thứ gì trả về được — nên nếu
+      // coi phản hồi hụt này là dữ liệu hợp lệ, khách kẹt ở màn "Không mở được
+      // trang thanh toán" suốt phiên, kể cả khi phía sau đã sẵn sàng trả mã.
+      // Là lỗi thì React Query tự gọi lại lúc vào trang lần sau.
+      if (!result.bank_transfer) {
+        throw new Error("Phản hồi thanh toán không kèm mã QR chuyển khoản")
+      }
+      return result
+    },
     enabled: Boolean(bookingId),
     retry: false,
     // Mã QR gắn với một giao dịch cụ thể; tự tải lại sẽ tạo nhầm phiên mới.
@@ -43,11 +63,16 @@ export function BankTransferPaymentPage() {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <AlertTriangle className="mx-auto size-12 text-[#adaaaa]" />
-        <h1 className="mt-4 text-xl font-black">Không mở được trang thanh toán</h1>
+        <h1 className="mt-4 text-xl font-black">
+          Không mở được trang thanh toán
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Đơn này có thể đã thanh toán xong, đã huỷ, hoặc hết thời gian giữ chỗ.
         </p>
-        <Button className="mt-5" onClick={() => void navigate("/customer/bookings")}>
+        <Button
+          className="mt-5"
+          onClick={() => void navigate("/customer/bookings")}
+        >
           Xem đơn của tôi
         </Button>
       </div>
@@ -65,8 +90,25 @@ export function BankTransferPaymentPage() {
       <BankTransferQrPanel
         bookingId={bookingId!}
         checkout={data.bank_transfer}
-        onPaid={() => toast.success("Đã nhận được thanh toán!")}
-        onContinue={() => void navigate("/customer/bookings")}
+        onPaid={() => {
+          toast.success("Đã nhận được thanh toán!")
+          // Làm mới ngay khi tiền về, trong lúc màn thành công còn đếm ngược
+          // 10 giây. Không làm thì lúc sang trang chi tiết còn một nhịp hiện
+          // bản cache cũ ghi "chờ thanh toán" — đúng thứ khách vừa làm xong.
+          void queryClient.invalidateQueries({
+            queryKey: bookingQueryKeys.detail(bookingId),
+          })
+        }}
+        onContinue={() =>
+          // Về thẳng đơn vừa trả tiền chứ không về danh sách: khách vừa chuyển
+          // tiền xong, thứ họ muốn xem là đơn đó.
+          void navigate(
+            routePaths.customerBookingDetail.replace(":bookingId", bookingId!),
+            // Thay vì đẩy thêm một mục vào lịch sử: bấm quay lại từ trang chi
+            // tiết mà rơi về màn mã QR của một đơn đã trả xong là vô nghĩa.
+            { replace: true },
+          )
+        }
       />
     </div>
   )

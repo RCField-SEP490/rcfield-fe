@@ -1,4 +1,8 @@
-import type { AmenityCatalogItem } from "@/features/cafes/types"
+import { BadgeCheck } from "lucide-react"
+import type {
+  AmenityCatalogItem,
+  CafeProviderBusiness,
+} from "@/features/cafes/types"
 import { AmenityIcon } from "@/features/cafes/lib/amenity-icon"
 import { cafeRules, cafeAmenities } from "../cafe-detail-data"
 import { CafeRatingAggregate } from "@/features/booking-review/components/CafeRatingAggregate"
@@ -70,6 +74,71 @@ export function CafeRulesSection({ rules }: { rules?: string[] }) {
           </li>
         ))}
       </ol>
+    </CafeSection>
+  )
+}
+
+const BUSINESS_TYPE_LABEL: Record<string, string> = {
+  INDIVIDUAL: "Hộ kinh doanh cá thể",
+  BUSINESS: "Doanh nghiệp",
+}
+
+/**
+ * Thông tin doanh nghiệp vận hành chi nhánh.
+ *
+ * Đặt cuối trang, cạnh quy định cơ sở: khách không đọc mục này để chọn quán,
+ * họ tìm tới nó khi cần biết mình đang giao dịch với pháp nhân nào — lúc đối
+ * chiếu hoá đơn, hoặc khi có chuyện cần khiếu nại.
+ *
+ * Chỉ hiện những trường có dữ liệu. Hồ sơ khai thiếu thì bày ra một hàng trống
+ * ghi "—" chỉ làm chi nhánh trông cẩu thả chứ không giúp ai.
+ */
+export function CafeBusinessSection({
+  business,
+}: {
+  business?: CafeProviderBusiness | null
+}) {
+  if (!business) return null
+
+  const rows = [
+    ["Tên doanh nghiệp", business.business_name],
+    ["Tên pháp lý", business.business_legal_name],
+    ["Mã số thuế", business.tax_code],
+    ["Địa chỉ đăng ký kinh doanh", business.business_address],
+    ["Email liên hệ", business.business_email],
+    [
+      "Loại hình",
+      business.business_type
+        ? (BUSINESS_TYPE_LABEL[business.business_type] ?? business.business_type)
+        : null,
+    ],
+  ].filter((row): row is [string, string] => Boolean(row[1]))
+
+  if (rows.length === 0) return null
+
+  return (
+    <CafeSection
+      title="Thông tin doanh nghiệp"
+      lead="Đơn vị chịu trách nhiệm vận hành chi nhánh này."
+    >
+      <dl className="max-w-3xl divide-y divide-slate-100 rounded-xl border border-slate-200">
+        {rows.map(([label, value]) => (
+          <div
+            key={label}
+            className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-baseline sm:gap-6"
+          >
+            <dt className="shrink-0 text-sm text-slate-500 sm:w-56">{label}</dt>
+            <dd className="text-sm font-semibold text-slate-900">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {business.tax_verified && (
+        <p className="mt-3 flex items-center gap-1.5 text-xs text-emerald-700">
+          <BadgeCheck className="size-3.5" />
+          Mã số thuế đã đối chiếu với dữ liệu Cục Thuế
+        </p>
+      )}
     </CafeSection>
   )
 }

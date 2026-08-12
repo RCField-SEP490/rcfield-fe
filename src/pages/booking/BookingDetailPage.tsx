@@ -35,6 +35,11 @@ import type {
   BookingResponse,
   BookingStatus,
 } from "@/features/booking/types/booking.types"
+import {
+  bankPaymentApi,
+  bankPaymentQueryKeys,
+} from "@/features/payments/api/bank-payment.api"
+import { routePaths } from "@/app/router/route-paths"
 import { toast } from "sonner"
 import {
   bookingApi,
@@ -464,8 +469,48 @@ export function BookingDetailPage() {
     booking?.session?.plannedEndAt,
   ])
 
+  /**
+   * Đồng hồ riêng cho hạn giữ chỗ của đơn chưa thanh toán.
+   *
+   * Đồng hồ phía trên chỉ chạy khi phiên chơi đang diễn ra — đơn PENDING thì
+   * chưa có phiên nào, nên nó thoát sớm và `currentTime` đứng yên ở lúc mở
+   * trang. Hệ quả: để trang mở qua giờ hết hạn, nút thanh toán vẫn còn đó và
+   * vẫn bấm được, trong khi chỗ đã bị nhả cho người khác.
+   *
+   * Hết giờ thì hỏi lại máy chủ một lần: nó mới là nơi quyết định đơn chuyển
+   * thành gì, giao diện chỉ có nhiệm vụ thôi mời khách trả tiền.
+   */
+  useEffect(() => {
+    if (booking?.status !== "PENDING" || !booking.paymentExpiresAt) return
+    const expiresAt = new Date(booking.paymentExpiresAt).getTime()
+    if (Date.now() >= expiresAt) return
+
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setCurrentTime(now)
+      if (now >= expiresAt) {
+        clearInterval(interval)
+        if (bookingId) {
+          void queryClient.invalidateQueries({
+            queryKey: bookingQueryKeys.detail(bookingId),
+          })
+        }
+      }
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [booking?.status, booking?.paymentExpiresAt, bookingId, queryClient])
+
   const [payingAdditional, setPayingAdditional] = useState(false)
   const [resumingInitialPayment, setResumingInitialPayment] = useState(false)
+
+  // Chi nhánh có nhận chuyển khoản thẳng không. Chưa cấu hình thì chỉ có VNPay,
+  // và khi chỉ có một cách thì không hiện lựa chọn.
+  const { data: paymentMethods = ["vnpay" as const] } = useQuery({
+    queryKey: bankPaymentQueryKeys.methods(booking?.cafeId),
+    queryFn: () => bankPaymentApi.listPaymentMethods(booking!.cafeId),
+    enabled: Boolean(booking?.cafeId),
+  })
+  const canBankTransfer = paymentMethods.includes("bank_transfer")
   const [settlingCash, setSettlingCash] = useState(false)
   const [checkInPhotosOpen, setCheckInPhotosOpen] = useState(false)
   const [checkOutPhotosOpen, setCheckOutPhotosOpen] = useState(false)
@@ -532,6 +577,19 @@ export function BookingDetailPage() {
       setResumingInitialPayment(false)
     }
   }
+
+  /**
+   * Đường quay lại mã QR chuyển khoản của đơn đang chờ trả tiền.
+   *
+   * Trỏ sang trang `/payment/bank-transfer/:bookingId` có sẵn chứ không tự dựng
+   * lại mã ở đây: trang đó vốn được làm ra đúng cho tình huống này — khách tải
+   * lại trang, mở lại link cũ, hay bấm thanh toán lần hai. Backend trả về đúng
+   * giao dịch đang chờ nếu còn hiệu lực nên vào lại không sinh mã tham chiếu
+   * mới.
+   */
+  const bankTransferPath = bookingId
+    ? routePaths.paymentBankTransfer.replace(":bookingId", bookingId)
+    : null
 
   const snapshot = booking?.snapshot as Record<string, unknown> | null
   const snapshotSlotFee = Number(
@@ -1930,15 +1988,38 @@ export function BookingDetailPage() {
                         )}
                       </div>
                       {role === "customer" && paymentHoldIsActive && (
-                        <Button
-                          onClick={handleResumeInitialPayment}
-                          disabled={resumingInitialPayment}
-                          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
-                        >
-                          {resumingInitialPayment
-                            ? "Đang khởi tạo..."
-                            : "Thanh toán lại qua VNPay"}
-                        </Button>
+                        <div className="space-y-2">
+                          {/*
+                            Chuyển khoản để trên và làm nút chính: nếu chi
+                            nhánh có nhận, đó là cách tiền về thẳng túi họ và
+                            đơn tự xác nhận. VNPay lùi xuống thành lựa chọn phụ
+                            thay vì là con đường duy nhất như trước.
+                          */}
+                          {canBankTransfer && bankTransferPath && (
+                            <Button
+                              asChild
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                            >
+                              <Link to={bankTransferPath}>
+                                Chuyển khoản — hiện mã QR
+                              </Link>
+                            </Button>
+                          )}
+                          <Button
+                            onClick={handleResumeInitialPayment}
+                            disabled={resumingInitialPayment}
+                            variant={canBankTransfer ? "outline" : undefined}
+                            className={
+                              canBankTransfer
+                                ? "w-full font-bold text-xs h-10 rounded-xl"
+                                : "w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                            }
+                          >
+                            {resumingInitialPayment
+                              ? "Đang khởi tạo..."
+                              : "Thanh toán lại qua VNPay"}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   ) : null}
@@ -2074,6 +2155,7 @@ export function BookingDetailPage() {
           isPending={cancelMutation.isPending}
         />
       )}
+
     </div>
   )
 }

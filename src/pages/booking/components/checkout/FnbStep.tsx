@@ -1,7 +1,15 @@
 import { useMemo } from "react"
-import { Check, Clock3, Flame, Minus, Plus, ShoppingBag, Sparkles, Trash2, UtensilsCrossed } from "lucide-react"
+import {
+  Check,
+  Clock3,
+  Flame,
+  Minus,
+  Plus,
+  Sparkles,
+  UtensilsCrossed,
+} from "lucide-react"
 import type { MenuItem, PopularMenuItem } from "@/features/menu/types"
-import { fnbSelectionKey, parseFnbSelectionKey, UNCATEGORIZED_LABEL } from "@/features/menu/types"
+import { fnbSelectionKey, UNCATEGORIZED_LABEL } from "@/features/menu/types"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
@@ -15,9 +23,12 @@ type FnbStepProps = {
   isLoading?: boolean
   quantities: Record<string, number>
   notes: Record<string, string>
-  onQuantityChange: (itemId: string, variantId: string | undefined, quantity: number) => void
+  onQuantityChange: (
+    itemId: string,
+    variantId: string | undefined,
+    quantity: number,
+  ) => void
   onNoteChange: (selectionKey: string, note: string) => void
-  onVariantChange: (selectionKey: string, menuItemId: string, variantId: string) => void
 }
 
 function toPrice(value: MenuItem["price"]): number {
@@ -29,14 +40,18 @@ function toPrice(value: MenuItem["price"]): number {
  * Tính từ giá thật của các món trong cùng menu — trả null nếu thiếu giá của
  * bất kỳ thành phần nào, để không bao giờ hiện con số phỏng đoán.
  */
-function comboSaving(combo: MenuItem, priceById: Map<string, number>): number | null {
+function comboSaving(
+  combo: MenuItem,
+  priceById: Map<string, number>,
+): number | null {
   if (!combo.isCombo || !combo.components?.length) return null
 
   let sum = 0
   for (const component of combo.components) {
-    const price = component.variantPrice === null || component.variantPrice === undefined
-      ? priceById.get(component.itemId)
-      : toPrice(component.variantPrice)
+    const price =
+      component.variantPrice === null || component.variantPrice === undefined
+        ? priceById.get(component.itemId)
+        : toPrice(component.variantPrice)
     if (price === undefined) return null
     sum += price * component.quantity
   }
@@ -53,9 +68,11 @@ export function FnbStep({
   notes,
   onQuantityChange,
   onNoteChange,
-  onVariantChange,
 }: FnbStepProps) {
-  const availableItems = useMemo(() => menuItems.filter((item) => item.isAvailable), [menuItems])
+  const availableItems = useMemo(
+    () => menuItems.filter((item) => item.isAvailable),
+    [menuItems],
+  )
 
   // Giá của MỌI món (kể cả món tạm ẩn) để tính đúng giá trị combo
   const priceById = useMemo(
@@ -76,7 +93,10 @@ export function FnbStep({
         .filter((item): item is MenuItem => Boolean(item)),
     [popularItems, availableItems],
   )
-  const highlightedIds = useMemo(() => new Set(highlighted.map((i) => i.id)), [highlighted])
+  const highlightedIds = useMemo(
+    () => new Set(highlighted.map((i) => i.id)),
+    [highlighted],
+  )
 
   const restGroups = useMemo(() => {
     const groups: Array<{ label: string; items: MenuItem[] }> = []
@@ -96,29 +116,16 @@ export function FnbStep({
     return groups
   }, [availableItems, highlightedIds])
 
-  const selected = useMemo(() => {
-    const items = Object.entries(quantities)
-      .map(([key, quantity]) => {
-        const { menuItemId, variantId } = parseFnbSelectionKey(key)
-        const item = availableItems.find((candidate) => candidate.id === menuItemId)
-        const variant = item?.variants?.find((candidate) => candidate.id === variantId)
-        return item ? { key, item, variant, quantity } : null
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry && entry.quantity > 0))
-    const count = items.reduce((sum, { quantity }) => sum + quantity, 0)
-    const total = items.reduce(
-      (sum, { item, variant, quantity }) => sum + toPrice(variant?.price ?? item.price) * quantity,
-      0,
-    )
-    return { items, count, total }
-  }, [availableItems, quantities])
-
   const renderCard = (item: MenuItem, rank?: number) => (
     <FnbCard
       key={item.id}
       item={item}
       quantities={quantities}
-      onQuantityChange={(variantId, quantity) => onQuantityChange(item.id, variantId, quantity)}
+      notes={notes}
+      onQuantityChange={(variantId, quantity) =>
+        onQuantityChange(item.id, variantId, quantity)
+      }
+      onNoteChange={onNoteChange}
       saving={comboSaving(item, priceById)}
       orderCount={orderCountById.get(item.id)}
       isTopSeller={rank === 0}
@@ -131,7 +138,8 @@ export function FnbStep({
         <div>
           <CardTitle>Gọi món trước, đến là có ngay</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quán chuẩn bị sẵn theo giờ bạn đặt, khỏi mất thời gian chờ giữa buổi chơi.
+            Quán chuẩn bị sẵn theo giờ bạn đặt, khỏi mất thời gian chờ giữa buổi
+            chơi.
           </p>
         </div>
 
@@ -157,8 +165,12 @@ export function FnbStep({
         ) : availableItems.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-10 text-center">
             <UtensilsCrossed className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm font-medium text-muted-foreground">Cơ sở chưa có menu F&B</p>
-            <p className="text-xs text-muted-foreground">Bạn có thể gọi trực tiếp tại quán khi đến.</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              Cơ sở chưa có menu F&B
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Bạn có thể gọi trực tiếp tại quán khi đến.
+            </p>
           </div>
         ) : (
           <>
@@ -185,133 +197,78 @@ export function FnbStep({
           </>
         )}
 
-        {selected.count > 0 ? (
-          <section aria-label="Món đã chọn" className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
-                  <ShoppingBag className="size-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">Món đã chọn</h3>
-                  <p className="text-sm text-slate-600">{selected.count} món</p>
-                </div>
-              </div>
-              <p className="text-lg font-bold text-orange-600">{formatCurrency(selected.total)}</p>
-            </div>
-
-            <div className="mt-3 divide-y divide-orange-100 rounded-lg border border-orange-100 bg-white px-3">
-              {selected.items.map(({ key, item, variant, quantity }) => {
-                const price = toPrice(variant?.price ?? item.price)
-                return (
-                  <div key={key} className="py-3 text-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-900">{item.name}{variant ? ` · ${variant.name}` : ""}</p>
-                        <p className="text-slate-500">
-                          {quantity} × {formatCurrency(price)}
-                        </p>
-                      </div>
-                      <p className="shrink-0 font-semibold text-slate-900">
-                        {formatCurrency(price * quantity)}
-                      </p>
-                    </div>
-                    <Input
-                      value={notes[key] ?? ""}
-                      maxLength={500}
-                      onChange={(event) => onNoteChange(key, event.target.value)}
-                      placeholder="Ghi chú cho món này (ví dụ: ít đá, không hành)"
-                      aria-label={`Ghi chú cho ${item.name}${variant ? ` ${variant.name}` : ""}`}
-                      className="mt-2 h-8 rounded-md border-orange-100 bg-orange-50/30 text-xs placeholder:text-slate-400"
-                    />
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      {item.variants && item.variants.length > 0 ? (
-                        <label className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                          Lựa chọn
-                          <select
-                            value={variant?.id ?? ""}
-                            onChange={(event) => onVariantChange(key, item.id, event.target.value)}
-                            className="h-8 rounded-md border border-orange-100 bg-white px-2 text-xs font-semibold text-slate-800 outline-none focus:border-orange-400"
-                          >
-                            {(item.variants ?? []).filter((candidate) => candidate.isAvailable).map((candidate) => (
-                              <option key={candidate.id} value={candidate.id}>
-                                {candidate.name} · {formatCurrency(toPrice(candidate.price))}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : <span />}
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          aria-label={`Bớt một ${item.name}`}
-                          className="h-8 w-8 rounded-md"
-                          onClick={() => onQuantityChange(item.id, variant?.id, quantity - 1)}
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className="w-6 text-center text-xs font-bold tabular-nums">{quantity}</span>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          aria-label={`Thêm một ${item.name}`}
-                          className="h-8 w-8 rounded-md"
-                          onClick={() => onQuantityChange(item.id, variant?.id, quantity + 1)}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          aria-label={`Xóa ${item.name} khỏi đơn`}
-                          className="ml-1 h-8 w-8 rounded-md text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                          onClick={() => onQuantityChange(item.id, variant?.id, 0)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        ) : (
-          availableItems.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Không bắt buộc — bạn vẫn có thể gọi thêm tại quán, nhưng sẽ phải chờ pha chế.
-            </p>
-          )
+        {availableItems.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Không bắt buộc — bạn vẫn có thể gọi thêm tại quán, nhưng sẽ phải chờ
+            pha chế.
+          </p>
         )}
       </CardContent>
     </Card>
   )
 }
 
+/**
+ * Ô ghi chú cho một lựa chọn đã thêm vào đơn.
+ *
+ * Trước đây ghi chú nằm ở khối "Món đã chọn" cuối trang. Bỏ khối đó vì mọi thứ
+ * còn lại của nó — số lượng, thành tiền, chọn biến thể, xoá — đều đã làm được
+ * ngay trên thẻ món. Riêng ghi chú thì không, nên nó dọn về đây thay vì biến
+ * mất: khách gõ "ít đá" ngay dưới đúng món vừa thêm.
+ */
+function NoteInput({
+  selectionKey,
+  label,
+  notes,
+  onNoteChange,
+}: {
+  selectionKey: string
+  label: string
+  notes: Record<string, string>
+  onNoteChange: (selectionKey: string, note: string) => void
+}) {
+  return (
+    <Input
+      value={notes[selectionKey] ?? ""}
+      maxLength={500}
+      onChange={(event) => onNoteChange(selectionKey, event.target.value)}
+      placeholder="Ghi chú (ví dụ: ít đá, không hành)"
+      aria-label={`Ghi chú cho ${label}`}
+      className="mt-2 h-8 rounded-md border-orange-200 bg-orange-50/40 text-xs placeholder:text-slate-400"
+    />
+  )
+}
+
 function FnbCard({
   item,
   quantities,
+  notes,
   onQuantityChange,
+  onNoteChange,
   saving,
   orderCount,
   isTopSeller,
 }: {
   item: MenuItem
   quantities: Record<string, number>
+  notes: Record<string, string>
   onQuantityChange: (variantId: string | undefined, quantity: number) => void
+  onNoteChange: (selectionKey: string, note: string) => void
   saving: number | null
   orderCount?: number
   isTopSeller?: boolean
 }) {
   const price = toPrice(item.price)
-  const variants = (item.variants ?? []).filter((variant) => variant.isAvailable)
+  const variants = (item.variants ?? []).filter(
+    (variant) => variant.isAvailable,
+  )
   const fixedQuantity = quantities[item.id] ?? 0
   const selectedCount = variants.length
-    ? variants.reduce((sum, variant) => sum + (quantities[fnbSelectionKey(item.id, variant.id)] ?? 0), 0)
+    ? variants.reduce(
+        (sum, variant) =>
+          sum + (quantities[fnbSelectionKey(item.id, variant.id)] ?? 0),
+        0,
+      )
     : fixedQuantity
   const isSelected = selectedCount > 0
 
@@ -324,7 +281,11 @@ function FnbCard({
     >
       <div className="relative">
         {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="h-full min-h-32 w-full object-cover" />
+          <img
+            src={item.imageUrl}
+            alt={item.name}
+            className="h-full min-h-32 w-full object-cover"
+          />
         ) : (
           <div className="flex h-full min-h-32 w-full items-center justify-center bg-muted">
             <UtensilsCrossed className="h-6 w-6 text-muted-foreground/40" />
@@ -344,23 +305,37 @@ function FnbCard({
             {item.categoryName ? (
               <Badge
                 variant="secondary"
-                className={cn("shrink-0", item.isCombo && "bg-orange-100 text-orange-700 hover:bg-orange-100")}
+                className={cn(
+                  "shrink-0",
+                  item.isCombo &&
+                    "bg-orange-100 text-orange-700 hover:bg-orange-100",
+                )}
               >
                 {item.categoryName}
               </Badge>
             ) : item.isCombo ? (
-              <Badge className="shrink-0 bg-orange-100 text-orange-700 hover:bg-orange-100">Combo</Badge>
+              <Badge className="shrink-0 bg-orange-100 text-orange-700 hover:bg-orange-100">
+                Combo
+              </Badge>
             ) : null}
           </div>
 
           {item.isCombo && item.components && item.components.length > 0 && (
             <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-              {item.components.map((c) => `${c.quantity > 1 ? `${c.quantity}× ` : ""}${c.name}`).join(" + ")}
+              {item.components
+                .map(
+                  (c) => `${c.quantity > 1 ? `${c.quantity}× ` : ""}${c.name}`,
+                )
+                .join(" + ")}
             </p>
           )}
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <p className="text-sm font-semibold">{variants.length ? `Từ ${formatCurrency(Math.min(...variants.map((variant) => toPrice(variant.price))))}` : formatCurrency(price)}</p>
+            <p className="text-sm font-semibold">
+              {variants.length
+                ? `Từ ${formatCurrency(Math.min(...variants.map((variant) => toPrice(variant.price))))}`
+                : formatCurrency(price)}
+            </p>
             {saving !== null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                 <Sparkles className="h-3 w-3" />
@@ -385,60 +360,121 @@ function FnbCard({
               const key = fnbSelectionKey(item.id, variant.id)
               const quantity = quantities[key] ?? 0
               return (
-                <div key={variant.id} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="font-medium text-muted-foreground">{variant.name} · {formatCurrency(toPrice(variant.price))}</span>
-                  {quantity > 0 ? (
-                    <div className="flex items-center gap-1">
-                      <Button type="button" size="icon" variant="outline" className="h-7 w-7 rounded-md" onClick={() => onQuantityChange(variant.id, quantity - 1)}><Minus className="h-3.5 w-3.5" /></Button>
-                      <span className="w-4 text-center font-bold">{quantity}</span>
-                      <Button type="button" size="icon" variant="outline" className="h-7 w-7 rounded-md" onClick={() => onQuantityChange(variant.id, quantity + 1)}><Plus className="h-3.5 w-3.5" /></Button>
-                    </div>
-                  ) : (
-                    <Button type="button" size="sm" variant="outline" className="h-7 rounded-md px-2 text-xs" onClick={() => onQuantityChange(variant.id, 1)}>Thêm</Button>
+                <div key={variant.id}>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-muted-foreground">
+                      {variant.name} · {formatCurrency(toPrice(variant.price))}
+                    </span>
+                    {quantity > 0 ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7 rounded-md"
+                          onClick={() =>
+                            onQuantityChange(variant.id, quantity - 1)
+                          }
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </Button>
+                        <span className="w-4 text-center font-bold">
+                          {quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7 rounded-md"
+                          onClick={() =>
+                            onQuantityChange(variant.id, quantity + 1)
+                          }
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 rounded-md px-2 text-xs"
+                        onClick={() => onQuantityChange(variant.id, 1)}
+                      >
+                        Thêm
+                      </Button>
+                    )}
+                  </div>
+                  {quantity > 0 && (
+                    <NoteInput
+                      selectionKey={key}
+                      label={`${item.name} ${variant.name}`}
+                      notes={notes}
+                      onNoteChange={onNoteChange}
+                    />
                   )}
                 </div>
               )
             })}
           </div>
         ) : (
-        <div className="flex items-center justify-end">
-          {isSelected ? (
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                aria-label={`Bớt một ${item.name}`}
-                className="h-9 w-9 rounded-lg"
-                onClick={() => onQuantityChange(undefined, Math.max(0, fixedQuantity - 1))}
-              >
-                <Minus className="h-4 w-4" />
-              </Button>
-              <span className="w-7 text-center text-sm font-bold tabular-nums">{fixedQuantity}</span>
-              <Button
-                type="button"
-                size="icon"
-                variant="outline"
-                aria-label={`Thêm một ${item.name}`}
-                className="h-9 w-9 rounded-lg"
-                onClick={() => onQuantityChange(undefined, fixedQuantity + 1)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+          <div>
+            <div className="flex items-center justify-end">
+              {isSelected ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    aria-label={`Bớt một ${item.name}`}
+                    className="h-9 w-9 rounded-lg"
+                    onClick={() =>
+                      onQuantityChange(
+                        undefined,
+                        Math.max(0, fixedQuantity - 1),
+                      )
+                    }
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="w-7 text-center text-sm font-bold tabular-nums">
+                    {fixedQuantity}
+                  </span>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    aria-label={`Thêm một ${item.name}`}
+                    className="h-9 w-9 rounded-lg"
+                    onClick={() =>
+                      onQuantityChange(undefined, fixedQuantity + 1)
+                    }
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 gap-1.5 rounded-lg px-3 font-semibold"
+                  onClick={() => onQuantityChange(undefined, 1)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Thêm
+                </Button>
+              )}
             </div>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-9 gap-1.5 rounded-lg px-3 font-semibold"
-              onClick={() => onQuantityChange(undefined, 1)}
-            >
-              <Plus className="h-4 w-4" />
-              Thêm
-            </Button>
-          )}
-        </div>
+            {isSelected && (
+              <NoteInput
+                selectionKey={item.id}
+                label={item.name}
+                notes={notes}
+                onNoteChange={onNoteChange}
+              />
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -20,6 +20,7 @@ import { CafeContestsSection } from "./components/CafeContestsSection"
 import {
   CafeAboutSection,
   CafeReviewsSection,
+  CafeBusinessSection,
   CafeRulesSection,
 } from "./components/CafeDetailContent"
 import { CafeDetailHero } from "./components/CafeDetailHero"
@@ -210,6 +211,10 @@ export function CafeDetailPage() {
     <CafeTopDriversSection key="drivers" cafeId={resolvedCafe.id} />,
     <CafeContestsSection key="contests" cafeId={resolvedCafe.id} />,
     <CafeRulesSection key="rules" rules={cafeDetail?.rules} />,
+    <CafeBusinessSection
+      key="business"
+      business={cafeDetail?.provider_business}
+    />,
   ]
 
   return (

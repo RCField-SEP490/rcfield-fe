@@ -59,6 +59,24 @@ export type BackendCafe = {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  /** Chỉ có ở endpoint chi tiết, không có ở danh sách. */
+  provider_business?: CafeProviderBusiness | null
+}
+
+/**
+ * Thông tin doanh nghiệp công khai của chi nhánh.
+ *
+ * Backend trả theo danh sách trắng — giấy tờ KYC và trạng thái duyệt hồ sơ
+ * không nằm trong đây và không được thêm vào.
+ */
+export type CafeProviderBusiness = {
+  business_name: string
+  business_legal_name: string | null
+  tax_code: string | null
+  business_address: string | null
+  business_email: string | null
+  business_type: string | null
+  tax_verified: boolean
 }
 
 export type CafeImage = {
@@ -85,6 +103,8 @@ export type CafeListParams = {
   sort_by?: "popularity" | "price_asc" | "price_desc" | "rating"
   popular_filters?: string[]
   status?: CafeStatus
+  /** "YYYY-MM-DD" — chỉ giữ cơ sở còn slot trống ngày đó. */
+  date?: string
 }
 
 export type CafeUpsertBody = {

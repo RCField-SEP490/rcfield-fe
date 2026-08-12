@@ -10,6 +10,8 @@ interface ExploreSearchBarProps {
   onDateChange: (value: string) => void
   query: string
   onQueryChange: (value: string) => void
+  /** Bấm nút tìm hoặc gõ Enter trong ô tìm kiếm. */
+  onSubmit: () => void
 }
 
 export function ExploreSearchBar({
@@ -19,6 +21,7 @@ export function ExploreSearchBar({
   onDateChange,
   query,
   onQueryChange,
+  onSubmit,
 }: ExploreSearchBarProps) {
   return (
     <motion.section
@@ -27,7 +30,20 @@ export function ExploreSearchBar({
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       className="relative z-30 shrink-0 border-b border-slate-200/60 bg-white/80 shadow-sm backdrop-blur-xl"
     >
-      <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:px-6">
+      {/*
+        Bọc trong `form` để gõ Enter trong ô tìm kiếm cũng tìm được, không chỉ
+        bấm nút. Bộ lọc vốn đã áp dụng ngay khi đổi, nên nút này không phải là
+        thứ kích hoạt tìm kiếm — nó tải lại kết quả và kéo màn hình xuống chỗ
+        danh sách, đúng thứ người ta mong đợi khi bấm. Trước đây nút không gắn
+        `onClick` nào, bấm vào không xảy ra gì.
+      */}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          onSubmit()
+        }}
+        className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:px-6"
+      >
         {/* Location */}
         <motion.div
           initial={{ opacity: 0, x: -12 }}
@@ -87,12 +103,15 @@ export function ExploreSearchBar({
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.25, duration: 0.3 }}
         >
-          <Button className="h-11 gap-2 rounded-xl bg-orange-600 px-6 text-sm font-bold text-white shadow-md shadow-orange-600/20 transition-all duration-200 hover:bg-orange-700 hover:shadow-lg hover:shadow-orange-600/30 hover:-translate-y-0.5 active:scale-[0.98]">
+          <Button
+            type="submit"
+            className="h-11 w-full gap-2 rounded-xl bg-orange-600 px-6 text-sm font-bold text-white shadow-md shadow-orange-600/20 transition-all duration-200 hover:bg-orange-700 hover:shadow-lg hover:shadow-orange-600/30 hover:-translate-y-0.5 active:scale-[0.98] md:w-auto"
+          >
             Tìm RC Cafe
             <Search className="h-4 w-4" />
           </Button>
         </motion.div>
-      </div>
+      </form>
     </motion.section>
   )
 }

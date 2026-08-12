@@ -33,7 +33,6 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
   const [bankCode, setBankCode] = useState("")
   const [accountNumber, setAccountNumber] = useState("")
   const [accountName, setAccountName] = useState("")
-  const [showSampleQr, setShowSampleQr] = useState(false)
   const [syncedKey, setSyncedKey] = useState<string | null>(null)
 
   const { data: settings, isLoading } = useQuery({
@@ -71,6 +70,13 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
     void queryClient.invalidateQueries({
       queryKey: bankPaymentQueryKeys.methods(cafeId),
     })
+    // Bắt buộc: mã QR giờ luôn hiện cạnh form. Không làm mới thì đổi số tài
+    // khoản rồi lưu xong, màn hình vẫn bày mã của tài khoản CŨ — chủ quán quét
+    // thấy đúng tên mình rồi bấm xác nhận, trong khi thứ vừa lưu lại là số
+    // khác. Trước đây lỗi này bị che vì lưu xong panel tự đóng.
+    void queryClient.invalidateQueries({
+      queryKey: bankPaymentQueryKeys.sampleQr(cafeId),
+    })
   }
 
   const saveMutation = useMutation({
@@ -83,15 +89,15 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
       }),
     onSuccess: () => {
       invalidate()
-      setShowSampleQr(false)
-      toast.success("Đã lưu. Quét mã QR mẫu để xác nhận đúng tài khoản.")
+      toast.success("Đã lưu. Quét mã QR bên cạnh để xác nhận đúng tài khoản.")
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
       toast.error(err.response?.data?.message ?? "Không lưu được cấu hình"),
   })
 
   const disableMutation = useMutation({
-    mutationFn: () => bankPaymentApi.updateSettings(cafeId, { method: "VNPAY" }),
+    mutationFn: () =>
+      bankPaymentApi.updateSettings(cafeId, { method: "VNPAY" }),
     onSuccess: () => {
       invalidate()
       toast.success("Đã chuyển về cổng thanh toán chung")
@@ -101,14 +107,15 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
   const { data: sampleQr, isFetching: loadingQr } = useQuery({
     queryKey: bankPaymentQueryKeys.sampleQr(cafeId),
     queryFn: () => bankPaymentApi.getSampleQr(cafeId),
-    enabled: showSampleQr,
+    // Chỉ gọi khi chi nhánh đã khai xong tài khoản: chưa khai thì endpoint trả
+    // 400 `BANK_DETAILS_REQUIRED`, gọi vào chỉ để nhận lỗi.
+    enabled: settings?.method === "BANK_TRANSFER",
   })
 
   const verifyMutation = useMutation({
     mutationFn: () => bankPaymentApi.verifySettings(cafeId),
     onSuccess: () => {
       invalidate()
-      setShowSampleQr(false)
       toast.success("Chi nhánh đã bật nhận chuyển khoản")
     },
     onError: (err: { response?: { data?: { message?: string } } }) =>
@@ -126,7 +133,9 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
   const isBankTransfer = settings?.method === "BANK_TRANSFER"
   const isVerified = Boolean(settings?.is_verified)
   const canSave =
-    bankCode !== "" && accountNumber.trim().length >= 4 && accountName.trim().length >= 2
+    bankCode !== "" &&
+    accountNumber.trim().length >= 4 &&
+    accountName.trim().length >= 2
 
   return (
     <div className="rounded-xl border border-border bg-white p-6">
@@ -166,112 +175,121 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
         )}
       </div>
 
-      {!isVerified && (
-        <p className="mt-4 rounded-lg bg-[#f6f4f4] px-3 py-2.5 text-sm text-[#5d5f5f]">
-          Chưa xác minh thì chi nhánh vẫn nhận tiền qua cổng thanh toán chung như
-          hiện tại. Không có gì gián đoạn.
-        </p>
-      )}
+      {/*
+        Hai cột: form bên trái, mã QR bên phải, luôn hiện cùng lúc.
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
-            Ngân hàng
-          </span>
-          <select
-            value={bankCode}
-            disabled={loadingBanks}
-            onChange={(event) => setBankCode(event.target.value)}
-            className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold disabled:opacity-60"
-          >
-            <option value="">
-              {loadingBanks ? "Đang tải danh sách…" : "Chọn ngân hàng"}
-            </option>
-            {banks.map((bank) => (
-              <option key={bank.code} value={bank.code}>
-                {bank.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        Trước đây mã nằm dưới cùng và phải bấm mới hiện, nên việc đối chiếu là
+        cuộn xuống — nhớ — cuộn lên. Đặt cạnh nhau thì số vừa gõ và số trên mã
+        nằm chung một khung nhìn, sai một chữ số là thấy ngay.
+      */}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div>
+          {!isVerified && (
+            <p className="mb-4 rounded-lg bg-[#f6f4f4] px-3 py-2.5 text-sm text-[#5d5f5f]">
+              Chưa xác minh thì chi nhánh vẫn nhận tiền qua cổng thanh toán
+              chung như hiện tại. Không có gì gián đoạn.
+            </p>
+          )}
 
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
-            Số tài khoản
-          </span>
-          <Input
-            className="h-10"
-            inputMode="numeric"
-            value={accountNumber}
-            placeholder="0123456789"
-            onChange={(event) =>
-              setAccountNumber(event.target.value.replace(/\D/g, ""))
-            }
-          />
-        </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
+                Ngân hàng
+              </span>
+              <select
+                value={bankCode}
+                disabled={loadingBanks}
+                onChange={(event) => setBankCode(event.target.value)}
+                className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold disabled:opacity-60"
+              >
+                <option value="">
+                  {loadingBanks ? "Đang tải danh sách…" : "Chọn ngân hàng"}
+                </option>
+                {banks.map((bank) => (
+                  <option key={bank.code} value={bank.code}>
+                    {bank.name}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="block sm:col-span-2">
-          <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
-            Tên chủ tài khoản
-          </span>
-          <Input
-            className="h-10 uppercase"
-            value={accountName}
-            placeholder="NGUYEN VAN A"
-            onChange={(event) => setAccountName(event.target.value)}
-          />
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Viết không dấu, đúng như trên sao kê ngân hàng.
-          </span>
-        </label>
-      </div>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
+                Số tài khoản
+              </span>
+              <Input
+                className="h-10"
+                inputMode="numeric"
+                value={accountNumber}
+                placeholder="0123456789"
+                onChange={(event) =>
+                  setAccountNumber(event.target.value.replace(/\D/g, ""))
+                }
+              />
+            </label>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          type="button"
-          className="h-10"
-          disabled={!canSave || saveMutation.isPending}
-          onClick={() => saveMutation.mutate()}
-        >
-          {saveMutation.isPending && <Loader2 className="mr-1.5 size-4 animate-spin" />}
-          Lưu tài khoản
-        </Button>
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-bold text-muted-foreground">
+                Tên chủ tài khoản
+              </span>
+              <Input
+                className="h-10 uppercase"
+                value={accountName}
+                placeholder="NGUYEN VAN A"
+                onChange={(event) => setAccountName(event.target.value)}
+              />
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Viết không dấu, đúng như trên sao kê ngân hàng.
+              </span>
+            </label>
+          </div>
 
-        {isBankTransfer && (
-          <>
+          <div className="mt-4 flex flex-wrap gap-2">
             <Button
               type="button"
-              variant="outline"
               className="h-10"
-              onClick={() => setShowSampleQr((v) => !v)}
+              disabled={!canSave || saveMutation.isPending}
+              onClick={() => saveMutation.mutate()}
             >
-              {showSampleQr ? "Ẩn mã QR mẫu" : "Xem mã QR mẫu"}
+              {saveMutation.isPending && (
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+              )}
+              Lưu tài khoản
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10 text-muted-foreground"
-              onClick={() => disableMutation.mutate()}
-            >
-              Dùng cổng chung
-            </Button>
-          </>
-        )}
-      </div>
 
-      {showSampleQr && (
-        /*
-          Chỉ một đường kẻ ngăn phần kiểm tra với form phía trên, không đóng
-          khung: thẻ thanh toán bên trong đã là một khung rồi, bọc thêm nữa
-          thành ba lớp viền lồng nhau và mắt không biết bám vào đâu.
-        */
-        <div className="mt-6 border-t border-border pt-5">
-          <h4 className="text-sm font-black">Kiểm tra trước khi bật</h4>
+            {isBankTransfer && (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 text-muted-foreground"
+                onClick={() => disableMutation.mutate()}
+              >
+                Dùng cổng chung
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div>
+          {/*
+            Đã xác minh rồi thì đây không còn là bước kiểm tra nữa — nó chỉ là
+            chỗ xem lại mã. Giữ nguyên khung chữ "kiểm tra trước khi bật" kèm
+            nút xác nhận trong khi chi nhánh đang chạy sẽ khiến chủ quán tưởng
+            mình còn thiếu một bước, rồi đi bấm lại cái đã xong.
+          */}
+          <h4 className="text-sm font-black">
+            {isVerified ? "Kiểm tra lại tài khoản" : "Kiểm tra trước khi bật"}
+          </h4>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quét bằng <strong>app ngân hàng</strong> trên điện thoại — camera
-            thường hay app quét QR bất kỳ chỉ hiện ra một dãy ký tự, vì đây là
-            chuỗi VietQR thô mà chỉ app ngân hàng đọc được.
+            Quét bằng <strong>app ngân hàng</strong>, không phải camera thường —
+            camera chỉ hiện ra một dãy ký tự.
           </p>
+          {isVerified && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Đây là mã thử. Mã của từng đơn mang số tiền và mã tham chiếu
+              riêng.
+            </p>
+          )}
 
           {loadingQr && (
             <Loader2 className="mt-4 size-5 animate-spin text-muted-foreground" />
@@ -286,11 +304,6 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
                 người ta chỉ chịu làm nghiêm túc khi thứ trước mặt trông nghiêm
                 túc.
 
-                Số tài khoản mới là con số lớn nhất ở đây, không phải số tiền —
-                số tiền 10.000đ chỉ là mồi để mã QR hợp lệ, còn thứ duy nhất cần
-                đối chiếu với app ngân hàng là số tài khoản.
-              */}
-              {/*
                 Logo VietQR để trong `public/brand/` chứ không nhúng thẳng từ
                 trang ngoài: đường dẫn của người ta đổi hay hỏng lúc nào không
                 ai báo, và luồng thanh toán thì không được phụ thuộc một máy
@@ -310,7 +323,13 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
                   module theo chuẩn, đệm nữa thành hai lớp trắng chồng nhau và
                   mã trông bé lọt thỏm giữa một ô trống.
                 */}
-                <div className="relative mx-auto mt-3 w-fit">
+                {/*
+                  Viền lấy đúng màu navy `#1e427e` của chữ "QR" trong logo
+                  VietQR. Có `p-1.5` để viền không áp sát mã: ảnh QR mang sẵn
+                  vùng trắng 4 module, viền đè lên mép vùng đó thì máy quét mất
+                  chỗ bấu để nhận ra ranh giới của mã.
+                */}
+                <div className="relative mx-auto mt-3 w-fit rounded-xl border-2 border-[#1e427e] p-1.5">
                   <img
                     src={sampleQr.qr_image_data_url}
                     alt={`Mã QR chuyển khoản tới ${sampleQr.account_name}`}
@@ -360,34 +379,49 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
                 </p>
               </div>
 
-              <p className="mt-3 text-xs text-muted-foreground">
-                Ngân hàng và số tài khoản phải trùng khít. Tên chủ tài khoản thì
-                app lấy từ hồ sơ ngân hàng nên có thể khác cách viết — miễn đúng
-                là bạn. Ra tên người lạ thì đừng bấm xác nhận.
-              </p>
+              {!isVerified && (
+                <>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Ngân hàng và số tài khoản phải trùng khít. Tên chủ tài khoản
+                    thì app lấy từ hồ sơ ngân hàng nên có thể khác cách viết —
+                    miễn đúng là bạn. Ra tên người lạ thì đừng bấm xác nhận.
+                  </p>
 
-              <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-                Đây là mã ngân hàng thật. Bạn có thể quét thử mà không cần chuyển
-                tiền — chỉ cần xem tên người nhận hiện ra.
-              </p>
+                  <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+                    Đây là mã ngân hàng thật. Bạn có thể quét thử mà không cần
+                    chuyển tiền — chỉ cần xem tên người nhận hiện ra.
+                  </p>
 
-              <Button
-                type="button"
-                className="mt-4 h-10 w-full gap-2"
-                disabled={verifyMutation.isPending}
-                onClick={() => verifyMutation.mutate()}
-              >
-                {verifyMutation.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="size-4" />
-                )}
-                Tôi đã quét và xác nhận đúng tài khoản
-              </Button>
+                  <Button
+                    type="button"
+                    className="mt-4 h-10 w-full gap-2"
+                    disabled={verifyMutation.isPending}
+                    onClick={() => verifyMutation.mutate()}
+                  >
+                    {verifyMutation.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="size-4" />
+                    )}
+                    Tôi đã quét và xác nhận đúng tài khoản
+                  </Button>
+                </>
+              )}
             </>
           )}
+
+          {/*
+            Chưa khai xong tài khoản thì chưa có mã để dựng. Để trống hẳn sẽ
+            làm cột phải hụt một mảng, nên bày đúng chỗ mã sắp xuất hiện.
+          */}
+          {!isBankTransfer && !loadingQr && (
+            <div className="mt-4 rounded-xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+              Khai đủ tài khoản rồi bấm <strong>Lưu tài khoản</strong> — mã QR
+              để kiểm tra sẽ hiện ở đây.
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

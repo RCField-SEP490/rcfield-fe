@@ -293,6 +293,13 @@ export function ExplorePage() {
         onDateChange={filters.setDate}
         query={filters.query}
         onQueryChange={filters.setQuery}
+        onSubmit={() => {
+          void refetch()
+          listRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          })
+        }}
       />
 
       <div className="mx-auto flex w-full max-w-[1200px] flex-1 gap-6 px-4 py-6 md:px-6">
