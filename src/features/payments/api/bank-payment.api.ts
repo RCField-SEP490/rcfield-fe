@@ -7,6 +7,11 @@ import type {
 
 type ApiEnvelope<T> = { success: boolean; data: T }
 
+export interface BankOption {
+  code: string
+  name: string
+}
+
 export interface SampleQr {
   qr_payload: string
   qr_image_data_url: string
@@ -31,6 +36,18 @@ export interface OwnerLedger {
 }
 
 export const bankPaymentApi = {
+  /**
+   * Danh sách ngân hàng hỗ trợ VietQR — công khai, không gắn với chi nhánh.
+   *
+   * Lấy từ backend chứ không viết cứng ở đây: backend là nơi validate mã ngân
+   * hàng lúc lưu, nên nó phải là nguồn duy nhất. Chép thành hai bản thì sớm
+   * muộn cũng lệch, và lúc lệch thì chủ quán không chọn được ngân hàng của mình.
+   */
+  listBanks: async (): Promise<BankOption[]> => {
+    const res = await api.get<ApiEnvelope<{ banks: BankOption[] }>>("/v1/banks")
+    return res.data.data.banks
+  },
+
   /** Công khai — màn thanh toán dùng để biết có phải hiện lựa chọn không. */
   listPaymentMethods: async (
     cafeId: string,
@@ -130,6 +147,7 @@ export const bankPaymentApi = {
 }
 
 export const bankPaymentQueryKeys = {
+  banks: () => ["vietqr-banks"] as const,
   methods: (cafeId?: string) => ["cafe-payment-methods", cafeId] as const,
   settings: (cafeId?: string) => ["cafe-payment-settings", cafeId] as const,
   settingsEdit: (cafeId?: string) =>

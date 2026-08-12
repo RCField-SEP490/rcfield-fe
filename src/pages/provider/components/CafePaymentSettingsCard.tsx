@@ -28,30 +28,6 @@ import { cn } from "@/shared/lib/utils"
  * Vì thế cấu hình chưa xác minh thì chi nhánh vẫn dùng cổng thanh toán chung.
  */
 
-/** Các ngân hàng phổ biến nhất, đủ cho phần lớn chủ quán. */
-const BANKS = [
-  { code: "VCB", name: "Vietcombank" },
-  { code: "TCB", name: "Techcombank" },
-  { code: "MB", name: "MB Bank" },
-  { code: "VTB", name: "VietinBank" },
-  { code: "BIDV", name: "BIDV" },
-  { code: "ACB", name: "ACB" },
-  { code: "VPB", name: "VPBank" },
-  { code: "TPB", name: "TPBank" },
-  { code: "STB", name: "Sacombank" },
-  { code: "AGR", name: "Agribank" },
-  { code: "HDB", name: "HDBank" },
-  { code: "VIB", name: "VIB" },
-  { code: "SHB", name: "SHB" },
-  { code: "MSB", name: "MSB" },
-  { code: "OCB", name: "OCB" },
-  { code: "EIB", name: "Eximbank" },
-  { code: "LPB", name: "LPBank" },
-  { code: "SEAB", name: "SeABank" },
-  { code: "NAB", name: "Nam A Bank" },
-  { code: "CAKE", name: "CAKE by VPBank" },
-]
-
 export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
   const queryClient = useQueryClient()
   const [bankCode, setBankCode] = useState("")
@@ -64,6 +40,13 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
     queryKey: bankPaymentQueryKeys.settingsEdit(cafeId),
     queryFn: () => bankPaymentApi.getSettingsForEdit(cafeId),
     enabled: Boolean(cafeId),
+  })
+
+  // Bảng tra tĩnh phía backend, cả phiên chỉ cần tải một lần.
+  const { data: banks = [], isLoading: loadingBanks } = useQuery({
+    queryKey: bankPaymentQueryKeys.banks(),
+    queryFn: bankPaymentApi.listBanks,
+    staleTime: Infinity,
   })
 
   // Đồng bộ form với dữ liệu vừa tải về NGAY TRONG RENDER thay vì trong effect.
@@ -197,11 +180,14 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
           </span>
           <select
             value={bankCode}
+            disabled={loadingBanks}
             onChange={(event) => setBankCode(event.target.value)}
-            className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold"
+            className="h-10 w-full rounded-lg border border-border bg-white px-3 text-sm font-semibold disabled:opacity-60"
           >
-            <option value="">Chọn ngân hàng</option>
-            {BANKS.map((bank) => (
+            <option value="">
+              {loadingBanks ? "Đang tải danh sách…" : "Chọn ngân hàng"}
+            </option>
+            {banks.map((bank) => (
               <option key={bank.code} value={bank.code}>
                 {bank.name}
               </option>
@@ -274,11 +260,17 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
       </div>
 
       {showSampleQr && (
-        <div className="mt-5 rounded-xl border border-dashed border-border bg-[#fcfbfb] p-5">
+        /*
+          Chỉ một đường kẻ ngăn phần kiểm tra với form phía trên, không đóng
+          khung: thẻ thanh toán bên trong đã là một khung rồi, bọc thêm nữa
+          thành ba lớp viền lồng nhau và mắt không biết bám vào đâu.
+        */
+        <div className="mt-6 border-t border-border pt-5">
           <h4 className="text-sm font-black">Kiểm tra trước khi bật</h4>
           <p className="mt-1 text-sm text-muted-foreground">
-            Quét mã này bằng app ngân hàng trên điện thoại. Nếu tên người nhận
-            hiện lên đúng là bạn, tài khoản đã nhập chính xác.
+            Quét bằng <strong>app ngân hàng</strong> trên điện thoại — camera
+            thường hay app quét QR bất kỳ chỉ hiện ra một dãy ký tự, vì đây là
+            chuỗi VietQR thô mà chỉ app ngân hàng đọc được.
           </p>
 
           {loadingQr && (
@@ -287,16 +279,92 @@ export function CafePaymentSettingsCard({ cafeId }: { cafeId: string }) {
 
           {sampleQr && (
             <>
-              <div className="mt-4 flex flex-col items-center">
+              {/*
+                Khối này cố tình trông như một thẻ thanh toán chứ không như một
+                ô ảnh trong form: chủ quán sắp giao cho hệ thống quyền nhận tiền
+                thật của khách, và cầm điện thoại lên soi từng chữ số là việc
+                người ta chỉ chịu làm nghiêm túc khi thứ trước mặt trông nghiêm
+                túc.
+
+                Số tài khoản mới là con số lớn nhất ở đây, không phải số tiền —
+                số tiền 10.000đ chỉ là mồi để mã QR hợp lệ, còn thứ duy nhất cần
+                đối chiếu với app ngân hàng là số tài khoản.
+              */}
+              {/*
+                Logo VietQR để trong `public/brand/` chứ không nhúng thẳng từ
+                trang ngoài: đường dẫn của người ta đổi hay hỏng lúc nào không
+                ai báo, và luồng thanh toán thì không được phụ thuộc một máy
+                chủ mình không kiểm soát (D9).
+              */}
+              <div className="mx-auto mt-5 w-full max-w-[300px] rounded-xl border border-border bg-white p-5 text-center">
                 <img
-                  src={sampleQr.qr_image_data_url}
-                  alt="Mã QR mẫu"
-                  className="size-56 rounded-lg border border-border bg-white"
+                  src="/brand/vietqr-logo.png"
+                  alt="VietQR"
+                  width={831}
+                  height={311}
+                  className="mx-auto h-9 w-auto"
                 />
-                <p className="mt-2 text-sm text-muted-foreground">
+
+                {/*
+                  Không đệm thêm quanh mã: ảnh QR đã mang sẵn vùng trắng 4
+                  module theo chuẩn, đệm nữa thành hai lớp trắng chồng nhau và
+                  mã trông bé lọt thỏm giữa một ô trống.
+                */}
+                <div className="relative mx-auto mt-3 w-fit">
+                  <img
+                    src={sampleQr.qr_image_data_url}
+                    alt={`Mã QR chuyển khoản tới ${sampleQr.account_name}`}
+                    className="block size-56"
+                  />
+
+                  {/*
+                    Chữ V giữa mã, đúng cách VietQR vẫn trình bày. Ô này che
+                    3,9% diện tích mã, trong khi mức sửa lỗi M đang dùng phục
+                    hồi được tới 15% — nên không cần nâng mức sửa lỗi, mà nâng
+                    còn phản tác dụng: mã sẽ dày lên và mỗi ô nhỏ đi, khó quét
+                    hơn chứ không an toàn hơn.
+                  */}
+                  <span className="absolute left-1/2 top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg bg-white">
+                    <img
+                      src="/brand/vietqr-mark.png"
+                      alt=""
+                      aria-hidden
+                      width={223}
+                      height={223}
+                      className="size-7"
+                    />
+                  </span>
+                </div>
+
+                <dl className="mt-3 space-y-0.5 text-xs leading-relaxed text-[#5d5f5f]">
+                  <div>
+                    <dt className="inline">Tên chủ TK: </dt>
+                    <dd className="inline font-bold text-[#1a1618]">
+                      {sampleQr.account_name}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">Số TK: </dt>
+                    <dd className="inline font-bold tabular-nums text-[#1a1618]">
+                      {sampleQr.account_number}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">Ngân hàng: </dt>
+                    <dd className="inline">{sampleQr.bank_name}</dd>
+                  </div>
+                </dl>
+
+                <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
                   {sampleQr.amount.toLocaleString("vi-VN")}đ · {sampleQr.memo}
                 </p>
               </div>
+
+              <p className="mt-3 text-xs text-muted-foreground">
+                Ngân hàng và số tài khoản phải trùng khít. Tên chủ tài khoản thì
+                app lấy từ hồ sơ ngân hàng nên có thể khác cách viết — miễn đúng
+                là bạn. Ra tên người lạ thì đừng bấm xác nhận.
+              </p>
 
               <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
                 Đây là mã ngân hàng thật. Bạn có thể quét thử mà không cần chuyển
