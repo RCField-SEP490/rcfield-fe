@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { adminFeaturedPopupApi } from "@/features/admin/api/admin-featured-popups.api"
+import type { FeaturedPopupItem } from "@/features/explore/api/featured-popup.api"
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import {
   AdminHeader,
@@ -25,10 +26,54 @@ const emptyForm = {
   is_active: true,
 }
 
+/**
+ * Trạng thái THỰC TẾ của một popup, không chỉ cái công tắc `is_active`.
+ *
+ * Backend đòi đủ BỐN điều kiện mới đưa popup ra trước khách
+ * (`getActiveFeaturedPopup`): bật công tắc, nội dung đã duyệt, đã tới ngày bắt
+ * đầu, và chưa quá ngày hết hạn.
+ *
+ * Giao diện cũ chỉ đọc `is_active` nên một popup đã hết hạn vẫn hiện chữ "Đang
+ * bật" — admin đọc xong tưởng nó đang chạy, trong khi khách không hề thấy gì.
+ */
+function getPopupState(popup: FeaturedPopupItem, now: number) {
+  if (!popup.is_active) {
+    return { label: "Đã tắt", className: "bg-zinc-100 text-zinc-600", live: false }
+  }
+  if (popup.review_status === "PENDING") {
+    return { label: "Chờ duyệt nội dung", className: "bg-amber-100 text-amber-800", live: false }
+  }
+  if (popup.review_status === "REJECTED") {
+    return { label: "Nội dung bị từ chối", className: "bg-rose-100 text-rose-700", live: false }
+  }
+  if (now < new Date(popup.starts_at).getTime()) {
+    return { label: "Chưa tới lịch", className: "bg-sky-100 text-sky-700", live: false }
+  }
+  if (now > new Date(popup.ends_at).getTime()) {
+    return { label: "Đã hết hạn", className: "bg-zinc-100 text-zinc-600", live: false }
+  }
+  return { label: "Đang hiển thị", className: "bg-emerald-100 text-emerald-700", live: true }
+}
+
 export function AdminFeaturedPopupsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
   const [form, setForm] = useState(emptyForm)
+  /*
+    Mốc thời gian dùng chung cho mọi thẻ trong một lần render.
+
+    Đặt trong state chứ không gọi `Date.now()` thẳng trong thân component: gọi
+    thẳng làm việc dựng giao diện phụ thuộc đồng hồ, và React coi đó là hàm
+    không thuần khiết.
+
+    Nhịp lại mỗi 30 giây, nên popup hết hạn trong lúc admin đang mở trang sẽ tự
+    đổi nhãn thay vì đứng nguyên cho tới khi tải lại.
+  */
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
 
   const { data: popups = [], isLoading } = useQuery({
     queryKey: ["admin-featured-popups"],
@@ -80,7 +125,7 @@ export function AdminFeaturedPopupsPage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Featured Popup"
+        title="Popup nổi bật"
         description="Quản trị popup giải đấu nổi bật hiển thị trên trang khám phá của khách hàng."
       />
 
@@ -107,14 +152,14 @@ export function AdminFeaturedPopupsPage() {
               />
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="CTA label">
+              <Field label="Nhãn nút bấm">
                 <input
                   value={form.cta_label}
                   onChange={(event) => setForm((current) => ({ ...current, cta_label: event.target.value }))}
                   className="h-11 rounded-xl border border-[#e5e2e1] bg-white px-4 text-sm"
                 />
               </Field>
-              <Field label="CTA URL">
+              <Field label="Đường dẫn nút bấm">
                 <input
                   value={form.cta_url}
                   onChange={(event) => setForm((current) => ({ ...current, cta_url: event.target.value }))}
@@ -157,7 +202,7 @@ export function AdminFeaturedPopupsPage() {
                   className="h-11 rounded-xl border border-[#e5e2e1] bg-white px-4 text-sm"
                 />
               </Field>
-              <Field label="Priority">
+              <Field label="Độ ưu tiên">
                 <input
                   type="number"
                   min="0"
@@ -196,14 +241,14 @@ export function AdminFeaturedPopupsPage() {
         <AdminPanel>
           <div className="mb-6">
             <AdminSearchBar
-              placeholder="Tìm popup theo tiêu đề hoặc CTA..."
+              placeholder="Tìm theo tiêu đề hoặc nhãn nút..."
               value={search}
               onChange={setSearch}
             />
           </div>
           <AdminPanelTitle
             title="Popup hiện có"
-            subtitle={`${popups.filter((item) => item.is_active).length} đang active`}
+            subtitle={`${popups.filter((item) => getPopupState(item, now).live).length}/${popups.length} popup đang hiển thị với khách`}
           />
 
           <div className="mt-6 space-y-4">
@@ -226,24 +271,22 @@ export function AdminFeaturedPopupsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-base font-extrabold text-[#1c1b1b]">{popup.title}</h3>
                         <span
-                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                            popup.is_active
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-zinc-100 text-zinc-500"
-                          }`}
+                          className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${getPopupState(popup, now).className}`}
                         >
-                          {popup.is_active ? "Active" : "Inactive"}
+                          {getPopupState(popup, now).label}
                         </span>
                         <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-bold text-orange-700">
-                          Priority {popup.priority}
+                          Ưu tiên {popup.priority}
                         </span>
                       </div>
-                      <p className="text-sm text-[#5d5f5f]">{popup.subtitle ?? "Khong co mo ta ngan."}</p>
+                      <p className="text-sm text-[#5d5f5f]">{popup.subtitle ?? "Chưa có mô tả ngắn."}</p>
                       <div className="grid gap-2 text-xs font-semibold text-[#747878] md:grid-cols-2">
-                        <span>Hieu luc: {new Date(popup.starts_at).toLocaleString("vi-VN")}</span>
-                        <span>Het han: {new Date(popup.ends_at).toLocaleString("vi-VN")}</span>
-                        <span>CTA: {popup.cta_label}</span>
-                        <span>Contest: {popup.contest_id ?? "--"}</span>
+                        <span>Hiệu lực: {new Date(popup.starts_at).toLocaleString("vi-VN")}</span>
+                        <span>Hết hạn: {new Date(popup.ends_at).toLocaleString("vi-VN")}</span>
+                        <span>Nút bấm: {popup.cta_label}</span>
+                        <span title={popup.contest_id ?? undefined}>
+                          Giải đấu: {popup.contest_id ? `${popup.contest_id.slice(0, 8)}…` : "Không gắn"}
+                        </span>
                       </div>
                     </div>
                     <button
@@ -256,7 +299,7 @@ export function AdminFeaturedPopupsPage() {
                       }
                       className="rounded-xl border border-[#e5e2e1] px-4 py-2 text-sm font-bold text-[#444748] transition hover:bg-[#fcf8f8]"
                     >
-                      {popup.is_active ? "Tat popup" : "Bat popup"}
+                      {popup.is_active ? "Tắt popup" : "Bật popup"}
                     </button>
                   </div>
                 </article>
@@ -269,9 +312,20 @@ export function AdminFeaturedPopupsPage() {
   )
 }
 
+/**
+ * Nhãn nằm TRÊN ô nhập.
+ *
+ * Bản cũ dùng `block space-y-2`, nhưng `<span>` là inline còn `<input>` là
+ * inline-block nên hai thứ nằm cạnh nhau trên cùng một dòng — `space-y-*` chỉ
+ * thêm lề dọc chứ không ép xuống dòng. Ô nào trông đúng chỉ là nhờ khung hẹp
+ * làm input tràn xuống, tức là đúng do tình cờ.
+ *
+ * `flex flex-col` ép xếp chồng thật, và trong ngữ cảnh flex thì con tự giãn
+ * hết chiều ngang nên ô nhập không cần thêm `w-full`.
+ */
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="block space-y-2">
+    <label className="flex flex-col gap-1.5">
       <span className="text-xs font-bold uppercase tracking-wide text-[#747878]">{label}</span>
       {children}
     </label>

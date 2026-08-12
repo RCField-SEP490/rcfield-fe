@@ -91,13 +91,42 @@ export function AdminCafesPage() {
       cafe.address.toLowerCase().includes(keyword) ||
       cafe.district.toLowerCase().includes(keyword) ||
       cafe.city.toLowerCase().includes(keyword) ||
-      cafe.providerId.toLowerCase().includes(keyword)
+      cafe.providerId.toLowerCase().includes(keyword) ||
+      (cafe.providerName ?? "").toLowerCase().includes(keyword)
     const matchesStatus = statusFilter === "ALL" || cafe.status === statusFilter
     return matchesSearch && matchesStatus && planFilter === "ALL"
   })
 
   const columns = ["Cơ sở & Provider", "Liên hệ", "Địa chỉ / Chi nhánh", "Phí slot", "Trạng thái", "Ngày tạo", "Hành động"]
-  const rows = filteredCafes.map((cafe) => [
+  /*
+    Gom cơ sở theo chủ.
+
+    Trước đây mỗi dòng chỉ ghi `Provider: 74887667` — tám ký tự đầu của UUID.
+    Không đọc được là ai, và ba chi nhánh của cùng một chủ nằm rải rác khắp
+    bảng nên không thấy được chúng thuộc về nhau.
+
+    Sắp theo số chi nhánh giảm dần: chủ nhiều chi nhánh là chủ đáng chú ý nhất
+    với người quản trị.
+  */
+  const groups = useMemo(() => {
+    const byProvider = new Map<string, BackendCafe[]>()
+    for (const cafe of filteredCafes) {
+      const list = byProvider.get(cafe.providerId)
+      if (list) list.push(cafe)
+      else byProvider.set(cafe.providerId, [cafe])
+    }
+    return Array.from(byProvider.entries())
+      .map(([providerId, items]) => ({
+        providerId,
+        // Hồ sơ chưa khai tên thì lùi về id rút gọn, còn hơn để trống.
+        providerName: items[0]?.providerName || `Chủ ${providerId.slice(0, 8)}`,
+        items,
+        pendingCount: items.filter((cafe) => cafe.status === "PENDING").length,
+      }))
+      .sort((a, b) => b.items.length - a.items.length)
+  }, [filteredCafes])
+
+  const buildRows = (list: BackendCafe[]) => list.map((cafe) => [
     <div key={`${cafe.id}-name`} className="flex items-center gap-3">
       {cafe.coverImageUrl ? (
         <img src={cafe.coverImageUrl} alt={cafe.name} className="size-9 rounded-lg border border-[#e5e2e1] object-cover" />
@@ -111,7 +140,8 @@ export function AdminCafesPage() {
           {cafe.name}
           <span className="rounded bg-[#f6f3f2] px-1 font-mono text-[9px] font-bold text-[#747878]">{cafe.id.slice(0, 8)}</span>
         </div>
-        <div className="mt-0.5 text-xs font-semibold text-[#5d5f5f]">Provider: {cafe.providerId.slice(0, 8)}</div>
+        {/* Slug ở đây có ích hơn id chủ — id đã nằm ở tiêu đề nhóm phía trên. */}
+        <div className="mt-0.5 text-xs font-semibold text-[#5d5f5f]">{cafe.slug}</div>
       </div>
     </div>,
     <div key={`${cafe.id}-contact`}>
@@ -162,7 +192,7 @@ export function AdminCafesPage() {
       <AdminPanel className="mt-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <AdminSearchBar
-            placeholder="Tìm theo tên cơ sở, địa chỉ hoặc provider id..."
+            placeholder="Tìm theo tên cơ sở, tên chủ, địa chỉ..."
             value={searchTerm}
             onChange={setSearchTerm}
           />
@@ -208,8 +238,34 @@ export function AdminCafesPage() {
           <Button type="button" variant="outline" onClick={() => void refetch()}>
             Tải lại dữ liệu
           </Button>
+        ) : groups.length === 0 ? (
+          <p className="py-10 text-center text-sm text-[#747878]">
+            Không tìm thấy dữ liệu phù hợp.
+          </p>
         ) : (
-          <AdminTable columns={columns} rows={rows} />
+          <div className="space-y-8">
+            {groups.map((group) => (
+              <section key={group.providerId}>
+                <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-[#e5e2e1] pb-2">
+                  <span className="text-sm font-black text-[#1c1b1b]">
+                    {group.providerName}
+                  </span>
+                  <span className="rounded bg-[#f6f3f2] px-1.5 font-mono text-[10px] font-bold text-[#747878]">
+                    {group.providerId.slice(0, 8)}
+                  </span>
+                  <span className="text-xs font-semibold text-[#747878]">
+                    {group.items.length} cơ sở
+                  </span>
+                  {group.pendingCount > 0 && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                      {group.pendingCount} chờ duyệt
+                    </span>
+                  )}
+                </div>
+                <AdminTable columns={columns} rows={buildRows(group.items)} />
+              </section>
+            ))}
+          </div>
         )}
       </AdminPanel>
 
