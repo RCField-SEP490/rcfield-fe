@@ -33,10 +33,18 @@ export function AdminCafesPage() {
   const [actionType, setActionType] = useState<ActionType | null>(null)
   const [note, setNote] = useState("")
 
-  const queryParams = useMemo(
-    () => ({ page: 1, limit: 100, status: statusFilter === "ALL" ? undefined : statusFilter }),
-    [statusFilter],
-  )
+  /*
+    Tải TOÀN BỘ cơ sở một lần, không kèm bộ lọc trạng thái.
+
+    Bốn ô đếm phía trên phải phản ánh toàn bộ dữ liệu. Trước đây truy vấn mang
+    theo bộ lọc, mà các ô đếm lại tính từ chính kết quả đã lọc — nên chọn "Chờ
+    duyệt" thì cả ô "Tổng cơ sở" cũng tụt về 0, đọc như thể hệ thống không có
+    cơ sở nào.
+
+    Lọc trạng thái chuyển xuống phía dưới làm ở client: dữ liệu đã có sẵn trong
+    tay, lọc lại không cần thêm một vòng gọi mạng.
+  */
+  const queryParams = useMemo(() => ({ page: 1, limit: 100 }), [])
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: cafeQueryKeys.list(queryParams),
     queryFn: () => cafeApi.listCafes(queryParams),
@@ -84,7 +92,8 @@ export function AdminCafesPage() {
       cafe.district.toLowerCase().includes(keyword) ||
       cafe.city.toLowerCase().includes(keyword) ||
       cafe.providerId.toLowerCase().includes(keyword)
-    return matchesSearch && planFilter === "ALL"
+    const matchesStatus = statusFilter === "ALL" || cafe.status === statusFilter
+    return matchesSearch && matchesStatus && planFilter === "ALL"
   })
 
   const columns = ["Cơ sở & Provider", "Liên hệ", "Địa chỉ / Chi nhánh", "Phí slot", "Trạng thái", "Ngày tạo", "Hành động"]
@@ -139,8 +148,8 @@ export function AdminCafesPage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Phê duyệt Đối tác"
-        description="Xem xét thông tin cơ sở và cập nhật trạng thái hoạt động dựa trên dữ liệu backend."
+        title="Duyệt cơ sở"
+        description="Cơ sở mới do provider tạo ra ở trạng thái chờ duyệt và chưa nhận đặt lịch. Duyệt để mở bán, tạm ngưng khi cần."
       />
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -188,7 +197,7 @@ export function AdminCafesPage() {
 
         <AdminPanelTitle
           title={`Danh sách cơ sở đối tác (${filteredCafes.length})`}
-          subtitle="Quản lý trạng thái PENDING, ACTIVE, SUSPENDED từ cafe API"
+          subtitle="Chờ duyệt · Đang hoạt động · Tạm ngưng"
         />
 
         {isLoading ? (
