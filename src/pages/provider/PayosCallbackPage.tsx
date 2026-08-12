@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, Loader2, Sparkles, AlertCircle } from "lucide-re
 
 import { Button } from "@/shared/ui/button"
 import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
+import type { PaymentRequest } from "@/features/subscriptions/types"
 
 export function PayosCallbackPage() {
   const [searchParams] = useSearchParams()
@@ -12,7 +13,12 @@ export function PayosCallbackPage() {
   const [loading, setLoading] = useState(true)
   const [verifyStatus, setVerifyStatus] = useState<"success" | "cancel" | "error">("error")
   const [errorMessage, setErrorMessage] = useState("")
-  const [paymentRequest, setPaymentRequest] = useState<any>(null)
+  // Kiểu lấy thẳng từ `verifyPayOSPayment`, không cần `any`: dùng `any` ở đây
+  // làm mất luôn cảnh báo khi tên trường đổi, mà chỗ này đọc `status` và
+  // `adminNotes` để quyết định hiện màn thành công hay chờ duyệt.
+  const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(
+    null,
+  )
 
   const orderCode = searchParams.get("orderCode")
   const status = searchParams.get("status")

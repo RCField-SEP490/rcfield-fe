@@ -120,12 +120,14 @@ export function CafeDetailPage() {
           title: `${cafe.name} — Sân RC tại ${cafe.city}`,
           description: [
             `Đặt lịch chơi xe RC tại ${cafe.name}, ${cafe.district ? `${cafe.district}, ` : ""}${cafe.city}.`,
-            cafe.minPrice ? `Giá từ ${cafe.minPrice.toLocaleString("vi-VN")}đ mỗi giờ.` : "",
+            cafe.slotFeeRate
+              ? `Giá từ ${cafe.slotFeeRate.toLocaleString("vi-VN")}đ mỗi giờ.`
+              : "",
             "Xem khung giờ còn trống, thuê xe tại sân hoặc mang xe cá nhân.",
           ]
             .filter(Boolean)
             .join(" "),
-          image: cafe.coverImage || undefined,
+          image: cafe.image || undefined,
         }
       : null,
   )
