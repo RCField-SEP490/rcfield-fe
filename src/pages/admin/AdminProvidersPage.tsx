@@ -88,7 +88,7 @@ export function AdminProvidersPage() {
 
   return (
     <AdminShell>
-      <AdminHeader title="Quản lý Provider" description="Duyệt đăng ký, quản lý trạng thái tài khoản đối tác" />
+      <AdminHeader title="Tài khoản Provider" description="Duyệt đăng ký, quản lý trạng thái tài khoản đối tác" />
 
       <AdminPanel>
         <div className="flex flex-wrap items-center gap-3 mb-4">

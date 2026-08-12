@@ -18,8 +18,6 @@ import {
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/shared/ui/dialog"
-import { Textarea } from "@/shared/ui/textarea"
-import { Label } from "@/shared/ui/label"
 
 type StatusFilter = "ALL" | CafeStatus
 type ActionType = "APPROVE" | "SUSPEND" | "REACTIVATE"
@@ -28,10 +26,8 @@ export function AdminCafesPage() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
-  const [planFilter, setPlanFilter] = useState<string>("ALL")
   const [selectedCafe, setSelectedCafe] = useState<BackendCafe | null>(null)
   const [actionType, setActionType] = useState<ActionType | null>(null)
-  const [note, setNote] = useState("")
 
   /*
     Tải TOÀN BỘ cơ sở một lần, không kèm bộ lọc trạng thái.
@@ -58,7 +54,6 @@ export function AdminCafesPage() {
       toast.success("Đã cập nhật trạng thái cơ sở")
       setSelectedCafe(null)
       setActionType(null)
-      setNote("")
     },
     onError: () => {
       toast.error("Không thể cập nhật trạng thái cơ sở")
@@ -68,7 +63,6 @@ export function AdminCafesPage() {
   const handleOpenAction = (cafe: BackendCafe, type: ActionType) => {
     setSelectedCafe(cafe)
     setActionType(type)
-    setNote("")
   }
 
   const handleConfirmAction = () => {
@@ -94,7 +88,7 @@ export function AdminCafesPage() {
       cafe.providerId.toLowerCase().includes(keyword) ||
       (cafe.providerName ?? "").toLowerCase().includes(keyword)
     const matchesStatus = statusFilter === "ALL" || cafe.status === statusFilter
-    return matchesSearch && matchesStatus && planFilter === "ALL"
+    return matchesSearch && matchesStatus
   })
 
   const columns = ["Cơ sở & Provider", "Liên hệ", "Địa chỉ / Chi nhánh", "Phí slot", "Trạng thái", "Ngày tạo", "Hành động"]
@@ -212,16 +206,6 @@ export function AdminCafesPage() {
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-[#747878]">Gói SaaS:</span>
-              <select
-                value={planFilter}
-                onChange={(event) => setPlanFilter(event.target.value)}
-                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-2.5 text-xs font-bold text-[#1c1b1b] outline-none focus:border-orange-500"
-              >
-                <option value="ALL">Chưa có API</option>
-              </select>
-            </div>
           </div>
         </div>
 
@@ -277,23 +261,15 @@ export function AdminCafesPage() {
               {actionType === "SUSPEND" && "Tạm ngưng cơ sở"}
               {actionType === "REACTIVATE" && "Kích hoạt lại cơ sở"}
             </DialogTitle>
-            <DialogDescription className="mt-1.5 text-xs font-semibold text-[#5d5f5f]">
-              Bạn đang thay đổi trạng thái của <strong className="text-[#1c1b1b]">"{selectedCafe?.name}"</strong>.
+            <DialogDescription className="mt-1.5 text-xs font-semibold leading-relaxed text-[#5d5f5f]">
+              <strong className="text-[#1c1b1b]">"{selectedCafe?.name}"</strong>
+              {actionType === "APPROVE" && " sẽ hiển thị công khai và khách có thể tìm thấy để đặt lịch."}
+              {actionType === "SUSPEND" && " sẽ ẩn khỏi tìm kiếm và trang chi tiết. Khách không còn xem được cơ sở này."}
+              {actionType === "REACTIVATE" && " sẽ hiển thị công khai trở lại với khách."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="my-4 space-y-2">
-            <Label htmlFor="note" className="text-xs font-bold text-[#444748]">Ghi chú nội bộ</Label>
-            <Textarea
-              id="note"
-              placeholder="BE hiện chưa lưu ghi chú cho cafe status; ghi chú này chỉ dùng để xác nhận thao tác trên UI."
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              className="min-h-24 rounded-lg border-[#e5e2e1] text-xs font-semibold text-[#1c1b1b]"
-            />
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="mt-4 gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setSelectedCafe(null)} className="h-10 rounded-lg border-[#c4c7c8] bg-white font-bold text-[#1c1b1b] hover:bg-[#e5e2e1]/30">
               Hủy
             </Button>
@@ -302,7 +278,12 @@ export function AdminCafesPage() {
               disabled={statusMutation.isPending}
               className="h-10 rounded-lg bg-[#1c1b1b] font-bold text-white hover:bg-[#313030]"
             >
-              Xác nhận
+              {/* Nút mang đúng tên hành động vừa chọn: admin bấm "Tạm ngưng" thì
+                  nút cũng nói "Tạm ngưng", không phải một chữ "Xác nhận" chung
+                  chung cho cả ba việc khác hẳn nhau. */}
+              {actionType === "APPROVE" && "Duyệt cơ sở"}
+              {actionType === "SUSPEND" && "Tạm ngưng"}
+              {actionType === "REACTIVATE" && "Kích hoạt lại"}
             </Button>
           </DialogFooter>
         </DialogContent>

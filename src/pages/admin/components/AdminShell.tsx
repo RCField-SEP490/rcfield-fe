@@ -13,8 +13,10 @@ import {
   Menu,
   MessageCircle,
   Package,
+  Receipt,
   Settings2,
   Share2,
+  Sparkles,
   UserRound,
   Users,
   X,
@@ -35,6 +37,22 @@ import { NotificationBell } from "@/features/notifications/components/Notificati
 type NavItem = { label: string; icon: ElementType; to: string }
 type NavGroup = { heading: string; items: NavItem[] }
 
+/*
+  Nhóm theo VIỆC admin đang làm, không theo thực thể trong cơ sở dữ liệu.
+
+  Bản trước có một nhóm tên "Provider & SaaS" nuốt 8 trong 14 mục — vì bất cứ
+  thứ gì dính tới provider đều rơi vào đó: duyệt cơ sở, duyệt nâng gói, sổ giao
+  dịch, lẫn cả danh mục tiện ích và loại đường chạy. Một nhóm gom quá nửa số mục
+  thì không còn là nhóm nữa, nó chỉ là cái danh sách dài có tiêu đề.
+
+  Hai mục dễ nhầm nhất nằm cách nhau sáu dòng và dùng CHUNG một icon:
+    "Yêu cầu thanh toán" → hàng chờ duyệt, admin phải quyết định từng cái
+    "Thanh toán SaaS"    → sổ cái chỉ để tra cứu, không thao tác gì
+  Hai việc khác hẳn nhau. Đã tách sang hai nhóm và đổi tên cho nói đúng bản chất.
+
+  Mỗi nhóm giờ tối đa 3 mục, và tên nhóm là một danh từ đơn — không còn kiểu
+  "A & B" gộp hai khái niệm rời rạc.
+*/
 const adminNavGroups: NavGroup[] = [
   {
     heading: "Tổng quan",
@@ -47,31 +65,53 @@ const adminNavGroups: NavGroup[] = [
     ],
   },
   {
-    heading: "Provider & SaaS",
+    // Xếp theo dòng chảy tự nhiên: tài khoản đối tác → cơ sở của họ → yêu cầu
+    // nâng gói của họ.
+    heading: "Đối tác",
     items: [
-      // Trang này duyệt CƠ SỞ, không phải tài khoản đối tác — việc đó nằm ở
-      // "Quản lý Provider" ngay dưới. Nhãn cũ là "Duyệt đối tác" nên ai đi tìm
-      // chỗ duyệt cơ sở đều bấm nhầm sang mục kia rồi kết luận là chưa có.
+      { label: "Tài khoản Provider", icon: Users, to: routePaths.adminProviders },
+      // Trang này duyệt CƠ SỞ, không phải tài khoản đối tác — việc đó nằm ở mục
+      // ngay trên. Nhãn cũ là "Duyệt đối tác" nên ai đi tìm chỗ duyệt cơ sở đều
+      // bấm nhầm sang mục kia rồi kết luận là chưa có.
       { label: "Duyệt cơ sở", icon: Building2, to: routePaths.adminCafes },
-      { label: "Quản lý Provider", icon: Users, to: routePaths.adminProviders },
       {
-        label: "Yêu cầu thanh toán",
+        // "Yêu cầu thanh toán" quá rộng — provider trả tiền ở nhiều chỗ. Trang
+        // này chỉ xử lý đúng một việc: duyệt hoặc từ chối yêu cầu nâng gói.
+        label: "Yêu cầu nâng gói",
         icon: CreditCard,
         to: routePaths.adminPaymentRequests,
+      },
+    ],
+  },
+  {
+    heading: "Tài chính",
+    items: [
+      {
+        // Sổ này gồm cả giao dịch từ luồng đặt lịch lẫn cổng SaaS, nên không
+        // kèm chữ "SaaS" — kèm vào là hẹp hơn thứ trang thật sự hiển thị.
+        label: "Sổ giao dịch",
+        icon: Receipt,
+        to: routePaths.adminPayments,
       },
       {
         label: "Phí tổ chức giải",
         icon: Trophy,
         to: routePaths.adminContestFeeOrders,
       },
+    ],
+  },
+  {
+    // Dữ liệu nền hiếm khi đụng tới, tách khỏi việc hằng ngày để khỏi lẫn.
+    heading: "Danh mục",
+    items: [
       {
-        label: "Cấu hình gói",
+        label: "Gói dịch vụ",
         icon: Package,
         to: routePaths.adminSubscriptionPlans,
       },
       {
         label: "Tiện ích cơ sở",
-        icon: Settings2,
+        icon: Sparkles,
         to: routePaths.adminAmenities,
       },
       {
@@ -79,32 +119,19 @@ const adminNavGroups: NavGroup[] = [
         icon: Compass,
         to: routePaths.adminTrackTypes,
       },
-      {
-        label: "Thanh toán SaaS",
-        icon: CreditCard,
-        to: routePaths.adminPayments,
-      },
     ],
   },
-  // {
-  //   heading: "Người dùng & Khiếu nại",
-  //   items: [
-  //     { label: "Người dùng", icon: Users, to: routePaths.adminUsers },
-  //     { label: "Giải quyết khiếu nại", icon: Scale, to: routePaths.adminDisputes },
-  //     { label: "Điểm uy tín", icon: Award, to: routePaths.adminTrustScoreLogs },
-  //   ],
-  // },
   {
-    heading: "AI & Kênh",
+    heading: "Trợ lý ảo",
     items: [
       {
-        label: "Chat Widget",
+        label: "Cuộc trò chuyện",
         icon: MessageCircle,
         to: routePaths.adminSystemChat,
       },
       { label: "Kênh Messenger", icon: Share2, to: routePaths.adminChannels },
       {
-        label: "Knowledge Base",
+        label: "Kho kiến thức",
         icon: BookOpen,
         to: routePaths.adminKnowledgeBase,
       },
@@ -114,7 +141,7 @@ const adminNavGroups: NavGroup[] = [
     heading: "Hệ thống",
     items: [
       {
-        label: "Featured popup",
+        label: "Popup trang chủ",
         icon: Image,
         to: routePaths.adminFeaturedPopups,
       },

@@ -125,7 +125,7 @@ export function AdminFeaturedPopupsPage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Popup nổi bật"
+        title="Popup trang chủ"
         description="Quản trị popup giải đấu nổi bật hiển thị trên trang khám phá của khách hàng."
       />
 

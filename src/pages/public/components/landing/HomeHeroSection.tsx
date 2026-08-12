@@ -110,7 +110,9 @@ function buildHeroStats(cafes: Awaited<ReturnType<typeof getCafes>>) {
     },
     {
       label: "Đánh giá trung bình",
-      value: averageRating > 0 ? averageRating.toFixed(1) : "N/A",
+      // Trang chủ chưa có đánh giá nào thì nói thẳng là chưa có, thay vì "N/A"
+      // — viết tắt tiếng Anh giữa một trang tiếng Việt.
+      value: averageRating > 0 ? averageRating.toFixed(1) : "Chưa có",
     },
   ]
 }
