@@ -1,8 +1,11 @@
 name: FE Build Check
 
 on:
+  # Trước đây là `branches-ignore: [main]` — chạy mọi nhánh TRỪ main, tức đúng
+  # ngược với thứ cần bảo vệ nhất. Nay chỉ chạy khi đẩy thẳng lên `main`; các
+  # nhánh khác đã được pull request phía dưới lo.
   push:
-    branches-ignore:
+    branches:
       - main
   pull_request:
     branches:
@@ -26,8 +29,8 @@ jobs:
       fail-fast: false
       matrix:
         # Lịch định kỳ của GitHub chỉ chạy trên nhánh mặc định, nên phải chỉ đích
-        # danh nhánh cần kiểm. `main` là mã đang chạy thật, `develop` là mã sắp lên.
-        ref: ${{ github.event_name == 'schedule' && fromJSON('["main","develop"]') || fromJSON('[""]') }}
+        # danh nhánh cần kiểm. Chỉ kiểm `main` — đó là mã đang chạy thật.
+        ref: ${{ github.event_name == 'schedule' && fromJSON('["main"]') || fromJSON('[""]') }}
 
     steps:
       - name: Checkout
@@ -61,6 +64,18 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Với sự kiện pull request, `github.ref_name` là ref hợp nhất dạng `60/merge`.
+      # Dấu `/` không hợp lệ trong tên artifact, và "60/merge" cũng chẳng nói cho
+      # ai biết đang kiểm nhánh nào. Tính sẵn một nhãn sạch dùng chung cho artifact,
+      # tiêu đề mail và tiêu đề issue.
+      - name: Xác định nhãn nhánh
+        if: always()
+        run: |
+          RAW="${{ matrix.ref || github.head_ref || github.ref_name }}"
+          SAFE=$(printf '%s' "$RAW" | tr '/' '-' | tr -cd '[:alnum:]._-')
+          echo "BRANCH_LABEL=${SAFE:-unknown}" >> "$GITHUB_ENV"
+          echo "Nhãn nhánh: ${SAFE:-unknown} (gốc: $RAW)"
+
       # ── Thông báo khi lần chạy định kỳ thất bại ─────────────────────────────
       #
       # Chỉ áp cho `schedule`: hỏng do commit thì người đẩy mã đã thấy ngay trên
@@ -73,7 +88,7 @@ jobs:
         if: failure() && github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ matrix.ref || github.ref_name }}
+          BRANCH: ${{ env.BRANCH_LABEL }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           TITLE="🔴 CI định kỳ thất bại trên nhánh \`$BRANCH\`"
@@ -109,7 +124,7 @@ jobs:
         if: success() && github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: ${{ matrix.ref || github.ref_name }}
+          BRANCH: ${{ env.BRANCH_LABEL }}
         run: |
           TITLE="🔴 CI định kỳ thất bại trên nhánh \`$BRANCH\`"
           NUM=$(gh issue list --state open --label ci-daily \
