@@ -316,9 +316,9 @@ export function ProviderVehicleCatalogFormPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={VehicleTier.STANDARD}>STANDARD</SelectItem>
-                    <SelectItem value={VehicleTier.PREMIUM}>PREMIUM</SelectItem>
-                    <SelectItem value={VehicleTier.RESTRICTED}>RESTRICTED</SelectItem>
+                    <SelectItem value={VehicleTier.STANDARD}>Phổ thông</SelectItem>
+                    <SelectItem value={VehicleTier.PREMIUM}>Cao cấp</SelectItem>
+                    <SelectItem value={VehicleTier.RESTRICTED}>Hạn chế</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

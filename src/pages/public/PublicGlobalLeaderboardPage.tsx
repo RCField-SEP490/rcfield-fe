@@ -37,10 +37,11 @@ export function PublicGlobalLeaderboardPage() {
     <main className="w-full bg-slate-50/50 py-10">
       <section className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#111827,#1f2937)] px-6 py-12 text-white shadow-xl shadow-slate-900/10 sm:px-10">
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-200">Universal Racing Network</p>
-          <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">Global Leaderboard</h1>
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-orange-200">Mạng lưới tay đua RCField</p>
+          <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">Bảng xếp hạng chung</h1>
           <p className="mt-3 max-w-2xl text-sm text-slate-300">
-            Bảng xếp hạng dùng chung toàn hệ thống, chỉ đọc từ race record đã verified sau khi contest local được publish và sync.
+            Xếp hạng toàn hệ thống, tổng hợp từ kết quả các giải đã công bố tại mọi chi nhánh.
+            Chỉ tính những lượt chạy đã được ban tổ chức xác nhận.
           </p>
         </div>
 
@@ -57,8 +58,8 @@ export function PublicGlobalLeaderboardPage() {
             className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-orange-300 focus:bg-white"
           />
           <select value={vehicleSource} onChange={(event) => setVehicleSource(event.target.value as typeof vehicleSource)} className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm">
-            <option value="">Mọi vehicle source</option>
-            <option value="RENTAL">RENTAL</option>
+            <option value="">Mọi loại xe</option>
+            <option value="RENTAL">Xe thuê của quán</option>
             <option value="BYOC">Xe tự mang</option>
           </select>
         </div>
@@ -73,21 +74,21 @@ export function PublicGlobalLeaderboardPage() {
           ) : rows.length === 0 ? (
             <div className="p-16 text-center">
               <TimerReset className="mx-auto size-10 text-slate-300" />
-              <h3 className="mt-4 text-lg font-bold text-slate-900">Chưa có race record phù hợp</h3>
-              <p className="mt-2 text-sm text-slate-500">Hãy thử đổi bộ lọc hoặc sync thêm contest đã publish.</p>
+              <h3 className="mt-4 text-lg font-bold text-slate-900">Chưa có kết quả nào khớp bộ lọc</h3>
+              <p className="mt-2 text-sm text-slate-500">Thử nới bộ lọc, hoặc quay lại sau khi có giải mới công bố kết quả.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50">
                   <tr className="text-left text-xs font-black uppercase tracking-wide text-slate-500">
-                    <th className="px-5 py-4">Rank</th>
-                    <th className="px-5 py-4">Driver</th>
-                    <th className="px-5 py-4">Cafe</th>
-                    <th className="px-5 py-4">Vehicle</th>
-                    <th className="px-5 py-4">Best lap</th>
-                    <th className="px-5 py-4">Total time</th>
-                    <th className="px-5 py-4">Source</th>
+                    <th className="px-5 py-4">Hạng</th>
+                    <th className="px-5 py-4">Tay đua</th>
+                    <th className="px-5 py-4">Chi nhánh</th>
+                    <th className="px-5 py-4">Loại xe</th>
+                    <th className="px-5 py-4">Vòng nhanh nhất</th>
+                    <th className="px-5 py-4">Tổng thời gian</th>
+                    <th className="px-5 py-4">Giải đấu</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -111,14 +112,16 @@ export function PublicGlobalLeaderboardPage() {
                         <p className="font-semibold text-slate-900">{entry.cafe.name}</p>
                         <p className="mt-1 text-xs text-slate-500">{entry.cafe.city}</p>
                       </td>
-                      <td className="px-5 py-4 font-semibold text-slate-700">{entry.vehicle_source}</td>
+                      <td className="px-5 py-4 font-semibold text-slate-700">
+                        {entry.vehicle_source === "RENTAL" ? "Xe thuê của quán" : "Xe tự mang"}
+                      </td>
                       <td className="px-5 py-4 font-bold text-orange-600">{formatLap(entry.best_lap_ms)}</td>
                       <td className="px-5 py-4 text-slate-700">{formatLap(entry.total_time_ms)}</td>
                       <td className="px-5 py-4">
                         <div className="flex items-start gap-2 text-slate-700">
                           <Trophy className="mt-0.5 size-4 text-orange-500" />
                           <div>
-                            <p className="font-semibold text-slate-900">{entry.contest_name ?? "Contest source"}</p>
+                            <p className="font-semibold text-slate-900">{entry.contest_name ?? "Không rõ giải"}</p>
                             <p className="mt-1 text-xs text-slate-500">
                               {new Date(entry.recorded_at).toLocaleString("vi-VN")}
                             </p>

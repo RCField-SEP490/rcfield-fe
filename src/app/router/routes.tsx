@@ -54,11 +54,9 @@ import { CafeDetailPage } from "@/pages/customer/cafe-detail/CafeDetailPage"
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage"
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage"
 import { AdminCafesPage } from "@/pages/admin/AdminCafesPage"
-import { AdminDisputesPage } from "@/pages/admin/AdminDisputesPage"
 import { AdminPaymentsPage } from "@/pages/admin/AdminPaymentsPage"
 import { AdminFeatureFlagsPage } from "@/pages/admin/AdminFeatureFlagsPage"
 import { AdminFeaturedPopupsPage } from "@/pages/admin/AdminFeaturedPopupsPage"
-import { AdminTrustScoreLogsPage } from "@/pages/admin/AdminTrustScoreLogsPage"
 import { AdminSystemChatPage } from "@/pages/admin/AdminSystemChatPage"
 import { AdminKnowledgeBasePage } from "@/pages/admin/AdminKnowledgeBasePage"
 import { AdminChannelSettingsPage } from "@/pages/admin/AdminChannelSettingsPage"
@@ -157,7 +155,7 @@ export const router = createBrowserRouter([
           { path: routePaths.cafeDetail, element: <CafeDetailPage /> },
           {
             path: routePaths.vehicleDetail,
-            element: <PlaceholderPage title="Vehicle detail" />,
+            element: <PlaceholderPage title="Chi tiết xe" />,
           },
           { path: routePaths.bookingCreate, element: <CreateBookingPage /> },
           { path: routePaths.bookingDetail, element: <BookingDetailPage /> },
@@ -236,7 +234,7 @@ export const router = createBrowserRouter([
           },
           {
             path: routePaths.customerSubscriptions,
-            element: <PlaceholderPage title="Customer subscriptions" />,
+            element: <PlaceholderPage title="Lịch chơi định kỳ" />,
           },
           {
             path: routePaths.customerReviews,
@@ -542,10 +540,6 @@ export const router = createBrowserRouter([
             element: guardRoute(<AdminCafesPage />, ["admin"]),
           },
           {
-            path: routePaths.adminDisputes,
-            element: guardRoute(<AdminDisputesPage />, ["admin"]),
-          },
-          {
             path: routePaths.adminPayments,
             element: guardRoute(<AdminPaymentsPage />, ["admin"]),
           },
@@ -556,10 +550,6 @@ export const router = createBrowserRouter([
           {
             path: routePaths.adminFeaturedPopups,
             element: guardRoute(<AdminFeaturedPopupsPage />, ["admin"]),
-          },
-          {
-            path: routePaths.adminTrustScoreLogs,
-            element: guardRoute(<AdminTrustScoreLogsPage />, ["admin"]),
           },
           {
             path: routePaths.adminSystemChat,

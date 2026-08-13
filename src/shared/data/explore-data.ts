@@ -69,6 +69,8 @@ export type CafeSearchParams = {
   priceRange?: string
   feature?: string
   date?: string
+  /** Năng lực chi nhánh: RENTAL (có xe cho thuê) hoặc BYOC (nhận xe khách mang). */
+  playMode?: string
   vehicleType?: string
   sortBy?: SortOption
   priceMin?: number

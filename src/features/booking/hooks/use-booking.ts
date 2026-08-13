@@ -137,6 +137,19 @@ export function useDailyAvailability(
       )
       return results
     },
+    /*
+      `closeHour` vượt quá 24 khi quán đóng cửa sau nửa đêm: 09:00–01:00 được
+      quy đổi thành 9 → 25 để biểu diễn "1 giờ sáng hôm sau".
+
+      Điều kiện cũ đòi `closeHour <= 24`, nên với mọi chi nhánh mở qua đêm thì
+      truy vấn KHÔNG BAO GIỜ chạy — `data` là undefined, danh sách slot rỗng,
+      và người dùng thấy một khung giờ trống trơn dù nhãn vẫn ghi "16 slot/ngày"
+      (nhãn đó tính từ open/close chứ không đọc mảng slot, nên nó không hé lộ
+      chuyện gì đang sai).
+
+      Trần 48 là giới hạn hợp lý: một ngày vận hành không thể dài hơn 24 tiếng
+      kể từ giờ mở cửa.
+    */
     enabled:
       !!cafeId &&
       !!date &&
@@ -145,7 +158,7 @@ export function useDailyAvailability(
       Number.isInteger(closeHour) &&
       openHour >= 0 &&
       closeHour > openHour &&
-      closeHour <= 24,
+      closeHour <= 48,
     staleTime: 60_000,
   })
 }

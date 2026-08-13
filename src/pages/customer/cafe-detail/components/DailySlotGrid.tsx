@@ -53,6 +53,18 @@ function addMinutesToTime(time: string, minutes: number): string {
   return `${endHH}:${endMM}`
 }
 
+/**
+ * Giờ vận hành sau nửa đêm được biểu diễn bằng số vượt 24 ("24:00" = 0 giờ sáng
+ * hôm sau) để so sánh và sắp xếp không bị đứt đoạn. Nhưng người dùng phải thấy
+ * "00:00", không phải "24:00".
+ */
+function formatSlotLabel(time: string): string {
+  const [hh, mm] = time.split(":")
+  const hour = Number(hh)
+  if (!Number.isInteger(hour)) return time
+  return `${String(hour % 24).padStart(2, "0")}:${mm ?? "00"}`
+}
+
 export function DailySlotGrid({
   slots,
   selectedSlotId,
@@ -76,8 +88,13 @@ export function DailySlotGrid({
     slots[0]?.capacityKind ?? "rental_vehicle",
   )
 
+  // Slot sau nửa đêm được đánh số vượt 24 (24:00, 25:00...) nên so trực tiếp là
+  // đúng. Nếu nguồn dữ liệu nào đó trả về 00:00 cho ca đêm, cộng bù 24 để nó
+  // không bị loại oan khỏi khung 09:00–01:00.
   const visibleSlots = slots.filter((s) => {
-    const hour = parseInt(s.startTime.split(":")[0], 10)
+    const raw = parseInt(s.startTime.split(":")[0], 10)
+    if (!Number.isInteger(raw)) return false
+    const hour = raw < openHour && closeHour > 24 ? raw + 24 : raw
     return hour >= openHour && hour < closeHour
   })
 
@@ -242,7 +259,7 @@ export function DailySlotGrid({
             isTooSoon
           const isSelected = isInSelectedRange(slot.id)
           const isAnchor = slot.id === selectedSlotId && isSelected
-          const tooSoonMessage = `Không thể đặt slot ${slot.startTime}: cần đặt trước tối thiểu ${minBookingNoticeMinutes} phút.`
+          const tooSoonMessage = `Không thể đặt slot ${formatSlotLabel(slot.startTime)}: cần đặt trước tối thiểu ${minBookingNoticeMinutes} phút.`
 
           return (
             <span
@@ -273,7 +290,7 @@ export function DailySlotGrid({
                     "bg-orange-500 text-white border-orange-500 hover:bg-orange-600",
                 )}
               >
-                <span>{slot.startTime}</span>
+                <span>{formatSlotLabel(slot.startTime)}</span>
                 <span className="text-[10px] font-medium opacity-80">
                   {isPast
                     ? "Đã qua"

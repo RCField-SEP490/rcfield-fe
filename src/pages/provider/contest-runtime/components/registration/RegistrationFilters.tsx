@@ -38,10 +38,10 @@ export function RegistrationFilters({
         }
       >
         <option value="ALL">Tất cả trạng thái</option>
-        <option value="PENDING">PENDING</option>
-        <option value="CONFIRMED">CONFIRMED</option>
-        <option value="CHECKED_IN">CHECKED_IN</option>
-        <option value="CANCELLED">CANCELLED</option>
+        <option value="PENDING">Chờ duyệt</option>
+        <option value="CONFIRMED">Đã xác nhận</option>
+        <option value="CHECKED_IN">Đã điểm danh</option>
+        <option value="CANCELLED">Đã huỷ</option>
       </select>
       <select
         className="h-10 rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
@@ -51,11 +51,11 @@ export function RegistrationFilters({
         }
       >
         <option value="ALL">Tất cả thanh toán</option>
-        <option value="NOT_REQUIRED">NOT_REQUIRED</option>
-        <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
-        <option value="PENDING_REVIEW">PENDING_REVIEW</option>
-        <option value="WAIVED">WAIVED</option>
-        <option value="MARKED_PAID">MARKED_PAID</option>
+        <option value="NOT_REQUIRED">Không thu phí</option>
+        <option value="PENDING_PAYMENT">Chờ thanh toán</option>
+        <option value="PENDING_REVIEW">Chờ đối soát</option>
+        <option value="WAIVED">Được miễn</option>
+        <option value="MARKED_PAID">Đã ghi nhận trả</option>
       </select>
     </div>
   )

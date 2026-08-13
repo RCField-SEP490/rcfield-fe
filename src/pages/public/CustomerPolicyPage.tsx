@@ -220,7 +220,7 @@ export function CustomerPolicyPage() {
               <p>
                 Bạn cần có mặt và check-in trong vòng{" "}
                 <strong>30 phút kể từ giờ bắt đầu slot</strong>. Quá thời gian
-                này, đặt lịch sẽ chuyển sang trạng thái <em>No-show</em> (xem
+                này, đặt lịch sẽ chuyển sang trạng thái <em>vắng mặt</em> (xem
                 mục 7).
               </p>
 
@@ -389,7 +389,7 @@ export function CustomerPolicyPage() {
             <SectionTitle>7. Không đến (No-show)</SectionTitle>
             <Prose>
               <p>
-                Đặt lịch được xác định là <strong>No-show</strong> khi bạn không
+                Đặt lịch được xác định là <strong>vắng mặt</strong> khi bạn không
                 check-in trong vòng 30 phút kể từ giờ bắt đầu slot đã đặt.
               </p>
 

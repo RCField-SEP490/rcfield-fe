@@ -425,7 +425,7 @@ export function ProviderContestWorkspacePage({
     return (
       <ProviderShell>
         <ProviderPageHeader
-          title="Contest workspace"
+          title="Điều hành giải đấu"
           description="Đang tải dữ liệu contest..."
         />
         <div className="space-y-4">
@@ -444,7 +444,7 @@ export function ProviderContestWorkspacePage({
     return (
       <ProviderShell>
         <ProviderPageHeader
-          title="Contest workspace"
+          title="Điều hành giải đấu"
           description="Không tìm thấy contest để vận hành."
         />
       </ProviderShell>
@@ -663,11 +663,11 @@ export function ProviderContestWorkspacePage({
                 className="h-10 rounded-lg border border-[#c4c7c8] px-3 text-sm"
               >
                 <option value="">Tất cả trạng thái trận</option>
-                <option value="DRAFT">DRAFT</option>
-                <option value="READY">READY</option>
-                <option value="RUNNING">RUNNING</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="CANCELLED">CANCELLED</option>
+                <option value="DRAFT">Nháp</option>
+                <option value="READY">Sẵn sàng</option>
+                <option value="RUNNING">Đang chạy</option>
+                <option value="COMPLETED">Đã xong</option>
+                <option value="CANCELLED">Đã huỷ</option>
               </select>
               <input
                 value={roundNo}

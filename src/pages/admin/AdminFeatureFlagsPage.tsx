@@ -58,7 +58,7 @@ export function AdminFeatureFlagsPage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Feature Flags"
+        title="Cấu hình tính năng"
         description="Bật hoặc tắt các tính năng nền tảng. Thay đổi có hiệu lực ngay lập tức, không cần deploy lại."
       />
 
@@ -72,7 +72,7 @@ export function AdminFeatureFlagsPage() {
         </div>
 
         <AdminPanelTitle
-          title="Danh sách Feature Flags"
+          title="Danh sách Cấu hình tính năng"
           subtitle={`${flags.filter((f) => f.is_enabled).length} đang bật · ${flags.filter((f) => !f.is_enabled).length} đang tắt`}
         />
 

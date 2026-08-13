@@ -17,6 +17,7 @@ export function useExploreFilters() {
   const [feature, setFeature] = useState(normalizeFilterValue(searchParams.get("feature")))
   const [vehicleType, setVehicleType] = useState(normalizeFilterValue(searchParams.get("vehicleType")))
   const [date, setDate] = useState(searchParams.get("date") ?? "")
+  const [playMode, setPlayMode] = useState(normalizeFilterValue(searchParams.get("playMode")))
   const [sortBy, setSortBy] = useState<SortOption>("popularity")
   const [priceMin, setPriceMin] = useState(PRICE_SLIDER_MIN)
   const [priceMax, setPriceMax] = useState(PRICE_SLIDER_MAX)
@@ -36,12 +37,13 @@ export function useExploreFilters() {
       feature,
       vehicleType,
       date,
+      playMode,
       sortBy,
       priceMin,
       priceMax,
       popularFilters,
     }),
-    [debouncedQuery, city, trackType, priceRange, feature, vehicleType, date, sortBy, priceMin, priceMax, popularFilters],
+    [debouncedQuery, city, trackType, priceRange, feature, vehicleType, date, playMode, sortBy, priceMin, priceMax, popularFilters],
   )
 
   const activeFilterCount = useMemo(() => getActiveFilterCount(params), [params])
@@ -94,6 +96,8 @@ export function useExploreFilters() {
     setVehicleType,
     date,
     setDate,
+    playMode,
+    setPlayMode,
     sortBy,
     setSortBy,
     priceMin,

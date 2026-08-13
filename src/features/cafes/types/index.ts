@@ -107,6 +107,8 @@ export type CafeListParams = {
   status?: CafeStatus
   /** "YYYY-MM-DD" — chỉ giữ cơ sở còn slot trống ngày đó. */
   date?: string
+  /** RENTAL = chi nhánh còn xe cho thuê; BYOC = có nhận khách mang xe riêng. */
+  play_mode?: "RENTAL" | "BYOC"
 }
 
 export type CafeUpsertBody = {

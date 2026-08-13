@@ -425,12 +425,12 @@ function ProfileContent() {
             <button
               type="button"
               className="group relative size-20 overflow-hidden rounded-full border-2 border-[#e5e2e1]"
-              aria-label="Change profile picture"
+              aria-label="Đổi ảnh đại diện"
               onClick={() => fileInputRef.current?.click()}
             >
               {form.avatarUrl ? (
                 <img
-                  alt="Current avatar"
+                  alt="Ảnh đại diện hiện tại"
                   className="size-full rounded-full object-cover transition-opacity group-hover:opacity-75"
                   src={form.avatarUrl}
                 />
