@@ -630,7 +630,7 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
           <div className="relative flex w-full max-w-xs flex-col bg-white p-4 shadow-xl">
             <div className="mb-8 flex items-center justify-between px-2">
-              <span className="text-lg font-extrabold text-[#1c1b1b]">Menu Provider</span>
+              <span className="text-lg font-extrabold text-[#1c1b1b]">Menu quản lý</span>
               <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(false)} className="text-[#444748] hover:bg-[rgb(246,243,242)]">
                 <X className="size-5" />
               </Button>

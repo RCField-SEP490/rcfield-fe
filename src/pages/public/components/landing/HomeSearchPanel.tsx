@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { useNavigate } from "react-router"
 import { useQuery } from "@tanstack/react-query"
-import { CalendarDays, Clock3, MapPin, Search, Waypoints } from "lucide-react"
+import { CalendarDays, Car, Clock3, MapPin, Search, Waypoints } from "lucide-react"
 import { motion, useReducedMotion } from "framer-motion"
 import { trackTypeApi } from "@/features/cafes/api/cafe.api"
 import { getCafes } from "@/features/explore/api/explore.api"
@@ -32,6 +32,7 @@ export function HomeSearchPanel() {
   const [trackType, setTrackType] = useState("all")
   const [date, setDate] = useState("")
   const [time, setTime] = useState("all")
+  const [playMode, setPlayMode] = useState("all")
 
   const { data: cafes = [] } = useQuery({
     queryKey: ["landing", "search-cafes"],
@@ -65,6 +66,7 @@ export function HomeSearchPanel() {
     if (trackType !== "all") params.set("trackType", trackType)
     if (date) params.set("date", date)
     if (time !== "all") params.set("time", time)
+    if (playMode !== "all") params.set("playMode", playMode)
     navigate(`/cafes?${params.toString()}`)
   }
 
@@ -76,7 +78,7 @@ export function HomeSearchPanel() {
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className="home-search-panel rounded-[28px] border border-white/70 bg-white/88 p-4 shadow-[var(--landing-shadow-soft)] backdrop-blur xl:p-5"
     >
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.15fr_1.15fr_0.95fr_0.95fr_auto]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.05fr_1.05fr_0.9fr_0.9fr_0.95fr_auto]">
         <FieldShell icon={<MapPin className="h-4 w-4" />} label="Vị trí">
           <select
             value={city}
@@ -127,6 +129,23 @@ export function HomeSearchPanel() {
                 {option}
               </option>
             ))}
+          </select>
+        </FieldShell>
+
+        {/*
+          Chế độ chơi là năng lực của chi nhánh, không phải của đơn đặt: chọn
+          "Thuê xe của quán" sẽ loại những cơ sở chưa nhập chiếc xe nào — khách
+          đến nơi mới biết không có xe là hỏng cả buổi.
+        */}
+        <FieldShell icon={<Car className="h-4 w-4" />} label="Chế độ chơi">
+          <select
+            value={playMode}
+            onChange={(event) => setPlayMode(event.target.value)}
+            className={fieldClassName}
+          >
+            <option value="all">Thuê xe hoặc mang xe</option>
+            <option value="RENTAL">Thuê xe của quán</option>
+            <option value="BYOC">Mang xe của mình</option>
           </select>
         </FieldShell>
 

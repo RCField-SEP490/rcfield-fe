@@ -352,10 +352,10 @@ export function AdminSystemChatPage() {
             </div>
           </AdminPanel>
 
-          {/* Full-page Chat */}
+          {/* Trang chat riêng của từng chi nhánh */}
           <AdminPanel>
             <AdminPanelTitle
-              title="Full-page Chat"
+              title="Trang chat riêng"
               subtitle="Mỗi cafe có trang chat riêng tại /cafes/:slug/chat để chia sẻ link hoặc dán QR code tại quán."
             />
             <div className="space-y-3">
@@ -386,7 +386,7 @@ export function AdminSystemChatPage() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
-                    <p className="text-sm font-bold text-emerald-700">Full-page mode is active</p>
+                    <p className="text-sm font-bold text-emerald-700">Trang chat riêng đang bật</p>
                   </div>
                   <p className="text-xs font-semibold text-emerald-600">
                     Trang chat có thể truy cập tại URL sau:
@@ -538,8 +538,8 @@ export function AdminSystemChatPage() {
           <AdminPanel>
             <div className="mb-4 flex items-start justify-between gap-3">
               <AdminPanelTitle
-                title="System Prompt"
-                subtitle="Hướng dẫn hành vi cho AI. Để trống để dùng prompt mặc định."
+                title="Chỉ dẫn cho trợ lý"
+                subtitle="Mô tả cách trợ lý ảo trả lời khách. Để trống thì dùng chỉ dẫn mặc định."
               />
               <button
                 onClick={() => setForm((f) => ({ ...f, systemPrompt: SYSTEM_PROMPT_TEMPLATE }))}

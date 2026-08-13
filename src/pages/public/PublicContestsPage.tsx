@@ -127,7 +127,7 @@ export function PublicContestsPage() {
                   accent="emerald"
                 />
                 <SummaryStat
-                  label="Live"
+                  label="Đang diễn ra"
                   value={String(liveCount)}
                   accent="orange"
                 />

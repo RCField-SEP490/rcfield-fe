@@ -266,7 +266,7 @@ export function ProviderStaffDetailPage() {
             ) : kpi ? (
               <>
                 <div className="rounded-xl border border-[#c4c7c8] bg-white p-5">
-                  <p className="mb-1 text-xs font-medium text-[#747878]">Booking check-in</p>
+                  <p className="mb-1 text-xs font-medium text-[#747878]">Lượt check-in đã làm</p>
                   <p className="text-2xl font-bold text-[#1c1b1b]">{formatKpiNumber(kpi.totalCheckIns)}</p>
                 </div>
                 <div className="rounded-xl border border-[#c4c7c8] bg-white p-5">

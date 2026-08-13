@@ -190,11 +190,11 @@ export function ProviderCafeFormDialog({
                 />
               </label>
 
-              <TextField label="Cover image URL" value={values.cover_image_url ?? ""} onChange={(value) => setField("cover_image_url", value)} />
+              <TextField label="Link ảnh bìa" value={values.cover_image_url ?? ""} onChange={(value) => setField("cover_image_url", value)} />
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <NumberField label="Latitude" value={values.latitude ?? ""} onChange={(value) => setField("latitude", value)} step="0.0000001" />
-                <NumberField label="Longitude" value={values.longitude ?? ""} onChange={(value) => setField("longitude", value)} step="0.0000001" />
+                <NumberField label="Vĩ độ" value={values.latitude ?? ""} onChange={(value) => setField("latitude", value)} step="0.0000001" />
+                <NumberField label="Kinh độ" value={values.longitude ?? ""} onChange={(value) => setField("longitude", value)} step="0.0000001" />
                 <NumberField label="Phí slot" value={values.slot_fee_rate} onChange={(value) => setField("slot_fee_rate", value ?? 0)} min={0} />
                 <NumberField label="Thời lượng slot" value={values.slot_duration_minutes} onChange={(value) => setField("slot_duration_minutes", value ?? 60)} min={1} />
                 <NumberField label="Báo trước phút" value={values.min_booking_notice_minutes} onChange={(value) => setField("min_booking_notice_minutes", value ?? 0)} min={0} />

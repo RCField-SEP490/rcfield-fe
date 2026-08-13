@@ -160,7 +160,7 @@ export function CustomerContestRegistrationsPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Metric label="Đã tham gia" value={String(stats.total)} />
-            <Metric label="Trong bracket" value={String(stats.inBracket)} />
+            <Metric label="Đang trong nhánh đấu" value={String(stats.inBracket)} />
             <Metric label="Đã vào vòng tiếp" value={String(stats.advanced)} />
           </div>
         </div>
@@ -281,7 +281,7 @@ export function CustomerContestRegistrationsPage() {
                             value={getRegistrationDisplayName(registration)}
                           />
                           <InfoTile
-                            label="Check-in code"
+                            label="Mã điểm danh"
                             value={registration.checkInCode ?? "--"}
                           />
                           <InfoTile

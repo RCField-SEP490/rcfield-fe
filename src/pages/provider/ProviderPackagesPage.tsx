@@ -891,7 +891,7 @@ function PackageFormPanel({
             onChange={(event) => onFieldChange("applicablePlayModes", playModeSelectToValue(event.target.value))}
             className="h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold"
           >
-            <option value="RENTAL">Rental</option>
+            <option value="RENTAL">Thuê xe của quán</option>
             <option value="BYOC">Xe tự mang</option>
             <option value="ALL">Thuê xe và xe tự mang</option>
           </select>

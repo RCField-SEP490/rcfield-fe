@@ -416,11 +416,11 @@ export function WidgetConfigForm({ cafeId }: { cafeId: string }) {
             </div>
           </label>
 
-          <SectionHeading icon={<Bot className="size-3.5" />} title="AI Prompt" />
+          <SectionHeading icon={<Bot className="size-3.5" />} title="Chỉ dẫn cho trợ lý" />
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-[#1c1b1b]">System prompt</span>
+              <span className="text-sm font-bold text-[#1c1b1b]">Chỉ dẫn hệ thống</span>
               <div ref={templateRef} className="relative">
                 <button
                   type="button"

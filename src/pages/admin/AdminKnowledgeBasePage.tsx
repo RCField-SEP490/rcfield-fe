@@ -304,7 +304,7 @@ export function AdminKnowledgeBasePage() {
   return (
     <AdminShell>
       <AdminHeader
-        title="Knowledge Base"
+        title="Kho kiến thức"
         description="Tài liệu AI sẽ dùng để trả lời câu hỏi trong chat widget của landing page."
       />
 

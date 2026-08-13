@@ -69,7 +69,7 @@ export function GlobalLeaderboardPreview() {
                     <th className="px-6 py-4">Tay đua</th>
                     <th className="px-6 py-4">Cơ sở</th>
                     <th className="px-6 py-4">Loại xe</th>
-                    <th className="px-6 py-4 text-right">Best Lap</th>
+                    <th className="px-6 py-4 text-right">Vòng nhanh nhất</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

@@ -169,24 +169,21 @@ export function CustomerSubscriptionsPage() {
               <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
                 <CardTitle className="text-xs font-black text-slate-950 uppercase tracking-widest flex items-center gap-2">
                   <CreditCard className="h-4.5 w-4.5 text-orange-500" />
-                  Phương Thức Liên Kết
+                  Cách thanh toán
                 </CardTitle>
               </CardHeader>
+              {/*
+                Khối này trước đây in cứng một thẻ "Visa Debit •••• 8868, hết hạn
+                12/29" kèm nhãn PRIMARY. Không có thẻ nào như vậy: RCField không
+                lưu thẻ ngân hàng của khách, mỗi lần đặt lịch trả riêng qua VNPay
+                hoặc chuyển khoản VietQR. Hiển thị một phương thức không tồn tại
+                khiến khách tưởng đã liên kết thẻ và sẽ bị tự động trừ tiền.
+              */}
               <CardContent className="p-5 space-y-4 text-xs font-semibold">
-                <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl relative">
-                  <div className="h-9 w-14 rounded-lg bg-slate-900 text-white flex items-center justify-center font-extrabold text-[10px] tracking-widest border border-slate-800">
-                    VISA
-                  </div>
-                  <div>
-                    <span className="block text-slate-900 font-extrabold">Visa Debit •••• 8868</span>
-                    <span className="block text-[10px] text-slate-400 mt-0.5">Hết hạn: 12/29</span>
-                  </div>
-                  <Badge className="absolute top-2.5 right-2.5 bg-orange-100 text-orange-800 border-none font-bold text-[8px]">PRIMARY</Badge>
-                </div>
-
-                <div className="p-3 bg-orange-50/30 rounded-xl border border-orange-100 space-y-1 text-[9px] text-orange-800 leading-normal font-bold">
+                <div className="p-3 bg-orange-50/30 rounded-xl border border-orange-100 space-y-1 text-[11px] text-orange-800 leading-normal font-bold">
                   <Info className="h-3.5 w-3.5 text-orange-500 inline-block mr-1 shrink-0" />
-                  Bạn có thể thay đổi phương thức thanh toán định kỳ bất cứ lúc nào bằng cách cập nhật thẻ ngân hàng mới.
+                  Mỗi lần đặt lịch bạn thanh toán riêng qua VNPay hoặc quét mã VietQR.
+                  Hệ thống không lưu thẻ và không tự động trừ tiền.
                 </div>
               </CardContent>
             </Card>

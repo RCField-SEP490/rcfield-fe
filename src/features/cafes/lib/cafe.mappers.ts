@@ -72,6 +72,7 @@ export function toCafeListParams(params: {
   priceMax?: number
   popularFilters?: string[]
   date?: string
+  playMode?: string
   page?: number
   limit?: number
 }): CafeListParams {
@@ -95,6 +96,9 @@ export function toCafeListParams(params: {
     // Trước đây trường này bị bỏ quên ở đây, nên chọn ngày xong không có gì đi
     // lên máy chủ và bộ lọc ngày im lặng không làm gì.
     date: isActiveFilter(params.date) ? params.date : undefined,
+    play_mode: isActiveFilter(params.playMode)
+      ? (params.playMode as "RENTAL" | "BYOC")
+      : undefined,
   }
 }
 

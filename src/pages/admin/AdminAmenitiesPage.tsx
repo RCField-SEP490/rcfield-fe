@@ -152,7 +152,7 @@ export function AdminAmenitiesPage() {
                 <th className="w-8 px-3 py-3" />
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#747878]">Tiêu đề</th>
                 <th className="hidden px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#747878] sm:table-cell">Mô tả</th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#747878]">Icon</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-[#747878]">Biểu tượng</th>
                 <th className="w-16 px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-[#747878]">Thứ tự</th>
                 <th className="w-24 px-4 py-3" />
               </tr>
@@ -255,7 +255,7 @@ export function AdminAmenitiesPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Icon key <span className="text-red-500">*</span></Label>
+                <Label>Mã biểu tượng <span className="text-red-500">*</span></Label>
                 <Input
                   value={form.icon}
                   onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}

@@ -12,7 +12,7 @@ export function PromoBadge({ promotion }: PromoBadgeProps) {
     return (
       <div className="inline-flex items-center gap-1 rounded bg-orange-500 px-2 py-1 text-[11px] font-bold text-white shadow-sm">
         <span>{discountLabel}</span>
-        <span className="rounded bg-white/20 px-1 py-0.5 text-[9px] font-bold">EPIC SALE</span>
+        <span className="rounded bg-white/20 px-1 py-0.5 text-[9px] font-bold">GIẢM SỐC</span>
       </div>
     )
   }
