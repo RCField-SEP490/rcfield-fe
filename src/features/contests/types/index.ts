@@ -643,9 +643,17 @@ export type ContestFeeOrder = {
   transfer_reference: string | null
   transfer_date: string | null
   transfer_amount: number | null
+  /** Chỉ có khi provider chọn trả qua cổng PayOS; null nếu chuyển khoản tay. */
+  payos_order_code: string | null
   admin_notes: string | null
   reviewed_at: string | null
   created_at: string
+}
+
+export type ContestFeePayOSLink = {
+  checkout_url: string
+  order_code: number
+  order: ContestFeeOrder
 }
 
 export type AdminContestFeeOrder = ContestFeeOrder & {

@@ -17,27 +17,41 @@ interface ApiResponse<T> {
 export const vehicleApi = {
   // Catalog APIs
   listCatalogs: async (cafeId: string): Promise<VehicleCatalog[]> => {
-    const res = await api.get<ApiResponse<VehicleCatalog[]>>(`/v1/cafes/${cafeId}/vehicle-catalogs`)
+    const res = await api.get<ApiResponse<VehicleCatalog[]>>(
+      `/v1/cafes/${cafeId}/vehicle-catalogs`,
+    )
     return res.data.data
   },
 
-  getCatalogDetail: async (cafeId: string, catalogId: string): Promise<VehicleCatalog> => {
-    const res = await api.get<ApiResponse<VehicleCatalog>>(`/v1/cafes/${cafeId}/vehicle-catalogs/${catalogId}`)
+  getCatalogDetail: async (
+    cafeId: string,
+    catalogId: string,
+  ): Promise<VehicleCatalog> => {
+    const res = await api.get<ApiResponse<VehicleCatalog>>(
+      `/v1/cafes/${cafeId}/vehicle-catalogs/${catalogId}`,
+    )
     return res.data.data
   },
 
-  createCatalog: async (cafeId: string, data: CreateVehicleCatalogDto): Promise<VehicleCatalog> => {
+  createCatalog: async (
+    cafeId: string,
+    data: CreateVehicleCatalogDto,
+  ): Promise<VehicleCatalog> => {
     const payload = {
       name: data.name,
       tier: data.tier,
       hourly_rate: data.hourlyRate,
       security_deposit: data.securityDeposit,
-      damage_multiplier: data.damageMultiplier,
       compatible_track_types: data.compatibleTrackTypes,
       cover_image_url: data.images?.[0]?.url || null,
-      images: data.images ? data.images.map((img, idx) => ({ url: img.url, sort_order: idx })) : [],
+      images: data.images
+        ? data.images.map((img, idx) => ({ url: img.url, sort_order: idx }))
+        : [],
     }
-    const res = await api.post<ApiResponse<VehicleCatalog>>(`/v1/cafes/${cafeId}/vehicle-catalogs`, payload)
+    const res = await api.post<ApiResponse<VehicleCatalog>>(
+      `/v1/cafes/${cafeId}/vehicle-catalogs`,
+      payload,
+    )
     return res.data.data
   },
 
@@ -51,10 +65,11 @@ export const vehicleApi = {
       tier: data.tier,
       hourly_rate: data.hourlyRate,
       security_deposit: data.securityDeposit,
-      damage_multiplier: data.damageMultiplier,
       compatible_track_types: data.compatibleTrackTypes,
       cover_image_url: data.images?.[0]?.url ?? undefined,
-      images: data.images ? data.images.map((img, idx) => ({ url: img.url, sort_order: idx })) : undefined,
+      images: data.images
+        ? data.images.map((img, idx) => ({ url: img.url, sort_order: idx }))
+        : undefined,
     }
     const res = await api.patch<ApiResponse<VehicleCatalog>>(
       `/v1/cafes/${cafeId}/vehicle-catalogs/${catalogId}`,
@@ -68,7 +83,11 @@ export const vehicleApi = {
   },
 
   // Vehicle Unit APIs
-  createUnit: async (cafeId: string, catalogId: string, data: CreateVehicleUnitDto): Promise<VehicleUnit> => {
+  createUnit: async (
+    cafeId: string,
+    catalogId: string,
+    data: CreateVehicleUnitDto,
+  ): Promise<VehicleUnit> => {
     const payload = {
       status: data.status,
       identifier: data.identifier,
@@ -86,15 +105,27 @@ export const vehicleApi = {
 
   listUnits: async (
     cafeId: string,
-    filters?: { status?: VehicleStatus; catalog_id?: string; search?: string; exclude_retired?: boolean },
+    filters?: {
+      status?: VehicleStatus
+      catalog_id?: string
+      search?: string
+      exclude_retired?: boolean
+    },
   ): Promise<VehicleUnit[]> => {
-    const res = await api.get<ApiResponse<VehicleUnit[]>>(`/v1/cafes/${cafeId}/vehicles`, {
-      params: filters,
-    })
+    const res = await api.get<ApiResponse<VehicleUnit[]>>(
+      `/v1/cafes/${cafeId}/vehicles`,
+      {
+        params: filters,
+      },
+    )
     return res.data.data
   },
 
-  getUnitDetail: async (cafeId: string, catalogId: string, unitId: string): Promise<VehicleUnit> => {
+  getUnitDetail: async (
+    cafeId: string,
+    catalogId: string,
+    unitId: string,
+  ): Promise<VehicleUnit> => {
     const res = await api.get<ApiResponse<VehicleUnit>>(
       `/v1/cafes/${cafeId}/vehicle-catalogs/${catalogId}/units/${unitId}`,
     )
@@ -122,7 +153,13 @@ export const vehicleApi = {
     return res.data.data
   },
 
-  deleteUnit: async (cafeId: string, catalogId: string, unitId: string): Promise<void> => {
-    await api.delete(`/v1/cafes/${cafeId}/vehicle-catalogs/${catalogId}/units/${unitId}`)
+  deleteUnit: async (
+    cafeId: string,
+    catalogId: string,
+    unitId: string,
+  ): Promise<void> => {
+    await api.delete(
+      `/v1/cafes/${cafeId}/vehicle-catalogs/${catalogId}/units/${unitId}`,
+    )
   },
 }

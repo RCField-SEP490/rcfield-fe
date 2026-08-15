@@ -591,6 +591,16 @@ export function BookingDetailPage() {
     ? routePaths.paymentBankTransfer.replace(":bookingId", bookingId)
     : null
 
+  /**
+   * Cùng trang mã QR, nhưng thu khoản phát sinh cuối phiên chứ không phải tiền
+   * đặt lịch. Hai khoản mang hai mã tham chiếu khác nhau nên `?mode=settlement`
+   * là bắt buộc — thiếu nó thì trang gọi nhầm endpoint đặt lịch và khách quét
+   * phải mã của khoản đã trả xong.
+   */
+  const settlementBankTransferPath = bankTransferPath
+    ? `${bankTransferPath}?mode=settlement`
+    : null
+
   const snapshot = booking?.snapshot as Record<string, unknown> | null
   const snapshotSlotFee = Number(
     snapshot?.slot_fee_total ?? snapshot?.slot_fee ?? 0,
@@ -709,8 +719,8 @@ export function BookingDetailPage() {
       .reduce((sum, line) => sum + Number(line.amount), 0)
   const totalPaidAmount =
     financialSummary?.totalPaidAmount ??
-    (prepaidPaidAmount +
-      Math.max(0, additionalTotal - additionalOutstandingAmount))
+    prepaidPaidAmount +
+      Math.max(0, additionalTotal - additionalOutstandingAmount)
   const isPaid =
     financialSummary?.isSettled ?? additionalOutstandingAmount === 0
   const customerFnbOrders = (
@@ -890,9 +900,11 @@ export function BookingDetailPage() {
   const statusInfo = effectiveBookingStatus
     ? (STATUS_LABELS[effectiveBookingStatus] ?? STATUS_LABELS.PENDING)
     : null
-  const isTerminalBookingStatus = ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(
-    booking?.status ?? "",
-  )
+  const isTerminalBookingStatus = [
+    "COMPLETED",
+    "CANCELLED",
+    "NO_SHOW",
+  ].includes(booking?.status ?? "")
 
   const sessionBadgeOverride =
     booking?.session && !checkInWindowExpired && !isTerminalBookingStatus
@@ -1212,9 +1224,10 @@ export function BookingDetailPage() {
                   const timelineStatus = checkInWindowExpired
                     ? "NO_SHOW"
                     : booking.status
-                  const isPreSessionTerminal = ["NO_SHOW", "CANCELLED"].includes(
-                    timelineStatus,
-                  )
+                  const isPreSessionTerminal = [
+                    "NO_SHOW",
+                    "CANCELLED",
+                  ].includes(timelineStatus)
                   // A terminal booking status wins over stale session rows from
                   // historical data. A no-show never completed check-in or play.
                   const sess =
@@ -1281,24 +1294,24 @@ export function BookingDetailPage() {
 
                   // Completion step
                   const completedDesc =
-                    timelineStatus === "NO_SHOW"
-                      ? "Khách không đến check-in đúng hạn"
-                      : timelineStatus === "CANCELLED"
-                        ? (
-                            <div className="space-y-1">
-                              <div>Đơn đã được hủy trước khi phiên chơi bắt đầu</div>
-                              {booking.cancellationReason && (
-                                <div className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1 mt-1.5 inline-block">
-                                  Lý do hủy: {booking.cancellationReason}
-                                </div>
-                              )}
-                            </div>
-                          )
-                      : isAwaitingAdditionalPayment
-                        ? "Phiên chơi đã kết thúc. Vui lòng thanh toán phí phát sinh để hoàn tất đơn."
-                        : timelineStatus === "COMPLETED" && sess?.actualEndAt
-                          ? formatDateTime(new Date(sess.actualEndAt))
-                          : "Sau khi check-out hoàn tất"
+                    timelineStatus === "NO_SHOW" ? (
+                      "Khách không đến check-in đúng hạn"
+                    ) : timelineStatus === "CANCELLED" ? (
+                      <div className="space-y-1">
+                        <div>Đơn đã được hủy trước khi phiên chơi bắt đầu</div>
+                        {booking.cancellationReason && (
+                          <div className="text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1 mt-1.5 inline-block">
+                            Lý do hủy: {booking.cancellationReason}
+                          </div>
+                        )}
+                      </div>
+                    ) : isAwaitingAdditionalPayment ? (
+                      "Phiên chơi đã kết thúc. Vui lòng thanh toán phí phát sinh để hoàn tất đơn."
+                    ) : timelineStatus === "COMPLETED" && sess?.actualEndAt ? (
+                      formatDateTime(new Date(sess.actualEndAt))
+                    ) : (
+                      "Sau khi check-out hoàn tất"
+                    )
                   const reservationTitle = initialPaymentWasSuccessful
                     ? "Đặt lịch đã thanh toán"
                     : timelineStatus === "CANCELLED"
@@ -1690,7 +1703,6 @@ export function BookingDetailPage() {
                         </div>
                       ))}
                     </div>
-
                   </CardContent>
                 )}
               </Card>
@@ -1946,15 +1958,36 @@ export function BookingDetailPage() {
                         </p>
                       </div>
                       {role === "customer" && (
-                        <Button
-                          onClick={handlePayAdditionalFees}
-                          disabled={payingAdditional}
-                          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
-                        >
-                          {payingAdditional
-                            ? "Đang khởi tạo..."
-                            : "Thanh toán qua VNPAY"}
-                        </Button>
+                        <>
+                          {/* Chi nhánh có bật nhận chuyển khoản thì để quét mã
+                              lên trước — khách đang đứng ở quầy, mở app ngân
+                              hàng nhanh hơn đi qua cổng. */}
+                          {canBankTransfer && settlementBankTransferPath && (
+                            <Button
+                              asChild
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                            >
+                              <Link to={settlementBankTransferPath}>
+                                <QrCode className="mr-1.5 size-4" />
+                                Quét mã chuyển khoản
+                              </Link>
+                            </Button>
+                          )}
+                          <Button
+                            onClick={handlePayAdditionalFees}
+                            disabled={payingAdditional}
+                            variant={canBankTransfer ? "outline" : "default"}
+                            className={
+                              canBankTransfer
+                                ? "w-full font-bold text-xs h-10 rounded-xl"
+                                : "w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                            }
+                          >
+                            {payingAdditional
+                              ? "Đang khởi tạo..."
+                              : "Thanh toán qua VNPAY"}
+                          </Button>
+                        </>
                       )}
                       {role === "staff" && (
                         <Button
@@ -2155,7 +2188,6 @@ export function BookingDetailPage() {
           isPending={cancelMutation.isPending}
         />
       )}
-
     </div>
   )
 }

@@ -1,18 +1,35 @@
 import { useState, useEffect, type FormEvent } from "react"
 import { useParams, useNavigate, useSearchParams, Link } from "react-router"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, ArrowRight, ImagePlus, Save, Car, AlertTriangle, Star, Trash2 } from "lucide-react"
+import {
+  ArrowLeft,
+  ArrowRight,
+  ImagePlus,
+  Save,
+  Car,
+  AlertTriangle,
+  Star,
+  Trash2,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { uploadImage } from "@/features/uploads/api/upload.api"
-import { cafeApi, cafeQueryKeys, trackTypeApi, trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
+import {
+  cafeApi,
+  cafeQueryKeys,
+  trackTypeApi,
+  trackTypeQueryKeys,
+} from "@/features/cafes/api/cafe.api"
 import { useVehicleCatalogDetail } from "@/features/vehicles/hooks/useVehicleCatalogs"
 import {
   useCreateVehicleCatalog,
   useUpdateVehicleCatalog,
 } from "@/features/vehicles/hooks/useVehicleCatalogMutations"
 import { VehicleTier } from "@/features/vehicles/types"
-import type { CreateVehicleCatalogDto, UpdateVehicleCatalogDto } from "@/features/vehicles/types"
+import type {
+  CreateVehicleCatalogDto,
+  UpdateVehicleCatalogDto,
+} from "@/features/vehicles/types"
 import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
@@ -27,7 +44,6 @@ import {
   SelectValue,
 } from "@/shared/ui/select"
 import { Checkbox } from "@/shared/ui/checkbox"
-
 
 export function ProviderVehicleCatalogFormPage() {
   const { catalogId } = useParams()
@@ -48,10 +64,8 @@ export function ProviderVehicleCatalogFormPage() {
   const selectedCafeId = urlCafeId || cafes[0]?.id || ""
 
   // Fetch catalog details if in edit mode
-  const { data: catalog, isLoading: isCatalogLoading } = useVehicleCatalogDetail(
-    selectedCafeId,
-    catalogId || "",
-  )
+  const { data: catalog, isLoading: isCatalogLoading } =
+    useVehicleCatalogDetail(selectedCafeId, catalogId || "")
 
   const { data: trackTypes = [], isLoading: loadingTrackTypes } = useQuery({
     queryKey: trackTypeQueryKeys.all,
@@ -61,13 +75,15 @@ export function ProviderVehicleCatalogFormPage() {
 
   // Mutations
   const createCatalogMutation = useCreateVehicleCatalog(selectedCafeId)
-  const updateCatalogMutation = useUpdateVehicleCatalog(selectedCafeId, catalogId || "")
+  const updateCatalogMutation = useUpdateVehicleCatalog(
+    selectedCafeId,
+    catalogId || "",
+  )
 
   // Form states
   const [formName, setFormName] = useState("")
   const [formTier, setFormTier] = useState<VehicleTier>(VehicleTier.STANDARD)
   const [formHourlyRate, setFormHourlyRate] = useState<number>(20000)
-  const [formDamageMultiplier, setFormDamageMultiplier] = useState<number>(1.0)
   const [formImages, setFormImages] = useState<string[]>([])
   const [manualUrl, setManualUrl] = useState("")
   const [formTracks, setFormTracks] = useState<string[]>([])
@@ -79,7 +95,6 @@ export function ProviderVehicleCatalogFormPage() {
         setFormName(catalog.name)
         setFormTier(catalog.tier)
         setFormHourlyRate(catalog.hourlyRate)
-        setFormDamageMultiplier(catalog.damageMultiplier)
         if (catalog.images && catalog.images.length > 0) {
           setFormImages(catalog.images.map((img) => img.url))
         } else if (catalog.coverImageUrl) {
@@ -87,7 +102,11 @@ export function ProviderVehicleCatalogFormPage() {
         } else {
           setFormImages([])
         }
-        setFormTracks((catalog.compatibleTrackTypes || []).map((trackType) => typeof trackType === "string" ? trackType : trackType.id))
+        setFormTracks(
+          (catalog.compatibleTrackTypes || []).map((trackType) =>
+            typeof trackType === "string" ? trackType : trackType.id,
+          ),
+        )
       })
     }
   }, [isEdit, catalog])
@@ -107,7 +126,9 @@ export function ProviderVehicleCatalogFormPage() {
     const filesToUpload = Array.from(files).slice(0, availableSlots)
 
     if (files.length > availableSlots) {
-      toast.warning(`Chỉ có thể tải thêm ${availableSlots} ảnh để không vượt quá giới hạn ${MAX_IMAGES} ảnh.`)
+      toast.warning(
+        `Chỉ có thể tải thêm ${availableSlots} ảnh để không vượt quá giới hạn ${MAX_IMAGES} ảnh.`,
+      )
     }
 
     setUploading(true)
@@ -134,7 +155,9 @@ export function ProviderVehicleCatalogFormPage() {
       }
 
       if (successCount > 0 && failCount > 0) {
-        toast.warning(`Tải lên thành công ${successCount} ảnh, thất bại ${failCount} ảnh.`)
+        toast.warning(
+          `Tải lên thành công ${successCount} ảnh, thất bại ${failCount} ảnh.`,
+        )
       } else if (successCount > 0) {
         toast.success(`Tải lên thành công ${successCount} ảnh!`)
       } else if (failCount > 0) {
@@ -214,16 +237,19 @@ export function ProviderVehicleCatalogFormPage() {
       tier: formTier,
       hourlyRate: Number(formHourlyRate),
       securityDeposit: 0,
-      damageMultiplier: Number(formDamageMultiplier),
       compatibleTrackTypes: formTracks,
       images: formImages.map((url, idx) => ({ url, isCover: idx === 0 })),
     }
 
     try {
       if (isEdit) {
-        await updateCatalogMutation.mutateAsync(payload as UpdateVehicleCatalogDto)
+        await updateCatalogMutation.mutateAsync(
+          payload as UpdateVehicleCatalogDto,
+        )
       } else {
-        await createCatalogMutation.mutateAsync(payload as CreateVehicleCatalogDto)
+        await createCatalogMutation.mutateAsync(
+          payload as CreateVehicleCatalogDto,
+        )
       }
       // Navigate back to catalogs view with active cafe pre-selected
       navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)
@@ -238,7 +264,11 @@ export function ProviderVehicleCatalogFormPage() {
     <ProviderShell>
       <ProviderPageHeader
         title={isEdit ? "Chỉnh sửa danh mục" : "Thêm danh mục mới"}
-        description={isEdit ? "Cập nhật thông số và hình ảnh của danh mục xe." : "Tạo cấu hình danh mục phương tiện mới."}
+        description={
+          isEdit
+            ? "Cập nhật thông số và hình ảnh của danh mục xe."
+            : "Tạo cấu hình danh mục phương tiện mới."
+        }
       />
 
       <div className="w-full space-y-6 p-4 md:p-6">
@@ -270,25 +300,35 @@ export function ProviderVehicleCatalogFormPage() {
             <div className="flex size-14 items-center justify-center rounded-full bg-[#f6f3f2] text-[#747878] mb-4">
               <AlertTriangle className="size-7" />
             </div>
-            <h3 className="text-lg font-bold text-[#1c1b1b] mb-1">Thiếu cơ sở hoạt động</h3>
+            <h3 className="text-lg font-bold text-[#1c1b1b] mb-1">
+              Thiếu cơ sở hoạt động
+            </h3>
             <p className="text-sm font-semibold text-[#444748] max-w-sm">
-              Bạn cần chọn hoặc sở hữu ít nhất một cơ sở để thực hiện thao tác này.
+              Bạn cần chọn hoặc sở hữu ít nhất một cơ sở để thực hiện thao tác
+              này.
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-xl border border-[#c4c7c8] bg-white p-6 shadow-sm space-y-6"
+          >
             <div className="border-b border-[#e5e2e1] pb-4">
               <h3 className="text-lg font-bold text-[#1c1b1b] flex items-center gap-2">
                 <Car className="size-5 text-orange-600" />
                 Cấu hình thông số danh mục
               </h3>
               <p className="text-xs text-[#747878] mt-1 font-semibold">
-                Điền đầy đủ thông tin để định cấu hình đơn giá và tính tương thích của dòng xe RC này.
+                Điền đầy đủ thông tin để định cấu hình đơn giá và tính tương
+                thích của dòng xe RC này.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="form-name" className="text-sm font-bold text-[#1c1b1b]">
+              <Label
+                htmlFor="form-name"
+                className="text-sm font-bold text-[#1c1b1b]"
+              >
                 Tên danh mục <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -304,7 +344,10 @@ export function ProviderVehicleCatalogFormPage() {
             <div className="grid gap-6 md:grid-cols-2">
               {/* Vehicle Tier Select */}
               <div className="space-y-1.5">
-                <Label htmlFor="form-tier" className="text-sm font-bold text-[#1c1b1b]">
+                <Label
+                  htmlFor="form-tier"
+                  className="text-sm font-bold text-[#1c1b1b]"
+                >
                   Hạng xe
                 </Label>
                 <Select
@@ -312,38 +355,32 @@ export function ProviderVehicleCatalogFormPage() {
                   value={formTier}
                   onValueChange={(val) => setFormTier(val as VehicleTier)}
                 >
-                  <SelectTrigger id="form-tier" className="h-10 w-full rounded-lg border-[#c4c7c8] bg-white font-semibold">
+                  <SelectTrigger
+                    id="form-tier"
+                    className="h-10 w-full rounded-lg border-[#c4c7c8] bg-white font-semibold"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={VehicleTier.STANDARD}>Phổ thông</SelectItem>
+                    <SelectItem value={VehicleTier.STANDARD}>
+                      Phổ thông
+                    </SelectItem>
                     <SelectItem value={VehicleTier.PREMIUM}>Cao cấp</SelectItem>
-                    <SelectItem value={VehicleTier.RESTRICTED}>Hạn chế</SelectItem>
+                    <SelectItem value={VehicleTier.RESTRICTED}>
+                      Hạn chế
+                    </SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Damage Multiplier */}
-              <div className="space-y-1.5">
-                <Label htmlFor="form-multiplier" className="text-sm font-bold text-[#1c1b1b]">
-                  Hệ số đền bù hỏng
-                </Label>
-                <Input
-                  id="form-multiplier"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={formDamageMultiplier}
-                  onChange={(e) => setFormDamageMultiplier(Number(e.target.value))}
-                  className="h-10 rounded-lg border-[#c4c7c8] font-semibold"
-                />
               </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Hourly Rate */}
               <div className="space-y-1.5">
-                <Label htmlFor="form-rate" className="text-sm font-bold text-[#1c1b1b]">
+                <Label
+                  htmlFor="form-rate"
+                  className="text-sm font-bold text-[#1c1b1b]"
+                >
                   Giá thuê giờ (VND) <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -356,7 +393,6 @@ export function ProviderVehicleCatalogFormPage() {
                   className="h-10 rounded-lg border-[#c4c7c8] font-semibold"
                 />
               </div>
-
             </div>
 
             {/* Album Ảnh Dòng Xe */}
@@ -366,7 +402,8 @@ export function ProviderVehicleCatalogFormPage() {
                   Album hình ảnh mẫu xe ({formImages.length}/{MAX_IMAGES})
                 </Label>
                 <p className="text-xs text-[#747878] font-semibold mt-0.5">
-                  Tải lên nhiều hình ảnh của dòng xe này. Ảnh đầu tiên (thứ tự 1) sẽ làm ảnh bìa đại diện. Tối đa {MAX_IMAGES} ảnh.
+                  Tải lên nhiều hình ảnh của dòng xe này. Ảnh đầu tiên (thứ tự
+                  1) sẽ làm ảnh bìa đại diện. Tối đa {MAX_IMAGES} ảnh.
                 </p>
               </div>
 
@@ -401,7 +438,9 @@ export function ProviderVehicleCatalogFormPage() {
                       multiple
                       disabled={uploading}
                       className="sr-only"
-                      onChange={(event) => void handleUploadMultiple(event.target.files)}
+                      onChange={(event) =>
+                        void handleUploadMultiple(event.target.files)
+                      }
                     />
                   </label>
                 ) : (
@@ -420,12 +459,18 @@ export function ProviderVehicleCatalogFormPage() {
                         key={idx}
                         className={cn(
                           "group relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-all duration-200",
-                          isCover ? "border-orange-500 ring-2 ring-orange-500/20" : "border-zinc-200"
+                          isCover
+                            ? "border-orange-500 ring-2 ring-orange-500/20"
+                            : "border-zinc-200",
                         )}
                       >
                         <div className="relative aspect-video w-full overflow-hidden bg-zinc-100">
-                          <img src={sanitizeImageUrl(url)!} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                          
+                          <img
+                            src={sanitizeImageUrl(url)!}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+
                           {/* Position Badge */}
                           <span className="absolute right-2 top-2 flex size-5 items-center justify-center rounded-full bg-black/60 text-[10px] font-bold text-white shadow-sm">
                             {idx + 1}
@@ -463,11 +508,17 @@ export function ProviderVehicleCatalogFormPage() {
                               onClick={() => handleSetCover(idx)}
                               className={cn(
                                 "text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-800",
-                                isCover && "text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                                isCover &&
+                                  "text-orange-600 hover:bg-orange-50 hover:text-orange-700",
                               )}
                               title="Đặt làm ảnh bìa"
                             >
-                              <Star className={cn("size-3.5", isCover && "fill-orange-600 text-orange-600")} />
+                              <Star
+                                className={cn(
+                                  "size-3.5",
+                                  isCover && "fill-orange-600 text-orange-600",
+                                )}
+                              />
                             </Button>
 
                             <Button
@@ -500,10 +551,12 @@ export function ProviderVehicleCatalogFormPage() {
 
                   {/* Integrated Upload Card Placeholder */}
                   {formImages.length < MAX_IMAGES && (
-                    <label className={cn(
-                      "group relative aspect-video flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#c4c7c8] hover:border-orange-500 bg-white hover:bg-orange-50/20 transition-all duration-200 cursor-pointer shadow-xs",
-                      uploading && "pointer-events-none opacity-50"
-                    )}>
+                    <label
+                      className={cn(
+                        "group relative aspect-video flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#c4c7c8] hover:border-orange-500 bg-white hover:bg-orange-50/20 transition-all duration-200 cursor-pointer shadow-xs",
+                        uploading && "pointer-events-none opacity-50",
+                      )}
+                    >
                       <ImagePlus className="size-6 text-zinc-400 group-hover:text-orange-600 transition-colors" />
                       <span className="text-[10px] font-bold text-zinc-500 group-hover:text-orange-600 mt-1 transition-colors">
                         Thêm ảnh ({formImages.length}/{MAX_IMAGES})
@@ -514,14 +567,18 @@ export function ProviderVehicleCatalogFormPage() {
                         multiple
                         disabled={uploading}
                         className="sr-only"
-                        onChange={(e) => void handleUploadMultiple(e.target.files)}
+                        onChange={(e) =>
+                          void handleUploadMultiple(e.target.files)
+                        }
                       />
                     </label>
                   )}
                 </div>
               ) : (
                 <div className="text-center py-8 border border-dashed border-[#c4c7c8] rounded-xl bg-white/50">
-                  <p className="text-xs text-[#747878] font-bold">Chưa có ảnh nào trong album mẫu xe này.</p>
+                  <p className="text-xs text-[#747878] font-bold">
+                    Chưa có ảnh nào trong album mẫu xe này.
+                  </p>
                 </div>
               )}
             </div>
@@ -533,16 +590,22 @@ export function ProviderVehicleCatalogFormPage() {
               </Label>
               <div className="grid grid-cols-2 gap-3 border border-[#c4c7c8] rounded-lg p-4 bg-gray-50 max-h-48 overflow-y-auto">
                 {loadingTrackTypes ? (
-                  <span className="text-xs text-[#747878] font-semibold">Đang tải danh sách track...</span>
+                  <span className="text-xs text-[#747878] font-semibold">
+                    Đang tải danh sách track...
+                  </span>
                 ) : trackTypes.length === 0 ? (
-                  <span className="text-xs text-[#747878]">Không tìm thấy dữ liệu đường chạy.</span>
+                  <span className="text-xs text-[#747878]">
+                    Không tìm thấy dữ liệu đường chạy.
+                  </span>
                 ) : (
                   trackTypes.map((track) => (
                     <div key={track.id} className="flex items-center gap-2">
                       <Checkbox
                         id={`form-track-${track.id}`}
                         checked={formTracks.includes(track.id)}
-                        onCheckedChange={(checked) => handleTrackChange(track.id, !!checked)}
+                        onCheckedChange={(checked) =>
+                          handleTrackChange(track.id, !!checked)
+                        }
                       />
                       <label
                         htmlFor={`form-track-${track.id}`}
@@ -561,7 +624,9 @@ export function ProviderVehicleCatalogFormPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)}
+                onClick={() =>
+                  navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)
+                }
                 className="h-10 px-6 rounded-lg border-[#c4c7c8] font-bold text-[#1c1b1b] hover:bg-gray-50"
               >
                 Hủy

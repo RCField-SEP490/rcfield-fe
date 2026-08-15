@@ -28,15 +28,14 @@ import type { BookingFinancialSummary } from "@/features/booking/types/booking.t
 import { UNCATEGORIZED_LABEL } from "@/features/menu/types"
 import { getApiErrorInfo } from "@/shared/lib/utils"
 import { getSessionOperationalTiming } from "@/features/booking/lib/session-operational-timing"
-import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
+import {
+  useWebSocket,
+  type WsMessage,
+} from "@/features/notifications/hooks/useWebSocket"
 import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import { ExtensionAuditCard } from "@/features/customer-session/components/ExtensionAuditCard"
 import { toast } from "sonner"
-import {
-  StaffCard,
-  StaffBadge,
-  StaffButton,
-} from "./components/StaffUI"
+import { StaffCard, StaffBadge, StaffButton } from "./components/StaffUI"
 import type {
   CustomerBookingDetail,
   MockDamageClaim,
@@ -46,7 +45,6 @@ import type {
 type SessionView = Omit<MockSessionDetail, "damageClaim"> & {
   damageClaim?: MockDamageClaim & {
     finalCharge?: number
-    damageMultiplier?: number
   }
 }
 
@@ -86,99 +84,134 @@ export default function StaffSessionDetailPage() {
 
   // Find corresponding session and booking from context (may be missing for COMPLETED sessions)
   const contextSession = sessions.find((s) => s.sessionId === sessionId)
-  const contextBooking = contextSession ? bookings.find((b) => b.bookingId === contextSession.bookingId) : null
+  const contextBooking = contextSession
+    ? bookings.find((b) => b.bookingId === contextSession.bookingId)
+    : null
 
   // The API is authoritative for this screen. Context only renders the first
   // frame while the detail request is in flight; it can otherwise be stale
   // after an inspection, checkout, or counter-payment operation.
-  const { data: apiData, isLoading: apiLoading, refetch: refetchSessionDetail } = useQuery<SessionApiData>({
+  const {
+    data: apiData,
+    isLoading: apiLoading,
+    refetch: refetchSessionDetail,
+  } = useQuery<SessionApiData>({
     queryKey: ["staff", "session-detail", sessionId],
-    queryFn: () => staffApi.getSessionDetail(sessionId!) as Promise<SessionApiData>,
+    queryFn: () =>
+      staffApi.getSessionDetail(sessionId!) as Promise<SessionApiData>,
     enabled: Boolean(sessionId),
     retry: false,
     refetchInterval: 15_000,
   })
 
   // Merge: always prefer the live API response once available.
-  const session = useMemo<SessionView | null>(() => apiData ? {
-    sessionId: apiData.sessionId ?? apiData.id ?? sessionId ?? "",
-    bookingId: apiData.bookingId ?? apiData.booking?.bookingId ?? "",
-    status: apiData.status ?? "COMPLETED",
-    staffName: apiData.staffName ?? "",
-    actualStart: apiData.actualStartAt ?? apiData.actualStart,
-    actualEnd: apiData.actualEndAt ?? apiData.actualEnd,
-    plannedEnd: apiData.plannedEnd ?? apiData.slotEnd ?? "",
-    participants: apiData.participants ?? [],
-    vehicles: apiData.vehicles ?? [],
-    inspections: apiData.inspections ?? [],
-    extensionProposal: apiData.extensionProposal,
-    approvedExtensionFee: apiData.approvedExtensionFee,
-    approvedExtensionMinutes: apiData.approvedExtensionMinutes,
-    approvedExtensions: apiData.approvedExtensions ?? [],
-    extensionPricingOptions: apiData.extensionPricingOptions ?? [],
-    damageClaim: apiData.damageClaim,
-    fnbOrders: apiData.fnbOrders ?? [],
-  } : contextSession ?? null, [apiData, contextSession, sessionId])
+  const session = useMemo<SessionView | null>(
+    () =>
+      apiData
+        ? {
+            sessionId: apiData.sessionId ?? apiData.id ?? sessionId ?? "",
+            bookingId: apiData.bookingId ?? apiData.booking?.bookingId ?? "",
+            status: apiData.status ?? "COMPLETED",
+            staffName: apiData.staffName ?? "",
+            actualStart: apiData.actualStartAt ?? apiData.actualStart,
+            actualEnd: apiData.actualEndAt ?? apiData.actualEnd,
+            plannedEnd: apiData.plannedEnd ?? apiData.slotEnd ?? "",
+            participants: apiData.participants ?? [],
+            vehicles: apiData.vehicles ?? [],
+            inspections: apiData.inspections ?? [],
+            extensionProposal: apiData.extensionProposal,
+            approvedExtensionFee: apiData.approvedExtensionFee,
+            approvedExtensionMinutes: apiData.approvedExtensionMinutes,
+            approvedExtensions: apiData.approvedExtensions ?? [],
+            extensionPricingOptions: apiData.extensionPricingOptions ?? [],
+            damageClaim: apiData.damageClaim,
+            fnbOrders: apiData.fnbOrders ?? [],
+          }
+        : (contextSession ?? null),
+    [apiData, contextSession, sessionId],
+  )
 
   const apiBooking = apiData?.booking
-  const booking = useMemo<CustomerBookingDetail | null>(() => apiBooking ? {
-    bookingId: apiBooking.bookingId ?? apiBooking.id ?? "",
-    shortCode: apiBooking.shortCode ?? "",
-    cafeId: apiBooking.cafeId ?? apiBooking.cafe?.id ?? "",
-    cafeName: apiBooking.cafeName ?? apiBooking.cafe?.name ?? "",
-    cafeAddress: apiBooking.cafeAddress ?? apiBooking.cafe?.address ?? "",
-    cafePhone: apiBooking.cafePhone ?? apiBooking.cafe?.phone ?? "",
-    trackName: apiBooking.trackName ?? apiBooking.track?.name ?? "",
-    trackType: apiBooking.trackType ?? apiBooking.track?.type ?? "",
-    bookingMode: apiBooking.bookingMode ?? "SINGLE",
-    playMode: apiBooking.playMode ?? apiBooking.mode ?? "RENTAL",
-    status: apiBooking.status ?? "COMPLETED",
-    slotStart: apiBooking.slotStart ?? "",
-    slotEnd: apiBooking.slotEnd ?? "",
-    slotCount: apiBooking.slotCount ?? 1,
-    depositAmount: Number(apiBooking.depositAmount ?? 0),
-    slotFee: Number(apiBooking.slotFee ?? 0),
-    rentalFee: Number(apiBooking.rentalFee ?? 0),
-    fnbPreorderFee: Number(apiBooking.fnbPreorderFee ?? 0),
-    discountAmount: Number(apiBooking.discountAmount ?? 0),
-    totalAmount: Number(apiBooking.totalAmount ?? 0),
-    paymentStatus: apiBooking.paymentStatus ?? "UNPAID",
-    source: apiBooking.source ?? "",
-    payment_components: apiBooking.payment_components ?? apiBooking.paymentComponents ?? [],
-    plannedParticipants: apiBooking.plannedParticipants ?? [],
-    plannedVehicles: apiBooking.plannedVehicles ?? [],
-    sessions: [],
-  } : contextBooking ?? null, [apiBooking, contextBooking])
+  const booking = useMemo<CustomerBookingDetail | null>(
+    () =>
+      apiBooking
+        ? {
+            bookingId: apiBooking.bookingId ?? apiBooking.id ?? "",
+            shortCode: apiBooking.shortCode ?? "",
+            cafeId: apiBooking.cafeId ?? apiBooking.cafe?.id ?? "",
+            cafeName: apiBooking.cafeName ?? apiBooking.cafe?.name ?? "",
+            cafeAddress:
+              apiBooking.cafeAddress ?? apiBooking.cafe?.address ?? "",
+            cafePhone: apiBooking.cafePhone ?? apiBooking.cafe?.phone ?? "",
+            trackName: apiBooking.trackName ?? apiBooking.track?.name ?? "",
+            trackType: apiBooking.trackType ?? apiBooking.track?.type ?? "",
+            bookingMode: apiBooking.bookingMode ?? "SINGLE",
+            playMode: apiBooking.playMode ?? apiBooking.mode ?? "RENTAL",
+            status: apiBooking.status ?? "COMPLETED",
+            slotStart: apiBooking.slotStart ?? "",
+            slotEnd: apiBooking.slotEnd ?? "",
+            slotCount: apiBooking.slotCount ?? 1,
+            depositAmount: Number(apiBooking.depositAmount ?? 0),
+            slotFee: Number(apiBooking.slotFee ?? 0),
+            rentalFee: Number(apiBooking.rentalFee ?? 0),
+            fnbPreorderFee: Number(apiBooking.fnbPreorderFee ?? 0),
+            discountAmount: Number(apiBooking.discountAmount ?? 0),
+            totalAmount: Number(apiBooking.totalAmount ?? 0),
+            paymentStatus: apiBooking.paymentStatus ?? "UNPAID",
+            source: apiBooking.source ?? "",
+            payment_components:
+              apiBooking.payment_components ??
+              apiBooking.paymentComponents ??
+              [],
+            plannedParticipants: apiBooking.plannedParticipants ?? [],
+            plannedVehicles: apiBooking.plannedVehicles ?? [],
+            sessions: [],
+          }
+        : (contextBooking ?? null),
+    [apiBooking, contextBooking],
+  )
 
   // Keep the extension card responsive while the authoritative session query
   // is being refreshed. The broader "today bookings" refresh is much slower.
-  const [submittedExtension, setSubmittedExtension] = useState<{ extraMinutes: number } | null>(null)
+  const [submittedExtension, setSubmittedExtension] = useState<{
+    extraMinutes: number
+  } | null>(null)
   const [submittingExtension, setSubmittingExtension] = useState(false)
 
-  const handleSessionRealtime = useCallback((message: WsMessage) => {
-    const payload = message.data as { sessionId?: string; bookingId?: string } | undefined
-    if (payload?.sessionId && payload.sessionId !== sessionId) return
+  const handleSessionRealtime = useCallback(
+    (message: WsMessage) => {
+      const payload = message.data as
+        | { sessionId?: string; bookingId?: string }
+        | undefined
+      if (payload?.sessionId && payload.sessionId !== sessionId) return
 
-    if (
-      [
-        "CUSTOMER_CHECKOUT_CONFIRMED",
-        "SESSION_CHECKOUT_COMPLETED",
-        "CUSTOMER_PAYMENT_CONFIRMED",
-        "BOOKING_PAYMENT_UPDATED",
-        "SESSION_UPDATED",
-        "SESSION_FNB_ORDER_ADDED",
-        "FNB_ORDER_UPDATED",
-        "CUSTOMER_INSPECTION_DISPUTED",
-        "CUSTOMER_EXTENSION_APPROVED",
-        "CUSTOMER_EXTENSION_REJECTED",
-      ].includes(message.event)
-    ) {
-      if (["CUSTOMER_EXTENSION_APPROVED", "CUSTOMER_EXTENSION_REJECTED"].includes(message.event)) {
-        setSubmittedExtension(null)
+      if (
+        [
+          "CUSTOMER_CHECKOUT_CONFIRMED",
+          "SESSION_CHECKOUT_COMPLETED",
+          "CUSTOMER_PAYMENT_CONFIRMED",
+          "BOOKING_PAYMENT_UPDATED",
+          "SESSION_UPDATED",
+          "SESSION_FNB_ORDER_ADDED",
+          "FNB_ORDER_UPDATED",
+          "CUSTOMER_INSPECTION_DISPUTED",
+          "CUSTOMER_EXTENSION_APPROVED",
+          "CUSTOMER_EXTENSION_REJECTED",
+        ].includes(message.event)
+      ) {
+        if (
+          [
+            "CUSTOMER_EXTENSION_APPROVED",
+            "CUSTOMER_EXTENSION_REJECTED",
+          ].includes(message.event)
+        ) {
+          setSubmittedExtension(null)
+        }
+        void refetchSessionDetail()
       }
-      void refetchSessionDetail()
-    }
-  }, [refetchSessionDetail, sessionId])
+    },
+    [refetchSessionDetail, sessionId],
+  )
 
   useWebSocket(handleSessionRealtime, Boolean(sessionId))
 
@@ -232,18 +265,27 @@ export default function StaffSessionDetailPage() {
 
   // Extension mode: false = propose to customer, true = direct (staff confirms in-person)
   const [directExtensionMode, setDirectExtensionMode] = useState(false)
-  const [pendingDirectExtension, setPendingDirectExtension] = useState<{ mins: number; fee: number; newPlannedEnd: string } | null>(null)
+  const [pendingDirectExtension, setPendingDirectExtension] = useState<{
+    mins: number
+    fee: number
+    newPlannedEnd: string
+  } | null>(null)
   const effectiveDirectExtensionMode = canDirectExtend && directExtensionMode
 
   // Swap Vehicle local modal state
   const [swapModalOpen, setSwapModalOpen] = useState(false)
   const [swappingVehicleId, setSwappingVehicleId] = useState("") // old vehicle ID
   const [selectedSwapNewUnitId, setSelectedSwapNewUnitId] = useState("")
-  const [oldVehicleNewStatus, setOldVehicleNewStatus] = useState<"AVAILABLE" | "MAINTENANCE">("MAINTENANCE")
+  const [oldVehicleNewStatus, setOldVehicleNewStatus] = useState<
+    "AVAILABLE" | "MAINTENANCE"
+  >("MAINTENANCE")
 
   // Real-time countdown timer
   useEffect(() => {
-    if (!session || (session.status !== "ACTIVE" && session.status !== "EXTENDING")) {
+    if (
+      !session ||
+      (session.status !== "ACTIVE" && session.status !== "EXTENDING")
+    ) {
       queueMicrotask(() => setTimeLeft(""))
       return
     }
@@ -257,7 +299,9 @@ export default function StaffSessionDetailPage() {
       } else {
         const minutes = Math.floor(diff / 60000)
         const seconds = Math.floor((diff % 60000) / 1000)
-        setTimeLeft(`${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`)
+        setTimeLeft(
+          `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`,
+        )
       }
     }
 
@@ -295,7 +339,9 @@ export default function StaffSessionDetailPage() {
         .then((units) => {
           setAvailableFleet(units)
         })
-        .catch((err) => console.error("Error loading vehicles list for swap:", err))
+        .catch((err) =>
+          console.error("Error loading vehicles list for swap:", err),
+        )
     }
   }, [booking?.cafeId])
 
@@ -303,15 +349,21 @@ export default function StaffSessionDetailPage() {
     if (apiLoading) {
       return (
         <div className="flex min-h-[50vh] items-center justify-center">
-          <p className="text-sm text-[#6b7280] font-semibold animate-pulse">Đang tải thông tin ca chơi...</p>
+          <p className="text-sm text-[#6b7280] font-semibold animate-pulse">
+            Đang tải thông tin ca chơi...
+          </p>
         </div>
       )
     }
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center p-4">
         <AlertTriangle className="size-12 text-[#6b7280] mb-3 animate-bounce" />
-        <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy thông tin ca chơi</h3>
-        <p className="text-xs text-[#6b7280] mt-1 font-semibold">Vui lòng kiểm tra lại mã phiên hoặc danh sách hôm nay.</p>
+        <h3 className="text-lg font-bold text-[#1c1b1b]">
+          Không tìm thấy thông tin ca chơi
+        </h3>
+        <p className="text-xs text-[#6b7280] mt-1 font-semibold">
+          Vui lòng kiểm tra lại mã phiên hoặc danh sách hôm nay.
+        </p>
         <StaffButton
           onClick={() => navigate("/staff/today-bookings")}
           variant="primary"
@@ -365,7 +417,9 @@ export default function StaffSessionDetailPage() {
       await refreshData()
       await refetchSessionDetail()
     } catch (err: unknown) {
-      const message = getApiErrorInfo(err).message || (err instanceof Error ? err.message : String(err))
+      const message =
+        getApiErrorInfo(err).message ||
+        (err instanceof Error ? err.message : String(err))
       toast.error("Không thể quyết toán thanh toán: " + message)
     } finally {
       setSettlingPayment(false)
@@ -390,7 +444,7 @@ export default function StaffSessionDetailPage() {
       {
         name: newUnit.catalog?.name || newUnit.identifier,
         imageUrl: newUnit.distinctive_image_url || undefined,
-      }
+      },
     )
 
     setSwapModalOpen(false)
@@ -402,29 +456,47 @@ export default function StaffSessionDetailPage() {
     session.status === "ACTIVE"
       ? "success"
       : session.status === "CHECKED_IN"
-      ? "info"
-      : session.status === "EXTENDING"
-      ? "orange"
-      : session.status === "CHECKING_OUT"
-      ? "warning"
-      : "neutral"
+        ? "info"
+        : session.status === "EXTENDING"
+          ? "orange"
+          : session.status === "CHECKING_OUT"
+            ? "warning"
+            : "neutral"
 
-  const checkInInspection = session.inspections.find((inspection) => inspection.type === "CHECK_IN")
-  const checkOutInspection = session.inspections.find((inspection) => inspection.type === "CHECK_OUT")
-  const checkOutDisputed = Boolean(checkOutInspection && !checkOutInspection.customerConfirmed && checkOutInspection.customerConfirmedAt)
+  const checkInInspection = session.inspections.find(
+    (inspection) => inspection.type === "CHECK_IN",
+  )
+  const checkOutInspection = session.inspections.find(
+    (inspection) => inspection.type === "CHECK_OUT",
+  )
+  const checkOutDisputed = Boolean(
+    checkOutInspection &&
+    !checkOutInspection.customerConfirmed &&
+    checkOutInspection.customerConfirmedAt,
+  )
   const extensionPending =
     session.extensionProposal?.status === "PENDING" ||
     (Boolean(submittedExtension) &&
-      (!apiData?.extensionProposal || apiData.extensionProposal.status === "PENDING"))
-  const pendingExtensionMinutes = session.extensionProposal?.extraMinutes ?? submittedExtension?.extraMinutes
-  const approvedExtensions = session.approvedExtensions ??
-    (session.extensionProposal?.status === "APPROVED" ? [session.extensionProposal] : [])
+      (!apiData?.extensionProposal ||
+        apiData.extensionProposal.status === "PENDING"))
+  const pendingExtensionMinutes =
+    session.extensionProposal?.extraMinutes ?? submittedExtension?.extraMinutes
+  const approvedExtensions =
+    session.approvedExtensions ??
+    (session.extensionProposal?.status === "APPROVED"
+      ? [session.extensionProposal]
+      : [])
   const approvedExtensionFee = Number(
     session.approvedExtensionFee ??
-    approvedExtensions.reduce((sum, ext) => sum + Number(ext.additionalFee), 0)
+      approvedExtensions.reduce(
+        (sum, ext) => sum + Number(ext.additionalFee),
+        0,
+      ),
   )
 
-  const currentPlannedEndMs = new Date(session.plannedEnd ?? booking.slotEnd).getTime()
+  const currentPlannedEndMs = new Date(
+    session.plannedEnd ?? booking.slotEnd,
+  ).getTime()
   const operationalTiming = getSessionOperationalTiming(
     session.plannedEnd ?? booking.slotEnd,
     session.status,
@@ -433,11 +505,16 @@ export default function StaffSessionDetailPage() {
   const extensionWindowClosed = operationalTiming.state === "OVERDUE"
   const approvedExtensionMinutes = Number(
     session.approvedExtensionMinutes ??
-    (session.extensionProposal?.status === "APPROVED" ? session.extensionProposal.extraMinutes : 0)
+      (session.extensionProposal?.status === "APPROVED"
+        ? session.extensionProposal.extraMinutes
+        : 0),
   )
   const currentDurationMinutes =
     (currentPlannedEndMs - new Date(booking.slotStart).getTime()) / 60000
-  const baseDurationMinutes = Math.max(currentDurationMinutes - approvedExtensionMinutes, 1)
+  const baseDurationMinutes = Math.max(
+    currentDurationMinutes - approvedExtensionMinutes,
+    1,
+  )
   const slotRatePerMinute = booking.slotFee / baseDurationMinutes
   const calcExtensionFee = (mins: number) =>
     Math.round((slotRatePerMinute * mins) / 1000) * 1000
@@ -445,13 +522,30 @@ export default function StaffSessionDetailPage() {
   const remainingCap = Math.max(0, maxExtensionFee - approvedExtensionFee)
   const quotedExtensionOptions = session.extensionPricingOptions ?? []
   const extensionOptions = ([15, 30, 60] as const).map((mins) => {
-    const quoted = quotedExtensionOptions.find((option) => option.extraMinutes === mins)
+    const quoted = quotedExtensionOptions.find(
+      (option) => option.extraMinutes === mins,
+    )
     const fee = Number(quoted?.additionalFee ?? calcExtensionFee(mins))
-    const newPlannedEnd = quoted?.newPlannedEnd ?? new Date(currentPlannedEndMs + mins * 60000).toISOString()
-    const blockedReason = quoted?.available === false ? quoted.blockedReason ?? "Không khả dụng" : undefined
-    return { mins, fee, newPlannedEnd, blockedReason, blocked: Boolean(blockedReason) || fee > remainingCap }
+    const newPlannedEnd =
+      quoted?.newPlannedEnd ??
+      new Date(currentPlannedEndMs + mins * 60000).toISOString()
+    const blockedReason =
+      quoted?.available === false
+        ? (quoted.blockedReason ?? "Không khả dụng")
+        : undefined
+    return {
+      mins,
+      fee,
+      newPlannedEnd,
+      blockedReason,
+      blocked: Boolean(blockedReason) || fee > remainingCap,
+    }
   })
-  const handleExtension = async (mins: number, fee: number, newPlannedEnd: string) => {
+  const handleExtension = async (
+    mins: number,
+    fee: number,
+    newPlannedEnd: string,
+  ) => {
     if (effectiveDirectExtensionMode) {
       setPendingDirectExtension({ mins, fee, newPlannedEnd })
     } else {
@@ -465,30 +559,55 @@ export default function StaffSessionDetailPage() {
     }
   }
   const formatPlannedEnd = (value: string | number) =>
-    new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })
-  const onsiteFnbOrders = (session.fnbOrders || [])
-    .filter((order) => order.orderType !== "PRE_ORDER" && order.status !== "CANCELLED")
-  const preorderFnbOrders = (session.fnbOrders || [])
-    .filter((order) => order.orderType === "PRE_ORDER" && order.status !== "CANCELLED")
+    new Date(value).toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  const onsiteFnbOrders = (session.fnbOrders || []).filter(
+    (order) => order.orderType !== "PRE_ORDER" && order.status !== "CANCELLED",
+  )
+  const preorderFnbOrders = (session.fnbOrders || []).filter(
+    (order) => order.orderType === "PRE_ORDER" && order.status !== "CANCELLED",
+  )
 
   // The API summary, not the operational F&B/order lists, is the financial
   // source of truth. This keeps staff and customer totals identical after a
   // checkout or payment changes state.
-  const financialSummary = apiData?.financialSummary ?? apiBooking?.financial_summary
+  const financialSummary =
+    apiData?.financialSummary ?? apiBooking?.financial_summary
   const fallbackPrepaidLines = [
-    { componentId: "slot-fee", label: "Phí lịch chơi", amount: Number(booking.slotFee ?? 0) },
-    { componentId: "rental-fee", label: "Phí thuê xe", amount: Number(booking.rentalFee ?? 0) },
-    { componentId: "fnb-preorder", label: "Đồ ăn & thức uống đặt trước", amount: Number(booking.fnbPreorderFee ?? 0) },
+    {
+      componentId: "slot-fee",
+      label: "Phí lịch chơi",
+      amount: Number(booking.slotFee ?? 0),
+    },
+    {
+      componentId: "rental-fee",
+      label: "Phí thuê xe",
+      amount: Number(booking.rentalFee ?? 0),
+    },
+    {
+      componentId: "fnb-preorder",
+      label: "Đồ ăn & thức uống đặt trước",
+      amount: Number(booking.fnbPreorderFee ?? 0),
+    },
   ].filter((line) => line.amount > 0)
   const fallbackAdditionalLines = (booking.payment_components ?? [])
-    .filter((component) =>
-      !["SLOT_FEE", "RENTAL_FEE"].includes(component.type) &&
-      !((component.type === "FNB_PREORDER" || component.type === "FB_PREORDER") && component.status === "HELD"),
+    .filter(
+      (component) =>
+        !["SLOT_FEE", "RENTAL_FEE"].includes(component.type) &&
+        !(
+          (component.type === "FNB_PREORDER" ||
+            component.type === "FB_PREORDER") &&
+          component.status === "HELD"
+        ),
     )
     .map((component) => ({
       componentId: component.id,
       label:
-        component.type === "FNB_ON_SITE" || component.type === "FNB_PREORDER" || component.type === "FB_PREORDER"
+        component.type === "FNB_ON_SITE" ||
+        component.type === "FNB_PREORDER" ||
+        component.type === "FB_PREORDER"
           ? "Đồ ăn & thức uống gọi tại quầy"
           : component.type === "EXTENSION_FEE"
             ? "Phí gia hạn ca chơi"
@@ -500,23 +619,32 @@ export default function StaffSessionDetailPage() {
       payment: undefined,
     }))
   const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
-  const additionalLines = financialSummary?.additionalLines ?? fallbackAdditionalLines
-  const prepaidDiscountAmount = financialSummary?.prepaidDiscountAmount ?? Number(booking.discountAmount ?? 0)
-  const prepaidPaidAmount = financialSummary?.prepaidPaidAmount ?? Math.max(
-    0,
-    fallbackPrepaidLines.reduce((sum, line) => sum + line.amount, 0) - prepaidDiscountAmount,
-  )
-  const additionalTotal = financialSummary?.additionalTotal ?? additionalLines.reduce(
-    (sum, line) => sum + Number(line.amount),
-    0,
-  )
-  const additionalOutstandingAmount = financialSummary?.additionalOutstandingAmount ?? additionalLines
-    .filter((line) => line.status === "PENDING")
-    .reduce((sum, line) => sum + Number(line.amount), 0)
+  const additionalLines =
+    financialSummary?.additionalLines ?? fallbackAdditionalLines
+  const prepaidDiscountAmount =
+    financialSummary?.prepaidDiscountAmount ??
+    Number(booking.discountAmount ?? 0)
+  const prepaidPaidAmount =
+    financialSummary?.prepaidPaidAmount ??
+    Math.max(
+      0,
+      fallbackPrepaidLines.reduce((sum, line) => sum + line.amount, 0) -
+        prepaidDiscountAmount,
+    )
+  const additionalTotal =
+    financialSummary?.additionalTotal ??
+    additionalLines.reduce((sum, line) => sum + Number(line.amount), 0)
+  const additionalOutstandingAmount =
+    financialSummary?.additionalOutstandingAmount ??
+    additionalLines
+      .filter((line) => line.status === "PENDING")
+      .reduce((sum, line) => sum + Number(line.amount), 0)
   const totalPaidAmount = financialSummary?.totalPaidAmount ?? prepaidPaidAmount
   const counterSettled = settledBookingId === booking.bookingId
-  const hasPendingCounterPayment = !counterSettled && additionalOutstandingAmount > 0
-  const isFullySettled = session.status === "COMPLETED" && !hasPendingCounterPayment
+  const hasPendingCounterPayment =
+    !counterSettled && additionalOutstandingAmount > 0
+  const isFullySettled =
+    session.status === "COMPLETED" && !hasPendingCounterPayment
 
   return (
     <div className="space-y-6">
@@ -530,7 +658,9 @@ export default function StaffSessionDetailPage() {
         >
           <ChevronLeft className="size-5 text-[#6b7280]" />
         </StaffButton>
-        <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">Chi Tiết Ca Chạy Xe</h2>
+        <h2 className="text-xl font-extrabold text-[#1c1b1b] tracking-tight">
+          Chi Tiết Ca Chạy Xe
+        </h2>
       </div>
 
       {/* 2. SESSION INFO CARD */}
@@ -566,7 +696,9 @@ export default function StaffSessionDetailPage() {
                 </span>
               ))}
             <div>
-              <h3 className="text-xl font-black text-[#1c1b1b] tracking-tight leading-tight">{booking.trackName}</h3>
+              <h3 className="text-xl font-black text-[#1c1b1b] tracking-tight leading-tight">
+                {booking.trackName}
+              </h3>
             </div>
           </div>
 
@@ -596,12 +728,19 @@ export default function StaffSessionDetailPage() {
         <div className="mt-4 pt-3 border-t border-[#e5e2e1] grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-3 text-xs font-semibold">
           <div className="col-span-2 sm:col-span-2">
             <span className="text-[#6b7280] block mb-1">
-              Người chơi ({booking.participantDetails?.length ?? booking.plannedParticipants.length})
+              Người chơi (
+              {booking.participantDetails?.length ??
+                booking.plannedParticipants.length}
+              )
             </span>
             <div className="space-y-0.5">
               {(booking.participantDetails
                 ? booking.participantDetails
-                : booking.plannedParticipants.map((name) => ({ name, phone: undefined, isBooker: false }))
+                : booking.plannedParticipants.map((name) => ({
+                    name,
+                    phone: undefined,
+                    isBooker: false,
+                  }))
               ).map((p, i) => (
                 <div key={i} className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[#1c1b1b] font-bold">{p.name}</span>
@@ -611,7 +750,9 @@ export default function StaffSessionDetailPage() {
                     </span>
                   )}
                   {p.phone && (
-                    <span className="text-[#9b8fa8] font-normal">{p.phone}</span>
+                    <span className="text-[#9b8fa8] font-normal">
+                      {p.phone}
+                    </span>
                   )}
                 </div>
               ))}
@@ -620,45 +761,68 @@ export default function StaffSessionDetailPage() {
           <div>
             <span className="text-[#6b7280] block mb-0.5">Giờ chơi</span>
             <span className="text-[#1c1b1b] font-bold">
-              {new Date(booking.slotStart).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              {new Date(booking.slotStart).toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
               {" – "}
-              {new Date(booking.slotEnd).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              {new Date(booking.slotEnd).toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           </div>
           <div>
             <span className="text-[#6b7280] block mb-0.5">Nhân viên trực</span>
-            <span className="text-[#1c1b1b] font-bold">{session.staffName}</span>
+            <span className="text-[#1c1b1b] font-bold">
+              {session.staffName}
+            </span>
           </div>
         </div>
       </StaffCard>
 
       {/* 3. PRE-SESSION INFO STRIP — show before session goes ACTIVE */}
-      {(session.status === "CHECKED_IN") && (
+      {session.status === "CHECKED_IN" && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Play mode */}
           <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3">
-            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Chế độ chơi</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">
+              Chế độ chơi
+            </p>
             <p className="text-sm font-extrabold text-[#1c1b1b]">
-              {booking.playMode === "RENTAL" ? "Thuê xe tại quán" : booking.playMode === "BYOC" ? "Mang xe cá nhân" : booking.playMode}
+              {booking.playMode === "RENTAL"
+                ? "Thuê xe tại quán"
+                : booking.playMode === "BYOC"
+                  ? "Mang xe cá nhân"
+                  : booking.playMode}
             </p>
             {booking.playMode === "RENTAL" && (
-              <p className="text-[11px] text-[#ea580c] font-semibold mt-1">Cần bàn giao xe cho khách</p>
+              <p className="text-[11px] text-[#ea580c] font-semibold mt-1">
+                Cần bàn giao xe cho khách
+              </p>
             )}
             {booking.playMode === "BYOC" && (
-              <p className="text-[11px] text-[#6b7280] font-semibold mt-1">Khách tự mang xe</p>
+              <p className="text-[11px] text-[#6b7280] font-semibold mt-1">
+                Khách tự mang xe
+              </p>
             )}
           </div>
 
           {/* Track type */}
           <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
-            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Loại đường đua</p>
-            <p className="text-sm font-extrabold text-[#1c1b1b] truncate">{booking.trackName}</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">
+              Loại đường đua
+            </p>
+            <p className="text-sm font-extrabold text-[#1c1b1b] truncate">
+              {booking.trackName}
+            </p>
           </div>
 
           {/* Vehicles with image */}
           <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
             <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-2">
-              Xe bàn giao ({session.vehicles.length || booking.plannedVehicles.length})
+              Xe bàn giao (
+              {session.vehicles.length || booking.plannedVehicles.length})
             </p>
             {session.vehicles.length > 0 ? (
               <div className="space-y-2">
@@ -677,8 +841,12 @@ export default function StaffSessionDetailPage() {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-[#1c1b1b] truncate">{v.name}</p>
-                      <p className="text-[10px] text-[#9b8fa8] font-semibold truncate">#{v.vehicleId.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-xs font-bold text-[#1c1b1b] truncate">
+                        {v.name}
+                      </p>
+                      <p className="text-[10px] text-[#9b8fa8] font-semibold truncate">
+                        #{v.vehicleId.slice(0, 8).toUpperCase()}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -686,33 +854,57 @@ export default function StaffSessionDetailPage() {
             ) : booking.plannedVehicles.length > 0 ? (
               <div className="space-y-0.5">
                 {booking.plannedVehicles.map((v, i) => (
-                  <p key={i} className="text-xs font-bold text-[#1c1b1b] truncate">{v}</p>
+                  <p
+                    key={i}
+                    className="text-xs font-bold text-[#1c1b1b] truncate"
+                  >
+                    {v}
+                  </p>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[#9b8fa8] font-semibold">Chưa chỉ định xe</p>
+              <p className="text-xs text-[#9b8fa8] font-semibold">
+                Chưa chỉ định xe
+              </p>
             )}
           </div>
 
           {/* Pre-ordered F&B */}
           <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3">
-            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">Đồ ăn & thức uống đặt trước</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-1">
+              Đồ ăn & thức uống đặt trước
+            </p>
             {booking.fnbPreorderFee > 0 ? (
               <>
-                <p className="text-sm font-extrabold text-amber-700">{booking.fnbPreorderFee.toLocaleString("vi-VN")} đ</p>
-                <p className="text-[11px] text-amber-600 font-semibold mt-1">Chuẩn bị trước khi bắt đầu ca</p>
+                <p className="text-sm font-extrabold text-amber-700">
+                  {booking.fnbPreorderFee.toLocaleString("vi-VN")} đ
+                </p>
+                <p className="text-[11px] text-amber-600 font-semibold mt-1">
+                  Chuẩn bị trước khi bắt đầu ca
+                </p>
                 <div className="mt-2 space-y-1 border-t border-amber-100 pt-2 text-[11px] text-[#4c4a49]">
-                  {preorderFnbOrders.flatMap((order) => order.items).map((item, index) => (
-                    <div key={`${item.name}-${index}`}>
-                      <span className="font-bold">{item.name}{item.variantName ? ` · ${item.variantName}` : ""}</span>
-                      <span className="text-[#6b7280]"> ×{item.qty}</span>
-                      {item.notes && <p className="mt-0.5 text-amber-700">Ghi chú: {item.notes}</p>}
-                    </div>
-                  ))}
+                  {preorderFnbOrders
+                    .flatMap((order) => order.items)
+                    .map((item, index) => (
+                      <div key={`${item.name}-${index}`}>
+                        <span className="font-bold">
+                          {item.name}
+                          {item.variantName ? ` · ${item.variantName}` : ""}
+                        </span>
+                        <span className="text-[#6b7280]"> ×{item.qty}</span>
+                        {item.notes && (
+                          <p className="mt-0.5 text-amber-700">
+                            Ghi chú: {item.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                 </div>
               </>
             ) : (
-              <p className="text-xs text-[#9b8fa8] font-semibold">Khách không đặt món trước</p>
+              <p className="text-xs text-[#9b8fa8] font-semibold">
+                Khách không đặt món trước
+              </p>
             )}
           </div>
         </div>
@@ -724,22 +916,28 @@ export default function StaffSessionDetailPage() {
           {/* Active Vehicles — position 2, right below session info */}
           <StaffCard className="space-y-4">
             {(() => {
-              const participantNames = booking.participantDetails?.map((p) => p.name)
-                ?? booking.plannedParticipants
+              const participantNames =
+                booking.participantDetails?.map((p) => p.name) ??
+                booking.plannedParticipants
               const isByocMode = booking.playMode === "BYOC"
-              const displayVehicles = isByocMode && session.vehicles.length < participantNames.length
-                ? [
-                    ...session.vehicles,
-                    ...participantNames.slice(session.vehicles.length).map((name, i) => ({
-                      vehicleId: `byoc-placeholder-${i}`,
-                      name: `Xe tự mang của ${name}`,
-                      type: "BYOC" as const,
-                      imageUrl: undefined,
-                    })),
-                  ]
-                : session.vehicles
+              const displayVehicles =
+                isByocMode && session.vehicles.length < participantNames.length
+                  ? [
+                      ...session.vehicles,
+                      ...participantNames
+                        .slice(session.vehicles.length)
+                        .map((name, i) => ({
+                          vehicleId: `byoc-placeholder-${i}`,
+                          name: `Xe tự mang của ${name}`,
+                          type: "BYOC" as const,
+                          imageUrl: undefined,
+                        })),
+                    ]
+                  : session.vehicles
 
-              const checkInPhotos = session.inspections.find((i) => i.type === "CHECK_IN")?.photos ?? []
+              const checkInPhotos =
+                session.inspections.find((i) => i.type === "CHECK_IN")
+                  ?.photos ?? []
               const byocDirections = ["FRONT", "BACK", "LEFT", "RIGHT"] as const
 
               return (
@@ -751,9 +949,12 @@ export default function StaffSessionDetailPage() {
 
                   <div className="space-y-2">
                     {displayVehicles.map((v, idx) => {
-                      const photoUrl = v.type === "RENT"
-                        ? v.imageUrl
-                        : checkInPhotos.find((p) => p.direction === byocDirections[idx])?.url
+                      const photoUrl =
+                        v.type === "RENT"
+                          ? v.imageUrl
+                          : checkInPhotos.find(
+                              (p) => p.direction === byocDirections[idx],
+                            )?.url
                       return (
                         <div
                           key={v.vehicleId}
@@ -773,8 +974,12 @@ export default function StaffSessionDetailPage() {
                               </div>
                             )}
                             <div>
-                              <p className="text-xs font-bold text-[#1c1b1b]">{v.name}</p>
-                              <p className="text-[10px] text-[#6b7280] font-semibold">Mã xe: {v.vehicleId}</p>
+                              <p className="text-xs font-bold text-[#1c1b1b]">
+                                {v.name}
+                              </p>
+                              <p className="text-[10px] text-[#6b7280] font-semibold">
+                                Mã xe: {v.vehicleId}
+                              </p>
                             </div>
                           </div>
                           {v.type === "RENT" && (
@@ -802,7 +1007,11 @@ export default function StaffSessionDetailPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Module 1: Extension Controls / overdue return handling */}
-            <StaffCard className={extensionWindowClosed ? "space-y-3 md:col-span-2" : "space-y-3"}>
+            <StaffCard
+              className={
+                extensionWindowClosed ? "space-y-3 md:col-span-2" : "space-y-3"
+              }
+            >
               {extensionWindowClosed ? (
                 <>
                   <div className="flex items-center justify-between gap-3">
@@ -815,13 +1024,22 @@ export default function StaffSessionDetailPage() {
                     </span>
                   </div>
                   <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs leading-relaxed text-red-900">
-                    <p className="font-bold">Gia hạn đã được khóa để tránh tính phí hồi tố.</p>
+                    <p className="font-bold">
+                      Gia hạn đã được khóa để tránh tính phí hồi tố.
+                    </p>
                     <p className="mt-1 text-red-800">
-                      Nếu khách đã trả xe đúng giờ nhưng nhân viên xử lý muộn, khách không bị thu thêm. Hãy kiểm tra và xử lý trả xe; chỉ khoản phụ phí đã được thỏa thuận riêng mới được thu sau đó.
+                      Nếu khách đã trả xe đúng giờ nhưng nhân viên xử lý muộn,
+                      khách không bị thu thêm. Hãy kiểm tra và xử lý trả xe; chỉ
+                      khoản phụ phí đã được thỏa thuận riêng mới được thu sau
+                      đó.
                     </p>
                   </div>
                   <StaffButton
-                    onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_OUT`)}
+                    onClick={() =>
+                      navigate(
+                        `/staff/inspections/${session.sessionId}?type=CHECK_OUT`,
+                      )
+                    }
                     variant="primary"
                     className="w-fit px-5 bg-amber-600 hover:bg-amber-700 text-xs uppercase tracking-wider"
                   >
@@ -844,83 +1062,113 @@ export default function StaffSessionDetailPage() {
                     </span>
                   </div>
 
-              {extensionPending ? (
-                <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-semibold text-orange-800 flex items-center gap-2">
-                  <Clock className="size-3.5 shrink-0" />
-                  Đang chờ khách phản hồi đề xuất gia hạn {pendingExtensionMinutes} phút…
-                </div>
-              ) : canDirectExtend && pendingDirectExtension ? (
-                <div className="rounded-xl border border-[#ea580c] bg-[#fff3eb] p-3 space-y-2.5">
-                  <p className="text-xs font-bold text-[#1c1b1b]">
-                    Xác nhận gia hạn trực tiếp: <span className="text-[#ea580c]">+{pendingDirectExtension.mins < 60 ? `${pendingDirectExtension.mins} phút` : "1 giờ"}</span>
-                    {" "}({pendingDirectExtension.fee.toLocaleString("vi-VN")} đ) → {formatPlannedEnd(pendingDirectExtension.newPlannedEnd)}
-                  </p>
-                  <p className="text-[10px] text-[#6b7280] font-semibold">Khách đã đồng ý tại chỗ — gia hạn ngay, không cần xác nhận qua ứng dụng.</p>
-                  <div className="flex gap-2">
-                    <StaffButton
-                      variant="primary"
-                      size="sm"
-                      className="flex-1 text-xs"
-                      disabled={submittingExtension}
-                      onClick={async () => {
-                        setSubmittingExtension(true)
-                        const created = await proposeExtension(
-                          session.sessionId,
-                          pendingDirectExtension.mins,
-                          pendingDirectExtension.fee,
-                          canDirectExtend,
-                        )
-                        if (created) {
-                          setPendingDirectExtension(null)
-                          await refetchSessionDetail()
-                        }
-                        setSubmittingExtension(false)
-                      }}
-                    >
-                      Xác nhận gia hạn
-                    </StaffButton>
-                    <StaffButton
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-xs"
-                      onClick={() => setPendingDirectExtension(null)}
-                    >
-                      Huỷ
-                    </StaffButton>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {extensionOptions.map(({ mins, fee, newPlannedEnd, blockedReason, blocked }) => (
-                    <button
-                      key={mins}
-                      type="button"
-                      disabled={blocked || submittingExtension}
-                      onClick={() => !blocked && !submittingExtension && void handleExtension(mins, fee, newPlannedEnd)}
-                      title={
-                        blocked
-                          ? blockedReason ?? `Vượt giới hạn gia hạn (tối đa ${(maxExtensionFee === Infinity ? "—" : (maxExtensionFee).toLocaleString("vi-VN") + " đ")})`
-                          : undefined
-                      }
-                      className={`rounded-xl border transition-all p-2.5 text-center group ${
-                        blocked || submittingExtension
-                          ? "border-[#e5e2e1] bg-[#f5f3f2] opacity-50 cursor-not-allowed"
-                          : "border-[#e5e2e1] bg-white hover:border-[#ea580c] hover:bg-[#fff3eb] cursor-pointer"
-                      }`}
-                    >
-                      <span className={`block text-sm font-extrabold ${blocked || submittingExtension ? "text-[#9b8fa8]" : "text-[#ea580c]"}`}>
-                        +{mins < 60 ? `${mins} phút` : "1 giờ"}
-                      </span>
-                      <span className="block text-[10px] text-[#6b7280] font-semibold mt-0.5">
-                        → {formatPlannedEnd(newPlannedEnd)}
-                      </span>
-                      <span className={`block text-[10px] font-bold mt-1 ${blocked || submittingExtension ? "text-[#9b8fa8]" : "text-[#1c1b1b]"}`}>
-                        {blockedReason ?? `${fee.toLocaleString("vi-VN")} đ`}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                  {extensionPending ? (
+                    <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs font-semibold text-orange-800 flex items-center gap-2">
+                      <Clock className="size-3.5 shrink-0" />
+                      Đang chờ khách phản hồi đề xuất gia hạn{" "}
+                      {pendingExtensionMinutes} phút…
+                    </div>
+                  ) : canDirectExtend && pendingDirectExtension ? (
+                    <div className="rounded-xl border border-[#ea580c] bg-[#fff3eb] p-3 space-y-2.5">
+                      <p className="text-xs font-bold text-[#1c1b1b]">
+                        Xác nhận gia hạn trực tiếp:{" "}
+                        <span className="text-[#ea580c]">
+                          +
+                          {pendingDirectExtension.mins < 60
+                            ? `${pendingDirectExtension.mins} phút`
+                            : "1 giờ"}
+                        </span>{" "}
+                        ({pendingDirectExtension.fee.toLocaleString("vi-VN")} đ)
+                        →{" "}
+                        {formatPlannedEnd(pendingDirectExtension.newPlannedEnd)}
+                      </p>
+                      <p className="text-[10px] text-[#6b7280] font-semibold">
+                        Khách đã đồng ý tại chỗ — gia hạn ngay, không cần xác
+                        nhận qua ứng dụng.
+                      </p>
+                      <div className="flex gap-2">
+                        <StaffButton
+                          variant="primary"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          disabled={submittingExtension}
+                          onClick={async () => {
+                            setSubmittingExtension(true)
+                            const created = await proposeExtension(
+                              session.sessionId,
+                              pendingDirectExtension.mins,
+                              pendingDirectExtension.fee,
+                              canDirectExtend,
+                            )
+                            if (created) {
+                              setPendingDirectExtension(null)
+                              await refetchSessionDetail()
+                            }
+                            setSubmittingExtension(false)
+                          }}
+                        >
+                          Xác nhận gia hạn
+                        </StaffButton>
+                        <StaffButton
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 text-xs"
+                          onClick={() => setPendingDirectExtension(null)}
+                        >
+                          Huỷ
+                        </StaffButton>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {extensionOptions.map(
+                        ({
+                          mins,
+                          fee,
+                          newPlannedEnd,
+                          blockedReason,
+                          blocked,
+                        }) => (
+                          <button
+                            key={mins}
+                            type="button"
+                            disabled={blocked || submittingExtension}
+                            onClick={() =>
+                              !blocked &&
+                              !submittingExtension &&
+                              void handleExtension(mins, fee, newPlannedEnd)
+                            }
+                            title={
+                              blocked
+                                ? (blockedReason ??
+                                  `Vượt giới hạn gia hạn (tối đa ${maxExtensionFee === Infinity ? "—" : maxExtensionFee.toLocaleString("vi-VN") + " đ"})`)
+                                : undefined
+                            }
+                            className={`rounded-xl border transition-all p-2.5 text-center group ${
+                              blocked || submittingExtension
+                                ? "border-[#e5e2e1] bg-[#f5f3f2] opacity-50 cursor-not-allowed"
+                                : "border-[#e5e2e1] bg-white hover:border-[#ea580c] hover:bg-[#fff3eb] cursor-pointer"
+                            }`}
+                          >
+                            <span
+                              className={`block text-sm font-extrabold ${blocked || submittingExtension ? "text-[#9b8fa8]" : "text-[#ea580c]"}`}
+                            >
+                              +{mins < 60 ? `${mins} phút` : "1 giờ"}
+                            </span>
+                            <span className="block text-[10px] text-[#6b7280] font-semibold mt-0.5">
+                              → {formatPlannedEnd(newPlannedEnd)}
+                            </span>
+                            <span
+                              className={`block text-[10px] font-bold mt-1 ${blocked || submittingExtension ? "text-[#9b8fa8]" : "text-[#1c1b1b]"}`}
+                            >
+                              {blockedReason ??
+                                `${fee.toLocaleString("vi-VN")} đ`}
+                            </span>
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  )}
 
                   <p className="text-[10px] text-[#9b8fa8] leading-relaxed">
                     {isWalkInBooking
@@ -933,104 +1181,119 @@ export default function StaffSessionDetailPage() {
 
             {/* Do not add a new service while an overdue session is being reconciled. */}
             {!extensionWindowClosed && (
-            <StaffCard className="space-y-4">
-            <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-              <Coffee className="size-4.5 text-[#ea580c]" />
-              Gọi đồ ăn & thức uống
-            </h4>
+              <StaffCard className="space-y-4">
+                <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+                  <Coffee className="size-4.5 text-[#ea580c]" />
+                  Gọi đồ ăn & thức uống
+                </h4>
 
-            {loadingMenu ? (
-              <div className="h-44 animate-pulse bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl" />
-            ) : (
-              <form onSubmit={handleAddFnb} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Chọn món ăn/nước uống
-                  </label>
-                  <select
-                    value={selectedItemId}
-                    onChange={(e) => {
-                      setSelectedItemId(e.target.value)
-                      setSelectedVariantId("")
-                    }}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
-                  >
-                    {menuItemGroups.map((group) => (
-                      <optgroup key={group.label} label={group.label}>
-                        {group.items.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name} - {item.variants?.length ? `từ ${Math.min(...item.variants.map((variant) => Number(variant.price))).toLocaleString("vi-VN")}` : Number(item.price).toLocaleString("vi-VN")} đ
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
-
-                {(() => {
-                  const selectedItem = menuItems.find((item) => item.id === selectedItemId)
-                  const variants = selectedItem?.variants?.filter((variant) => variant.isAvailable) ?? []
-                  if (!variants.length) return null
-                  return (
+                {loadingMenu ? (
+                  <div className="h-44 animate-pulse bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl" />
+                ) : (
+                  <form onSubmit={handleAddFnb} className="space-y-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                        Size / lựa chọn
+                        Chọn món ăn/nước uống
                       </label>
                       <select
-                        value={selectedVariantId}
-                        onChange={(e) => setSelectedVariantId(e.target.value)}
+                        value={selectedItemId}
+                        onChange={(e) => {
+                          setSelectedItemId(e.target.value)
+                          setSelectedVariantId("")
+                        }}
                         className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
-                        required
                       >
-                        <option value="">Chọn lựa chọn</option>
-                        {variants.map((variant) => (
-                          <option key={variant.id} value={variant.id}>
-                            {variant.name} - {Number(variant.price).toLocaleString("vi-VN")} đ
-                          </option>
+                        {menuItemGroups.map((group) => (
+                          <optgroup key={group.label} label={group.label}>
+                            {group.items.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {item.name} -{" "}
+                                {item.variants?.length
+                                  ? `từ ${Math.min(...item.variants.map((variant) => Number(variant.price))).toLocaleString("vi-VN")}`
+                                  : Number(item.price).toLocaleString(
+                                      "vi-VN",
+                                    )}{" "}
+                                đ
+                              </option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
                     </div>
-                  )
-                })()}
 
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Số lượng
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={selectedQty}
-                    onChange={(e) => setSelectedQty(Number(e.target.value))}
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
-                  />
-                </div>
+                    {(() => {
+                      const selectedItem = menuItems.find(
+                        (item) => item.id === selectedItemId,
+                      )
+                      const variants =
+                        selectedItem?.variants?.filter(
+                          (variant) => variant.isAvailable,
+                        ) ?? []
+                      if (!variants.length) return null
+                      return (
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                            Size / lựa chọn
+                          </label>
+                          <select
+                            value={selectedVariantId}
+                            onChange={(e) =>
+                              setSelectedVariantId(e.target.value)
+                            }
+                            className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                            required
+                          >
+                            <option value="">Chọn lựa chọn</option>
+                            {variants.map((variant) => (
+                              <option key={variant.id} value={variant.id}>
+                                {variant.name} -{" "}
+                                {Number(variant.price).toLocaleString("vi-VN")}{" "}
+                                đ
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })()}
 
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                    Ghi chú bếp (tuỳ chọn)
-                  </label>
-                  <input
-                    value={selectedFnbNote}
-                    maxLength={500}
-                    onChange={(e) => setSelectedFnbNote(e.target.value)}
-                    placeholder="Ví dụ: ít đá, giao bàn số 2"
-                    className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                        Số lượng
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={selectedQty}
+                        onChange={(e) => setSelectedQty(Number(e.target.value))}
+                        className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                      />
+                    </div>
 
-                <StaffButton
-                  type="submit"
-                  variant="primary"
-                  className="w-full text-xs uppercase tracking-wider"
-                >
-                  <Plus className="size-4" />
-                  Thêm món & Báo chế biến
-                </StaffButton>
-              </form>
-            )}
-            </StaffCard>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                        Ghi chú bếp (tuỳ chọn)
+                      </label>
+                      <input
+                        value={selectedFnbNote}
+                        maxLength={500}
+                        onChange={(e) => setSelectedFnbNote(e.target.value)}
+                        placeholder="Ví dụ: ít đá, giao bàn số 2"
+                        className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
+                      />
+                    </div>
+
+                    <StaffButton
+                      type="submit"
+                      variant="primary"
+                      className="w-full text-xs uppercase tracking-wider"
+                    >
+                      <Plus className="size-4" />
+                      Thêm món & Báo chế biến
+                    </StaffButton>
+                  </form>
+                )}
+              </StaffCard>
             )}
           </div>
         </>
@@ -1038,17 +1301,23 @@ export default function StaffSessionDetailPage() {
 
       {/* 4. RENDER INSPECTION BANNER */}
       {session.status === "CHECKED_IN" && !checkInInspection && (
-        <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <StaffCard
+          variant="warning"
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+        >
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-amber-900">
               Yêu cầu chụp ảnh kiểm xe bàn giao
             </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
-              Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi cho khách khởi động lượt chạy.
+              Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi
+              cho khách khởi động lượt chạy.
             </p>
           </div>
           <StaffButton
-            onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_IN`)}
+            onClick={() =>
+              navigate(`/staff/inspections/${session.sessionId}?type=CHECK_IN`)
+            }
             variant="primary"
             className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
           >
@@ -1058,56 +1327,80 @@ export default function StaffSessionDetailPage() {
         </StaffCard>
       )}
 
-      {(session.status === "ACTIVE" || session.status === "EXTENDING") && !checkOutDisputed && !extensionWindowClosed && (
-        <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-amber-900">
-              {operationalTiming.state === "OVERDUE"
-                ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
-                : operationalTiming.state === "DUE_FOR_CHECKOUT"
-                  ? "Đã đến giờ trả xe"
-                  : "Yêu cầu lập biên bản trả xe"}
-            </h4>
-            <p className="text-xs text-amber-800 leading-relaxed">
-              {operationalTiming.state === "OVERDUE"
-                ? "Xe vẫn đang được giữ ở phiên này. Hãy lập biên bản trả xe để kiểm tra, chốt phí và đưa xe về trạng thái phù hợp."
-                : "Thực hiện chụp ảnh đối chiếu tình trạng xe sau khi hoàn thành lượt chạy để phát hiện hư hại (nếu có)."}
-            </p>
-          </div>
-          <StaffButton
-            onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_OUT`)}
-            variant="primary"
-            className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") &&
+        !checkOutDisputed &&
+        !extensionWindowClosed && (
+          <StaffCard
+            variant="warning"
+            className="flex flex-col md:flex-row md:items-center justify-between gap-4"
           >
-            <ClipboardCheck className="size-4" />
-            {operationalTiming.state === "ON_TIME" ? "Kiểm tra trả xe" : "Xử lý trả xe"}
-          </StaffButton>
-        </StaffCard>
-      )}
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-amber-900">
+                {operationalTiming.state === "OVERDUE"
+                  ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
+                  : operationalTiming.state === "DUE_FOR_CHECKOUT"
+                    ? "Đã đến giờ trả xe"
+                    : "Yêu cầu lập biên bản trả xe"}
+              </h4>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                {operationalTiming.state === "OVERDUE"
+                  ? "Xe vẫn đang được giữ ở phiên này. Hãy lập biên bản trả xe để kiểm tra, chốt phí và đưa xe về trạng thái phù hợp."
+                  : "Thực hiện chụp ảnh đối chiếu tình trạng xe sau khi hoàn thành lượt chạy để phát hiện hư hại (nếu có)."}
+              </p>
+            </div>
+            <StaffButton
+              onClick={() =>
+                navigate(
+                  `/staff/inspections/${session.sessionId}?type=CHECK_OUT`,
+                )
+              }
+              variant="primary"
+              className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
+            >
+              <ClipboardCheck className="size-4" />
+              {operationalTiming.state === "ON_TIME"
+                ? "Kiểm tra trả xe"
+                : "Xử lý trả xe"}
+            </StaffButton>
+          </StaffCard>
+        )}
 
-      {(session.status === "ACTIVE" || session.status === "EXTENDING") && checkOutDisputed && (
-        <StaffCard variant="warning" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h4 className="text-sm font-bold text-amber-900">Khách phản hồi sai lệch biên bản trả xe</h4>
-            <p className="text-xs text-amber-800 leading-relaxed">
-              Cần đối chiếu lại ảnh, tình trạng xe và lập biên bản trả xe mới trước khi đóng phiên.
-            </p>
-          </div>
-          <StaffButton
-            onClick={() => navigate(`/staff/inspections/${session.sessionId}?type=CHECK_OUT`)}
-            variant="primary"
-            className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") &&
+        checkOutDisputed && (
+          <StaffCard
+            variant="warning"
+            className="flex flex-col md:flex-row md:items-center justify-between gap-4"
           >
-            <ClipboardCheck className="size-4" />
-            Lập lại biên bản trả xe
-          </StaffButton>
-        </StaffCard>
-      )}
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-amber-900">
+                Khách phản hồi sai lệch biên bản trả xe
+              </h4>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Cần đối chiếu lại ảnh, tình trạng xe và lập biên bản trả xe mới
+                trước khi đóng phiên.
+              </p>
+            </div>
+            <StaffButton
+              onClick={() =>
+                navigate(
+                  `/staff/inspections/${session.sessionId}?type=CHECK_OUT`,
+                )
+              }
+              variant="primary"
+              className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
+            >
+              <ClipboardCheck className="size-4" />
+              Lập lại biên bản trả xe
+            </StaffButton>
+          </StaffCard>
+        )}
 
       {session.status === "CHECKING_OUT" && !checkOutInspection && (
         <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-orange-200 bg-orange-50">
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-orange-900">Cần kiểm tra xe trước khi trả</h4>
+            <h4 className="text-sm font-bold text-orange-900">
+              Cần kiểm tra xe trước khi trả
+            </h4>
             <p className="text-xs text-orange-800 leading-relaxed">
               Thực hiện kiểm tra xe và lập biên bản trả xe cho khách.
             </p>
@@ -1115,7 +1408,9 @@ export default function StaffSessionDetailPage() {
           <StaffButton
             size="sm"
             variant="primary"
-            onClick={() => navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)}
+            onClick={() =>
+              navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
+            }
           >
             Xem biên bản & xác nhận
           </StaffButton>
@@ -1125,15 +1420,20 @@ export default function StaffSessionDetailPage() {
       {session.status === "CHECKING_OUT" && checkOutInspection && (
         <StaffCard className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-amber-200 bg-amber-50">
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-amber-900">Chờ khách thanh toán tại quầy</h4>
+            <h4 className="text-sm font-bold text-amber-900">
+              Chờ khách thanh toán tại quầy
+            </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
-              Biên bản đã xác nhận. Thu phí dịch vụ tại quầy rồi xác nhận thanh toán bên dưới.
+              Biên bản đã xác nhận. Thu phí dịch vụ tại quầy rồi xác nhận thanh
+              toán bên dưới.
             </p>
           </div>
           <StaffButton
             size="sm"
             variant="outline"
-            onClick={() => navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)}
+            onClick={() =>
+              navigate(`/staff/sessions/${session.sessionId}/checkout-summary`)
+            }
           >
             Xem lại biên bản
           </StaffButton>
@@ -1141,157 +1441,212 @@ export default function StaffSessionDetailPage() {
       )}
 
       {/* 5. RENDER BILLING AND ORDER HISTORY — only after session starts */}
-      {(session.status === "ACTIVE" || session.status === "EXTENDING" || session.status === "CHECKING_OUT" || session.status === "COMPLETED") && (
-      <ExtensionAuditCard
-        extensions={approvedExtensions}
-        initialPlannedEnd={booking.slotEnd}
-        currentProposal={session.extensionProposal}
-        className="border-[#e5e2e1]"
-      />
+      {(session.status === "ACTIVE" ||
+        session.status === "EXTENDING" ||
+        session.status === "CHECKING_OUT" ||
+        session.status === "COMPLETED") && (
+        <ExtensionAuditCard
+          extensions={approvedExtensions}
+          initialPlannedEnd={booking.slotEnd}
+          currentProposal={session.extensionProposal}
+          className="border-[#e5e2e1]"
+        />
       )}
 
-      {(session.status === "ACTIVE" || session.status === "EXTENDING" || session.status === "CHECKING_OUT" || session.status === "COMPLETED") && (
-      <div className="grid md:grid-cols-5 gap-4 items-start">
-        {/* F&B Ordered Items — narrow column */}
-        <StaffCard className="md:col-span-2 space-y-3">
-          <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-            <Coffee className="size-4 text-[#ea580c]" />
-            Đồ ăn & thức uống gọi trong phiên chơi
-          </h4>
+      {(session.status === "ACTIVE" ||
+        session.status === "EXTENDING" ||
+        session.status === "CHECKING_OUT" ||
+        session.status === "COMPLETED") && (
+        <div className="grid md:grid-cols-5 gap-4 items-start">
+          {/* F&B Ordered Items — narrow column */}
+          <StaffCard className="md:col-span-2 space-y-3">
+            <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+              <Coffee className="size-4 text-[#ea580c]" />
+              Đồ ăn & thức uống gọi trong phiên chơi
+            </h4>
 
-          <div className="space-y-1.5">
-            {onsiteFnbOrders.map((order) => (
-              <div
-                key={order.orderId}
-                className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start gap-2 font-semibold"
-              >
-                <div className="space-y-0.5 flex-1 min-w-0">
-                  {order.items.map((i, idx) => (
-                    <span key={idx} className="block text-[#1c1b1b]">
-                      {i.name}{i.variantName ? ` · ${i.variantName}` : ""} <span className="text-[#6b7280] font-normal">×{i.qty}</span>
-                      {i.notes && <span className="block mt-0.5 text-[10px] text-[#b45309] font-medium">Ghi chú: {i.notes}</span>}
+            <div className="space-y-1.5">
+              {onsiteFnbOrders.map((order) => (
+                <div
+                  key={order.orderId}
+                  className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start gap-2 font-semibold"
+                >
+                  <div className="space-y-0.5 flex-1 min-w-0">
+                    {order.items.map((i, idx) => (
+                      <span key={idx} className="block text-[#1c1b1b]">
+                        {i.name}
+                        {i.variantName ? ` · ${i.variantName}` : ""}{" "}
+                        <span className="text-[#6b7280] font-normal">
+                          ×{i.qty}
+                        </span>
+                        {i.notes && (
+                          <span className="block mt-0.5 text-[10px] text-[#b45309] font-medium">
+                            Ghi chú: {i.notes}
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="font-extrabold text-[#ea580c]">
+                      {order.total.toLocaleString("vi-VN")} đ
                     </span>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-extrabold text-[#ea580c]">{order.total.toLocaleString("vi-VN")} đ</span>
-                  {(session.status === "ACTIVE" || session.status === "EXTENDING") && (
-                    <button
-                      type="button"
-                      onClick={() => void handleCancelFnbOrder(order.orderId)}
-                      title="Huỷ món này"
-                      className="flex size-5 items-center justify-center rounded-full bg-[#f5f3f2] hover:bg-rose-100 hover:text-rose-600 text-[#9b8fa8] transition-colors"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {onsiteFnbOrders.length === 0 && (
-              <p className="text-xs text-[#6b7280] italic py-4 text-center">Chưa gọi món.</p>
-            )}
-          </div>
-        </StaffCard>
-
-        {/* Financial summary is shared with the customer booking detail. */}
-        <StaffCard className="md:col-span-3 space-y-4">
-          <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
-            <FileText className="size-4.5 text-[#ea580c]" />
-            Quyết toán phiên chơi
-          </h4>
-
-          {hasPendingCounterPayment && (
-            <div className="flex items-start gap-2.5 rounded-xl bg-orange-50 border border-orange-200 px-3.5 py-3">
-              <Banknote className="size-4 text-orange-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-extrabold text-orange-900">Còn khoản phát sinh cần thanh toán</p>
-                <p className="text-[11px] text-orange-700 mt-0.5 leading-relaxed">
-                  Khách cần thanh toán {additionalOutstandingAmount.toLocaleString("vi-VN")} đ cho các khoản dưới đây.
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-4 text-xs font-semibold">
-            <section className="space-y-1.5 pb-3 border-b border-[#e5e2e1]/60">
-              <span className="text-[10px] font-extrabold text-[#6b7280] uppercase tracking-wider block">
-                Đã thanh toán khi đặt lịch
-              </span>
-              {prepaidLines.map((line) => (
-                <div key={line.componentId} className="flex justify-between gap-4 text-[#4c4a49]">
-                  <span>{line.label}</span>
-                  <span className="text-[#1c1b1b] font-bold shrink-0">{Number(line.amount).toLocaleString("vi-VN")} đ</span>
+                    {(session.status === "ACTIVE" ||
+                      session.status === "EXTENDING") && (
+                      <button
+                        type="button"
+                        onClick={() => void handleCancelFnbOrder(order.orderId)}
+                        title="Huỷ món này"
+                        className="flex size-5 items-center justify-center rounded-full bg-[#f5f3f2] hover:bg-rose-100 hover:text-rose-600 text-[#9b8fa8] transition-colors"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
-              {prepaidDiscountAmount > 0 && (
-                <div className="flex justify-between gap-4 text-emerald-700">
-                  <span>Ưu đãi áp dụng</span>
-                  <span className="font-bold shrink-0">−{prepaidDiscountAmount.toLocaleString("vi-VN")} đ</span>
-                </div>
-              )}
-              <div className="flex justify-between gap-4 border-t border-[#e5e2e1]/60 pt-2 mt-2 text-[#1c1b1b]">
-                <span className="font-bold">Đã thanh toán trước</span>
-                <span className="font-extrabold shrink-0">{prepaidPaidAmount.toLocaleString("vi-VN")} đ</span>
-              </div>
-            </section>
 
-            <section className="space-y-2 pb-3 border-b border-[#e5e2e1]/60">
-              <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
-                Chi phí phát sinh tại quầy
-              </span>
-              {additionalLines.length > 0 ? additionalLines.map((line) => {
-                const paid = line.status === "DISBURSED" || line.status === "CAPTURED"
-                const gateway = line.payment?.gateway === "VNPAY"
-                  ? "VNPAY"
-                  : line.payment?.gateway === "DIRECT"
-                    ? "tiền mặt"
-                    : undefined
-                return (
-                  <div key={line.componentId} className="rounded-lg bg-[#fcf8f8] px-2.5 py-2">
-                    <div className="flex justify-between gap-4 text-[#4c4a49]">
-                      <span>{line.label}</span>
-                      <span className="text-[#ea580c] font-extrabold shrink-0">+{Number(line.amount).toLocaleString("vi-VN")} đ</span>
-                    </div>
-                    <p className={`mt-1 text-[10px] ${paid ? "text-emerald-700" : "text-orange-700"}`}>
-                      {paid ? `Đã thanh toán${gateway ? ` · ${gateway}` : ""}` : "Chờ thanh toán"}
-                    </p>
-                  </div>
-                )
-              }) : (
-                <p className="text-[11px] text-[#6b7280] italic">Không phát sinh chi phí tại quầy.</p>
+              {onsiteFnbOrders.length === 0 && (
+                <p className="text-xs text-[#6b7280] italic py-4 text-center">
+                  Chưa gọi món.
+                </p>
               )}
-              <div className="flex justify-between gap-4 border-t border-[#e5e2e1]/60 pt-2 text-[#1c1b1b]">
-                <span className="font-bold">Tổng phí phát sinh</span>
-                <span className="text-[#ea580c] font-extrabold shrink-0">{additionalTotal.toLocaleString("vi-VN")} đ</span>
-              </div>
-            </section>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-3">
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">Tổng khách đã thanh toán</p>
-                <p className="mt-0.5 text-base font-extrabold text-slate-900">{totalPaidAmount.toLocaleString("vi-VN")} đ</p>
-              </div>
-              {hasPendingCounterPayment ? (
-                <StaffButton
-                  onClick={() => setConfirmSettleOpen(true)}
-                  disabled={settlingPayment}
-                  variant="primary"
-                  className="w-fit px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                >
-                  <Banknote className="size-4" />
-                  {settlingPayment ? "Đang xử lý..." : "Xác nhận đã thu tiền mặt"}
-                </StaffButton>
-              ) : isFullySettled ? (
-                <span className="inline-flex items-center gap-1.5 text-emerald-700 text-xs font-bold">
-                  <CheckCircle2 className="size-4" /> Đã quyết toán hoàn tất
-                </span>
-              ) : null}
             </div>
-          </div>
-        </StaffCard>
-      </div>
+          </StaffCard>
+
+          {/* Financial summary is shared with the customer booking detail. */}
+          <StaffCard className="md:col-span-3 space-y-4">
+            <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
+              <FileText className="size-4.5 text-[#ea580c]" />
+              Quyết toán phiên chơi
+            </h4>
+
+            {hasPendingCounterPayment && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-orange-50 border border-orange-200 px-3.5 py-3">
+                <Banknote className="size-4 text-orange-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-extrabold text-orange-900">
+                    Còn khoản phát sinh cần thanh toán
+                  </p>
+                  <p className="text-[11px] text-orange-700 mt-0.5 leading-relaxed">
+                    Khách cần thanh toán{" "}
+                    {additionalOutstandingAmount.toLocaleString("vi-VN")} đ cho
+                    các khoản dưới đây.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4 text-xs font-semibold">
+              <section className="space-y-1.5 pb-3 border-b border-[#e5e2e1]/60">
+                <span className="text-[10px] font-extrabold text-[#6b7280] uppercase tracking-wider block">
+                  Đã thanh toán khi đặt lịch
+                </span>
+                {prepaidLines.map((line) => (
+                  <div
+                    key={line.componentId}
+                    className="flex justify-between gap-4 text-[#4c4a49]"
+                  >
+                    <span>{line.label}</span>
+                    <span className="text-[#1c1b1b] font-bold shrink-0">
+                      {Number(line.amount).toLocaleString("vi-VN")} đ
+                    </span>
+                  </div>
+                ))}
+                {prepaidDiscountAmount > 0 && (
+                  <div className="flex justify-between gap-4 text-emerald-700">
+                    <span>Ưu đãi áp dụng</span>
+                    <span className="font-bold shrink-0">
+                      −{prepaidDiscountAmount.toLocaleString("vi-VN")} đ
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-4 border-t border-[#e5e2e1]/60 pt-2 mt-2 text-[#1c1b1b]">
+                  <span className="font-bold">Đã thanh toán trước</span>
+                  <span className="font-extrabold shrink-0">
+                    {prepaidPaidAmount.toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+              </section>
+
+              <section className="space-y-2 pb-3 border-b border-[#e5e2e1]/60">
+                <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
+                  Chi phí phát sinh tại quầy
+                </span>
+                {additionalLines.length > 0 ? (
+                  additionalLines.map((line) => {
+                    const paid =
+                      line.status === "DISBURSED" || line.status === "CAPTURED"
+                    const gateway =
+                      line.payment?.gateway === "VNPAY"
+                        ? "VNPAY"
+                        : line.payment?.gateway === "DIRECT"
+                          ? "tiền mặt"
+                          : undefined
+                    return (
+                      <div
+                        key={line.componentId}
+                        className="rounded-lg bg-[#fcf8f8] px-2.5 py-2"
+                      >
+                        <div className="flex justify-between gap-4 text-[#4c4a49]">
+                          <span>{line.label}</span>
+                          <span className="text-[#ea580c] font-extrabold shrink-0">
+                            +{Number(line.amount).toLocaleString("vi-VN")} đ
+                          </span>
+                        </div>
+                        <p
+                          className={`mt-1 text-[10px] ${paid ? "text-emerald-700" : "text-orange-700"}`}
+                        >
+                          {paid
+                            ? `Đã thanh toán${gateway ? ` · ${gateway}` : ""}`
+                            : "Chờ thanh toán"}
+                        </p>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <p className="text-[11px] text-[#6b7280] italic">
+                    Không phát sinh chi phí tại quầy.
+                  </p>
+                )}
+                <div className="flex justify-between gap-4 border-t border-[#e5e2e1]/60 pt-2 text-[#1c1b1b]">
+                  <span className="font-bold">Tổng phí phát sinh</span>
+                  <span className="text-[#ea580c] font-extrabold shrink-0">
+                    {additionalTotal.toLocaleString("vi-VN")} đ
+                  </span>
+                </div>
+              </section>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 border border-slate-200 px-3.5 py-3">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500">
+                    Tổng khách đã thanh toán
+                  </p>
+                  <p className="mt-0.5 text-base font-extrabold text-slate-900">
+                    {totalPaidAmount.toLocaleString("vi-VN")} đ
+                  </p>
+                </div>
+                {hasPendingCounterPayment ? (
+                  <StaffButton
+                    onClick={() => setConfirmSettleOpen(true)}
+                    disabled={settlingPayment}
+                    variant="primary"
+                    className="w-fit px-4 py-2.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                  >
+                    <Banknote className="size-4" />
+                    {settlingPayment
+                      ? "Đang xử lý..."
+                      : "Xác nhận đã thu tiền mặt"}
+                  </StaffButton>
+                ) : isFullySettled ? (
+                  <span className="inline-flex items-center gap-1.5 text-emerald-700 text-xs font-bold">
+                    <CheckCircle2 className="size-4" /> Đã quyết toán hoàn tất
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </StaffCard>
+        </div>
       )}
 
       {/* Helpful Operational tips */}
@@ -1301,7 +1656,10 @@ export default function StaffSessionDetailPage() {
           Lưu ý vận hành ca chơi
         </div>
         <p className="text-[11px] text-[#6b7280] leading-relaxed">
-          Nếu khách chơi gặp sự cố ngoài đường đua hoặc xe gặp lỗi cơ khí cần đổi nhanh sang xe mới, sử dụng tính năng <strong className="text-[#1c1b1b]">Đổi Xe Khác</strong> để thu hồi xe hỏng về khu vực kỹ thuật bảo trì và bàn giao xe thay thế phù hợp.
+          Nếu khách chơi gặp sự cố ngoài đường đua hoặc xe gặp lỗi cơ khí cần
+          đổi nhanh sang xe mới, sử dụng tính năng{" "}
+          <strong className="text-[#1c1b1b]">Đổi Xe Khác</strong> để thu hồi xe
+          hỏng về khu vực kỹ thuật bảo trì và bàn giao xe thay thế phù hợp.
         </p>
       </div>
 
@@ -1314,20 +1672,33 @@ export default function StaffSessionDetailPage() {
                 <Banknote className="size-5 text-emerald-700" />
               </div>
               <div>
-                <h3 className="font-extrabold text-base text-slate-900">Xác nhận quyết toán</h3>
-                <p className="text-[11px] text-slate-500">Đảm bảo đã thực hiện xong với khách tại quầy</p>
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Xác nhận quyết toán
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Đảm bảo đã thực hiện xong với khách tại quầy
+                </p>
               </div>
             </div>
 
             <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2.5 text-xs font-semibold">
-              {additionalLines.filter((line) => line.status === "PENDING").map((line) => (
-                <div key={line.componentId} className="flex items-center justify-between gap-4">
-                  <span className="text-slate-600">{line.label}</span>
-                  <span className="text-orange-700 font-extrabold shrink-0">{Number(line.amount).toLocaleString("vi-VN")} đ</span>
-                </div>
-              ))}
+              {additionalLines
+                .filter((line) => line.status === "PENDING")
+                .map((line) => (
+                  <div
+                    key={line.componentId}
+                    className="flex items-center justify-between gap-4"
+                  >
+                    <span className="text-slate-600">{line.label}</span>
+                    <span className="text-orange-700 font-extrabold shrink-0">
+                      {Number(line.amount).toLocaleString("vi-VN")} đ
+                    </span>
+                  </div>
+                ))}
               <div className="border-t border-slate-200 pt-2.5 flex justify-between items-center">
-                <span className="text-slate-800 font-extrabold text-sm">Khách trả thêm tại quầy</span>
+                <span className="text-slate-800 font-extrabold text-sm">
+                  Khách trả thêm tại quầy
+                </span>
                 <span className="font-extrabold text-base text-orange-700">
                   {additionalOutstandingAmount.toLocaleString("vi-VN")} đ
                 </span>
@@ -1343,7 +1714,10 @@ export default function StaffSessionDetailPage() {
                 Huỷ bỏ
               </StaffButton>
               <StaffButton
-                onClick={() => { setConfirmSettleOpen(false); void handleSettlePayment() }}
+                onClick={() => {
+                  setConfirmSettleOpen(false)
+                  void handleSettlePayment()
+                }}
                 variant="primary"
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700"
               >
@@ -1361,7 +1735,9 @@ export default function StaffSessionDetailPage() {
           <div className="w-full max-w-md rounded-2xl border border-[#e5e2e1] bg-white p-6 shadow-2xl space-y-4">
             <div className="flex items-center gap-2 text-[#ea580c] mb-2">
               <ArrowLeftRight className="size-5" />
-              <h3 className="font-bold text-base text-[#1c1b1b]">Đổi xe đang chơi</h3>
+              <h3 className="font-bold text-base text-[#1c1b1b]">
+                Đổi xe đang chơi
+              </h3>
             </div>
 
             <div className="space-y-4">
@@ -1371,11 +1747,19 @@ export default function StaffSessionDetailPage() {
                 </label>
                 <select
                   value={oldVehicleNewStatus}
-                  onChange={(e) => setOldVehicleNewStatus(e.target.value as "AVAILABLE" | "MAINTENANCE")}
+                  onChange={(e) =>
+                    setOldVehicleNewStatus(
+                      e.target.value as "AVAILABLE" | "MAINTENANCE",
+                    )
+                  }
                   className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                 >
-                  <option value="MAINTENANCE">Xe bị hỏng hóc (Chuyển vào bảo trì)</option>
-                  <option value="AVAILABLE">Xe bình thường (Đưa lại kho trống)</option>
+                  <option value="MAINTENANCE">
+                    Xe bị hỏng hóc (Chuyển vào bảo trì)
+                  </option>
+                  <option value="AVAILABLE">
+                    Xe bình thường (Đưa lại kho trống)
+                  </option>
                 </select>
               </div>
 
@@ -1396,7 +1780,8 @@ export default function StaffSessionDetailPage() {
                     })
                     .map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.catalog?.name || u.identifier} (Mã: {u.identifier} | {u.color})
+                        {u.catalog?.name || u.identifier} (Mã: {u.identifier} |{" "}
+                        {u.color})
                       </option>
                     ))}
                 </select>

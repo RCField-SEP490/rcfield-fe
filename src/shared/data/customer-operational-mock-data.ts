@@ -1,7 +1,15 @@
 import type { PaymentComponentResponse } from "@/features/booking/types/booking.types"
 
 export interface InspectionPhoto {
-  direction: "FRONT" | "BACK" | "LEFT" | "RIGHT" | "TOP" | "BOTTOM" | "DETAIL" | "OTHER"
+  direction:
+    | "FRONT"
+    | "BACK"
+    | "LEFT"
+    | "RIGHT"
+    | "TOP"
+    | "BOTTOM"
+    | "DETAIL"
+    | "OTHER"
   url: string
   notes?: string
 }
@@ -53,7 +61,6 @@ export interface MockDamageClaim {
   customerNotes?: string
   expiresAt: string
   estimatedCost?: number
-  damageMultiplier?: number
   finalCharge?: number
 }
 
@@ -101,7 +108,13 @@ export interface MockSessionDetail {
     orderId: string
     orderType?: string
     status?: string
-    items: { name: string; variantName?: string | null; qty: number; price: number; notes?: string | null }[]
+    items: {
+      name: string
+      variantName?: string | null
+      qty: number
+      price: number
+      notes?: string | null
+    }[]
     total: number
   }[]
 }
