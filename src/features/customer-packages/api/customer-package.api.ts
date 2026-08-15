@@ -93,4 +93,12 @@ export const customerPackageApi = {
     )
     return res.data.data
   },
+
+  repay: async (customerPackageId: string): Promise<PurchasePackageResult> => {
+    const res = await api.post<ApiEnvelope<PurchasePackageResult>>(
+      `/v1/customers/me/packages/${customerPackageId}/repay`,
+      {},
+    )
+    return res.data.data
+  },
 }

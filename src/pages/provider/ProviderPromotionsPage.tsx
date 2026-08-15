@@ -1184,19 +1184,46 @@ function PromotionForm({
           </select>
         </Field>
         <Field label="Loại giảm giá" error={showErrors ? errors.discountType : undefined} tooltip="Phần trăm — giảm theo % tổng đơn (slot + thuê xe). Số tiền cố định — trừ thẳng một khoản VND cố định không phụ thuộc giá trị đơn.">
-          <select aria-invalid={showErrors && !!errors.discountType} value={form.discountType} onChange={(event) => setField("discountType", event.target.value as DiscountType)} className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.discountType && "border-destructive focus-visible:border-destructive")}>
+          <select
+            aria-invalid={showErrors && !!errors.discountType}
+            value={form.discountType}
+            onChange={(event) => {
+              const nextType = event.target.value as DiscountType
+              if (nextType === "FIXED") {
+                onChange({
+                  ...form,
+                  discountType: nextType,
+                  maxDiscountAmount: "",
+                })
+              } else {
+                setField("discountType", nextType)
+              }
+            }}
+            className={cn("h-11 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm font-bold", showErrors && errors.discountType && "border-destructive focus-visible:border-destructive")}
+          >
             <option value="PERCENT">Phần trăm</option>
             <option value="FIXED">Số tiền cố định</option>
           </select>
         </Field>
         <Field label={form.discountType === "PERCENT" ? "Giá trị giảm (%)" : "Giá trị giảm (VND)"} error={showErrors ? errors.discountValue : undefined} tooltip={form.discountType === "PERCENT" ? "Phần trăm giảm trên tổng đơn, từ 1–100. Ví dụ: nhập 20 để giảm 20% tổng tiền booking." : "Số tiền giảm cố định tính bằng VND. Ví dụ: nhập 50000 để giảm 50.000đ."}>
-          <Input aria-invalid={showErrors && !!errors.discountValue} type="number" min="0" value={form.discountValue} onChange={(event) => setField("discountValue", event.target.value)} className="h-11 rounded-lg bg-white font-bold" />
+          {form.discountType === "PERCENT" ? (
+            <Input aria-invalid={showErrors && !!errors.discountValue} type="number" min="0" value={form.discountValue} onChange={(event) => setField("discountValue", event.target.value)} className="h-11 rounded-lg bg-white font-bold" />
+          ) : (
+            <FormattedNumberInput aria-invalid={showErrors && !!errors.discountValue} value={form.discountValue} onChange={(val) => setField("discountValue", val)} className="h-11 rounded-lg bg-white font-bold" />
+          )}
         </Field>
         <Field label="Giảm tối đa" error={showErrors ? errors.maxDiscountAmount : undefined} tooltip="Chỉ dùng khi loại giảm là Phần trăm. Giới hạn số tiền giảm tối đa tính bằng VND. Ví dụ: giảm 30% nhưng không quá 100.000đ — để trống nếu không giới hạn.">
-          <Input aria-invalid={showErrors && !!errors.maxDiscountAmount} type="number" min="0" value={form.maxDiscountAmount} onChange={(event) => setField("maxDiscountAmount", event.target.value)} placeholder="Bỏ trống nếu không giới hạn" className="h-11 rounded-lg bg-white" />
+          <FormattedNumberInput
+            aria-invalid={showErrors && !!errors.maxDiscountAmount}
+            value={form.maxDiscountAmount}
+            onChange={(val) => setField("maxDiscountAmount", val)}
+            placeholder={form.discountType === "FIXED" ? "Không áp dụng cho số tiền cố định" : "Bỏ trống nếu không giới hạn"}
+            className="h-11 rounded-lg bg-white disabled:cursor-not-allowed disabled:bg-[#f6f3f2] disabled:text-[#747878]"
+            disabled={form.discountType === "FIXED"}
+          />
         </Field>
         <Field label="Đơn tối thiểu" error={showErrors ? errors.minOrderAmount : undefined} tooltip="Tổng tiền booking tối thiểu (VND) để mã được chấp nhận. Booking thấp hơn mức này sẽ không áp dụng được — để trống nếu không yêu cầu.">
-          <Input aria-invalid={showErrors && !!errors.minOrderAmount} type="number" min="0" value={form.minOrderAmount} onChange={(event) => setField("minOrderAmount", event.target.value)} placeholder="Bỏ trống nếu không yêu cầu" className="h-11 rounded-lg bg-white" />
+          <FormattedNumberInput aria-invalid={showErrors && !!errors.minOrderAmount} value={form.minOrderAmount} onChange={(val) => setField("minOrderAmount", val)} placeholder="Bỏ trống nếu không yêu cầu" className="h-11 rounded-lg bg-white" />
         </Field>
         <Field label="Tổng lượt dùng" error={showErrors ? errors.maxUses : undefined} tooltip="Số lần tối đa mã có thể được sử dụng bởi tất cả khách cộng lại. Khi đạt giới hạn, mã tự khóa — để trống nếu không giới hạn.">
           <Input aria-invalid={showErrors && !!errors.maxUses} type="number" min="1" value={form.maxUses} onChange={(event) => setField("maxUses", event.target.value)} placeholder="Không giới hạn" className="h-11 rounded-lg bg-white" />
@@ -1606,6 +1633,44 @@ function promotionToDeleteItem(promotion: Promotion) {
     description: promotion.description || "Chưa có mô tả",
     details: `${formatDiscount(promotion)} · Đã dùng ${promotion.usesCount}/${promotion.maxUses ?? "∞"}`,
   }
+}
+
+interface FormattedNumberInputProps extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> {
+  value: string
+  onChange: (val: string) => void
+}
+
+function FormattedNumberInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+  ...props
+}: FormattedNumberInputProps) {
+  const format = (str: string) => {
+    const clean = str.replace(/\D/g, "")
+    if (!clean) return ""
+    return new Intl.NumberFormat("en-US").format(Number(clean))
+  }
+
+  const displayValue = format(value)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    const clean = raw.replace(/\D/g, "")
+    onChange(clean)
+  }
+
+  return (
+    <Input
+      type="text"
+      value={displayValue}
+      onChange={handleChange}
+      placeholder={placeholder}
+      className={className}
+      {...props}
+    />
+  )
 }
 
 function getPromotionFormError(form: PromotionFormState) {

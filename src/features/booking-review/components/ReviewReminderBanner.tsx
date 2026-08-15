@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Star, X, MapPin, Clock } from "lucide-react"
 import { useSearchParams } from "react-router"
@@ -23,12 +23,12 @@ export function ReviewReminderBanner() {
     ? pending?.find((item) => item.bookingId === requestedBookingId)
     : pending?.[0]
 
-  const clearReviewRequest = () => {
+  const clearReviewRequest = useCallback(() => {
     if (!requestedBookingId) return
     const next = new URLSearchParams(searchParams)
     next.delete("reviewBookingId")
     setSearchParams(next, { replace: true })
-  }
+  }, [requestedBookingId, searchParams, setSearchParams])
 
   useEffect(() => {
     if (
@@ -57,7 +57,7 @@ export function ReviewReminderBanner() {
       setDismissed(true)
       clearReviewRequest()
     }
-  }, [booking, pending, requestedBookingId])
+  }, [booking, pending, requestedBookingId, clearReviewRequest])
 
   if (!booking || dismissed) return null
 

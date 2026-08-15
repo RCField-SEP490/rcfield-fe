@@ -10,7 +10,7 @@ import {
   Loader2,
 } from "lucide-react"
 import { formatApplicablePlayModes } from "@/features/customer-packages/lib/play-mode"
-import { useMyPackages, usePackageUsageHistory } from "@/features/customer-packages/hooks/use-customer-packages"
+import { useMyPackages, usePackageUsageHistory, useRepayPackage } from "@/features/customer-packages/hooks/use-customer-packages"
 import type { MyPackageItem } from "@/features/customer-packages/api/customer-package.api"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
@@ -23,6 +23,22 @@ import { CustomerPageShell } from "./components/CustomerPageShell"
 export function CustomerPackagesPage() {
   const { data: packages = [], isLoading } = useMyPackages()
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const repayMutation = useRepayPackage()
+  const [purchasingId, setPurchasingId] = useState<string | null>(null)
+
+  const handleRepay = async (pkg: MyPackageItem) => {
+    setPurchasingId(pkg.id)
+    try {
+      const result = await repayMutation.mutateAsync({
+        customerPackageId: pkg.id,
+      })
+      window.location.assign(result.payment_url)
+    } catch {
+      // Error handled by mutation hook
+    } finally {
+      setPurchasingId(null)
+    }
+  }
 
   return (
     <CustomerPageShell>
@@ -61,6 +77,8 @@ export function CustomerPackagesPage() {
                   onToggleUsage={() =>
                     setExpandedId(expandedId === pkg.id ? null : pkg.id)
                   }
+                  isPurchasing={purchasingId === pkg.id}
+                  onRepay={() => void handleRepay(pkg)}
                 />
               ))}
             </div>
@@ -87,10 +105,14 @@ function OwnedPackageCard({
   pkg,
   showUsage,
   onToggleUsage,
+  isPurchasing,
+  onRepay,
 }: {
   pkg: MyPackageItem
   showUsage: boolean
   onToggleUsage: () => void
+  isPurchasing: boolean
+  onRepay: () => void
 }) {
   const { data: usage = [], isLoading: usageLoading } = usePackageUsageHistory(
     showUsage ? pkg.id : undefined,
@@ -104,9 +126,10 @@ function OwnedPackageCard({
 
   // Backend đã suy ra trạng thái hiệu lực khi đọc. Kiểm tra thêm mốc thời gian ở
   // đây để thẻ vẫn đúng nếu tab mở xuyên qua thời điểm hết hạn hoặc cache bị cũ.
-  const isExpired = pkg.status === "EXPIRED" || expiryDate.getTime() < now
+  const isPendingPayment = pkg.status === "PENDING_PAYMENT"
+  const isExpired = pkg.status === "EXPIRED" || (pkg.status !== "PENDING_PAYMENT" && expiryDate.getTime() < now)
   const isExhausted = pkg.status === "EXHAUSTED"
-  const isUsable = !isExpired && !isExhausted
+  const isUsable = !isExpired && !isExhausted && !isPendingPayment
   const effectiveStatus: MyPackageItem["status"] = isExpired ? "EXPIRED" : pkg.status
 
   return (
@@ -164,6 +187,15 @@ function OwnedPackageCard({
           </div>
         )}
 
+        {isPendingPayment && (
+          <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-600" />
+            <p className="text-[11px] font-bold leading-relaxed text-rose-800">
+              Thanh toán cho gói này không thành công hoặc bị hủy. Vui lòng thanh toán lại để bắt đầu sử dụng gói.
+            </p>
+          </div>
+        )}
+
         <div
           className={`grid grid-cols-2 gap-3 p-3 rounded-xl text-[11px] font-bold text-slate-600 ${
             isExpired ? "bg-white" : "bg-slate-50"
@@ -192,14 +224,30 @@ function OwnedPackageCard({
         </div>
       </CardContent>
 
-      <CardFooter className="pt-3 border-t border-slate-50 flex-col bg-slate-50/50">
-        <Button
-          variant="ghost"
-          className="w-full h-8 text-xs font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-          onClick={onToggleUsage}
-        >
-          {showUsage ? "Ẩn lịch sử" : "Xem lịch sử dùng"}
-        </Button>
+      <CardFooter className="pt-3 border-t border-slate-50 flex-col bg-slate-50/50 gap-2">
+        {isPendingPayment ? (
+          <Button
+            className="w-full h-9 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+            disabled={isPurchasing}
+            onClick={onRepay}
+          >
+            {isPurchasing ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang xử lý...
+              </>
+            ) : (
+              "Thanh toán lại"
+            )}
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            className="w-full h-8 text-xs font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+            onClick={onToggleUsage}
+          >
+            {showUsage ? "Ẩn lịch sử" : "Xem lịch sử dùng"}
+          </Button>
+        )}
 
         {showUsage && (
           <div className="w-full mt-2 border-t border-orange-100 pt-3 space-y-2">
@@ -251,6 +299,12 @@ function StatusBadge({ status }: { status: MyPackageItem["status"] }) {
     return (
       <Badge className="shrink-0 bg-amber-500/10 text-amber-700 border-none font-bold text-[10px]">
         Hết slot
+      </Badge>
+    )
+  if (status === "PENDING_PAYMENT")
+    return (
+      <Badge className="shrink-0 bg-rose-500/10 text-rose-700 border-none font-bold text-[10px]">
+        Thanh toán không thành công
       </Badge>
     )
   return (

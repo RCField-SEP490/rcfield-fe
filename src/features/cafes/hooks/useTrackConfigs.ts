@@ -28,7 +28,7 @@ export function useCreateTrackConfig(cafeId: string) {
     mutationFn: (body: CreateTrackConfigBody) => trackConfigApi.createTrackConfig(cafeId, body),
     onSuccess: () => {
       toast.success("Tạo loại sân thành công")
-      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+      void queryClient.invalidateQueries({ queryKey: [...cafeQueryKeys.all, "track-configs", cafeId] })
     },
     onError: (error: unknown) => {
       let msg = "Đã xảy ra lỗi khi tạo loại sân"
@@ -46,11 +46,20 @@ export function useUpdateTrackConfig(cafeId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ configId, body }: { configId: string; body: UpdateTrackConfigBody }) =>
-      trackConfigApi.updateTrackConfig(cafeId, configId, body),
-    onSuccess: () => {
-      toast.success("Cập nhật loại sân thành công")
-      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+    mutationFn: ({
+      configId,
+      body,
+    }: {
+      configId: string
+      body: UpdateTrackConfigBody
+      silent?: boolean
+      successMessage?: string
+    }) => trackConfigApi.updateTrackConfig(cafeId, configId, body),
+    onSuccess: (_, variables) => {
+      if (variables.silent !== true) {
+        toast.success(variables.successMessage || "Cập nhật loại sân thành công")
+      }
+      void queryClient.invalidateQueries({ queryKey: [...cafeQueryKeys.all, "track-configs", cafeId] })
       void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.detail(cafeId) })
     },
     onError: (error: unknown) => {
@@ -79,12 +88,14 @@ export function useUploadTrackConfigImages(cafeId: string) {
       trackConfigApi.uploadTrackConfigImages(cafeId, configId, files),
     onSuccess: (images, variables) => {
       toast.success("Upload ảnh loại sân thành công")
-      // Immediate cache sync
-      queryClient.setQueryData<TrackConfig[]>(cafeQueryKeys.trackConfigs(cafeId), (old) => {
+      // Immediate cache sync for both includeInactive = true and false
+      const syncCache = (old: TrackConfig[] | undefined) => {
         if (!old) return old
         return old.map((c) => (c.id === variables.configId || c.track_type_id === variables.configId ? { ...c, images } : c))
-      })
-      void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.trackConfigs(cafeId) })
+      }
+      queryClient.setQueryData<TrackConfig[]>(cafeQueryKeys.trackConfigs(cafeId, false), syncCache)
+      queryClient.setQueryData<TrackConfig[]>(cafeQueryKeys.trackConfigs(cafeId, true), syncCache)
+      void queryClient.invalidateQueries({ queryKey: [...cafeQueryKeys.all, "track-configs", cafeId] })
       void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.detail(cafeId) })
     },
     onError: (error: unknown) => {

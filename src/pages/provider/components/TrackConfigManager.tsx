@@ -48,7 +48,6 @@ import {
 import { useQuery } from "@tanstack/react-query"
 import { trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { cn } from "@/shared/lib/utils"
-import { toast } from "sonner"
 
 interface TrackConfigManagerProps {
   cafeId: string
@@ -129,7 +128,7 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
         const newCoverUrl = uploadedImages[0]
         const remainingImages = config.images.filter((img) => img !== newCoverUrl)
         const reordered = [newCoverUrl, ...remainingImages]
-        await updateMutation.mutateAsync({ configId, body: { images: reordered } })
+        await updateMutation.mutateAsync({ configId, body: { images: reordered }, silent: true })
       }
     } catch {
       // Handled by mutation toast
@@ -141,8 +140,10 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
     const targetUrl = config.images[targetIndex]
     const updatedImages = [targetUrl, ...config.images.filter((_, idx) => idx !== targetIndex)]
     try {
-      await updateMutation.mutateAsync({ configId: config.id, body: { images: updatedImages } })
-      toast.success("Đã đặt làm ảnh bìa sân")
+      await updateMutation.mutateAsync({
+        configId: config.id,
+        body: { images: updatedImages },
+      })
     } catch {
       // Handled by mutation toast
     }
@@ -151,8 +152,11 @@ export function TrackConfigManager({ cafeId }: TrackConfigManagerProps) {
   const handleDeleteImage = async (config: TrackConfig, targetIndex: number) => {
     const updatedImages = config.images.filter((_, idx) => idx !== targetIndex)
     try {
-      await updateMutation.mutateAsync({ configId: config.id, body: { images: updatedImages } })
-      toast.success("Đã xóa ảnh khỏi loại sân")
+      await updateMutation.mutateAsync({
+        configId: config.id,
+        body: { images: updatedImages },
+        successMessage: "Đã xóa ảnh khỏi loại sân",
+      })
     } catch {
       // Handled by mutation toast
     }
