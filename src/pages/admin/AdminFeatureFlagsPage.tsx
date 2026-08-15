@@ -1,7 +1,9 @@
 import { useState, useRef } from "react"
+import { Link } from "react-router"
 import { toast } from "sonner"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
+import { routePaths } from "@/app/router/route-paths"
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import {
   AdminHeader,
@@ -9,11 +11,39 @@ import {
   AdminPanelTitle,
   AdminSearchBar,
 } from "@/pages/admin/components/AdminPrimitives"
-import { adminFeatureFlagsApi, type ApiFeatureFlag } from "@/features/admin/api/admin-feature-flags.api"
+import {
+  adminFeatureFlagsApi,
+  type ApiFeatureFlag,
+} from "@/features/admin/api/admin-feature-flags.api"
+
+/**
+ * Chỉ những tính năng dưới đây thật sự đọc `config.monthly_quota` khi chạy.
+ *
+ * Hạn mức của chatbot KHÔNG nằm ở đây: `incrementAIQuota` trong
+ * `subscription.service.ts` chặn theo `subscription_plans.ai_quota_per_month`
+ * của gói mà đối tác mua. Bày ô hạn mức trên dòng chatbot là mời admin sửa một
+ * con số không điều khiển gì.
+ */
+const FLAGS_WITH_OWN_QUOTA = new Set(["AI_REVENUE_ANALYTICS"])
+
+/** Tính năng lấy hạn mức từ gói thuê bao, không sửa được ở màn này. */
+const FLAGS_QUOTA_FROM_PLAN = new Set(["AI_CHATBOT"])
+
+/** Tên gọi một dòng cấu hình trong thông báo: tên hiển thị kèm phạm vi. */
+function flagLabel(flag: ApiFeatureFlag): string {
+  const name = flag.display_name?.trim() || flag.feature_key
+  const scope =
+    flag.entity_type === "GLOBAL"
+      ? "toàn nền tảng"
+      : (flag.cafe_name ?? "chi nhánh")
+  return `${name} (${scope})`
+}
 
 const FLAG_DESCRIPTIONS: Record<string, string> = {
-  AI_CHATBOT: "Kích hoạt chatbot Gemini AI trả lời tự động cho khách hàng tại từng chi nhánh",
-  AI_REVENUE_ANALYTICS: "Bảng phân tích doanh thu bằng AI Gemini trong Provider Dashboard",
+  AI_CHATBOT:
+    "Kích hoạt chatbot Gemini AI trả lời tự động cho khách hàng tại từng chi nhánh",
+  AI_REVENUE_ANALYTICS:
+    "Bảng phân tích doanh thu bằng AI Gemini trong Provider Dashboard",
 }
 
 export function AdminFeatureFlagsPage() {
@@ -25,34 +55,54 @@ export function AdminFeatureFlagsPage() {
     queryFn: adminFeatureFlagsApi.list,
   })
 
+  // Thông báo gọi tên dòng vừa sửa, không gọi feature_key: cùng một key có
+  // nhiều dòng nên "AI_CHATBOT → Tắt" không cho biết vừa tắt của chi nhánh nào.
   const updateMutation = useMutation({
-    mutationFn: ({ key, isEnabled }: { key: string; isEnabled: boolean }) =>
-      adminFeatureFlagsApi.update(key, { isEnabled }),
-    onSuccess: (_, { key, isEnabled }) => {
+    mutationFn: ({
+      id,
+      isEnabled,
+    }: {
+      id: string
+      isEnabled: boolean
+      label?: string
+    }) => adminFeatureFlagsApi.update(id, { isEnabled }),
+    onSuccess: (updated, { isEnabled }) => {
       void queryClient.invalidateQueries({ queryKey: ["admin-feature-flags"] })
-      toast.success(`${key} → ${isEnabled ? "Bật" : "Tắt"}`)
+      toast.success(`${flagLabel(updated)} → ${isEnabled ? "Bật" : "Tắt"}`)
     },
-    onError: (_err, { key }) => {
-      toast.error(`Không thể cập nhật "${key}"`)
+    onError: () => {
+      toast.error("Không thể cập nhật cấu hình")
     },
   })
 
   const updateQuotaMutation = useMutation({
-    mutationFn: ({ key, monthlyQuota }: { key: string; monthlyQuota: number }) =>
-      adminFeatureFlagsApi.update(key, { config: { monthly_quota: monthlyQuota } }),
-    onSuccess: (_, { key, monthlyQuota }) => {
+    mutationFn: ({ id, monthlyQuota }: { id: string; monthlyQuota: number }) =>
+      adminFeatureFlagsApi.update(id, {
+        config: { monthly_quota: monthlyQuota },
+      }),
+    onSuccess: (updated, { monthlyQuota }) => {
       void queryClient.invalidateQueries({ queryKey: ["admin-feature-flags"] })
-      toast.success(`${key} → quota ${monthlyQuota === 0 ? "không giới hạn" : `${monthlyQuota} lượt/tháng`}`)
+      toast.success(
+        `${flagLabel(updated)} → hạn mức ${monthlyQuota === 0 ? "không giới hạn" : `${monthlyQuota} lượt/tháng`}`,
+      )
     },
-    onError: (_err, { key }) => {
-      toast.error(`Không thể cập nhật quota "${key}"`)
+    onError: () => {
+      toast.error("Không thể cập nhật hạn mức")
     },
   })
 
-  const filtered = flags.filter(
-    (f) =>
-      f.feature_key.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (FLAG_DESCRIPTIONS[f.feature_key] ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
+  const q = searchTerm.trim().toLowerCase()
+  const filtered = flags.filter((f) =>
+    [
+      f.feature_key,
+      f.display_name ?? "",
+      f.description ?? "",
+      f.cafe_name ?? "",
+      FLAG_DESCRIPTIONS[f.feature_key] ?? "",
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(q),
   )
 
   return (
@@ -78,7 +128,9 @@ export function AdminFeatureFlagsPage() {
 
         <div className="border border-[#e5e2e1] rounded-xl overflow-hidden divide-y divide-[#e5e2e1]">
           {isLoading ? (
-            <div className="p-8 text-center text-sm text-[#747878]">Đang tải...</div>
+            <div className="p-8 text-center text-sm text-[#747878]">
+              Đang tải...
+            </div>
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-sm font-semibold text-[#747878]">
               Không tìm thấy flag nào.
@@ -86,11 +138,17 @@ export function AdminFeatureFlagsPage() {
           ) : (
             filtered.map((flag) => (
               <FlagRow
-                key={flag.feature_key}
+                key={flag.id}
                 flag={flag}
-                onToggle={(isEnabled) => updateMutation.mutate({ key: flag.feature_key, isEnabled })}
-                onUpdateQuota={(monthlyQuota) => updateQuotaMutation.mutate({ key: flag.feature_key, monthlyQuota })}
-                isPending={updateMutation.isPending || updateQuotaMutation.isPending}
+                onToggle={(isEnabled) =>
+                  updateMutation.mutate({ id: flag.id, isEnabled })
+                }
+                onUpdateQuota={(monthlyQuota) =>
+                  updateQuotaMutation.mutate({ id: flag.id, monthlyQuota })
+                }
+                isPending={
+                  updateMutation.isPending || updateQuotaMutation.isPending
+                }
               />
             ))
           )}
@@ -111,8 +169,22 @@ function FlagRow({
   onUpdateQuota: (monthlyQuota: number) => void
   isPending: boolean
 }) {
-  const description = FLAG_DESCRIPTIONS[flag.feature_key] ?? flag.feature_key
-  const monthlyQuota = (flag.config as { monthly_quota?: number })?.monthly_quota
+  // Ưu tiên tên và mô tả do người khai đặt; chỉ khi trống mới dùng bảng mô tả
+  // cứng theo feature_key. Trước đây luôn dùng bảng cứng nên mọi dòng cùng
+  // feature_key hiện y hệt nhau.
+  const title = flag.display_name?.trim() || flag.feature_key
+  const description =
+    flag.description?.trim() ||
+    FLAG_DESCRIPTIONS[flag.feature_key] ||
+    flag.feature_key
+  const scopeLabel =
+    flag.entity_type === "GLOBAL"
+      ? "Toàn nền tảng"
+      : (flag.cafe_name ?? "Chi nhánh đã bị xoá")
+  const ownsQuota = FLAGS_WITH_OWN_QUOTA.has(flag.feature_key)
+  const quotaFromPlan = FLAGS_QUOTA_FROM_PLAN.has(flag.feature_key)
+  const monthlyQuota = (flag.config as { monthly_quota?: number })
+    ?.monthly_quota
   const [editingQuota, setEditingQuota] = useState(false)
   const [quotaInput, setQuotaInput] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -135,7 +207,16 @@ function FlagRow({
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-white hover:bg-[#fcf8f8]/50 transition-colors">
       <div className="space-y-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-sm font-extrabold text-[#1c1b1b]">{flag.feature_key}</span>
+          <span className="text-sm font-extrabold text-[#1c1b1b]">{title}</span>
+          <span
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              flag.entity_type === "GLOBAL"
+                ? "bg-violet-100 text-violet-700"
+                : "bg-sky-100 text-sky-700"
+            }`}
+          >
+            {scopeLabel}
+          </span>
           <span
             className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
               flag.is_enabled
@@ -145,8 +226,9 @@ function FlagRow({
           >
             {flag.is_enabled ? "Đang bật" : "Đang tắt"}
           </span>
-          {monthlyQuota !== undefined && (
-            editingQuota ? (
+          {ownsQuota &&
+            monthlyQuota !== undefined &&
+            (editingQuota ? (
               <div className="flex items-center gap-1">
                 <input
                   ref={inputRef}
@@ -161,7 +243,9 @@ function FlagRow({
                   }}
                   className="w-20 text-[11px] font-semibold px-1.5 py-0.5 rounded border border-[#c5c2c1] focus:outline-none focus:border-violet-400 text-[#1c1b1b]"
                 />
-                <span className="text-[10px] text-[#747878]">lượt/tháng (0=∞)</span>
+                <span className="text-[10px] text-[#747878]">
+                  lượt/tháng (0=∞)
+                </span>
               </div>
             ) : (
               <button
@@ -169,12 +253,30 @@ function FlagRow({
                 title="Nhấn để sửa quota"
                 className="text-[10px] font-semibold text-[#747878] bg-[#f6f3f2] hover:bg-[#edeae9] px-2 py-0.5 rounded-full border border-[#e5e2e1] transition-colors cursor-pointer"
               >
-                {monthlyQuota === 0 ? "Không giới hạn" : `${monthlyQuota} lượt/tháng`}
+                {monthlyQuota === 0
+                  ? "Không giới hạn"
+                  : `${monthlyQuota} lượt/tháng`}
               </button>
-            )
-          )}
+            ))}
         </div>
-        <p className="text-xs text-[#5d5f5f] font-medium leading-relaxed">{description}</p>
+        <p className="text-xs text-[#5d5f5f] font-medium leading-relaxed">
+          {description}
+        </p>
+        {quotaFromPlan && (
+          <p className="text-[11px] font-semibold text-[#747878]">
+            Hạn mức tin nhắn lấy theo gói dịch vụ mà đối tác đang dùng —{" "}
+            <Link
+              to={routePaths.adminSubscriptionPlans}
+              className="font-bold text-orange-700 underline underline-offset-2 hover:text-orange-800"
+            >
+              sửa ở mục Gói dịch vụ
+            </Link>
+            . Công tắc ở đây chỉ bật/tắt tính năng.
+          </p>
+        )}
+        <p className="font-mono text-[10px] text-[#a3a3a3]">
+          {flag.feature_key}
+        </p>
       </div>
 
       {/* Toggle */}
