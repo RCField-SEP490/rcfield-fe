@@ -1,6 +1,12 @@
 import { useState } from "react"
-import { CreditCard, DollarSign, ShieldAlert, Sparkles } from "lucide-react"
-import { toast } from "sonner"
+import { useQuery } from "@tanstack/react-query"
+import {
+  Building2,
+  CreditCard,
+  Loader2,
+  ShieldAlert,
+  Trophy,
+} from "lucide-react"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import {
@@ -11,197 +17,237 @@ import {
   AdminTable,
   PaymentStatusBadge,
 } from "@/pages/admin/components/AdminPrimitives"
-import { mockAdminPayments as initialPayments } from "@/shared/data/admin-mock-data"
-import type { AdminPayment } from "@/shared/data/admin-mock-data"
-import { Button } from "@/shared/ui/button"
+import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
+import type { LedgerRow, LedgerSource } from "@/features/subscriptions/types"
+
+const SOURCE_LABELS: Record<LedgerSource, string> = {
+  SAAS: "Gói thuê bao",
+  CONTEST_FEE: "Phí tổ chức giải",
+}
+
+const SOURCE_CLASSES: Record<LedgerSource, string> = {
+  SAAS: "text-purple-700",
+  CONTEST_FEE: "text-amber-700",
+}
+
+/**
+ * Trạng thái đến từ ba bảng khác nhau nên tên gọi cũng khác nhau. Quy về ba nhóm
+ * để badge hiểu được, thay vì hiện chuỗi thô của từng bảng.
+ */
+function normalizeStatus(status: string): "SUCCESS" | "PENDING" | "FAILED" {
+  if (["SUCCESS", "CONFIRMED", "PAID"].includes(status)) return "SUCCESS"
+  if (["PENDING", "PENDING_PAYMENT", "PENDING_REVIEW"].includes(status))
+    return "PENDING"
+  return "FAILED"
+}
+
+function formatVnd(value: number) {
+  return `${Number(value).toLocaleString("vi-VN")} ₫`
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
 
 export function AdminPaymentsPage() {
-  const [payments, setPayments] = useState<AdminPayment[]>(initialPayments)
   const [searchTerm, setSearchTerm] = useState("")
-  const [typeFilter, setTypeFilter] = useState<string>("ALL")
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const [source, setSource] = useState<"ALL" | LedgerSource>("ALL")
+  const [status, setStatus] = useState<string>("ALL")
 
-  const handleApprovePayment = (paymentId: string) => {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === paymentId ? { ...p, status: "SUCCESS" } : p))
-    )
-    toast.success(`Đã xác nhận thanh toán thành công cho mã GD ${paymentId}!`)
-  }
-
-  // Calculate Metrics
-  const totalRevenue = payments
-    .filter((p) => p.status === "SUCCESS")
-    .reduce((sum, p) => sum + p.amount, 0)
-
-  const saasRevenue = payments
-    .filter((p) => p.status === "SUCCESS" && p.type === "SAAS_SUBSCRIPTION")
-    .reduce((sum, p) => sum + p.amount, 0)
-
-  const commissionRevenue = payments
-    .filter((p) => p.status === "SUCCESS" && p.type === "PLATFORM_COMMISSION")
-    .reduce((sum, p) => sum + p.amount, 0)
-
-  const pendingRevenue = payments
-    .filter((p) => p.status === "PENDING")
-    .reduce((sum, p) => sum + p.amount, 0)
-
-  // Filter Payments
-  const filteredPayments = payments.filter((p) => {
-    const matchesSearch =
-      p.cafeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = typeFilter === "ALL" || p.type === typeFilter
-    const matchesStatus = statusFilter === "ALL" || p.status === statusFilter
-    return matchesSearch && matchesType && matchesStatus
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["admin-ledger", source, status, searchTerm],
+    queryFn: () =>
+      subscriptionApi.listPlatformLedger({
+        source: source === "ALL" ? undefined : source,
+        status: status === "ALL" ? undefined : status,
+        q: searchTerm.trim() || undefined,
+        limit: 100,
+      }),
   })
 
-  // Table Setup
-  const columns = ["Mã giao dịch", "Đối tác / Sân chơi", "Loại", "Số tiền", "Phương thức", "Ngày tạo", "Mô tả", "Trạng thái", "Hành động"]
+  const rowsData: LedgerRow[] = data?.data ?? []
+  const summary = data?.summary
 
-  const rows = filteredPayments.map((p) => [
-    <span key={p.id} className="font-mono text-xs text-[#747878]">{p.id}</span>,
-    <span key={`${p.id}-cafe`} className="font-bold text-[#1c1b1b]">{p.cafeName}</span>,
-    <span key={`${p.id}-type`} className={`text-xs font-bold ${p.type === "SAAS_SUBSCRIPTION" ? "text-purple-700" : "text-blue-700"}`}>
-      {p.type === "SAAS_SUBSCRIPTION" ? "Gói SaaS định kỳ" : "15% Hoa hồng sân"}
+  const columns = [
+    "Mã giao dịch",
+    "Bên trả",
+    "Nguồn tiền",
+    "Nội dung",
+    "Số tiền",
+    "Phương thức",
+    "Thời điểm",
+    "Trạng thái",
+  ]
+
+  const rows = rowsData.map((row) => [
+    <span key={`${row.id}-code`} className="font-mono text-xs text-[#747878]">
+      {row.code}
     </span>,
-    <span key={`${p.id}-amount`} className="font-mono font-extrabold text-sm text-[#1c1b1b]">
-      {p.amount.toLocaleString()} ₫
+    <span key={`${row.id}-party`} className="font-bold text-[#1c1b1b]">
+      {row.party ?? "—"}
     </span>,
-    <span key={`${p.id}-method`} className="text-xs font-semibold text-[#444748]">{p.paymentMethod}</span>,
-    <span key={`${p.id}-date`} className="font-mono text-xs text-[#747878]">{p.date}</span>,
-    <span key={`${p.id}-desc`} className="text-xs font-semibold text-[#5d5f5f] block max-w-xs truncate" title={p.description}>
-      {p.description}
+    <span
+      key={`${row.id}-source`}
+      className={`text-xs font-bold ${SOURCE_CLASSES[row.source]}`}
+    >
+      {SOURCE_LABELS[row.source]}
     </span>,
-    <PaymentStatusBadge key={`${p.id}-status`} status={p.status} />,
-    <div key={`${p.id}-actions`}>
-      {p.status === "PENDING" ? (
-        <Button
-          size="sm"
-          onClick={() => handleApprovePayment(p.id)}
-          className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-md shadow-none px-2.5"
-        >
-          Xác nhận thu
-        </Button>
-      ) : (
-        <span className="text-xs font-bold text-[#747878] italic">Hoàn tất</span>
-      )}
-    </div>
+    <span
+      key={`${row.id}-subject`}
+      className="block max-w-xs truncate text-xs font-semibold text-[#5d5f5f]"
+      title={row.subject ?? ""}
+    >
+      {row.subject ?? "—"}
+    </span>,
+    <span
+      key={`${row.id}-amount`}
+      className="font-mono text-sm font-extrabold text-[#1c1b1b]"
+    >
+      {formatVnd(row.amount)}
+    </span>,
+    <span
+      key={`${row.id}-gateway`}
+      className="text-xs font-semibold text-[#444748]"
+    >
+      {row.gateway ?? "—"}
+    </span>,
+    <span key={`${row.id}-date`} className="font-mono text-xs text-[#747878]">
+      {formatDateTime(row.created_at)}
+    </span>,
+    <PaymentStatusBadge
+      key={`${row.id}-status`}
+      status={normalizeStatus(row.status)}
+    />,
   ])
 
   return (
     <AdminShell>
       <AdminHeader
         title="Sổ giao dịch"
-        /*
-          Câu cũ nói tới "dòng tiền 15% hoa hồng thu phí từ các đơn booking".
-          Khoản đó không tồn tại: `payment.service.ts` đặt cứng
-          `platform_fee_pct: 0`, và doanh thu nền tảng là phí thuê bao SaaS chứ
-          không phải phần trăm trên booking. Mô tả một nguồn thu không có khiến
-          người đọc sổ này đi tìm những con số sẽ không bao giờ xuất hiện.
-        */
-        description="Tra cứu giao dịch đồng bộ từ luồng đặt lịch của khách và cổng thanh toán gói SaaS."
+        description="Tiền đối tác trả cho RCField: phí thuê bao phần mềm và phí tổ chức giải."
       />
 
-      {/* Financial Metric Cards */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Platform Revenue */}
-        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">Tổng Doanh thu</span>
-            <DollarSign className="size-5 text-orange-600" />
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#1c1b1b]">{totalRevenue.toLocaleString()} ₫</div>
-            <p className="text-[10px] font-semibold text-emerald-600 mt-1">Dòng tiền thực thu đã hoàn tất</p>
-          </div>
-        </div>
-
-        {/* SaaS Subscriptions */}
-        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">Đăng ký SaaS</span>
-            <CreditCard className="size-5 text-purple-600" />
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#1c1b1b]">{saasRevenue.toLocaleString()} ₫</div>
-            <p className="text-[10px] font-semibold text-[#747878] mt-1">Từ các gói kích hoạt đối tác</p>
-          </div>
-        </div>
-
-        {/* Platform Booking commission */}
-        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">15% Hoa hồng Booking</span>
-            <Sparkles className="size-5 text-blue-600" />
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#1c1b1b]">{commissionRevenue.toLocaleString()} ₫</div>
-            <p className="text-[10px] font-semibold text-[#747878] mt-1">Ledger tích lũy từ các phiên thuê</p>
-          </div>
-        </div>
-
-        {/* Pending Settlements */}
-        <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">Đang chờ duyệt</span>
-            <ShieldAlert className="size-5 text-amber-500" />
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-[#1c1b1b]">{pendingRevenue.toLocaleString()} ₫</div>
-            <p className="text-[10px] font-semibold text-amber-600 mt-1">Hóa đơn đăng ký/nâng cấp gói</p>
-          </div>
-        </div>
+        <MetricCard
+          label="Doanh thu nền tảng"
+          value={summary ? formatVnd(summary.platform_revenue) : "—"}
+          hint="Thuê bao + phí tổ chức giải"
+          tone="text-emerald-600"
+          icon={<CreditCard className="size-5 text-orange-600" />}
+        />
+        <MetricCard
+          label="Phí thuê bao"
+          value={summary ? formatVnd(summary.saas_revenue) : "—"}
+          hint="Các gói đã kích hoạt"
+          icon={<Building2 className="size-5 text-purple-600" />}
+        />
+        <MetricCard
+          label="Phí tổ chức giải"
+          value={summary ? formatVnd(summary.contest_fee_revenue) : "—"}
+          hint="Các đơn phí đã thu"
+          icon={<Trophy className="size-5 text-amber-600" />}
+        />
+        <MetricCard
+          label="Đang chờ xử lý"
+          value={summary ? formatVnd(summary.pending_amount) : "—"}
+          hint="Chưa tính vào doanh thu"
+          tone="text-amber-600"
+          icon={<ShieldAlert className="size-5 text-amber-600" />}
+        />
       </section>
 
-      {/* Ledger Tables */}
-      <AdminPanel className="mt-6">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <AdminSearchBar
-            placeholder="Tìm theo ID giao dịch, đối tác, mô tả..."
-            value={searchTerm}
-            onChange={setSearchTerm}
-          />
-
-          <div className="flex flex-wrap gap-2.5">
-            {/* Type filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-[#747878]">Loại doanh thu:</span>
+      <AdminPanel className="mt-4">
+        <AdminPanelTitle
+          title={`Khoản đối tác đã trả (${data?.total ?? 0})`}
+          subtitle="Gộp từ yêu cầu thanh toán gói và đơn phí tổ chức giải."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
               <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-2.5 text-xs font-bold text-[#1c1b1b] outline-none focus:border-orange-500"
+                value={source}
+                onChange={(event) =>
+                  setSource(event.target.value as "ALL" | LedgerSource)
+                }
+                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-3 text-sm font-semibold"
               >
-                <option value="ALL">Tất cả loại</option>
-                <option value="SAAS_SUBSCRIPTION">Thuê bao gói SaaS</option>
-                <option value="PLATFORM_COMMISSION">15% Phí hoa hồng</option>
+                <option value="ALL">Tất cả nguồn tiền</option>
+                <option value="SAAS">Gói thuê bao</option>
+                <option value="CONTEST_FEE">Phí tổ chức giải</option>
               </select>
-            </div>
-
-            {/* Status filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-[#747878]">Giao dịch:</span>
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-2.5 text-xs font-bold text-[#1c1b1b] outline-none focus:border-orange-500"
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-3 text-sm font-semibold"
               >
-                <option value="ALL">Tất cả</option>
-                <option value="SUCCESS">Thành công</option>
-                <option value="PENDING">Đang chờ thu</option>
+                <option value="ALL">Tất cả trạng thái</option>
+                <option value="CONFIRMED">Đã kích hoạt (gói)</option>
+                <option value="PAID">Đã thu (phí giải)</option>
+                <option value="PENDING">Chờ xử lý</option>
                 <option value="FAILED">Thất bại</option>
               </select>
             </div>
-          </div>
-        </div>
-
-        <AdminPanelTitle
-          title={`Sổ cái giao dịch nền tảng (${filteredPayments.length})`}
-          subtitle="Các bản ghi tài chính được đồng bộ từ luồng Booking của khách hàng và cổng SaaS."
+          }
         />
 
-        <AdminTable columns={columns} rows={rows} />
+        <div className="px-5 pb-4">
+          <AdminSearchBar
+            placeholder="Tìm theo mã giao dịch, đối tác, nội dung..."
+            value={searchTerm}
+            onChange={setSearchTerm}
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm font-semibold text-[#747878]">
+            <Loader2 className="size-4 animate-spin" />
+            Đang tải sổ giao dịch...
+          </div>
+        ) : isError ? (
+          <div className="py-16 text-center text-sm font-semibold text-red-600">
+            Không tải được sổ giao dịch. Vui lòng thử lại.
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="py-16 text-center text-sm font-semibold text-[#747878]">
+            Chưa có giao dịch nào khớp bộ lọc.
+          </div>
+        ) : (
+          <AdminTable columns={columns} rows={rows} />
+        )}
       </AdminPanel>
     </AdminShell>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  hint,
+  icon,
+  tone = "text-[#747878]",
+}: {
+  label: string
+  value: string
+  hint: string
+  icon: React.ReactNode
+  tone?: string
+}) {
+  return (
+    <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">
+          {label}
+        </span>
+        {icon}
+      </div>
+      <div className="mt-4">
+        <div className="text-2xl font-extrabold text-[#1c1b1b]">{value}</div>
+        <p className={`mt-1 text-[10px] font-semibold ${tone}`}>{hint}</p>
+      </div>
+    </div>
   )
 }

@@ -2,13 +2,7 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
-import {
-  ArrowLeft,
-  Car,
-  AlertTriangle,
-  Save,
-  ImagePlus,
-} from "lucide-react"
+import { ArrowLeft, Car, AlertTriangle, Save, ImagePlus } from "lucide-react"
 import { toast } from "sonner"
 
 import { uploadImage } from "@/features/uploads/api/upload.api"
@@ -45,19 +39,28 @@ export function ProviderVehicleDetailPage() {
 
   // Form states
   const [formColor, setFormColor] = useState("")
-  const [formStatus, setFormStatus] = useState<VehicleStatus>(VehicleStatus.AVAILABLE)
+  const [formStatus, setFormStatus] = useState<VehicleStatus>(
+    VehicleStatus.AVAILABLE,
+  )
   const [formNotes, setFormNotes] = useState("")
   const [formLastMaintenance, setFormLastMaintenance] = useState("")
   const [formImageUrl, setFormImageUrl] = useState("")
   const [uploading, setUploading] = useState(false)
 
+  /**
+   * Xe này đã tồn tại nên ảnh lưu ngay, không chờ bấm "Lưu". Tải xong mà rời
+   * trang thì ảnh đã nằm trên Cloudinary nhưng xe vẫn trống — đúng kiểu mất công
+   * vô ích mà người dùng không hiểu vì sao.
+   */
   const handleUpload = async (file: File | undefined) => {
     if (!file) return
     setUploading(true)
     try {
       const uploaded = await uploadImage(file, "vehicles")
       setFormImageUrl(uploaded.url)
-      toast.success("Tải ảnh lên thành công!")
+      await updateUnitMutation.mutateAsync({
+        distinctiveImageUrl: uploaded.url,
+      })
     } catch {
       toast.error("Không thể tải ảnh lên, vui lòng thử lại.")
     } finally {
@@ -72,14 +75,17 @@ export function ProviderVehicleDetailPage() {
   })
   const cafes = cafesData?.data ?? []
 
-  const selectedCafeId = localSelectedCafeId || queryCafeId || cafes[0]?.id || ""
+  const selectedCafeId =
+    localSelectedCafeId || queryCafeId || cafes[0]?.id || ""
   const fromPage = searchParams.get("from") || ""
 
   const handleBack = () => {
     if (fromPage === "vehicles" || fromPage === "catalogs") {
       navigate(`/provider/cafes/${selectedCafeId}?tab=catalogs`)
     } else {
-      navigate(`${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalogId)}?cafeId=${selectedCafeId}`)
+      navigate(
+        `${routePaths.providerVehicleCatalogDetail.replace(":catalogId", catalogId)}?cafeId=${selectedCafeId}`,
+      )
     }
   }
 
@@ -94,7 +100,11 @@ export function ProviderVehicleDetailPage() {
   } = useVehicleUnitDetail(selectedCafeId, catalogId, vehicleId)
 
   // Update mutation
-  const updateUnitMutation = useUpdateVehicleUnit(selectedCafeId, catalogId, vehicleId)
+  const updateUnitMutation = useUpdateVehicleUnit(
+    selectedCafeId,
+    catalogId,
+    vehicleId,
+  )
 
   // Populate form when unit details load
   useEffect(() => {
@@ -133,7 +143,9 @@ export function ProviderVehicleDetailPage() {
       color: formColor || "Mặc định",
       status: formStatus,
       notes: formNotes,
-      lastMaintenanceAt: formLastMaintenance ? new Date(formLastMaintenance).toISOString() : null,
+      lastMaintenanceAt: formLastMaintenance
+        ? new Date(formLastMaintenance).toISOString()
+        : null,
       distinctiveImageUrl: formImageUrl || null,
     }
 
@@ -161,9 +173,12 @@ export function ProviderVehicleDetailPage() {
       <ProviderShell>
         <div className="p-6 text-center max-w-md mx-auto mt-20">
           <AlertTriangle className="size-12 text-amber-500 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-[#1c1b1b]">Không tìm thấy xe</h3>
+          <h3 className="text-lg font-bold text-[#1c1b1b]">
+            Không tìm thấy xe
+          </h3>
           <p className="text-sm text-[#444748] mt-2 mb-6">
-            Xe này không tồn tại hoặc bạn không có quyền xem/cập nhật thông tin chi tiết của xe này.
+            Xe này không tồn tại hoặc bạn không có quyền xem/cập nhật thông tin
+            chi tiết của xe này.
           </p>
           <Button
             onClick={handleBack}
@@ -195,13 +210,18 @@ export function ProviderVehicleDetailPage() {
             Quay lại danh sách
           </Button>
         </div>
-        <form onSubmit={handleFormSubmit} className="rounded-xl border border-[#c4c7c8] bg-white shadow-sm p-6 space-y-6">
+        <form
+          onSubmit={handleFormSubmit}
+          className="rounded-xl border border-[#c4c7c8] bg-white shadow-sm p-6 space-y-6"
+        >
           <div className="flex items-center gap-4 pb-4 border-b border-[#e5e2e1]">
             <div className="flex size-12 items-center justify-center rounded-xl bg-[#f6f3f2] text-[#444748]">
               <Car className="size-6" />
             </div>
             <div>
-              <span className="text-xs font-bold text-[#747878] uppercase tracking-wider block">Mẫu xe thuộc danh mục</span>
+              <span className="text-xs font-bold text-[#747878] uppercase tracking-wider block">
+                Mẫu xe thuộc danh mục
+              </span>
               <strong className="text-base text-[#1c1b1b] font-extrabold">
                 {catalog?.name || "Đang tải..."}
               </strong>
@@ -211,7 +231,10 @@ export function ProviderVehicleDetailPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-unit-color" className="text-sm font-bold text-[#1c1b1b]">
+                <Label
+                  htmlFor="edit-unit-color"
+                  className="text-sm font-bold text-[#1c1b1b]"
+                >
                   Màu sắc xe
                 </Label>
                 <Input
@@ -224,28 +247,45 @@ export function ProviderVehicleDetailPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="edit-unit-status" className="text-sm font-bold text-[#1c1b1b]">
+                <Label
+                  htmlFor="edit-unit-status"
+                  className="text-sm font-bold text-[#1c1b1b]"
+                >
                   Trạng thái hoạt động
                 </Label>
                 <Select
                   value={formStatus}
                   onValueChange={(val) => setFormStatus(val as VehicleStatus)}
                 >
-                  <SelectTrigger id="edit-unit-status" className="h-10 w-full rounded-lg border-[#c4c7c8] bg-white">
+                  <SelectTrigger
+                    id="edit-unit-status"
+                    className="h-10 w-full rounded-lg border-[#c4c7c8] bg-white"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={VehicleStatus.AVAILABLE}>Sẵn sàng thuê (AVAILABLE)</SelectItem>
-                    <SelectItem value={VehicleStatus.IN_USE}>Đang cho thuê (IN_USE)</SelectItem>
-                    <SelectItem value={VehicleStatus.MAINTENANCE}>Đang bảo trì (MAINTENANCE)</SelectItem>
-                    <SelectItem value={VehicleStatus.RETIRED}>Ngừng hoạt động (RETIRED)</SelectItem>
+                    <SelectItem value={VehicleStatus.AVAILABLE}>
+                      Sẵn sàng thuê (AVAILABLE)
+                    </SelectItem>
+                    <SelectItem value={VehicleStatus.IN_USE}>
+                      Đang cho thuê (IN_USE)
+                    </SelectItem>
+                    <SelectItem value={VehicleStatus.MAINTENANCE}>
+                      Đang bảo trì (MAINTENANCE)
+                    </SelectItem>
+                    <SelectItem value={VehicleStatus.RETIRED}>
+                      Ngừng hoạt động (RETIRED)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-unit-maintenance" className="text-sm font-bold text-[#1c1b1b]">
+              <Label
+                htmlFor="edit-unit-maintenance"
+                className="text-sm font-bold text-[#1c1b1b]"
+              >
                 Ngày bảo trì gần nhất
               </Label>
               <div className="flex flex-wrap gap-2">
@@ -291,7 +331,9 @@ export function ProviderVehicleDetailPage() {
                         accept="image/jpeg,image/png,image/webp"
                         disabled={uploading}
                         className="sr-only"
-                        onChange={(event) => void handleUpload(event.target.files?.[0])}
+                        onChange={(event) =>
+                          void handleUpload(event.target.files?.[0])
+                        }
                       />
                     </label>
                   </div>
@@ -308,23 +350,32 @@ export function ProviderVehicleDetailPage() {
                   <ImagePlus className="size-8 text-orange-400" />
                   <div>
                     <p className="text-sm font-bold text-[#444748]">
-                      {uploading ? "Đang tải lên..." : "Nhấn để tải ảnh nhận diện xe"}
+                      {uploading
+                        ? "Đang tải lên..."
+                        : "Nhấn để tải ảnh nhận diện xe"}
                     </p>
-                    <p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, WEBP · tối đa 10MB</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      JPG, PNG, WEBP · tối đa 10MB
+                    </p>
                   </div>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     disabled={uploading}
                     className="sr-only"
-                    onChange={(event) => void handleUpload(event.target.files?.[0])}
+                    onChange={(event) =>
+                      void handleUpload(event.target.files?.[0])
+                    }
                   />
                 </label>
               )}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="edit-unit-notes" className="text-sm font-bold text-[#1c1b1b]">
+              <Label
+                htmlFor="edit-unit-notes"
+                className="text-sm font-bold text-[#1c1b1b]"
+              >
                 Ghi chú / Nhật ký tình trạng xe
               </Label>
               <Textarea
@@ -353,7 +404,9 @@ export function ProviderVehicleDetailPage() {
               className="h-10 gap-2 rounded-lg bg-[#1c1b1b] text-white hover:bg-[#313030] font-bold"
             >
               <Save className="size-4" />
-              {updateUnitMutation.isPending ? "Đang cập nhật..." : "Lưu thay đổi"}
+              {updateUnitMutation.isPending
+                ? "Đang cập nhật..."
+                : "Lưu thay đổi"}
             </Button>
           </div>
         </form>
