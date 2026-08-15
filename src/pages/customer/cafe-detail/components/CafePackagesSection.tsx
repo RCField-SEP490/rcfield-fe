@@ -144,12 +144,12 @@ function PackageRow({
       </div>
 
       <dl className="flex shrink-0 items-center gap-x-8">
-        <Stat label="Số lượt" value={`${pkg.slot_count}`} />
-        <Stat label="Hiệu lực" value={`${pkg.valid_days} ngày`} />
-        <Stat label="Áp dụng" value={playModeLabel} />
+        <Stat label="Số lượt" value={`${pkg.slot_count}`} className="sm:w-20" />
+        <Stat label="Hiệu lực" value={`${pkg.valid_days} ngày`} className="sm:w-24" />
+        <Stat label="Áp dụng" value={playModeLabel} className="sm:w-36" />
       </dl>
 
-      <div className="flex shrink-0 items-center gap-4">
+      <div className="flex shrink-0 items-center justify-end gap-4 sm:w-60">
         <div className="text-right">
           <p className="text-lg font-black text-slate-950">{formatCurrency(pkg.price)}</p>
           <p className="text-xs font-semibold text-slate-400">giá gói</p>
@@ -184,9 +184,9 @@ function PackageRow({
   )
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div>
+    <div className={className}>
       <dt className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</dt>
       <dd className="mt-1 text-sm font-black text-slate-900">{value}</dd>
     </div>
