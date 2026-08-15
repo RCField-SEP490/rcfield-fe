@@ -191,15 +191,12 @@ export function ProviderMenuItemFormDialog({
                           placeholder="Ví dụ: M, L hoặc Pepsi"
                           className="h-10 min-w-0 rounded-lg border-[#c4c7c8] bg-white"
                         />
-                        <Input
+                        <PriceInput
                           aria-label={`Giá lựa chọn ${index + 1}`}
-                          type="number"
                           value={variant.price}
-                          min={0}
-                          step="1000"
-                          onChange={(event) => {
+                          onChange={(val) => {
                             const next = [...values.variants!]
-                            next[index] = { ...variant, price: Number(event.target.value) || 0 }
+                            next[index] = { ...variant, price: val }
                             setVariants(next)
                           }}
                           className="h-10 min-w-0 rounded-lg border-[#c4c7c8] bg-white"
@@ -393,27 +390,81 @@ function NumberField({
   label,
   value,
   onChange,
-  min,
   disabled = false,
 }: {
   label: string
   value: number
-  onChange: (value: number | null) => void
-  min?: number
+  onChange: (value: number) => void
   disabled?: boolean
+  min?: number
 }) {
   return (
     <label className="block space-y-2">
       <span className="text-sm font-bold text-[#1c1b1b]">{label}</span>
-      <Input
-        type="number"
-        value={Number.isFinite(value) ? value : ""}
-        min={min}
-        step="1000"
+      <PriceInput
+        value={value}
+        onChange={onChange}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))}
-        className="rounded-lg border-[#c4c7c8] disabled:cursor-not-allowed disabled:bg-[#f6f3f2] disabled:text-[#747878]"
+        className="rounded-lg border-[#c4c7c8]"
       />
     </label>
+  )
+}
+
+interface PriceInputProps extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> {
+  value: number
+  onChange: (val: number) => void
+}
+
+function PriceInput({
+  value,
+  onChange,
+  disabled,
+  placeholder = "0",
+  className,
+  ...props
+}: PriceInputProps) {
+  const [prevValue, setPrevValue] = useState(value)
+  const [displayValue, setDisplayValue] = useState(() =>
+    value > 0 ? new Intl.NumberFormat("en-US").format(value) : "0"
+  )
+
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (!(value === 0 && displayValue === "")) {
+      setDisplayValue(value > 0 ? new Intl.NumberFormat("en-US").format(value) : "0")
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value
+    const clean = raw.replace(/\D/g, "")
+    if (!clean) {
+      setDisplayValue("")
+      onChange(0)
+      return
+    }
+    const num = Number(clean)
+    setDisplayValue(new Intl.NumberFormat("en-US").format(num))
+    onChange(num)
+  }
+
+  const handleBlur = () => {
+    if (displayValue === "") {
+      setDisplayValue("0")
+    }
+  }
+
+  return (
+    <Input
+      type="text"
+      value={displayValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={className}
+      {...props}
+    />
   )
 }

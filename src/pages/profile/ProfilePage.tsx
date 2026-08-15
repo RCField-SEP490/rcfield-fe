@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import * as z from "zod"
 import { toast } from "sonner"
-import { Camera, Mail, Phone } from "lucide-react"
+import { Camera, Mail, Phone, Eye, EyeOff } from "lucide-react"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
 import { AdminHeader } from "@/pages/admin/components/AdminPrimitives"
@@ -46,6 +46,17 @@ const updateProfileSchema = z.object({
         "Số điện thoại không đúng định dạng. Định dạng hợp lệ ví dụ: 0987654321",
     }),
 })
+
+const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(6, "Mật khẩu hiện tại phải có tối thiểu 6 ký tự."),
+    newPassword: z.string().min(6, "Mật khẩu mới phải có tối thiểu 6 ký tự."),
+    confirmNewPassword: z.string().min(1, "Vui lòng nhập lại mật khẩu mới."),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "Mật khẩu mới nhập lại không khớp.",
+    path: ["confirmNewPassword"],
+  })
 
 export function ProfilePage() {
   const role = useAuthStore((state) => state.role)
@@ -116,6 +127,7 @@ function ProfileContent() {
     confirmNewPassword: "",
   })
   const [resettingPassword, setResettingPassword] = useState(false)
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({})
 
   const handleLogout = async () => {
     const storedAuth =
@@ -141,19 +153,23 @@ function ProfileContent() {
   }
 
   const handleResetPassword = async () => {
-    if (!passwordForm.currentPassword) {
-      toast.error("Vui lòng nhập mật khẩu hiện tại.")
-      return
-    }
-    if (passwordForm.newPassword.length < 6) {
-      toast.error("Mật khẩu mới phải có tối thiểu 6 ký tự.")
-      return
-    }
-    if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
-      toast.error("Mật khẩu mới nhập lại không khớp.")
+    const validation = changePasswordSchema.safeParse(passwordForm)
+    if (!validation.success) {
+      const errs: Record<string, string> = {}
+      validation.error.issues.forEach((issue) => {
+        const path = issue.path[0] as string
+        if (!errs[path]) {
+          errs[path] = issue.message
+        }
+      })
+      if (passwordErrors.currentPassword && !errs.currentPassword) {
+        errs.currentPassword = passwordErrors.currentPassword
+      }
+      setPasswordErrors(errs)
       return
     }
 
+    setPasswordErrors({})
     setResettingPassword(true)
     try {
       await changePassword({
@@ -163,11 +179,19 @@ function ProfileContent() {
       toast.success("Đổi mật khẩu thành công. Vui lòng đăng nhập lại.")
       await handleLogout()
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { message?: string } } }).response?.data
-          ?.message ||
-        "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại."
-      toast.error(msg)
+      const err = e as { response?: { data?: { code?: string; message?: string } } }
+      const code = err.response?.data?.code
+      const msg = err.response?.data?.message || "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại."
+      
+      if (
+        code === "CURRENT_PASSWORD_INCORRECT" ||
+        msg.toLowerCase().includes("mật khẩu hiện tại") ||
+        msg.toLowerCase().includes("current password")
+      ) {
+        setPasswordErrors({ currentPassword: msg })
+      } else {
+        toast.error(msg)
+      }
     } finally {
       setResettingPassword(false)
     }
@@ -788,12 +812,14 @@ function ProfileContent() {
               id="currentPassword"
               type="password"
               value={passwordForm.currentPassword}
-              onChange={(value) =>
+              onChange={(value) => {
                 setPasswordForm((current) => ({
                   ...current,
                   currentPassword: value,
                 }))
-              }
+                setPasswordErrors((prev) => ({ ...prev, currentPassword: "" }))
+              }}
+              error={passwordErrors.currentPassword}
               className="md:col-span-2"
             />
             <Field
@@ -801,24 +827,28 @@ function ProfileContent() {
               id="newPassword"
               type="password"
               value={passwordForm.newPassword}
-              onChange={(value) =>
+              onChange={(value) => {
                 setPasswordForm((current) => ({
                   ...current,
                   newPassword: value,
                 }))
-              }
+                setPasswordErrors((prev) => ({ ...prev, newPassword: "" }))
+              }}
+              error={passwordErrors.newPassword}
             />
             <Field
               label="Nhập lại mật khẩu mới"
               id="confirmNewPassword"
               type="password"
               value={passwordForm.confirmNewPassword}
-              onChange={(value) =>
+              onChange={(value) => {
                 setPasswordForm((current) => ({
                   ...current,
                   confirmNewPassword: value,
                 }))
-              }
+                setPasswordErrors((prev) => ({ ...prev, confirmNewPassword: "" }))
+              }}
+              error={passwordErrors.confirmNewPassword}
             />
             <div className="mt-2 flex justify-end border-t border-[#e5e2e1] pt-5 md:col-span-2">
               <Button
@@ -888,6 +918,9 @@ function Field({
   disabled?: boolean
   error?: string
 }) {
+  const [showPassword, setShowPassword] = useState(false)
+  const isPasswordType = type === "password"
+
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <label
@@ -904,16 +937,31 @@ function Field({
         ) : null}
         <Input
           id={id}
-          type={type}
+          type={isPasswordType ? (showPassword ? "text" : "password") : type}
           value={value}
           disabled={disabled}
           onChange={(event) => onChange?.(event.target.value)}
           className={cn(
             "h-10 rounded-lg border-[#e5e2e1] bg-white px-3.5 text-sm text-[#1c1b1b] focus:border-[#747878] focus:ring-[#747878]",
             icon && "pl-10",
+            isPasswordType && "pr-10",
             error && "border-red-500 focus:border-red-500",
           )}
         />
+        {isPasswordType && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#747878] hover:text-[#1c1b1b] transition-colors focus:outline-none"
+            aria-label={showPassword ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+          >
+            {showPassword ? (
+              <EyeOff className="size-4" />
+            ) : (
+              <Eye className="size-4" />
+            )}
+          </button>
+        )}
       </div>
       {error && (
         <p className="text-[11px] font-bold text-red-500 leading-tight mt-0.5">
