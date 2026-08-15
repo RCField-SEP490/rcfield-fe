@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, Clock, Sparkles, TriangleAlert } from "lucide-react"
+import { Check, Clock, CreditCard, Sparkles, TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -85,6 +86,57 @@ export function ContestFeePanel({
     }) => contestApi.submitContestFeeTransfer(contest.id, body),
     onSuccess: invalidate,
   })
+  const payOS = useMutation({
+    mutationFn: () => contestApi.createContestFeePayOSLink(contest.id),
+  })
+
+  // PayOS chuyển hướng về đây kèm ?payos=success&orderCode=… Hỏi thẳng cổng
+  // thay vì ngồi đợi webhook: webhook có thể tới chậm hoặc rớt, mà provider thì
+  // đang nhìn màn hình chờ kết quả.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const payosResult = searchParams.get("payos")
+  const payosOrderCode = searchParams.get("orderCode")
+
+  useEffect(() => {
+    if (!payosResult || !payosOrderCode) return
+
+    const clearParams = () => {
+      const next = new URLSearchParams(searchParams)
+      next.delete("payos")
+      next.delete("orderCode")
+      setSearchParams(next, { replace: true })
+    }
+
+    if (payosResult === "cancel") {
+      toast.info("Bạn đã huỷ thanh toán", {
+        description: "Đơn phí vẫn còn, trả lại hoặc chuyển khoản tay đều được.",
+      })
+      clearParams()
+      return
+    }
+
+    contestApi
+      .verifyContestFeePayOS(contest.id, Number(payosOrderCode))
+      .then(async (result) => {
+        await invalidate()
+        if (result.status === "PAID") {
+          toast.success("Đã thanh toán phí tổ chức giải")
+        } else {
+          toast.info("Chưa nhận được xác nhận từ PayOS", {
+            description: "Nếu bạn đã trả tiền, đợi một lát rồi tải lại trang.",
+          })
+        }
+      })
+      .catch((error) => {
+        toast.error("Không kiểm tra được kết quả thanh toán", {
+          description: getErrorMessage(error).message,
+        })
+      })
+      .finally(clearParams)
+    // Chỉ chạy lại khi mã đơn đổi — thêm `invalidate`/`searchParams` vào đây sẽ
+    // khiến effect bắn liên tục vì chúng được tạo mới mỗi lần render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contest.id, payosResult, payosOrderCode])
 
   const order = feeQuery.data?.order ?? null
   const plans = feeQuery.data?.plans ?? []
@@ -125,6 +177,17 @@ export function ContestFeePanel({
         <TransferForm
           order={order}
           pending={submitTransfer.isPending}
+          payosPending={payOS.isPending}
+          onPayOS={async () => {
+            try {
+              const link = await payOS.mutateAsync()
+              window.location.href = link.checkout_url
+            } catch (error) {
+              toast.error("Không mở được cổng thanh toán", {
+                description: getErrorMessage(error).message,
+              })
+            }
+          }}
           onCancel={async () => {
             try {
               await cancelOrder.mutateAsync()
@@ -239,6 +302,8 @@ function TransferForm({
   pending,
   onSubmit,
   onCancel,
+  onPayOS,
+  payosPending,
 }: {
   order: ContestFeeOrder
   pending: boolean
@@ -248,6 +313,8 @@ function TransferForm({
     transfer_amount: number
   }) => void
   onCancel: () => void
+  onPayOS: () => void
+  payosPending: boolean
 }) {
   const [reference, setReference] = useState("")
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
@@ -255,6 +322,39 @@ function TransferForm({
 
   return (
     <div className="space-y-4">
+      {/* Trả qua cổng đặt trước vì nó xong ngay; chuyển khoản tay vẫn giữ bên
+          dưới cho ai không dùng được cổng. */}
+      <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-black text-[#1c1b1b]">
+              Thanh toán online qua PayOS
+            </p>
+            <p className="mt-0.5 text-xs font-semibold text-[#5d5f5f]">
+              Xác nhận ngay sau khi trả, không phải chờ RCField đối soát.
+            </p>
+          </div>
+          <Button
+            className="h-10 shrink-0 rounded-lg bg-orange-600 px-5 text-sm font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={payosPending}
+            onClick={onPayOS}
+          >
+            <CreditCard className="mr-1.5 size-4" />
+            {payosPending
+              ? "Đang mở cổng…"
+              : `Trả ${formatVnd(order.amount)} qua PayOS`}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-[#e5e2e1]" />
+        <span className="text-xs font-bold uppercase tracking-wider text-[#a3a3a3]">
+          hoặc chuyển khoản tay
+        </span>
+        <div className="h-px flex-1 bg-[#e5e2e1]" />
+      </div>
+
       <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
         <p className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
           Chuyển khoản tới

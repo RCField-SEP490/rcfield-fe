@@ -128,11 +128,20 @@ export const bookingApi = {
     return res.data.data
   },
 
+  /**
+   * Thu khoản phát sinh cuối phiên (gia hạn, đồ ăn tại quầy, hư hỏng).
+   *
+   * `paymentMethod` vắng mặt nghĩa là VNPay — giữ nguyên hành vi cũ. Với
+   * `bank_transfer`, phản hồi mang `flow: "bank_transfer"` kèm dữ liệu mã QR
+   * thay vì một URL để chuyển hướng.
+   */
   createCheckoutAdditionalPayment: async (
     bookingId: string,
+    paymentMethod?: CafePaymentMethodOption,
   ): Promise<CheckoutResponse> => {
     const res = await api.post<ApiEnvelope<CheckoutResponse>>(
       `/v1/bookings/${bookingId}/checkout-additional-payment`,
+      paymentMethod ? { payment_method: paymentMethod } : undefined,
     )
     return res.data.data
   },

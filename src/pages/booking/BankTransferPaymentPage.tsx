@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "react-router"
+import { useNavigate, useParams, useSearchParams } from "react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertTriangle, Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -26,13 +26,21 @@ export function BankTransferPaymentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  // `?mode=settlement` là khoản phát sinh cuối phiên (gia hạn, đồ ăn tại quầy,
+  // hư hỏng) — endpoint khác, mã tham chiếu khác. Không có tham số thì vẫn là
+  // tiền đặt lịch ban đầu, đúng như trước.
+  const [searchParams] = useSearchParams()
+  const isSettlement = searchParams.get("mode") === "settlement"
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["bank-transfer-checkout", bookingId],
+    queryKey: ["bank-transfer-checkout", bookingId, isSettlement],
     queryFn: async () => {
-      const result = await bookingApi.createCheckout(
-        bookingId!,
-        "bank_transfer",
-      )
+      const result = isSettlement
+        ? await bookingApi.createCheckoutAdditionalPayment(
+            bookingId!,
+            "bank_transfer",
+          )
+        : await bookingApi.createCheckout(bookingId!, "bank_transfer")
       // Ném lỗi thay vì trả về phản hồi thiếu mã QR.
       //
       // `staleTime: Infinity` bên dưới sẽ giữ mãi thứ gì trả về được — nên nếu
@@ -67,7 +75,9 @@ export function BankTransferPaymentPage() {
           Không mở được trang thanh toán
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Đơn này có thể đã thanh toán xong, đã huỷ, hoặc hết thời gian giữ chỗ.
+          {isSettlement
+            ? "Khoản phát sinh này có thể đã được thanh toán, hoặc chi nhánh chưa bật nhận chuyển khoản."
+            : "Đơn này có thể đã thanh toán xong, đã huỷ, hoặc hết thời gian giữ chỗ."}
         </p>
         <Button
           className="mt-5"

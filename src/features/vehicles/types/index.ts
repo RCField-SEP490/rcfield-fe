@@ -27,7 +27,6 @@ export interface VehicleCatalog {
   name: string
   hourlyRate: number
   securityDeposit: number
-  damageMultiplier: number
   tier: VehicleTier
   compatibleTrackTypes: Array<TrackType | string>
   coverImageUrl?: string | null
@@ -62,7 +61,6 @@ export interface CreateVehicleCatalogDto {
   name: string
   hourlyRate: number
   securityDeposit: number
-  damageMultiplier: number
   tier: VehicleTier
   compatibleTrackTypes: string[]
   images: { url: string; isCover: boolean }[]

@@ -2,6 +2,7 @@ import { api } from "@/shared/lib/axios"
 import type {
   AdminContestFeeOrder,
   ContestFeeOrder,
+  ContestFeePayOSLink,
   PendingFeaturedPopup,
   ContestFeePlan,
   ContestFeeStatus,
@@ -297,6 +298,31 @@ export const contestApi = {
     const res = await api.post<ApiEnvelope<ContestFeeOrder>>(
       `/v1/contests/${contestId}/fee/transfer`,
       body,
+    )
+    return res.data.data
+  },
+
+  /** Mở phiên thanh toán PayOS cho đơn phí đang chờ trả. */
+  createContestFeePayOSLink: async (
+    contestId: string,
+  ): Promise<ContestFeePayOSLink> => {
+    const res = await api.post<ApiEnvelope<ContestFeePayOSLink>>(
+      `/v1/contests/${contestId}/fee/payos-link`,
+    )
+    return res.data.data
+  },
+
+  /**
+   * Hỏi thẳng PayOS trạng thái đơn ngay khi họ chuyển hướng về.
+   * Không đợi webhook vì webhook có thể tới chậm hoặc rớt.
+   */
+  verifyContestFeePayOS: async (
+    contestId: string,
+    orderCode: number,
+  ): Promise<ContestFeeOrder> => {
+    const res = await api.post<ApiEnvelope<ContestFeeOrder>>(
+      `/v1/contests/${contestId}/fee/payos-verify`,
+      { order_code: orderCode },
     )
     return res.data.data
   },
