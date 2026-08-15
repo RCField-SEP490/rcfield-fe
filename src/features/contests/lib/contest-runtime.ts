@@ -388,3 +388,29 @@ const AUDIT_EVENT_LABEL: Record<string, string> = {
 export function getAuditEventLabel(eventType: string): string {
   return AUDIT_EVENT_LABEL[eventType] ?? eventType
 }
+
+/**
+ * Lượt kế tiếp cần nhập kết quả, tính từ lượt vừa lưu xong.
+ *
+ * Dùng cho đua tính giờ: nhân viên nhập liên tiếp hàng chục lượt, nên sau khi
+ * lưu phải tự đưa họ sang lượt chưa xong ngay sau đó thay vì bắt cuộn ngược lên
+ * danh sách. Quét vòng qua đầu danh sách để không bỏ sót lượt còn dở phía trên
+ * khi nhân viên nhập nhảy cóc.
+ */
+export function findNextPendingMatchId(
+  matches: Array<{ id: string; status: string }>,
+  currentMatchId: string,
+): string | null {
+  if (!matches.length) return null
+  const startIndex = matches.findIndex((match) => match.id === currentMatchId)
+  if (startIndex < 0) return null
+
+  for (let step = 1; step <= matches.length; step += 1) {
+    const candidate = matches[(startIndex + step) % matches.length]
+    if (candidate.id === currentMatchId) break
+    if (candidate.status !== "COMPLETED" && candidate.status !== "CANCELLED") {
+      return candidate.id
+    }
+  }
+  return null
+}

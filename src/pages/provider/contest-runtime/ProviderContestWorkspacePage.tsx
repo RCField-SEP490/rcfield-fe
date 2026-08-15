@@ -19,7 +19,10 @@ import { toast } from "sonner"
 import { routePaths } from "@/app/router/route-paths"
 import { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
 import { useQuery } from "@tanstack/react-query"
-import { contestApi, contestQueryKeys } from "@/features/contests/api/contest.api"
+import {
+  contestApi,
+  contestQueryKeys,
+} from "@/features/contests/api/contest.api"
 import {
   applyStagedParticipants,
   formatMatchLabel,
@@ -28,6 +31,7 @@ import {
   getMatchPhase,
   getPublishedLeaderboard,
   splitMatchesByPhase,
+  findNextPendingMatchId,
 } from "@/features/contests/lib/contest-runtime"
 import { getContestEditAvailability } from "@/features/contests/lib/contest-status"
 import { cn } from "@/shared/lib/utils"
@@ -239,6 +243,16 @@ export function ProviderContestWorkspacePage({
       queueMicrotask(() => setSelectedMatchId(matches[0].id))
     }
   }, [matches, selectedMatchId])
+
+  // Đua tính giờ có hàng chục lượt nhập liên tiếp. Lưu xong đưa luôn con trỏ
+  // sang lượt chưa xong kế tiếp, để khỏi cuộn ngược lên danh sách chọn từng dòng.
+  const handleResultsSaved = useCallback(
+    (savedMatchId: string) => {
+      const nextId = findNextPendingMatchId(matches, savedMatchId)
+      if (nextId) setSelectedMatchId(nextId)
+    },
+    [matches],
+  )
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -477,18 +491,11 @@ export function ProviderContestWorkspacePage({
       >
         <DropdownMenuItem
           disabled={!editAvailability.allowed}
-          title={
-            editAvailability.allowed
-              ? undefined
-              : editAvailability.reason
-          }
+          title={editAvailability.allowed ? undefined : editAvailability.reason}
           className="cursor-pointer rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#1c1b1b] hover:bg-[#f6f3f2] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           onClick={() =>
             navigate(
-              routePaths.providerContestEdit.replace(
-                ":contestId",
-                contest.id,
-              ),
+              routePaths.providerContestEdit.replace(":contestId", contest.id),
             )
           }
         >
@@ -744,6 +751,7 @@ export function ProviderContestWorkspacePage({
             runtime={workspace.runtime}
             isKnockoutRuntime={selectedMatchIsKnockout}
             hasPendingBracketChanges={hasStagedBracketChanges}
+            onResultsSaved={handleResultsSaved}
           />
         </div>
       ) : null}
