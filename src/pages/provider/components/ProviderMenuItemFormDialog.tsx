@@ -411,6 +411,11 @@ function NumberField({
   )
 }
 
+interface PriceInputProps extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> {
+  value: number
+  onChange: (val: number) => void
+}
+
 function PriceInput({
   value,
   onChange,
@@ -418,22 +423,18 @@ function PriceInput({
   placeholder = "0",
   className,
   ...props
-}: {
-  value: number
-  onChange: (val: number) => void
-  disabled?: boolean
-  placeholder?: string
-  className?: string
-  [key: string]: any
-}) {
-  const [displayValue, setDisplayValue] = useState("")
+}: PriceInputProps) {
+  const [prevValue, setPrevValue] = useState(value)
+  const [displayValue, setDisplayValue] = useState(() =>
+    value > 0 ? new Intl.NumberFormat("en-US").format(value) : "0"
+  )
 
-  useEffect(() => {
-    if (value === 0 && displayValue === "") {
-      return
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (!(value === 0 && displayValue === "")) {
+      setDisplayValue(value > 0 ? new Intl.NumberFormat("en-US").format(value) : "0")
     }
-    setDisplayValue(value > 0 ? new Intl.NumberFormat("en-US").format(value) : "0")
-  }, [value])
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value

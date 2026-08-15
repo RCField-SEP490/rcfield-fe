@@ -48,7 +48,6 @@ import {
 import { useQuery } from "@tanstack/react-query"
 import { trackTypeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { cn } from "@/shared/lib/utils"
-import { toast } from "sonner"
 
 interface TrackConfigManagerProps {
   cafeId: string

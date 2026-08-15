@@ -1635,35 +1635,29 @@ function promotionToDeleteItem(promotion: Promotion) {
   }
 }
 
+interface FormattedNumberInputProps extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange"> {
+  value: string
+  onChange: (val: string) => void
+}
+
 function FormattedNumberInput({
   value,
   onChange,
   className,
   placeholder,
   ...props
-}: {
-  value: string
-  onChange: (val: string) => void
-  className?: string
-  placeholder?: string
-  [key: string]: any
-}) {
-  const [displayValue, setDisplayValue] = useState("")
-
+}: FormattedNumberInputProps) {
   const format = (str: string) => {
     const clean = str.replace(/\D/g, "")
     if (!clean) return ""
     return new Intl.NumberFormat("en-US").format(Number(clean))
   }
 
-  useEffect(() => {
-    setDisplayValue(format(value))
-  }, [value])
+  const displayValue = format(value)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value
     const clean = raw.replace(/\D/g, "")
-    setDisplayValue(format(clean))
     onChange(clean)
   }
 
