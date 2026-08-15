@@ -46,10 +46,19 @@ export function useUpdateTrackConfig(cafeId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ configId, body }: { configId: string; body: UpdateTrackConfigBody }) =>
-      trackConfigApi.updateTrackConfig(cafeId, configId, body),
-    onSuccess: () => {
-      toast.success("Cập nhật loại sân thành công")
+    mutationFn: ({
+      configId,
+      body,
+    }: {
+      configId: string
+      body: UpdateTrackConfigBody
+      silent?: boolean
+      successMessage?: string
+    }) => trackConfigApi.updateTrackConfig(cafeId, configId, body),
+    onSuccess: (_, variables) => {
+      if (variables.silent !== true) {
+        toast.success(variables.successMessage || "Cập nhật loại sân thành công")
+      }
       void queryClient.invalidateQueries({ queryKey: [...cafeQueryKeys.all, "track-configs", cafeId] })
       void queryClient.invalidateQueries({ queryKey: cafeQueryKeys.detail(cafeId) })
     },
