@@ -53,3 +53,17 @@ export function usePurchasePackage() {
     },
   })
 }
+
+export function useRepayPackage() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ customerPackageId }: { customerPackageId: string }) =>
+      customerPackageApi.repay(customerPackageId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: customerPackageQueryKeys.all })
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err?.response?.data?.message ?? 'Thanh toán lại thất bại. Vui lòng thử lại.')
+    },
+  })
+}

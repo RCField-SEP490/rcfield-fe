@@ -31,10 +31,10 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
     cafeId && isCustomer ? { cafe_id: cafeId } : undefined,
   )
 
-  // Set of package_ids the customer currently owns (ACTIVE or PENDING_PAYMENT)
+  // Set of package_ids the customer currently owns (ACTIVE)
   const ownedPackageIds = new Set(
     myPackages
-      .filter((p) => p.status === "ACTIVE" || p.status === "PENDING_PAYMENT")
+      .filter((p) => p.status === "ACTIVE")
       .map((p) => p.package_id),
   )
 
