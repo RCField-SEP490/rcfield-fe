@@ -7,6 +7,7 @@ import {
   getEligibleRuntimeRegistrations,
   getMatchParticipantName,
   groupMatchesByRound,
+  findNextPendingMatchId,
 } from "./contest-runtime"
 
 describe("contest runtime helpers", () => {
@@ -121,5 +122,39 @@ describe("getAuditEventLabel", () => {
   it("giữ nguyên mã lạ thay vì trả chuỗi rỗng", () => {
     // Thà hiện mã chưa dịch còn hơn để dòng nhật ký trống trơn.
     expect(getAuditEventLabel("something.new")).toBe("something.new")
+  })
+})
+
+describe("findNextPendingMatchId", () => {
+  const runs = (statuses: string[]) =>
+    statuses.map((status, index) => ({ id: `m${index + 1}`, status }))
+
+  it("nhảy sang lượt chưa xong ngay sau lượt vừa lưu", () => {
+    const matches = runs(["COMPLETED", "READY", "READY"])
+    expect(findNextPendingMatchId(matches, "m1")).toBe("m2")
+  })
+
+  it("bỏ qua lượt đã xong và lượt đã huỷ", () => {
+    const matches = runs(["READY", "COMPLETED", "CANCELLED", "READY"])
+    expect(findNextPendingMatchId(matches, "m1")).toBe("m4")
+  })
+
+  it("quét vòng lên đầu khi nhập tới lượt cuối mà phía trên còn dở", () => {
+    // Nhân viên nhập nhảy cóc: lượt 2 và 3 xong trước, giờ vừa lưu lượt cuối.
+    const matches = runs(["READY", "COMPLETED", "COMPLETED", "COMPLETED"])
+    expect(findNextPendingMatchId(matches, "m4")).toBe("m1")
+  })
+
+  it("trả null khi mọi lượt đã xong — không quay lại chính nó", () => {
+    const matches = runs(["COMPLETED", "COMPLETED"])
+    expect(findNextPendingMatchId(matches, "m2")).toBeNull()
+  })
+
+  it("trả null khi lượt vừa lưu không nằm trong danh sách", () => {
+    expect(findNextPendingMatchId(runs(["READY"]), "khong-co")).toBeNull()
+  })
+
+  it("trả null với danh sách rỗng", () => {
+    expect(findNextPendingMatchId([], "m1")).toBeNull()
   })
 })

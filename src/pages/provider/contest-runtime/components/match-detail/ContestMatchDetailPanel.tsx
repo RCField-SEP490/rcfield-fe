@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react"
 import { MatchStatusBadge } from "@/features/contests/components"
 import { getMatchTypeLabel } from "@/features/contests/lib/contest-status"
 import type { ContestMatch } from "@/features/contests/types"
@@ -18,12 +19,44 @@ export function ContestMatchDetailPanel({
   runtime,
   isKnockoutRuntime = false,
   hasPendingBracketChanges = false,
+  onResultsSaved,
 }: {
   match: ContestMatch | null
   runtime: ContestRuntimeHook
   isKnockoutRuntime?: boolean
   hasPendingBracketChanges?: boolean
+  onResultsSaved?: (savedMatchId: string) => void
 }) {
+  // Danh sách lượt đấu dài (giải 8 người ba vòng ra 24 dòng) đẩy form nhập kết
+  // quả xuống tận cuối trang. Chọn xong một lượt mà phải tự cuộn đi tìm chỗ nhập
+  // thì thao tác nào cũng mất hai bước thừa.
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const lastScrolledMatchId = useRef<string | null>(null)
+  const mounted = useRef(false)
+
+  useEffect(() => {
+    if (!match?.id || match.id === lastScrolledMatchId.current) return
+    lastScrolledMatchId.current = match.id
+    // Lần dựng đầu tiên thì đứng yên. Mở trang bằng đường dẫn có sẵn lượt được
+    // chọn mà màn hình tự nhảy xuống giữa trang là mất phương hướng.
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    const node = panelRef.current
+    if (!node) return
+    const rect = node.getBoundingClientRect()
+    // Đã nhìn thấy sẵn thì đừng giật màn hình.
+    if (rect.top >= 0 && rect.bottom <= window.innerHeight) return
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches
+    node.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "start",
+    })
+  }, [match?.id])
+
   const {
     participants,
     results,
@@ -40,7 +73,7 @@ export function ContestMatchDetailPanel({
     handleCorrectResults,
     handleAdvance,
     handleWalkover,
-  } = useMatchDetailState(match, runtime)
+  } = useMatchDetailState(match, runtime, onResultsSaved)
 
   if (!match) {
     return (
@@ -57,57 +90,61 @@ export function ContestMatchDetailPanel({
   }
 
   return (
-    <Panel>
-      <PanelTitle
-        title={match.name ?? `Vòng ${match.round_no} · Trận ${match.match_no}`}
-        subtitle={
-          isKnockoutRuntime
-            ? "Chọn người thắng rồi lưu — người đó tự sang trận vòng sau."
-            : "Sắp thứ tự thi đấu, nhập kết quả và chỉnh sửa khi cần."
-        }
-      />
+    <div ref={panelRef} className="scroll-mt-4">
+      <Panel>
+        <PanelTitle
+          title={
+            match.name ?? `Vòng ${match.round_no} · Trận ${match.match_no}`
+          }
+          subtitle={
+            isKnockoutRuntime
+              ? "Chọn người thắng rồi lưu — người đó tự sang trận vòng sau."
+              : "Sắp thứ tự thi đấu, nhập kết quả và chỉnh sửa khi cần."
+          }
+        />
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <MatchStatusBadge status={match.status} />
-        <Badge className="border border-[#c4c7c8] bg-[#f6f3f2] text-[#444748]">
-          {getMatchTypeLabel(match.match_type)}
-        </Badge>
-      </div>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <MatchStatusBadge status={match.status} />
+          <Badge className="border border-[#c4c7c8] bg-[#f6f3f2] text-[#444748]">
+            {getMatchTypeLabel(match.match_type)}
+          </Badge>
+        </div>
 
-      <div className="space-y-4">
-        {!isKnockoutRuntime ? (
-          <MatchParticipantReorderList
-            participants={participants}
+        <div className="space-y-4">
+          {!isKnockoutRuntime ? (
+            <MatchParticipantReorderList
+              participants={participants}
+              participantMap={participantMap}
+              onUpdateParticipant={updateParticipantValue}
+              onSave={handleSaveParticipants}
+            />
+          ) : (
+            <MatchParticipantView match={match} />
+          )}
+
+          <MatchResultEntry
+            match={match}
+            results={results}
             participantMap={participantMap}
-            onUpdateParticipant={updateParticipantValue}
-            onSave={handleSaveParticipants}
+            isKnockoutRuntime={isKnockoutRuntime}
+            hasPendingBracketChanges={hasPendingBracketChanges}
+            onUpdateResult={updateResultValue}
+            onWalkover={handleWalkover}
           />
-        ) : (
-          <MatchParticipantView match={match} />
-        )}
 
-        <MatchResultEntry
-          match={match}
-          results={results}
-          participantMap={participantMap}
-          isKnockoutRuntime={isKnockoutRuntime}
-          hasPendingBracketChanges={hasPendingBracketChanges}
-          onUpdateResult={updateResultValue}
-          onWalkover={handleWalkover}
-        />
-
-        <MatchActions
-          reason={reason}
-          onReasonChange={setReason}
-          forceCascade={forceCascade}
-          onForceCascadeChange={setForceCascade}
-          readyForResultEntry={readyForResultEntry}
-          hasPendingBracketChanges={hasPendingBracketChanges}
-          onSubmitResults={handleSubmitResults}
-          onCorrectResults={handleCorrectResults}
-          onAdvance={handleAdvance}
-        />
-      </div>
-    </Panel>
+          <MatchActions
+            reason={reason}
+            onReasonChange={setReason}
+            forceCascade={forceCascade}
+            onForceCascadeChange={setForceCascade}
+            readyForResultEntry={readyForResultEntry}
+            hasPendingBracketChanges={hasPendingBracketChanges}
+            onSubmitResults={handleSubmitResults}
+            onCorrectResults={handleCorrectResults}
+            onAdvance={handleAdvance}
+          />
+        </div>
+      </Panel>
+    </div>
   )
 }
