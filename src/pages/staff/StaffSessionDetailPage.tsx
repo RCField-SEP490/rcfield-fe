@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Trophy,
   X,
+  Info,
 } from "lucide-react"
 import { routePaths } from "@/app/router/route-paths"
 import { useStaffOperations } from "./context/StaffOperationContext"
@@ -177,6 +178,33 @@ export default function StaffSessionDetailPage() {
     extraMinutes: number
   } | null>(null)
   const [submittingExtension, setSubmittingExtension] = useState(false)
+  const [simulatingExtension, setSimulatingExtension] = useState(false)
+
+  /**
+   * Bấm hộ khách khi họ trả lời trực tiếp tại quầy.
+   *
+   * Gọi đúng endpoint mà ứng dụng của khách gọi, nên đề nghị đi qua đủ mọi kiểm
+   * tra nghiệp vụ — không phải sửa trạng thái tắt.
+   */
+  const handleSimulateExtension = async (approved: boolean) => {
+    if (!session) return
+    setSimulatingExtension(true)
+    try {
+      await staffApi.simulateClientExtension(session.sessionId, { approved })
+      toast.success(
+        approved
+          ? "Đã ghi nhận khách đồng ý gia hạn"
+          : "Đã ghi nhận khách từ chối",
+      )
+      await refreshData()
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
+      toast.error(msg ?? "Không ghi nhận được phản hồi của khách")
+    } finally {
+      setSimulatingExtension(false)
+    }
+  }
 
   const handleSessionRealtime = useCallback(
     (message: WsMessage) => {
@@ -1451,6 +1479,44 @@ export default function StaffSessionDetailPage() {
           currentProposal={session.extensionProposal}
           className="border-[#e5e2e1]"
         />
+      )}
+
+      {/* Trả lời thay khách — chỉ hiện khi đang có đề nghị gia hạn chờ phản hồi.
+          Đề nghị gửi đi rồi thì phiên đứng ở EXTENDING cho tới khi khách bấm trên
+          máy họ; lúc demo hoặc lúc khách để quên điện thoại thì không có đường nào
+          đẩy tiếp, và cả luồng gia hạn tắc ở đó. */}
+      {session.extensionProposal?.status === "PENDING" && (
+        <StaffCard className="space-y-3 border-amber-200 bg-amber-50/60">
+          <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-amber-900">
+            <Info className="size-4" />
+            Trả lời thay khách
+          </h4>
+          <p className="text-xs font-semibold text-amber-800">
+            Đang chờ khách phản hồi đề nghị gia hạn
+            {session.extensionProposal.extraMinutes
+              ? ` ${session.extensionProposal.extraMinutes} phút`
+              : ""}
+            . Khách trả lời trực tiếp tại quầy thì bấm giúp họ ở đây — hệ thống
+            ghi nhận y như khách tự bấm trên máy.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <StaffButton
+              type="button"
+              disabled={simulatingExtension}
+              onClick={() => handleSimulateExtension(true)}
+            >
+              Khách đồng ý gia hạn
+            </StaffButton>
+            <StaffButton
+              type="button"
+              variant="outline"
+              disabled={simulatingExtension}
+              onClick={() => handleSimulateExtension(false)}
+            >
+              Khách từ chối
+            </StaffButton>
+          </div>
+        </StaffCard>
       )}
 
       {(session.status === "ACTIVE" ||
