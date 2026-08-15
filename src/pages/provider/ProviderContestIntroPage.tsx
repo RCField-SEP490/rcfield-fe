@@ -96,15 +96,19 @@ export default function ProviderContestIntroPage() {
         }
       />
 
-      <section className="overflow-hidden rounded-2xl bg-[#1c1b1b] px-8 py-10">
-        {/* Chủ đề provider ép màu mọi thẻ h dưới `.provider-orange-theme` bằng
-            !important, nên trên nền tối phải dùng biến thể important của
-            Tailwind mới thắng được. */}
-        <h2 className="max-w-3xl text-2xl font-black leading-tight text-white! sm:text-3xl">
+      {/*
+        Nền tối dùng lớp riêng `.provider-hero-surface`, không dùng `bg-[#1c1b1b]`:
+        chủ đề provider đổi lớp đó thành cam để nhuộm nút, và cả khối mở đầu bị
+        phủ cam theo.
+      */}
+      <section className="provider-hero-surface overflow-hidden rounded-2xl px-8 py-10">
+        {/* Màu chữ trên nền tối do `.provider-hero-surface` trong globals.css lo;
+            đặt lớp màu ở đây không thắng được luật chủ đề. */}
+        <h2 className="max-w-3xl text-2xl font-black leading-tight sm:text-3xl">
           Một giải vài chục tay đua ngốn cả buổi để xếp lượt và ghi kết quả. Ở
           đây là vài cú bấm.
         </h2>
-        <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-white/70">
+        <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-white/75">
           Bạn lo phần sân bãi và tay đua. Xếp lượt, điểm danh, giao xe, tính
           hạng — hệ thống làm theo đúng thể thức bạn chọn, và mọi thao tác đều
           lưu lại để không ai tranh cãi được kết quả.
@@ -259,8 +263,13 @@ export default function ProviderContestIntroPage() {
 function HeroStat({ value, label }: { value: string; label: string }) {
   return (
     <div>
-      <p className="text-xl font-black text-orange-400">{value}</p>
-      <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-white/50">
+      {/*
+        Cam-300 chứ không phải cam-400: trên nền #1c1b1b, cam-400 chỉ đạt khoảng
+        4:1 nên chữ số nhỏ đọc mờ. Nhãn để trắng 60% thay vì 50% vì cỡ 11px viết
+        hoa mà mờ quá thì gần như không đọc được.
+      */}
+      <p className="text-xl font-black text-orange-300">{value}</p>
+      <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-white/60">
         {label}
       </p>
     </div>

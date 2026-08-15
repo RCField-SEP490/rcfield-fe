@@ -134,3 +134,25 @@ export type TaxLookupResult =
   | { status: "INVALID" }
   /** Không hỏi được Cục Thuế; cho đi tiếp nhưng hồ sơ bị đánh dấu chưa xác minh. */
   | { status: "UNAVAILABLE" }
+
+/** Một dòng trong sổ giao dịch nền tảng của admin. */
+export type LedgerSource = "SAAS" | "CONTEST_FEE"
+
+export interface LedgerRow {
+  id: string
+  source: LedgerSource
+  code: string
+  party: string | null
+  subject: string | null
+  amount: number
+  gateway: string | null
+  status: string
+  created_at: string
+}
+
+export interface LedgerSummary {
+  saas_revenue: number
+  contest_fee_revenue: number
+  platform_revenue: number
+  pending_amount: number
+}

@@ -10,13 +10,15 @@ import {
   cafeQueryKeys,
   CAFE_CONFIGURATION_REFETCH_INTERVAL_MS,
 } from "@/features/cafes/api/cafe.api"
-import { mapCafeToExploreCafe, mapCatalogToExploreVehicle } from "@/features/cafes/lib/cafe.mappers"
+import {
+  mapCafeToExploreCafe,
+  mapCatalogToExploreVehicle,
+} from "@/features/cafes/lib/cafe.mappers"
 import { vehicleApi } from "@/features/vehicles/api/vehicle.api"
 import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
 import { ChatWidget } from "@/features/chat/components/ChatWidget"
 import { Button } from "@/shared/ui/button"
 import { CafeBookingCard } from "./components/CafeBookingCard"
-import { CafeTopDriversSection } from "./components/CafeTopDriversSection"
 import { CafeContestsSection } from "./components/CafeContestsSection"
 import {
   CafeAboutSection,
@@ -71,8 +73,17 @@ export function CafeDetailPage() {
     isLoading: menuLoading,
     isError: menuError,
   } = useQuery({
-    queryKey: menuQueryKeys.list(resolvedCafe?.id, { page: 1, limit: 100, available: true }),
-    queryFn: () => menuApi.listMenuItems(resolvedCafe!.id, { page: 1, limit: 100, available: true }),
+    queryKey: menuQueryKeys.list(resolvedCafe?.id, {
+      page: 1,
+      limit: 100,
+      available: true,
+    }),
+    queryFn: () =>
+      menuApi.listMenuItems(resolvedCafe!.id, {
+        page: 1,
+        limit: 100,
+        available: true,
+      }),
     enabled: !!resolvedCafe?.id,
   })
   const { data: catalogs = [] } = useQuery({
@@ -100,10 +111,14 @@ export function CafeDetailPage() {
   }, [sourceCafe, cafeImages, catalogs])
 
   // Hoisted Booking Selections
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | undefined>(undefined)
+  const [selectedVehicleId, setSelectedVehicleId] = useState<
+    string | undefined
+  >(undefined)
   const [fnbQuantities, setFnbQuantities] = useState<Record<string, number>>({})
   const [bookingMode] = useState<BookingMode>("hourly")
-  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString("sv-SE"))
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toLocaleDateString("sv-SE"),
+  )
 
   /*
     Tiêu đề và mô tả riêng cho từng cơ sở.
@@ -160,9 +175,12 @@ export function CafeDetailPage() {
   if (listError || (detailError && !resolvedCafe)) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold text-slate-950">Không tải được dữ liệu cơ sở</h1>
+        <h1 className="text-2xl font-bold text-slate-950">
+          Không tải được dữ liệu cơ sở
+        </h1>
         <p className="mt-2 text-sm text-slate-500">
-          Vui lòng kiểm tra BE tại <span className="font-mono">localhost:3000</span> hoặc thử tải lại.
+          Vui lòng kiểm tra BE tại{" "}
+          <span className="font-mono">localhost:3000</span> hoặc thử tải lại.
         </p>
         <Button
           type="button"
@@ -181,9 +199,16 @@ export function CafeDetailPage() {
   if (!resolvedCafe || !cafe) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold text-slate-950">Không tìm thấy cơ sở</h1>
-        <p className="mt-2 text-sm text-slate-500">Cơ sở này không tồn tại hoặc đã bị ẩn.</p>
-        <Button asChild className="mt-4 bg-slate-950 font-semibold text-white hover:bg-orange-600">
+        <h1 className="text-2xl font-bold text-slate-950">
+          Không tìm thấy cơ sở
+        </h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Cơ sở này không tồn tại hoặc đã bị ẩn.
+        </p>
+        <Button
+          asChild
+          className="mt-4 bg-slate-950 font-semibold text-white hover:bg-orange-600"
+        >
           <Link to={routePaths.cafes}>Quay lại khám phá</Link>
         </Button>
       </div>
@@ -207,11 +232,11 @@ export function CafeDetailPage() {
   /*
     Thứ tự phần trên trang đi theo trình tự người ta ra quyết định:
     sân chạy được gì → chỗ này thế nào → thuê xe gì → có gói/khuyến mãi không →
-    ăn uống → người khác nói gì → cộng đồng ở đây ra sao → luật lệ.
+    ăn uống → người khác nói gì → giải đấu → luật lệ.
 
-    Bản cũ đặt "Bảng vàng tay đua" và "Giải đấu" ngay dưới ảnh, còn "Loại sân" thì
-    tận cuối trang sau cả menu đồ ăn — khách lần đầu phải cuộn qua bốn khối mới
-    biết sân này chạy được thể loại gì.
+    Bản cũ đặt "Giải đấu" ngay dưới ảnh, còn "Loại sân" thì tận cuối trang sau cả
+    menu đồ ăn — khách lần đầu phải cuộn qua bốn khối mới biết sân này chạy được
+    thể loại gì.
   */
   const sections = [
     <TrackSection key="tracks" cafeId={resolvedCafe.id} />,
@@ -236,7 +261,6 @@ export function CafeDetailPage() {
       onChangeFnb={setFnbQuantities}
     />,
     <CafeReviewsSection key="reviews" cafeId={resolvedCafe.id} />,
-    <CafeTopDriversSection key="drivers" cafeId={resolvedCafe.id} />,
     <CafeContestsSection key="contests" cafeId={resolvedCafe.id} />,
     <CafeRulesSection key="rules" rules={cafeDetail?.rules} />,
     <CafeBusinessSection
@@ -253,7 +277,9 @@ export function CafeDetailPage() {
         transition={{ duration: 0.3 }}
         className="mx-auto flex w-full max-w-[1440px] items-center gap-1.5 px-4 pb-1 pt-3 text-sm text-slate-500 md:px-6"
       >
-        <Link to={routePaths.cafes} className="hover:text-slate-900">Cơ sở</Link>
+        <Link to={routePaths.cafes} className="hover:text-slate-900">
+          Cơ sở
+        </Link>
         <span>/</span>
         <span className="text-slate-400">{cafe.city}</span>
         <span>/</span>

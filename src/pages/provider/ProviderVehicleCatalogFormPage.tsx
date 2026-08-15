@@ -150,7 +150,7 @@ export function ProviderVehicleCatalogFormPage() {
       const validUrls = results.filter((url): url is string => url !== null)
 
       if (validUrls.length > 0) {
-        setFormImages((prev) => [...prev, ...validUrls])
+        await applyImages([...formImages, ...validUrls])
         successCount = validUrls.length
       }
 
@@ -176,35 +176,48 @@ export function ProviderVehicleCatalogFormPage() {
         toast.error(`Album đã đạt giới hạn tối đa ${MAX_IMAGES} ảnh.`)
         return
       }
-      setFormImages((prev) => [...prev, manualUrl.trim()])
+      void applyImages([...formImages, manualUrl.trim()])
       setManualUrl("")
       toast.success("Đã thêm ảnh vào album!")
     }
   }
 
+  /**
+   * Mọi thay đổi về album ảnh đi qua đây.
+   *
+   * Danh mục đang sửa thì ghi thẳng vào máy chủ; thêm ảnh lưu ngay mà xoá ảnh
+   * lại phải bấm "Cập nhật" là kiểu nửa vời khó đoán nhất cho người dùng.
+   */
+  const applyImages = async (nextImages: string[]) => {
+    setFormImages(nextImages)
+    if (!isEdit) return
+    try {
+      await updateCatalogMutation.mutateAsync({
+        images: nextImages.map((url, index) => ({ url, isCover: index === 0 })),
+      } as UpdateVehicleCatalogDto)
+    } catch {
+      toast.error("Chưa lưu được thay đổi ảnh vào danh mục")
+    }
+  }
+
   const handleMoveImage = (index: number, direction: "left" | "right") => {
-    setFormImages((prev) => {
-      const copy = [...prev]
-      const targetIndex = direction === "left" ? index - 1 : index + 1
-      if (targetIndex >= 0 && targetIndex < copy.length) {
-        const temp = copy[index]
-        copy[index] = copy[targetIndex]
-        copy[targetIndex] = temp
-      }
-      return copy
-    })
+    const copy = [...formImages]
+    const targetIndex = direction === "left" ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= copy.length) return
+    const temp = copy[index]
+    copy[index] = copy[targetIndex]
+    copy[targetIndex] = temp
+    void applyImages(copy)
   }
 
   const handleSetCover = (index: number) => {
-    setFormImages((prev) => {
-      const copy = [...prev]
-      const [item] = copy.splice(index, 1)
-      return [item, ...copy]
-    })
+    const copy = [...formImages]
+    const [item] = copy.splice(index, 1)
+    void applyImages([item, ...copy])
   }
 
   const handleRemoveImage = (index: number) => {
-    setFormImages((prev) => prev.filter((_, i) => i !== index))
+    void applyImages(formImages.filter((_, i) => i !== index))
   }
 
   const handleTrackChange = (trackId: string, checked: boolean) => {

@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, Clock, CreditCard, Sparkles, TriangleAlert } from "lucide-react"
+import {
+  Banknote,
+  Check,
+  Clock,
+  CreditCard,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -316,26 +323,44 @@ function TransferForm({
   onPayOS: () => void
   payosPending: boolean
 }) {
+  const [method, setMethod] = useState<"PAYOS" | "TRANSFER">("PAYOS")
   const [reference, setReference] = useState("")
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const transferNote = `RCFIELD ${order.id.slice(0, 8).toUpperCase()}`
 
   return (
     <div className="space-y-4">
-      {/* Trả qua cổng đặt trước vì nó xong ngay; chuyển khoản tay vẫn giữ bên
-          dưới cho ai không dùng được cổng. */}
-      <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-black text-[#1c1b1b]">
-              Thanh toán online qua PayOS
-            </p>
-            <p className="mt-0.5 text-xs font-semibold text-[#5d5f5f]">
-              Xác nhận ngay sau khi trả, không phải chờ RCField đối soát.
-            </p>
-          </div>
+      {/*
+        Hai cách trả tiền là một lựa chọn, không phải hai việc phải làm. Bày cả
+        số tài khoản lẫn ô nhập mã giao dịch ngay cạnh nút trả online khiến
+        provider tưởng phải làm cả hai, hoặc chuyển khoản xong vẫn bấm nhầm nút
+        cổng. Chọn xong mới hiện phần tương ứng.
+      */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <MethodOption
+          active={method === "PAYOS"}
+          icon={<CreditCard className="size-4" />}
+          title="Thanh toán online"
+          hint="Qua cổng PayOS, xác nhận ngay"
+          onSelect={() => setMethod("PAYOS")}
+        />
+        <MethodOption
+          active={method === "TRANSFER"}
+          icon={<Banknote className="size-4" />}
+          title="Chuyển khoản tay"
+          hint="RCField đối soát rồi duyệt"
+          onSelect={() => setMethod("TRANSFER")}
+        />
+      </div>
+
+      {method === "PAYOS" ? (
+        <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+          <p className="text-sm font-semibold text-[#5d5f5f]">
+            Bấm nút bên dưới để mở cổng PayOS. Trả xong là phí được ghi nhận
+            ngay, không phải chờ RCField đối soát.
+          </p>
           <Button
-            className="h-10 shrink-0 rounded-lg bg-orange-600 px-5 text-sm font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-3 h-10 w-full rounded-lg bg-orange-600 px-5 text-sm font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             disabled={payosPending}
             onClick={onPayOS}
           >
@@ -344,90 +369,131 @@ function TransferForm({
               ? "Đang mở cổng…"
               : `Trả ${formatVnd(order.amount)} qua PayOS`}
           </Button>
+          <Button
+            variant="ghost"
+            className="mt-3 h-10 rounded-lg text-xs font-bold text-[#747878] sm:ml-2"
+            onClick={onCancel}
+          >
+            Đổi gói khác
+          </Button>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+              Chuyển khoản tới
+            </p>
+            <div className="mt-2 space-y-1 text-sm font-semibold text-[#1c1b1b]">
+              <p>
+                {BANK_INFO.bank} ·{" "}
+                <span className="font-black">{BANK_INFO.account}</span>
+              </p>
+              <p>{BANK_INFO.holder}</p>
+              <p>
+                Số tiền:{" "}
+                <span className="font-black text-orange-700">
+                  {formatVnd(order.amount)}
+                </span>
+              </p>
+              <p>
+                Nội dung: <span className="font-black">{transferNote}</span>
+              </p>
+            </div>
+            <p className="mt-2 text-xs font-semibold text-[#747878]">
+              Ghi đúng nội dung giúp RCField đối soát nhanh hơn.
+            </p>
+          </div>
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-[#e5e2e1]" />
-        <span className="text-xs font-bold uppercase tracking-wider text-[#a3a3a3]">
-          hoặc chuyển khoản tay
-        </span>
-        <div className="h-px flex-1 bg-[#e5e2e1]" />
-      </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+                Mã giao dịch / nội dung đã chuyển
+              </Label>
+              <Input
+                value={reference}
+                placeholder="Ví dụ: FT26080412345"
+                onChange={(event) => setReference(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+                Ngày chuyển
+              </Label>
+              <Input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+              />
+            </div>
+          </div>
 
-      <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4">
-        <p className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-          Chuyển khoản tới
-        </p>
-        <div className="mt-2 space-y-1 text-sm font-semibold text-[#1c1b1b]">
-          <p>
-            {BANK_INFO.bank} ·{" "}
-            <span className="font-black">{BANK_INFO.account}</span>
-          </p>
-          <p>{BANK_INFO.holder}</p>
-          <p>
-            Số tiền:{" "}
-            <span className="font-black text-orange-700">
-              {formatVnd(order.amount)}
-            </span>
-          </p>
-          <p>
-            Nội dung: <span className="font-black">{transferNote}</span>
-          </p>
-        </div>
-        <p className="mt-2 text-xs font-semibold text-[#747878]">
-          Ghi đúng nội dung giúp RCField đối soát nhanh hơn.
-        </p>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-            Mã giao dịch / nội dung đã chuyển
-          </Label>
-          <Input
-            value={reference}
-            placeholder="Ví dụ: FT26080412345"
-            onChange={(event) => setReference(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-            Ngày chuyển
-          </Label>
-          <Input
-            type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          className="h-10 rounded-lg bg-orange-600 px-5 text-sm font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={pending || reference.trim().length < 3}
-          onClick={() =>
-            onSubmit({
-              transfer_reference: reference.trim(),
-              transfer_date: date,
-              // Gửi đúng số tiền của đơn: provider chuyển thiếu thì admin phát
-              // hiện lúc đối soát, không phải tin vào con số họ tự gõ.
-              transfer_amount: order.amount,
-            })
-          }
-        >
-          Tôi đã chuyển khoản
-        </Button>
-        <Button
-          variant="ghost"
-          className="h-10 rounded-lg text-xs font-bold text-[#747878]"
-          onClick={onCancel}
-        >
-          Đổi gói khác
-        </Button>
-      </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              className="h-10 rounded-lg bg-orange-600 px-5 text-sm font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={pending || reference.trim().length < 3}
+              onClick={() =>
+                onSubmit({
+                  transfer_reference: reference.trim(),
+                  transfer_date: date,
+                  // Gửi đúng số tiền của đơn: provider chuyển thiếu thì admin phát
+                  // hiện lúc đối soát, không phải tin vào con số họ tự gõ.
+                  transfer_amount: order.amount,
+                })
+              }
+            >
+              Tôi đã chuyển khoản
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-10 rounded-lg text-xs font-bold text-[#747878]"
+              onClick={onCancel}
+            >
+              Đổi gói khác
+            </Button>
+          </div>
+        </>
+      )}
     </div>
+  )
+}
+
+function MethodOption({
+  active,
+  icon,
+  title,
+  hint,
+  onSelect,
+}: {
+  active: boolean
+  icon: React.ReactNode
+  title: string
+  hint: string
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        "flex items-start gap-3 rounded-xl border p-3 text-left transition",
+        active
+          ? "border-orange-500 bg-orange-50/60 ring-1 ring-orange-200"
+          : "border-[#e5e2e1] bg-white hover:border-[#b0b4b4]",
+      )}
+    >
+      <span
+        className={active ? "mt-0.5 text-orange-600" : "mt-0.5 text-[#a3a3a3]"}
+      >
+        {icon}
+      </span>
+      <span>
+        <span className="block text-sm font-black text-[#1c1b1b]">{title}</span>
+        <span className="block text-xs font-semibold text-[#747878]">
+          {hint}
+        </span>
+      </span>
+    </button>
   )
 }
 

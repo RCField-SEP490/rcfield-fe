@@ -36,7 +36,7 @@ import type {
   CafeOperatingHours,
   CafeUpsertBody,
 } from "@/features/cafes/types"
-import { BANNER_MIN_WIDTH, BANNER_RECOMMENDED } from "@/shared/lib/cloudinary"
+import { BANNER_RECOMMENDED } from "@/shared/lib/cloudinary"
 import { toast } from "sonner"
 import { cn, sanitizeImageUrl } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
@@ -76,6 +76,13 @@ type ProviderCafeFormProps = {
   ) => Promise<void>
   onCancel?: () => void
   onDeleteImage?: (image: CafeImage) => Promise<void>
+  /**
+   * Có hai hàm này nghĩa là cơ sở đã tồn tại: ảnh chọn xong lưu ngay, không chờ
+   * bấm "Lưu thay đổi". Lúc tạo cơ sở mới thì không truyền, vì chưa có cơ sở nào
+   * để gắn ảnh vào — khi đó ảnh vẫn đi kèm lượt submit như cũ.
+   */
+  onUploadCover?: (file: File) => Promise<void>
+  onUploadGallery?: (files: File[]) => Promise<void>
 }
 
 const dayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
@@ -143,10 +150,12 @@ function readImageSize(
 }
 
 /**
- * Chặn ảnh quá nhỏ ngay tại chỗ chọn.
+ * Chỉ chặn thứ thật sự làm hỏng việc tải lên: dung lượng.
  *
- * Ảnh hẹp hơn khung hiển thị sẽ bị phóng to và vỡ nét trên trang khách. Báo
- * ngay lúc chọn rẻ hơn nhiều so với để chủ quán phát hiện sau khi đã lưu.
+ * Kích thước ảnh không còn bị chặn. Chủ quán chụp bằng điện thoại hay lấy ảnh
+ * sẵn có đều dùng được; ảnh nhỏ thì hiện chưa nét chứ không phải là lỗi, nên
+ * chỉ nhắc chứ không từ chối. Mốc 5MB thì giữ, vì đó là giới hạn thật của
+ * endpoint tải ảnh — vượt qua là hỏng ở server.
  */
 async function acceptImage(file: File): Promise<boolean> {
   if (file.size > MAX_IMAGE_BYTES) {
@@ -154,11 +163,10 @@ async function acceptImage(file: File): Promise<boolean> {
     return false
   }
   const size = await readImageSize(file)
-  if (size && size.width < BANNER_MIN_WIDTH) {
-    toast.error(
-      `"${file.name}" rộng ${size.width}px, quá nhỏ nên sẽ bị vỡ nét. Cần tối thiểu ${BANNER_MIN_WIDTH}px.`,
+  if (size && size.width < BANNER_RECOMMENDED.width) {
+    toast.warning(
+      `"${file.name}" rộng ${size.width}px nên có thể hơi mờ khi phóng to. Ảnh vẫn được dùng.`,
     )
-    return false
   }
   if (size && size.height > size.width) {
     toast.warning(
@@ -173,6 +181,8 @@ export function ProviderCafeForm({
   isPending,
   submitLabel,
   onSubmit,
+  onUploadCover,
+  onUploadGallery,
   onCancel,
   onDeleteImage,
 }: ProviderCafeFormProps) {
@@ -195,6 +205,9 @@ export function ProviderCafeForm({
     enabled: provinceCode !== null,
     staleTime: Infinity,
   })
+
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [uploadingGallery, setUploadingGallery] = useState(false)
 
   const coverPreview = useMemo(() => {
     if (coverFile) return URL.createObjectURL(coverFile)
@@ -680,12 +693,10 @@ export function ProviderCafeForm({
             </div>
             <p className="mt-1 mb-3 text-xs leading-5 text-[#747878]">
               Ảnh đại diện của cơ sở. Xuất hiện ở thẻ chi nhánh trên trang khám
-              phá, ảnh đầu tiên ở trang chi tiết, và trong đơn đặt của khách.{" "}
-              <span className="font-semibold text-[#5d5f5f]">
-                Chọn ảnh nằm ngang, rộng tối thiểu {BANNER_MIN_WIDTH}px
-              </span>{" "}
-              — khuyến nghị {BANNER_RECOMMENDED.width}×
-              {BANNER_RECOMMENDED.height}px.
+              phá, ảnh đầu tiên ở trang chi tiết, và trong đơn đặt của khách.
+              Ảnh nằm ngang cỡ {BANNER_RECOMMENDED.width}×
+              {BANNER_RECOMMENDED.height}
+              px cho hình đẹp nhất, nhưng ảnh cỡ nào cũng dùng được.
             </p>
 
             {coverPreview ? (
@@ -713,15 +724,36 @@ export function ProviderCafeForm({
             )}
 
             <label className="mt-3 block cursor-pointer rounded-lg border border-dashed border-[#c4c7c8] bg-white p-3 text-center text-sm font-semibold text-[#444748] hover:bg-[#f6f3f2]">
-              {coverFile ? coverFile.name : "Tải ảnh bìa lên"}
+              {uploadingCover
+                ? "Đang tải ảnh bìa..."
+                : coverFile
+                  ? coverFile.name
+                  : "Tải ảnh bìa lên"}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
+                disabled={uploadingCover}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ""
                   if (!file) return setCoverFile(null)
-                  void acceptImage(file).then((ok) => ok && setCoverFile(file))
+                  void acceptImage(file).then(async (ok) => {
+                    if (!ok) return
+                    if (!onUploadCover) {
+                      setCoverFile(file)
+                      return
+                    }
+                    setUploadingCover(true)
+                    try {
+                      await onUploadCover(file)
+                      // Ảnh đã nằm trên máy chủ; giữ file trong state nữa chỉ
+                      // khiến lượt lưu sau tải lên lần hai.
+                      setCoverFile(null)
+                    } finally {
+                      setUploadingCover(false)
+                    }
+                  })
                 }}
               />
             </label>
@@ -739,16 +771,34 @@ export function ProviderCafeForm({
               đầu, nên đừng tải lại ảnh bìa vào đây.
             </p>
             <label className="block cursor-pointer rounded-lg border border-dashed border-[#c4c7c8] bg-white p-4 text-center text-sm font-semibold text-[#444748] hover:bg-[#f6f3f2]">
-              {selectedFileLabel}
+              {uploadingGallery ? "Đang tải ảnh lên..." : selectedFileLabel}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 multiple
                 className="sr-only"
+                disabled={uploadingGallery}
                 onChange={(event) => {
                   const picked = Array.from(event.target.files ?? [])
-                  void Promise.all(picked.map(acceptImage)).then((results) =>
-                    setFiles(picked.filter((_, index) => results[index])),
+                  event.target.value = ""
+                  void Promise.all(picked.map(acceptImage)).then(
+                    async (results) => {
+                      const accepted = picked.filter(
+                        (_, index) => results[index],
+                      )
+                      if (!accepted.length) return
+                      if (!onUploadGallery) {
+                        setFiles(accepted)
+                        return
+                      }
+                      setUploadingGallery(true)
+                      try {
+                        await onUploadGallery(accepted)
+                        setFiles([])
+                      } finally {
+                        setUploadingGallery(false)
+                      }
+                    },
                   )
                 }}
               />

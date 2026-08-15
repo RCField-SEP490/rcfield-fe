@@ -11,6 +11,8 @@ import type {
   CafeListItem,
   ImpersonateResponse,
   TaxLookupResult,
+  LedgerRow,
+  LedgerSummary,
 } from "../types"
 
 interface PaginatedResponse<T> {
@@ -62,7 +64,10 @@ export const subscriptionApi = {
   getPayOSLink: async (body: {
     plan_id?: string
     payment_request_id?: string
-  }): Promise<{ success: boolean; data: { checkoutUrl: string; orderCode: number } }> => {
+  }): Promise<{
+    success: boolean
+    data: { checkoutUrl: string; orderCode: number }
+  }> => {
     const res = await api.post<{
       success: boolean
       data: { checkoutUrl: string; orderCode: number }
@@ -138,6 +143,31 @@ export const subscriptionApi = {
 
   unsuspendProvider: async (id: string): Promise<void> => {
     await api.post(`/v1/admin/providers/${id}/unsuspend`)
+  },
+
+  listPlatformLedger: async (params: {
+    source?: "SAAS" | "CONTEST_FEE"
+    status?: string
+    q?: string
+    page?: number
+    limit?: number
+  }): Promise<{
+    success: boolean
+    data: LedgerRow[]
+    summary: LedgerSummary
+    total: number
+    page: number
+    limit: number
+  }> => {
+    const res = await api.get<{
+      success: boolean
+      data: LedgerRow[]
+      summary: LedgerSummary
+      total: number
+      page: number
+      limit: number
+    }>("/v1/admin/payments", { params })
+    return res.data
   },
 
   listAllPaymentRequests: async (params?: {
