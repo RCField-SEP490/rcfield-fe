@@ -149,7 +149,7 @@ function PackageRow({
         <Stat label="Áp dụng" value={playModeLabel} className="sm:w-36" />
       </dl>
 
-      <div className="flex shrink-0 items-center justify-end gap-4 sm:w-60">
+      <div className="flex shrink-0 items-center justify-end gap-4 sm:w-64">
         <div className="text-right">
           <p className="text-lg font-black text-slate-950">{formatCurrency(pkg.price)}</p>
           <p className="text-xs font-semibold text-slate-400">giá gói</p>
@@ -157,7 +157,7 @@ function PackageRow({
 
         {isCustomer ? (
           isOwned ? (
-            <span className="flex items-center gap-1.5 text-sm font-bold text-emerald-700">
+            <span className="flex items-center gap-1.5 text-sm font-bold text-emerald-700 whitespace-nowrap">
               <CheckCircle2 className="size-4" />
               Đang hoạt động
             </span>
