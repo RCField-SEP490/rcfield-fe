@@ -87,27 +87,49 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
                   )}
                 </div>
                 {r.note && <p className="mt-1 text-sm text-[#5d5f5f]">{r.note}</p>}
-                <p className="mt-1 text-xs text-[#747878]">
+                {(r.staffScore || r.facilityScore || r.vehicleScore) && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {r.staffScore !== null && r.staffScore !== undefined && (
+                      <span className="rounded-full bg-[#f1f3f4] px-2.5 py-0.5 text-[11px] font-semibold text-[#5d5f5f]">
+                        Nhân viên: {r.staffScore}/5
+                      </span>
+                    )}
+                    {r.facilityScore !== null && r.facilityScore !== undefined && (
+                      <span className="rounded-full bg-[#f1f3f4] px-2.5 py-0.5 text-[11px] font-semibold text-[#5d5f5f]">
+                        Cơ sở: {r.facilityScore}/5
+                      </span>
+                    )}
+                    {r.vehicleScore !== null && r.vehicleScore !== undefined && (
+                      <span className="rounded-full bg-[#f1f3f4] px-2.5 py-0.5 text-[11px] font-semibold text-[#5d5f5f]">
+                        Xe: {r.vehicleScore}/5
+                      </span>
+                    )}
+                  </div>
+                )}
+                <p className="mt-1.5 text-xs text-[#747878]">
                   {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() =>
-                  toggleMutation.mutate({
-                    id: r.id,
-                    next: r.status === "VISIBLE" ? "HIDDEN" : "VISIBLE",
-                  })
-                }
-                disabled={toggleMutation.isPending && toggleMutation.variables?.id === r.id}
-              >
-                {r.status === "VISIBLE" ? (
-                  <><EyeOff className="mr-1 h-3.5 w-3.5" /> Ẩn</>
-                ) : (
-                  <><Eye className="mr-1 h-3.5 w-3.5" /> Hiện</>
-                )}
-              </Button>
+              {/* Tạm thời ẩn nút khỏi giao diện bằng điều kiện false nhưng vẫn giữ code để tránh lỗi unused compile */}
+              {false && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    toggleMutation.mutate({
+                      id: r.id,
+                      next: r.status === "VISIBLE" ? "HIDDEN" : "VISIBLE",
+                    })
+                  }
+                  disabled={toggleMutation.isPending && toggleMutation.variables?.id === r.id}
+                >
+                  {r.status === "VISIBLE" ? (
+                    <><EyeOff className="mr-1 h-3.5 w-3.5" /> Ẩn</>
+                  ) : (
+                    <><Eye className="mr-1 h-3.5 w-3.5" /> Hiện</>
+                  )}
+                </Button>
+              )}
             </div>
           ))}
         </div>

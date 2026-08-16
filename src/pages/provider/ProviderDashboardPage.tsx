@@ -34,6 +34,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts"
+const AnyAreaChart = AreaChart as any
 import type { LegendPayload, TooltipValueType } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 
@@ -466,6 +467,8 @@ function RealDashboard() {
   const [customFrom, setCustomFrom] = useState("")
   const [customTo, setCustomTo] = useState("")
   const [hoveredSeries, setHoveredSeries] = useState<string | null>(null)
+  const [hoveredLegendSeries, setHoveredLegendSeries] = useState<string | null>(null)
+  const [activeTooltipIndex, setActiveTooltipIndex] = useState<any>(undefined)
   const [hoveredPieType, setHoveredPieType] = useState<string | null>(null)
 
   const handleCafeChange = (newCafeId: string | null) => {
@@ -1144,11 +1147,19 @@ function RealDashboard() {
               Chưa có dữ liệu trong kỳ này
             </div>
           ) : (
-            <div className="h-56 w-full text-xs">
+            <div className="h-56 w-full text-xs relative">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
+                <AnyAreaChart
                   data={trend}
                   margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+                  onMouseMove={(state: any) => {
+                    if (state && state.activeTooltipIndex !== undefined && state.activeTooltipIndex !== null) {
+                      setActiveTooltipIndex(state.activeTooltipIndex)
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setActiveTooltipIndex(undefined)
+                  }}
                 >
                   <defs>
                     {Object.entries(CHART_COLORS).map(([key, color]) => (
@@ -1192,7 +1203,24 @@ function RealDashboard() {
                     formatter={(
                       value: TooltipValueType | undefined,
                       name: number | string | undefined,
-                    ) => [formatTooltipCurrency(value), String(name || "")]}
+                      item: any,
+                    ) => {
+                      if (hoveredLegendSeries) {
+                        const targetKey = item?.dataKey || item?.props?.dataKey
+                        const seriesLabels: Record<string, string> = {
+                          slotFee: "Phí sân",
+                          rentalFee: "Thuê xe",
+                          fnbPreorder: "Đồ ăn & thức uống",
+                          extensionFee: "Phí gia hạn",
+                          damageCharge: "Phí bồi thường",
+                          packageFee: "Phí gói",
+                        }
+                        if (targetKey !== hoveredLegendSeries && String(name) !== seriesLabels[hoveredLegendSeries]) {
+                          return null
+                        }
+                      }
+                      return [formatTooltipCurrency(value), String(name || "")]
+                    }}
                     contentStyle={{
                       borderRadius: "10px",
                       border: "1px solid #e5e2e1",
@@ -1200,32 +1228,28 @@ function RealDashboard() {
                     }}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                    onMouseEnter={(entry: LegendPayload) =>
-                      setHoveredSeries(
-                        typeof entry.dataKey === "string"
-                          ? entry.dataKey
-                          : null,
-                      )
-                    }
-                    onMouseLeave={() => setHoveredSeries(null)}
-                  />
+                     wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                     onMouseEnter={(entry: LegendPayload) =>
+                       setHoveredLegendSeries(
+                         typeof entry.dataKey === "string"
+                           ? entry.dataKey
+                           : null,
+                       )
+                     }
+                     onMouseLeave={() => setHoveredLegendSeries(null)}
+                   />
                   <Area
                     type="monotone"
                     dataKey="slotFee"
                     name="Phí sân"
                     stroke={CHART_COLORS.slotFee}
                     fill="url(#db-grad-slotFee)"
-                    strokeWidth={hoveredSeries === "slotFee" ? 3.5 : 2}
+                    strokeWidth={hoveredLegendSeries === "slotFee" || hoveredSeries === "slotFee" ? 3.5 : 2}
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "slotFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "slotFee" ? 1 : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "slotFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "slotFee" ? 1 : 0.15
                     }
                     onMouseEnter={() => setHoveredSeries("slotFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
@@ -1236,16 +1260,12 @@ function RealDashboard() {
                     name="Thuê xe"
                     stroke={CHART_COLORS.rentalFee}
                     fill="url(#db-grad-rentalFee)"
-                    strokeWidth={hoveredSeries === "rentalFee" ? 3.5 : 2}
+                    strokeWidth={hoveredLegendSeries === "rentalFee" || hoveredSeries === "rentalFee" ? 3.5 : 2}
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "rentalFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "rentalFee" ? 1 : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "rentalFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "rentalFee" ? 1 : 0.15
                     }
                     onMouseEnter={() => setHoveredSeries("rentalFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
@@ -1256,16 +1276,12 @@ function RealDashboard() {
                     name="Đồ ăn & thức uống"
                     stroke={CHART_COLORS.fnbPreorder}
                     fill="url(#db-grad-fnbPreorder)"
-                    strokeWidth={hoveredSeries === "fnbPreorder" ? 3.5 : 2}
+                    strokeWidth={hoveredLegendSeries === "fnbPreorder" || hoveredSeries === "fnbPreorder" ? 3.5 : 2}
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "fnbPreorder"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "fnbPreorder" ? 1 : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "fnbPreorder"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "fnbPreorder" ? 1 : 0.15
                     }
                     onMouseEnter={() => setHoveredSeries("fnbPreorder")}
                     onMouseLeave={() => setHoveredSeries(null)}
@@ -1277,16 +1293,12 @@ function RealDashboard() {
                     name="Phí gia hạn"
                     stroke={CHART_COLORS.extensionFee}
                     fill="url(#db-grad-extensionFee)"
-                    strokeWidth={hoveredSeries === "extensionFee" ? 3.5 : 2}
+                    strokeWidth={hoveredLegendSeries === "extensionFee" || hoveredSeries === "extensionFee" ? 3.5 : 2}
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "extensionFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "extensionFee" ? 1 : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "extensionFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "extensionFee" ? 1 : 0.15
                     }
                     onMouseEnter={() => setHoveredSeries("extensionFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
@@ -1297,16 +1309,12 @@ function RealDashboard() {
                     name="Phí bồi thường"
                     stroke={CHART_COLORS.damageCharge}
                     fill="url(#db-grad-damageCharge)"
-                    strokeWidth={hoveredSeries === "damageCharge" ? 3.5 : 2}
+                    strokeWidth={hoveredLegendSeries === "damageCharge" || hoveredSeries === "damageCharge" ? 3.5 : 2}
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "damageCharge"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "damageCharge" ? 1 : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "damageCharge"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "damageCharge" ? 1 : 0.15
                     }
                     onMouseEnter={() => setHoveredSeries("damageCharge")}
                     onMouseLeave={() => setHoveredSeries(null)}
@@ -1317,24 +1325,66 @@ function RealDashboard() {
                     name="Phí gói"
                     stroke={CHART_COLORS.packageFee}
                     fill="url(#db-grad-packageFee)"
-                    strokeWidth={hoveredSeries === "packageFee" ? 3.5 : 2}
+                    strokeWidth={hoveredLegendSeries === "packageFee" || hoveredSeries === "packageFee" ? 3.5 : 2}
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "packageFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "packageFee" ? 1 : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "packageFee"
-                        ? 1
-                        : 0.15
+                      hoveredLegendSeries === null || hoveredLegendSeries === "packageFee" ? 1 : 0.15
                     }
                     onMouseEnter={() => setHoveredSeries("packageFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
-                </AreaChart>
+                </AnyAreaChart>
               </ResponsiveContainer>
+              {/* Floating tooltip khi hover vào Legend tag */}
+              {hoveredLegendSeries && trend.length > 0 && (() => {
+                const idx = activeTooltipIndex !== undefined && activeTooltipIndex !== null
+                  ? activeTooltipIndex
+                  : Math.floor(trend.length / 2)
+                const point = trend[idx]
+                if (!point) return null
+                const seriesLabels: Record<string, string> = {
+                  slotFee: "Phí sân",
+                  rentalFee: "Thuê xe",
+                  fnbPreorder: "Đồ ăn & thức uống",
+                  extensionFee: "Phí gia hạn",
+                  damageCharge: "Phí bồi thường",
+                  packageFee: "Phí gói",
+                }
+                const seriesValue = (point as any)[hoveredLegendSeries] as number
+                const color = (CHART_COLORS as any)[hoveredLegendSeries] as string
+                return (
+                  <div
+                    key="legend-tooltip"
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      background: "white",
+                      border: "1px solid #e5e2e1",
+                      borderRadius: 10,
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      pointerEvents: "none",
+                      zIndex: 50,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      minWidth: 160,
+                    }}
+                  >
+                    <p style={{ color: "#747878", fontWeight: 600, marginBottom: 4, fontSize: 11 }}>
+                      {point.label}
+                    </p>
+                    <p style={{ color, fontWeight: 700, margin: 0 }}>
+                      {seriesLabels[hoveredLegendSeries]} :{" "}
+                      {formatCurrency(seriesValue)}
+                    </p>
+                  </div>
+                )
+              })()}
             </div>
           )}
+
         </div>
 
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm xl:col-span-4">
