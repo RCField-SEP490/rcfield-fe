@@ -110,26 +110,28 @@ export function ProviderReviewsTab({ cafeId }: ProviderReviewsTabProps) {
                   {new Date(r.createdAt).toLocaleDateString("vi-VN")}
                 </p>
               </div>
-              {/* Tạm thời ẩn nút khỏi giao diện bằng điều kiện false nhưng vẫn giữ code để tránh lỗi unused compile */}
-              {false && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    toggleMutation.mutate({
-                      id: r.id,
-                      next: r.status === "VISIBLE" ? "HIDDEN" : "VISIBLE",
-                    })
-                  }
-                  disabled={toggleMutation.isPending && toggleMutation.variables?.id === r.id}
-                >
-                  {r.status === "VISIBLE" ? (
-                    <><EyeOff className="mr-1 h-3.5 w-3.5" /> Ẩn</>
-                  ) : (
-                    <><Eye className="mr-1 h-3.5 w-3.5" /> Hiện</>
-                  )}
-                </Button>
-              )}
+              {(() => {
+                const showHideButton = false
+                return showHideButton ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      toggleMutation.mutate({
+                        id: r.id,
+                        next: r.status === "VISIBLE" ? "HIDDEN" : "VISIBLE",
+                      })
+                    }
+                    disabled={toggleMutation.isPending && toggleMutation.variables?.id === r.id}
+                  >
+                    {r.status === "VISIBLE" ? (
+                      <><EyeOff className="mr-1 h-3.5 w-3.5" /> Ẩn</>
+                    ) : (
+                      <><Eye className="mr-1 h-3.5 w-3.5" /> Hiện</>
+                    )}
+                  </Button>
+                ) : null
+              })()}
             </div>
           ))}
         </div>

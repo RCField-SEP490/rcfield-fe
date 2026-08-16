@@ -121,7 +121,7 @@ export function AdminUsersPage() {
     <AdminShell>
       <AdminHeader
         title="Quản lý khách hàng"
-        subtitle="Theo dõi hành vi đặt lịch và khoá tài khoản khi có đủ căn cứ"
+        description="Theo dõi hành vi đặt lịch và khoá tài khoản khi có đủ căn cứ"
       />
 
       <AdminPanel>

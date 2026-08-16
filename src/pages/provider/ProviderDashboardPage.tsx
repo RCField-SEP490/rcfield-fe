@@ -34,7 +34,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts"
-const AnyAreaChart = AreaChart as any
+
 import type { LegendPayload, TooltipValueType } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 
@@ -469,7 +469,7 @@ function RealDashboard() {
   const [hoveredSeries, setHoveredSeries] = useState<string | null>(null)
   const [hoveredLegendSeries, setHoveredLegendSeries] = useState<string | null>(null)
   const [selectedLegendSeries, setSelectedLegendSeries] = useState<string | null>(null)
-  const [activeTooltipIndex, setActiveTooltipIndex] = useState<any>(undefined)
+  const [activeTooltipIndex, setActiveTooltipIndex] = useState<number | undefined>(undefined)
   const [hoveredPieType, setHoveredPieType] = useState<string | null>(null)
 
   const handleCafeChange = (newCafeId: string | null) => {
@@ -1150,12 +1150,13 @@ function RealDashboard() {
           ) : (
             <div className="h-56 w-full text-xs relative">
               <ResponsiveContainer width="100%" height="100%">
-                <AnyAreaChart
+                <AreaChart
                   data={trend}
                   margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
-                  onMouseMove={(state: any) => {
-                    if (state && state.activeTooltipIndex !== undefined && state.activeTooltipIndex !== null) {
-                      setActiveTooltipIndex(state.activeTooltipIndex)
+                  onMouseMove={(state) => {
+                    const chartState = state as { activeTooltipIndex?: number }
+                    if (chartState && chartState.activeTooltipIndex !== undefined && chartState.activeTooltipIndex !== null) {
+                      setActiveTooltipIndex(chartState.activeTooltipIndex)
                     }
                   }}
                   onMouseLeave={() => {
@@ -1166,11 +1167,12 @@ function RealDashboard() {
                     formatter={(
                       value: TooltipValueType | undefined,
                       name: number | string | undefined,
-                      item: any,
+                      item: unknown,
                     ) => {
                       const activeSeries = hoveredLegendSeries || selectedLegendSeries
                       if (activeSeries) {
-                        const targetKey = item?.dataKey || item?.props?.dataKey
+                        const payloadItem = item as { dataKey?: string | number; props?: { dataKey?: string | number } } | undefined
+                        const targetKey = String(payloadItem?.dataKey || payloadItem?.props?.dataKey || "")
                         const seriesLabels: Record<string, string> = {
                           slotFee: "Phí sân",
                           rentalFee: "Thuê xe",
@@ -1228,34 +1230,6 @@ function RealDashboard() {
                     axisLine={false}
                     tickFormatter={(v) => formatCurrency(v)}
                     tick={{ fontSize: 10 }}
-                  />
-                  <Tooltip
-                    formatter={(
-                      value: TooltipValueType | undefined,
-                      name: number | string | undefined,
-                      item: any,
-                    ) => {
-                      if (hoveredLegendSeries) {
-                        const targetKey = item?.dataKey || item?.props?.dataKey
-                        const seriesLabels: Record<string, string> = {
-                          slotFee: "Phí sân",
-                          rentalFee: "Thuê xe",
-                          fnbPreorder: "Đồ ăn & thức uống",
-                          extensionFee: "Phí gia hạn",
-                          damageCharge: "Phí bồi thường",
-                          packageFee: "Phí gói",
-                        }
-                        if (targetKey !== hoveredLegendSeries && String(name) !== seriesLabels[hoveredLegendSeries]) {
-                          return null
-                        }
-                      }
-                      return [formatTooltipCurrency(value), String(name || "")]
-                    }}
-                    contentStyle={{
-                      borderRadius: "10px",
-                      border: "1px solid #e5e2e1",
-                      fontSize: 12,
-                    }}
                   />
                   <Legend
                      wrapperStyle={{ fontSize: 11, paddingTop: 8, cursor: "pointer" }}
@@ -1453,7 +1427,7 @@ function RealDashboard() {
                     onMouseEnter={() => setHoveredSeries("packageFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
-                </AnyAreaChart>
+                </AreaChart>
               </ResponsiveContainer>
               {/* Floating tooltip tự chế khi hover Legend tag hoặc click chọn khóa */}
               {(() => {
@@ -1468,13 +1442,13 @@ function RealDashboard() {
                   damageCharge: "Phí bồi thường",
                   packageFee: "Phí gói",
                 }
-                const color = (CHART_COLORS as any)[activeSeries] as string
+                const color = (CHART_COLORS as Record<string, string>)[activeSeries] || "#000000"
 
                 // Trường hợp 1: Người dùng đang rê chuột trên biểu đồ -> hiện tuần hiện tại & tổng tuần
                 if (activeTooltipIndex !== undefined && activeTooltipIndex !== null) {
                   const point = trend[activeTooltipIndex]
                   if (!point) return null
-                  const val = (point as any)[activeSeries] as number
+                  const val = Number((point as unknown as Record<string, unknown>)[activeSeries] ?? 0)
                   return (
                     <div
                       key="legend-tooltip-hovering"
@@ -1507,7 +1481,7 @@ function RealDashboard() {
                 }
 
                 // Trường hợp 2: Hover/Lock tĩnh (không rê chuột trên chart) -> hiển thị tổng quan cả kỳ của phí đó
-                const totalInPeriod = trend.reduce((sum, item) => sum + (Number((item as any)[activeSeries]) || 0), 0)
+                const totalInPeriod = trend.reduce((sum, item) => sum + (Number((item as unknown as Record<string, unknown>)[activeSeries]) || 0), 0)
                 return (
                   <div
                     key="legend-tooltip-static"
@@ -1691,8 +1665,7 @@ function RealDashboard() {
                     tick={{ fontSize: 10, fontWeight: 700 }}
                   />
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(v: any) => formatCurrency(Number(v || 0))}
+                    formatter={(v: unknown) => formatCurrency(Number(v || 0))}
                     contentStyle={{
                       borderRadius: "10px",
                       border: "1px solid #e5e2e1",
