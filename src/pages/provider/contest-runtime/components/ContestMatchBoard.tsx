@@ -468,66 +468,204 @@ export function ContestMatchBoard({
                   <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
                     Vòng {group.roundNo}
                   </h4>
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    {group.matches.map((match) => (
-                      <button
-                        key={match.id}
-                        type="button"
-                        onClick={() => onSelectMatch(match.id)}
-                        className={`rounded-lg border p-4 text-left transition-colors ${
-                          selectedMatchId === match.id
-                            ? "border-orange-200 bg-orange-50"
-                            : "border-[#e5e2e1] bg-white hover:bg-[#fcf8f8]"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-extrabold text-[#1c1b1b]">
-                              {formatMatchLabel(match)}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold text-[#747878]">
-                              Dự kiến:{" "}
-                              {formatContestDateTime(match.scheduled_at)}
-                            </p>
-                          </div>
-                          <Badge
-                            className={`border ${getMatchStatusClass(match.status)}`}
-                          >
-                            {getMatchStatusLabel(match.status)}
-                          </Badge>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#5d5f5f]">
-                          <span>{getMatchTypeLabel(match.match_type)}</span>
-                          <span>{match.participants.length} người thi đấu</span>
-                          <span>Trận #{match.match_no}</span>
-                        </div>
-                        <div className="mt-3 space-y-1">
-                          {match.participants.slice(0, 3).map((participant) => (
-                            <div
-                              key={participant.id}
-                              className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#5d5f5f]"
-                            >
-                              <span>
-                                {getMatchParticipantName(participant)}
-                              </span>
-                              <DriverTitleChip
-                                label={
-                                  participant.registration?.driver_title_label
-                                }
-                                className="px-2 py-0 text-[10px]"
-                              />
+                  {isTimeTrialGroup(group.matches) ? (
+                    <TimeTrialTable
+                      matches={group.matches}
+                      selectedMatchId={selectedMatchId}
+                      onSelectMatch={onSelectMatch}
+                    />
+                  ) : (
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {group.matches.map((match) => (
+                        <button
+                          key={match.id}
+                          type="button"
+                          onClick={() => onSelectMatch(match.id)}
+                          className={`rounded-lg border p-4 text-left transition-colors ${
+                            selectedMatchId === match.id
+                              ? "border-orange-200 bg-orange-50"
+                              : "border-[#e5e2e1] bg-white hover:bg-[#fcf8f8]"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-extrabold text-[#1c1b1b]">
+                                {formatMatchLabel(match)}
+                              </p>
+                              <p className="mt-1 text-xs font-semibold text-[#747878]">
+                                Dự kiến:{" "}
+                                {formatContestDateTime(match.scheduled_at)}
+                              </p>
                             </div>
-                          ))}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                            <Badge
+                              className={`border ${getMatchStatusClass(match.status)}`}
+                            >
+                              {getMatchStatusLabel(match.status)}
+                            </Badge>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-[#5d5f5f]">
+                            <span>{getMatchTypeLabel(match.match_type)}</span>
+                            <span>
+                              {match.participants.length} người thi đấu
+                            </span>
+                            <span>Trận #{match.match_no}</span>
+                          </div>
+                          <div className="mt-3 space-y-1">
+                            {match.participants
+                              .slice(0, 3)
+                              .map((participant) => (
+                                <div
+                                  key={participant.id}
+                                  className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#5d5f5f]"
+                                >
+                                  <span>
+                                    {getMatchParticipantName(participant)}
+                                  </span>
+                                  <DriverTitleChip
+                                    label={
+                                      participant.registration
+                                        ?.driver_title_label
+                                    }
+                                    className="px-2 py-0 text-[10px]"
+                                  />
+                                </div>
+                              ))}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </Panel>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Đua tính giờ: mỗi "trận" là một lượt chạy của đúng MỘT người.
+ *
+ * Vẽ mỗi lượt thành một thẻ lớn thì ba dòng "Tính giờ", "1 người thi đấu" và tên
+ * vận động viên lặp lại y hệt ở mọi thẻ, trong khi thứ nhân viên thật sự cần là
+ * so thời gian giữa các lượt. Một giải 8 người ba vòng ra 24 thẻ — cuộn mỏi tay
+ * mà vẫn không so được ai nhanh hơn ai.
+ */
+function isTimeTrialGroup(matches: ContestMatch[]): boolean {
+  return (
+    matches.length > 0 &&
+    matches.every(
+      (match) =>
+        match.match_type === "TIME_ATTACK" && match.participants.length <= 1,
+    )
+  )
+}
+
+/** Giây sang dạng người đọc được: 62.4 → "1:02.4", 45.2 → "45.2s". */
+function formatSeconds(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "--"
+  if (value < 60) return `${value.toFixed(1)}s`
+  const minutes = Math.floor(value / 60)
+  const seconds = value - minutes * 60
+  return `${minutes}:${seconds.toFixed(1).padStart(4, "0")}`
+}
+
+function formatClock(value: string | null | undefined): string {
+  if (!value) return "--"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "--"
+  return date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function TimeTrialTable({
+  matches,
+  selectedMatchId,
+  onSelectMatch,
+}: {
+  matches: ContestMatch[]
+  selectedMatchId?: string | null
+  onSelectMatch: (matchId: string) => void
+}) {
+  // Ngày thi đấu in một lần ở đầu bảng thay vì lặp ở từng dòng.
+  const day = matches[0]?.scheduled_at
+    ? new Date(matches[0].scheduled_at).toLocaleDateString("vi-VN")
+    : null
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#e5e2e1] bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2">
+        <span className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+          Đua tính giờ · {matches.length} lượt
+        </span>
+        {day ? (
+          <span className="text-xs font-semibold text-[#747878]">{day}</span>
+        ) : null}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-[#e5e2e1] text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+              <th className="px-3 py-2 font-extrabold">Lượt</th>
+              <th className="px-3 py-2 font-extrabold">Vận động viên</th>
+              <th className="px-3 py-2 font-extrabold">Giờ chạy</th>
+              <th className="px-3 py-2 font-extrabold">Vòng nhanh nhất</th>
+              <th className="px-3 py-2 font-extrabold">Tổng thời gian</th>
+              <th className="px-3 py-2 font-extrabold">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matches.map((match) => {
+              const runner = match.participants[0]
+              const selected = selectedMatchId === match.id
+              return (
+                <tr
+                  key={match.id}
+                  onClick={() => onSelectMatch(match.id)}
+                  className={`cursor-pointer border-b border-[#f0eeed] last:border-b-0 transition-colors ${
+                    selected ? "bg-orange-50" : "hover:bg-[#fcf8f8]"
+                  }`}
+                >
+                  <td className="px-3 py-2 font-extrabold text-[#1c1b1b]">
+                    #{match.match_no}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-[#1c1b1b]">
+                        {runner ? getMatchParticipantName(runner) : "Chưa gán"}
+                      </span>
+                      <DriverTitleChip
+                        label={runner?.registration?.driver_title_label}
+                        className="px-2 py-0 text-[10px]"
+                      />
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
+                    {formatClock(match.scheduled_at)}
+                  </td>
+                  <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
+                    {formatSeconds(runner?.best_lap_seconds)}
+                  </td>
+                  <td className="px-3 py-2 font-semibold text-[#5d5f5f]">
+                    {formatSeconds(runner?.total_time_seconds)}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge
+                      className={`border ${getMatchStatusClass(match.status)}`}
+                    >
+                      {getMatchStatusLabel(match.status)}
+                    </Badge>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

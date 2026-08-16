@@ -95,7 +95,13 @@ export function ContestCheckInResultCard({
     vehicle_brand?: string | null
     vehicle_class?: string | null
     notes?: string | null
+    photos?: string[] | null
   } | null
+
+  // Ảnh khách tự chụp lúc đăng ký. Không có nó thì nhân viên chỉ đối chiếu được
+  // bằng tên xe gõ tay — không đủ căn cứ để nói chiếc xe trước mặt có đúng chiếc
+  // đã khai hay không.
+  const declaredPhotos = (byocDeclaration?.photos ?? []).filter(Boolean)
 
   const requiredChecklistKeys = new Set(["body", "power_system", "wheels"])
   const providedChecklistKeys = new Set(
@@ -264,6 +270,45 @@ export function ContestCheckInResultCard({
                         {byocDeclaration.notes}
                       </p>
                     ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+                      Ảnh khách nộp lúc đăng ký
+                    </h5>
+                    {declaredPhotos.length ? (
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {declaredPhotos.map((url, index) => (
+                            <a
+                              key={`${url}-${index}`}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block size-24 overflow-hidden rounded-lg border border-amber-300 bg-white transition hover:border-amber-500"
+                              title="Mở ảnh gốc để xem rõ"
+                            >
+                              <img
+                                src={url}
+                                alt={`Ảnh xe khách nộp ${index + 1}`}
+                                className="size-full object-cover"
+                                loading="lazy"
+                              />
+                            </a>
+                          ))}
+                        </div>
+                        <p className="text-xs text-amber-700">
+                          Đối chiếu chiếc xe trước mặt với ảnh này trước khi
+                          tick xác nhận. Bấm vào ảnh để xem cỡ lớn.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs font-semibold text-amber-800">
+                        Khách không nộp ảnh nào lúc đăng ký — không có gì để đối
+                        chiếu. Chụp kỹ ở phần dưới và ghi rõ vào ghi chú nếu
+                        thấy bất thường.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

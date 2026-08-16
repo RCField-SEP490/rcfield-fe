@@ -62,6 +62,14 @@ const adminNavGroups: NavGroup[] = [
         icon: LayoutDashboard,
         to: routePaths.adminDashboard,
       },
+      // Đặt ở "Tổng quan" chứ không phải "Đối tác": trang này theo dõi mọi
+      // người dùng, mà phần lớn là khách chứ không phải chủ sân. Xếp vào nhóm
+      // Đối tác thì ai đi tìm chỗ xử lý khách hỏng hẹn sẽ không nghĩ tới đó.
+      {
+        label: "Người dùng",
+        icon: UserRound,
+        to: routePaths.adminUsers,
+      },
     ],
   },
   {

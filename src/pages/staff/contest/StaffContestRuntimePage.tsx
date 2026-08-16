@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useParams, useSearchParams } from "react-router"
 import { useQuery } from "@tanstack/react-query"
 
@@ -7,7 +7,10 @@ import {
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
 import { useContestRuntime } from "@/features/contests/hooks/useContestRuntime"
-import { getContestRuntimeFormat } from "@/features/contests/lib/contest-runtime"
+import {
+  findNextPendingMatchId,
+  getContestRuntimeFormat,
+} from "@/features/contests/lib/contest-runtime"
 import { getMatchStatusLabel } from "@/features/contests/lib/contest-status"
 import type { ContestMatchStatus } from "@/features/contests/types"
 import { ContestKnockoutBracket } from "@/pages/provider/contest-runtime/components/ContestKnockoutBracket"
@@ -58,6 +61,18 @@ export default function StaffContestRuntimePage() {
       matches[0] ??
       null,
     [matches, selectedMatchId],
+  )
+
+  // Đua tính giờ có hàng chục lượt nhập liên tiếp. Lưu xong đưa luôn con trỏ
+  // sang lượt chưa xong kế tiếp, để nhân viên khỏi cuộn ngược lên danh sách
+  // chọn từng dòng một. Phải khai TRƯỚC mọi nhánh return sớm — hook đặt trong
+  // nhánh điều kiện là sai thứ tự hook giữa các lần dựng.
+  const handleResultsSaved = useCallback(
+    (savedMatchId: string) => {
+      const nextId = findNextPendingMatchId(matches, savedMatchId)
+      if (nextId) setSelectedMatchId(nextId)
+    },
+    [matches],
   )
 
   if (!contest) {
@@ -154,6 +169,7 @@ export default function StaffContestRuntimePage() {
           match={selectedMatch}
           runtime={runtime}
           isKnockoutRuntime={isKnockoutRuntime}
+          onResultsSaved={handleResultsSaved}
         />
 
         {/* Đặt cuối trang: việc chính của màn này là vận hành trận đấu. Thẻ chi

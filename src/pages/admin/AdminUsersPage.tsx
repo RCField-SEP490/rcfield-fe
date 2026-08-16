@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { Award, UserMinus, UserCheck, Plus, Minus } from "lucide-react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { ChevronLeft, ChevronRight, Lock, Unlock, History } from "lucide-react"
 import { toast } from "sonner"
 
 import { AdminShell } from "@/pages/admin/components/AdminShell"
@@ -11,370 +12,345 @@ import {
   AdminTable,
   UserStatusBadge,
 } from "@/pages/admin/components/AdminPrimitives"
-import { mockAdminUsers as initialUsers, mockTrustScoreLogs } from "@/shared/data/admin-mock-data"
-import type { AdminUser, TrustScoreLog } from "@/shared/data/admin-mock-data"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/shared/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog"
 import { Label } from "@/shared/ui/label"
-import { Input } from "@/shared/ui/input"
+import { Textarea } from "@/shared/ui/textarea"
+import {
+  adminUsersApi,
+  type AdminUserRow,
+  type ListUsersParams,
+  type UserBehaviour,
+} from "@/features/admin/api/admin-users.api"
+
+/** Lý do phải đủ dài — backend từ chối chuỗi ngắn hơn 10 ký tự. */
+const MIN_REASON = 10
+
+/**
+ * Ba mức cảnh báo theo tỉ lệ hỏng hẹn.
+ *
+ * Cố ý KHÔNG tô đỏ người mới có một hai lần lỡ hẹn: đặt hai lần huỷ một là 50%,
+ * nhìn đỏ rực trong khi chưa đủ căn cứ để kết luận gì. Cần cả tỉ lệ cao lẫn số
+ * lần đủ nhiều thì mới đáng gọi là dấu hiệu.
+ */
+function riskLevel(b: UserBehaviour): "high" | "warn" | "ok" {
+  const broken = b.self_cancelled + b.no_show
+  if (b.total_bookings < 3) return "ok"
+  if (b.broken_rate >= 50 && broken >= 3) return "high"
+  if (b.broken_rate >= 30) return "warn"
+  return "ok"
+}
+
+function RiskBadge({ behaviour }: { behaviour: UserBehaviour }) {
+  const level = riskLevel(behaviour)
+  const broken = behaviour.self_cancelled + behaviour.no_show
+  if (behaviour.total_bookings === 0) {
+    return <span className="text-xs font-semibold text-[#747878]">Chưa đặt lần nào</span>
+  }
+  const style =
+    level === "high"
+      ? "border-red-200 bg-red-50 text-red-700"
+      : level === "warn"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-[#e5e2e1] bg-[#fcf8f8] text-[#747878]"
+  return (
+    <Badge className={`border font-bold shadow-none rounded-md px-2 py-0.5 ${style}`}>
+      {broken}/{behaviour.total_bookings} · {behaviour.broken_rate}%
+    </Badge>
+  )
+}
 
 export function AdminUsersPage() {
-  const [users, setUsers] = useState<AdminUser[]>(initialUsers)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [roleFilter, setRoleFilter] = useState<string>("ALL")
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
+  const qc = useQueryClient()
+  const [q, setQ] = useState("")
+  const [status, setStatus] = useState<ListUsersParams["status"] | "ALL">("ALL")
+  const [sort, setSort] = useState<"newest" | "risk">("risk")
+  const [page, setPage] = useState(1)
+  const limit = 20
 
-  // Trust Score Adjust Dialog state
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
-  const [adjustPoints, setAdjustPoints] = useState<number>(5)
-  const [adjustType, setAdjustType] = useState<"ADD" | "DEDUCT">("ADD")
-  const [adjustReason, setAdjustReason] = useState("")
+  const [target, setTarget] = useState<AdminUserRow | null>(null)
+  const [reason, setReason] = useState("")
+  const [historyId, setHistoryId] = useState<string | null>(null)
 
-  // History Dialog state
-  const [historyUser, setHistoryUser] = useState<AdminUser | null>(null)
-
-  const handleBanToggle = (user: AdminUser) => {
-    const nextStatus = user.status === "ACTIVE" ? "BANNED" : "ACTIVE"
-    
-    setUsers((prev) =>
-      prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus } : u))
-    )
-
-    if (nextStatus === "BANNED") {
-      toast.error(`Đã khóa tài khoản của ${user.fullName}.`)
-    } else {
-      toast.success(`Đã kích hoạt lại tài khoản của ${user.fullName}.`)
-    }
-  }
-
-  const handleAdjustTrustScore = () => {
-    if (!selectedUser) return
-
-    const delta = adjustType === "ADD" ? adjustPoints : -adjustPoints
-    const nextScore = Math.max(0, Math.min(100, selectedUser.trustScore + delta))
-
-    // Update user score
-    setUsers((prev) =>
-      prev.map((u) => (u.id === selectedUser.id ? { ...u, trustScore: nextScore } : u))
-    )
-
-    // Add entry to Mock logs
-    const newLog: TrustScoreLog = {
-      id: `TSL-${Date.now().toString().slice(-4)}`,
-      userId: selectedUser.id,
-      userName: selectedUser.fullName,
-      previousScore: selectedUser.trustScore,
-      newScore: nextScore,
-      delta: delta,
-      reason: adjustReason || (adjustType === "ADD" ? "Cộng điểm thưởng từ Admin" : "Trừ điểm uy tín từ Admin"),
-      timestamp: new Date().toISOString().replace("T", " ").slice(0, 16),
-    }
-
-    mockTrustScoreLogs.unshift(newLog)
-
-    toast.success(`Đã cập nhật điểm uy tín của ${selectedUser.fullName}!`, {
-      description: `Điểm mới: ${nextScore} (Thay đổi: ${delta > 0 ? "+" : ""}${delta})`,
-    })
-
-    setSelectedUser(null)
-    setAdjustReason("")
-  }
-
-  // Filter users
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === "ALL" || user.role === roleFilter
-    const matchesStatus = statusFilter === "ALL" || user.status === statusFilter
-    return matchesSearch && matchesRole && matchesStatus
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-users", q, status, sort, page],
+    queryFn: () =>
+      adminUsersApi.list({
+        q: q.trim() || undefined,
+        status: status === "ALL" ? undefined : status,
+        sort,
+        page,
+        limit,
+      }),
   })
 
-  // Table Setup
-  const columns = ["Mã User", "Họ và tên", "Email", "Vai trò", "Điểm uy tín", "Trạng thái", "Ngày tham gia", "Hành động"]
-
-  const rows = filteredUsers.map((user) => {
-    const userLogs = mockTrustScoreLogs.filter((log) => log.userId === user.id)
-
-    return [
-      <span key={user.id} className="font-mono text-xs text-[#747878]">{user.id}</span>,
-      <span key={`${user.id}-name`} className="font-bold text-[#1c1b1b]">{user.fullName}</span>,
-      <span key={`${user.id}-email`} className="text-xs font-semibold text-[#444748]">{user.email}</span>,
-      <Badge
-        key={`${user.id}-role`}
-        variant="outline"
-        className={`border-none font-bold rounded-md px-2 py-0.5 text-xs ${
-          user.role === "customer"
-            ? "bg-blue-50 text-blue-700"
-            : user.role === "provider"
-              ? "bg-purple-50 text-purple-700"
-              : user.role === "staff"
-                ? "bg-amber-50 text-amber-700"
-                : "bg-zinc-100 text-zinc-700"
-        }`}
-      >
-        {user.role === "customer" && "Khách hàng"}
-        {user.role === "provider" && "Chủ sân"}
-        {user.role === "staff" && "Nhân viên"}
-        {user.role === "admin" && "Admin"}
-      </Badge>,
-      <div key={`${user.id}-score`} className="flex items-center gap-1.5">
-        <span
-          className={`font-mono font-extrabold text-sm ${
-            user.trustScore >= 90
-              ? "text-emerald-600"
-              : user.trustScore >= 70
-                ? "text-amber-500"
-                : "text-red-500"
-          }`}
-        >
-          {user.trustScore}
-        </span>
-        <button
-          onClick={() => {
-            setSelectedUser(user)
-            setAdjustPoints(5)
-            setAdjustType("ADD")
-          }}
-          className="text-[#747878] hover:text-orange-600 p-0.5 rounded transition-colors"
-          title="Điều chỉnh điểm"
-        >
-          <Award className="size-4" />
-        </button>
-      </div>,
-      <UserStatusBadge key={`${user.id}-status`} status={user.status} />,
-      <span key={`${user.id}-date`} className="font-mono text-xs text-[#747878]">{user.createdDate}</span>,
-      <div key={`${user.id}-actions`} className="flex items-center gap-1.5">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setHistoryUser(user)}
-          className="h-8 border-[#c4c7c8] hover:bg-[#f6f3f2] text-[#444748] font-bold text-xs rounded-md shadow-none px-2"
-        >
-          Lịch sử điểm ({userLogs.length})
-        </Button>
-
-        {user.role !== "admin" && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleBanToggle(user)}
-            className={`h-8 font-bold text-xs rounded-md shadow-none px-2 ${
-              user.status === "ACTIVE"
-                ? "border-red-200 hover:bg-red-50 text-red-700"
-                : "border-emerald-200 hover:bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {user.status === "ACTIVE" ? (
-              <span className="flex items-center gap-1"><UserMinus className="size-3.5" />Khóa</span>
-            ) : (
-              <span className="flex items-center gap-1"><UserCheck className="size-3.5" />Mở</span>
-            )}
-          </Button>
-        )}
-      </div>
-    ]
+  const detail = useQuery({
+    queryKey: ["admin-user-detail", historyId],
+    queryFn: () => adminUsersApi.detail(historyId!),
+    enabled: Boolean(historyId),
   })
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-users"] })
+
+  const moderate = useMutation({
+    mutationFn: ({ user, reason }: { user: AdminUserRow; reason: string }) =>
+      user.is_active
+        ? adminUsersApi.lock(user.id, reason)
+        : adminUsersApi.unlock(user.id, reason),
+    onSuccess: (_res, vars) => {
+      toast.success(vars.user.is_active ? "Đã khoá tài khoản" : "Đã mở khoá tài khoản")
+      setTarget(null)
+      setReason("")
+      invalidate()
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) =>
+      toast.error(err.response?.data?.message ?? "Thao tác thất bại"),
+  })
+
+  const rows = data?.data ?? []
+  const total = data?.meta.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / limit))
+
+  const resetPage = <T,>(setter: (v: T) => void) => (v: T) => {
+    setter(v)
+    setPage(1)
+  }
 
   return (
     <AdminShell>
       <AdminHeader
-        title="Danh sách đối tác"
-        description="Quản lý tài khoản khách chơi, chủ quán và nhân viên sân chơi. Thiết lập điểm uy tín và phân quyền truy cập."
+        title="Quản lý khách hàng"
+        subtitle="Theo dõi hành vi đặt lịch và khoá tài khoản khi có đủ căn cứ"
       />
 
-      {/* User Directory Panel */}
       <AdminPanel>
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <AdminSearchBar
-            placeholder="Tìm theo tên, email hoặc mã ID..."
-            value={searchTerm}
-            onChange={setSearchTerm}
-          />
-
-          <div className="flex flex-wrap gap-2.5">
-            {/* Role Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-[#747878]">Vai trò:</span>
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-2.5 text-xs font-bold text-[#1c1b1b] outline-none focus:border-orange-500"
-              >
-                <option value="ALL">Tất cả</option>
-                <option value="customer">Khách hàng</option>
-                <option value="provider">Chủ sân</option>
-                <option value="staff">Nhân viên</option>
-                <option value="admin">Quản trị viên</option>
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-[#747878]">Trạng thái:</span>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-9 rounded-lg border border-[#e5e2e1] bg-white px-2.5 text-xs font-bold text-[#1c1b1b] outline-none focus:border-orange-500"
-              >
-                <option value="ALL">Tất cả</option>
-                <option value="ACTIVE">Đang hoạt động</option>
-                <option value="BANNED">Bị khóa</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
         <AdminPanelTitle
-          title={`Tài khoản người dùng hệ thống (${filteredUsers.length})`}
-          subtitle="Admin quản trị điểm uy tín để ràng buộc trách nhiệm bồi thường và đặt sân."
+          title={`${total} khách hàng`}
+          subtitle="Cột Hỏng hẹn chỉ tính lần khách TỰ huỷ và vắng mặt — lần bị quán huỷ không tính vào"
         />
 
-        <AdminTable columns={columns} rows={rows} />
+        <div className="flex flex-wrap items-center gap-3 px-4 pb-4">
+          <AdminSearchBar
+            placeholder="Tìm theo email hoặc tên..."
+            value={q}
+            onChange={resetPage(setQ)}
+          />
+          <select
+            className="h-10 rounded-lg border border-[#e5e2e1] bg-white px-3 text-sm font-semibold text-[#1c1b1b]"
+            value={status}
+            onChange={(e) => resetPage(setStatus)(e.target.value as typeof status)}
+          >
+            <option value="ALL">Mọi trạng thái</option>
+            <option value="active">Đang hoạt động</option>
+            <option value="locked">Bị khoá</option>
+          </select>
+          <select
+            className="h-10 rounded-lg border border-[#e5e2e1] bg-white px-3 text-sm font-semibold text-[#1c1b1b]"
+            value={sort}
+            onChange={(e) => resetPage(setSort)(e.target.value as typeof sort)}
+          >
+            <option value="risk">Hỏng hẹn nhiều nhất trước</option>
+            <option value="newest">Mới nhất trước</option>
+          </select>
+        </div>
+
+        {isLoading ? (
+          <p className="px-4 py-8 text-center text-sm font-semibold text-[#747878]">Đang tải…</p>
+        ) : (
+          <AdminTable
+            columns={["Khách hàng", "Hỏng hẹn", "Tự huỷ / Quán huỷ / Vắng", "Trạng thái", ""]}
+            rows={rows.map((u) => [
+              <div key="u">
+                <div>{u.full_name ?? "(chưa đặt tên)"}</div>
+                <div className="text-xs font-semibold text-[#747878]">{u.email}</div>
+              </div>,
+              <RiskBadge key="r" behaviour={u.behaviour} />,
+              <span key="b" className="font-mono text-xs">
+                {u.behaviour.self_cancelled} / {u.behaviour.cancelled_by_others} /{" "}
+                {u.behaviour.no_show}
+              </span>,
+              <UserStatusBadge key="s" status={u.is_active ? "ACTIVE" : "LOCKED"} />,
+              <div key="a" className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setHistoryId(u.id)}>
+                  <History className="size-4" />
+                </Button>
+                <Button
+                  variant={u.is_active ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setTarget(u)
+                    setReason("")
+                  }}
+                >
+                  {u.is_active ? <Lock className="size-4" /> : <Unlock className="size-4" />}
+                </Button>
+              </div>,
+            ])}
+          />
+        )}
+
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-xs font-semibold text-[#747878]">
+            Trang {page}/{totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
       </AdminPanel>
 
-      {/* Adjust Trust Score Dialog */}
-      <Dialog open={selectedUser !== null} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="max-w-md sm:max-w-md bg-white border border-[#e5e2e1] rounded-xl font-sans">
+      {/* Khoá / mở khoá — luôn phải nêu lý do */}
+      <Dialog open={Boolean(target)} onOpenChange={(open) => !open && setTarget(null)}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-lg font-extrabold text-[#1c1b1b] flex items-center gap-2">
-              <Award className="size-5 text-orange-600" />
-              Điều chỉnh Điểm Uy tín: {selectedUser?.fullName}
+            <DialogTitle>
+              {target?.is_active ? "Khoá tài khoản" : "Mở khoá tài khoản"} — {target?.email}
             </DialogTitle>
-            <DialogDescription className="text-xs font-semibold text-[#5d5f5f] mt-1.5">
-              Điểm hiện tại: <span className="font-extrabold text-[#1c1b1b]">{selectedUser?.trustScore} / 100</span>.
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="my-4 space-y-4">
-            {/* Add or Deduct Mode */}
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setAdjustType("ADD")}
-                className={`flex-1 h-10 rounded-lg border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                  adjustType === "ADD"
-                    ? "bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm"
-                    : "border-[#e5e2e1] bg-white text-[#444748] hover:bg-[#f6f3f2]"
-                }`}
-              >
-                <Plus className="size-4" />
-                Cộng điểm thưởng
-              </button>
-              <button
-                type="button"
-                onClick={() => setAdjustType("DEDUCT")}
-                className={`flex-1 h-10 rounded-lg border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
-                  adjustType === "DEDUCT"
-                    ? "bg-red-50 border-red-300 text-red-700 shadow-sm"
-                    : "border-[#e5e2e1] bg-white text-[#444748] hover:bg-[#f6f3f2]"
-                }`}
-              >
-                <Minus className="size-4" />
-                Trừ điểm phạt
-              </button>
+          {target && target.is_active && (
+            <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3 text-sm">
+              <p className="font-bold text-[#1c1b1b]">Căn cứ hiện có</p>
+              <p className="mt-1 text-[#747878]">
+                {target.behaviour.total_bookings} lượt đặt · tự huỷ{" "}
+                {target.behaviour.self_cancelled} · vắng mặt {target.behaviour.no_show} · bị quán
+                huỷ {target.behaviour.cancelled_by_others} (không tính vào)
+              </p>
+              <p className="mt-1 text-[#747878]">
+                Khoá xong người này không đăng nhập được nữa, ở mọi thiết bị.
+              </p>
             </div>
+          )}
 
-            {/* Point Amount */}
-            <div className="space-y-1.5">
-              <Label htmlFor="points" className="text-xs font-bold text-[#444748]">Số lượng điểm:</Label>
-              <Input
-                id="points"
-                type="number"
-                min={1}
-                max={50}
-                value={adjustPoints}
-                onChange={(e) => setAdjustPoints(Number(e.target.value))}
-                className="rounded-lg border-[#e5e2e1] text-xs font-semibold text-[#1c1b1b]"
-              />
-            </div>
-
-            {/* Adjust Reason */}
-            <div className="space-y-1.5">
-              <Label htmlFor="reason" className="text-xs font-bold text-[#444748]">Lý do điều chỉnh (Bắt buộc):</Label>
-              <Input
-                id="reason"
-                placeholder="Ví dụ: Hoàn thành bồi thường hư hại cản..."
-                value={adjustReason}
-                onChange={(e) => setAdjustReason(e.target.value)}
-                className="rounded-lg border-[#e5e2e1] text-xs font-semibold text-[#1c1b1b]"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Lý do</Label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ví dụ: Huỷ lịch 5 lần trong tháng 8, đã nhắc nhở qua điện thoại ngày 12/8"
+              rows={3}
+            />
+            <p className="text-xs font-semibold text-[#747878]">
+              Lý do được lưu vĩnh viễn kèm số liệu tại thời điểm quyết định, để còn giải trình khi
+              khách khiếu nại. Tối thiểu {MIN_REASON} ký tự.
+            </p>
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSelectedUser(null)}
-              className="h-10 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#e5e2e1]/30 font-bold"
-            >
-              Hủy
+            <Button variant="outline" onClick={() => setTarget(null)}>
+              Huỷ
             </Button>
             <Button
-              onClick={handleAdjustTrustScore}
-              disabled={!adjustReason.trim()}
-              className="h-10 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-bold"
+              variant={target?.is_active ? "destructive" : "default"}
+              disabled={reason.trim().length < MIN_REASON || moderate.isPending}
+              onClick={() => target && moderate.mutate({ user: target, reason: reason.trim() })}
             >
-              Xác nhận thay đổi
+              {target?.is_active ? "Khoá tài khoản" : "Mở khoá"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Trust Score History View for User */}
-      <Dialog open={historyUser !== null} onOpenChange={(open) => !open && setHistoryUser(open ? historyUser : null)}>
-        <DialogContent className="max-w-xl sm:max-w-xl bg-white border border-[#e5e2e1] rounded-xl font-sans max-h-[80vh] overflow-y-auto">
-          <DialogHeader className="border-b border-[#e5e2e1] pb-3">
-            <DialogTitle className="text-lg font-extrabold text-[#1c1b1b] flex items-center gap-2">
-              <Award className="size-5 text-orange-600" />
-              Lịch sử Điểm Uy tín: {historyUser?.fullName}
-            </DialogTitle>
-            <DialogDescription className="text-xs font-semibold text-[#5d5f5f]">
-              Lịch sử các biến động cộng trừ điểm của người dùng trên toàn hệ thống
-            </DialogDescription>
+      {/* Lịch sử: vừa là lịch đặt gần đây, vừa là nhật ký khoá/mở */}
+      <Dialog open={Boolean(historyId)} onOpenChange={(open) => !open && setHistoryId(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Hồ sơ theo dõi — {detail.data?.email ?? "…"}</DialogTitle>
           </DialogHeader>
 
-          <div className="my-4 space-y-3">
-            {mockTrustScoreLogs.filter((log) => log.userId === historyUser?.id).length === 0 ? (
-              <div className="text-center py-8 text-xs font-bold text-[#747878]">
-                Người dùng chưa có lịch sử biến động điểm uy tín.
-              </div>
-            ) : (
-              mockTrustScoreLogs
-                .filter((log) => log.userId === historyUser?.id)
-                .map((log) => (
-                  <div key={log.id} className="p-3.5 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] flex items-start justify-between gap-3 text-xs">
-                    <div>
-                      <div className="font-bold text-[#1c1b1b]">{log.reason}</div>
-                      <div className="text-[10px] text-[#747878] font-bold mt-1">{log.timestamp}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`font-mono font-extrabold text-sm ${log.delta > 0 ? "text-emerald-600" : "text-red-500"}`}>
-                        {log.delta > 0 ? "+" : ""}
-                        {log.delta}
-                      </div>
-                      <div className="text-[9px] text-[#747878] mt-0.5">
-                        {log.previousScore} → {log.newScore} điểm
-                      </div>
-                    </div>
-                  </div>
-                ))
-            )}
-          </div>
+          {detail.isLoading ? (
+            <p className="text-sm font-semibold text-[#747878]">Đang tải…</p>
+          ) : detail.data ? (
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto">
+              <section>
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#747878]">
+                  Nhật ký khoá / mở khoá
+                </h3>
+                {detail.data.moderation_history.length === 0 ? (
+                  <p className="text-sm text-[#747878]">Chưa có lần nào.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {detail.data.moderation_history.map((log) => (
+                      <li key={log.id} className="rounded-lg border border-[#e5e2e1] p-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            className={
+                              log.action === "LOCK"
+                                ? "border border-red-200 bg-red-50 text-red-700"
+                                : "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                            }
+                          >
+                            {log.action === "LOCK" ? "Khoá" : "Mở khoá"}
+                          </Badge>
+                          <span className="text-xs font-semibold text-[#747878]">
+                            {new Date(log.created_at).toLocaleString("vi-VN")} · {log.actor_email}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 font-semibold text-[#1c1b1b]">{log.reason}</p>
+                        {log.metadata?.behaviour_at_decision && (
+                          <p className="mt-1 text-xs text-[#747878]">
+                            Lúc đó: {log.metadata.behaviour_at_decision.total_bookings} lượt đặt ·
+                            tự huỷ {log.metadata.behaviour_at_decision.self_cancelled} · vắng{" "}
+                            {log.metadata.behaviour_at_decision.no_show}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
 
-          <DialogFooter className="border-t border-[#e5e2e1] pt-3 mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setHistoryUser(null)}
-              className="h-10 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] font-bold w-full"
-            >
-              Đóng
-            </Button>
-          </DialogFooter>
+              <section>
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#747878]">
+                  20 lượt đặt gần nhất
+                </h3>
+                {detail.data.recent_bookings.length === 0 ? (
+                  <p className="text-sm text-[#747878]">Chưa đặt lịch lần nào.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {detail.data.recent_bookings.map((b) => (
+                      <li
+                        key={b.id}
+                        className="flex flex-wrap items-baseline gap-x-2 border-b border-[#e5e2e1] pb-1.5 text-sm"
+                      >
+                        <span className="font-mono text-xs text-[#747878]">
+                          {new Date(b.slot_start).toLocaleDateString("vi-VN")}
+                        </span>
+                        <span className="font-semibold text-[#1c1b1b]">{b.cafe_name}</span>
+                        <span className="text-xs font-bold">{b.status}</span>
+                        {b.status === "CANCELLED" && (
+                          <span className="text-xs text-[#747878]">
+                            {b.cancelled_by_self ? "khách tự huỷ" : "quán huỷ"}
+                            {b.cancellation_reason ? ` — ${b.cancellation_reason}` : ""}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </AdminShell>
   )
 }
+
+export default AdminUsersPage

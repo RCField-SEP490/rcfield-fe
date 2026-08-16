@@ -18,6 +18,13 @@ import type {
 export function useMatchDetailState(
   match: ContestMatch | null,
   runtime: ContestRuntimeHook,
+  /**
+   * Gọi sau khi lưu kết quả thành công.
+   *
+   * Ở đua tính giờ, nhân viên nhập liên tiếp hàng chục lượt. Không có bước tự
+   * chuyển sang lượt kế thì mỗi lượt tốn thêm một vòng cuộn lên chọn dòng khác.
+   */
+  onResultsSaved?: (savedMatchId: string) => void,
 ) {
   const [participants, setParticipants] = useState<MatchParticipantDraft[]>([])
   const [results, setResults] = useState<MatchResultDraft[]>([])
@@ -172,6 +179,7 @@ export function useMatchDetailState(
         body: result.data,
       })
       toast.success("Đã lưu kết quả")
+      onResultsSaved?.(match.id)
     } catch (error) {
       toast.error("Không thể lưu kết quả", {
         description: getErrorMessage(error).message,
