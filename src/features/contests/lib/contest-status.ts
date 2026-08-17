@@ -177,14 +177,16 @@ export type ContestCheckInAvailability =
  * (`CONTEST_NOT_CHECKIN_READY` / `CONTEST_CHECKIN_NOT_STARTED`).
  */
 /**
- * Cờ TẠM THỜI để thử luồng ngày thi mà không phải chờ tới đúng giờ giải.
+ * Cho phép điểm danh ngoài khung giờ giải.
  *
  * Phải bật kèm `DEV_BYPASS_CONTEST_CHECKIN` ở backend, vì cửa chặn nằm ở cả hai
- * phía — mở mỗi giao diện thì bấm vào vẫn nhận lỗi 400. `import.meta.env.DEV`
- * là false khi build production nên cờ này không thể lọt lên bản thật.
+ * phía: mở mỗi giao diện thì bấm vào vẫn nhận lỗi 400, còn mở mỗi backend thì
+ * nút vẫn bị khoá và không ai bấm được.
+ *
+ * Cờ này được nướng vào bản build, nên đổi nó phải build lại giao diện — không
+ * có cách nào bật/tắt từ máy chủ sau khi đã triển khai.
  */
-const BYPASS_CHECK_IN_WINDOW =
-  import.meta.env.DEV && import.meta.env.VITE_BYPASS_CONTEST_CHECKIN === "true"
+const BYPASS_CHECK_IN_WINDOW = import.meta.env.VITE_BYPASS_CONTEST_CHECKIN === "true"
 
 export function getContestCheckInAvailability(
   contest: Pick<ContestItem, "status" | "starts_at" | "ends_at">,

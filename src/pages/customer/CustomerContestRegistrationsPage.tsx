@@ -283,6 +283,25 @@ export function CustomerContestRegistrationsPage() {
                           toán. Nhìn thấy mỗi chữ "Đã huỷ" thì họ không biết
                           mình còn đăng ký lại được hay không.
                         */}
+                        {/* Hạn giữ suất — xem chú thích ở ContestRegistrationPanel. */}
+                        {registration.entryFeeHoldExpiresAt ? (
+                          <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+                            <p className="text-sm font-bold text-orange-900">
+                              Suất được giữ đến{" "}
+                              {new Date(
+                                registration.entryFeeHoldExpiresAt,
+                              ).toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-orange-800">
+                              Chưa thanh toán lệ phí trước giờ đó thì suất sẽ trả
+                              lại cho người khác.
+                            </p>
+                          </div>
+                        ) : null}
+
                         {registration.status === "CANCELLED" &&
                         registration.cancellationReason ? (
                           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">

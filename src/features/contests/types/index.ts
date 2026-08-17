@@ -399,6 +399,8 @@ export type ContestRegistration = {
   checkInCode: string | null
   paymentStatus: ContestEntryFeePaymentStatus
   entryFeeAmount: number | null
+  /** Mốc suất bị nhả nếu chưa trả lệ phí; null khi không có gì để quá hạn. */
+  entryFeeHoldExpiresAt: string | null
   checkedInCafeId: string | null
   checkedInAt: string | null
   cancellationReason: string | null

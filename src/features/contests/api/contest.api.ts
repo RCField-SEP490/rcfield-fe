@@ -127,6 +127,10 @@ function mapContestRegistration(raw: any): ContestRegistration {
     checkInCode: raw.check_in_code ?? raw.checkInCode ?? null,
     paymentStatus: raw.payment_status ?? raw.paymentStatus,
     entryFeeAmount: raw.entry_fee_amount ?? raw.entryFeeAmount ?? null,
+    // Mốc suất bị nhả nếu chưa trả lệ phí. Máy chủ tính, giao diện chỉ hiện —
+    // viết cứng số phút ở đây là sớm muộn lệch với hạn thật sự được thi hành.
+    entryFeeHoldExpiresAt:
+      raw.entry_fee_hold_expires_at ?? raw.entryFeeHoldExpiresAt ?? null,
     checkedInCafeId: raw.checked_in_cafe_id ?? raw.checkedInCafeId ?? null,
     checkedInAt: raw.checked_in_at ?? raw.checkedInAt ?? null,
     cancellationReason:
