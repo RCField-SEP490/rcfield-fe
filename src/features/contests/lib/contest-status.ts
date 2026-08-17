@@ -176,23 +176,19 @@ export type ContestCheckInAvailability =
  * khoá kèm lý do ngay trên màn hình thay vì cho bấm rồi mới nhận lỗi 400
  * (`CONTEST_NOT_CHECKIN_READY` / `CONTEST_CHECKIN_NOT_STARTED`).
  */
-/**
- * Cho phép điểm danh ngoài khung giờ giải.
- *
- * Phải bật kèm `DEV_BYPASS_CONTEST_CHECKIN` ở backend, vì cửa chặn nằm ở cả hai
- * phía: mở mỗi giao diện thì bấm vào vẫn nhận lỗi 400, còn mở mỗi backend thì
- * nút vẫn bị khoá và không ai bấm được.
- *
- * Cờ này được nướng vào bản build, nên đổi nó phải build lại giao diện — không
- * có cách nào bật/tắt từ máy chủ sau khi đã triển khai.
- */
-const BYPASS_CHECK_IN_WINDOW = import.meta.env.VITE_BYPASS_CONTEST_CHECKIN === "true"
-
 export function getContestCheckInAvailability(
-  contest: Pick<ContestItem, "status" | "starts_at" | "ends_at">,
+  contest: Pick<ContestItem, "status" | "starts_at" | "ends_at" | "check_in_window_bypassed">,
   now = new Date(),
 ): ContestCheckInAvailability {
-  if (BYPASS_CHECK_IN_WINDOW) return { canCheckIn: true }
+  /**
+   * Máy chủ nói nó đang bỏ qua khung giờ thì tin theo.
+   *
+   * Trước đây chỗ này đọc một biến `VITE_*` — Vite nướng giá trị đó vào bản
+   * build, nên đổi cờ ở máy chủ mà không build lại giao diện thì nút vẫn khoá:
+   * máy chủ đồng ý nhưng không ai bấm được. Hỏi máy chủ thì hai bên luôn cùng
+   * một câu trả lời, và bật/tắt chỉ cần khởi động lại backend.
+   */
+  if (contest.check_in_window_bypassed) return { canCheckIn: true }
 
   if (contest.status !== "CLOSED" && contest.status !== "RUNNING") {
     return {

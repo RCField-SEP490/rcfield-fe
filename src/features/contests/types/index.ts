@@ -262,6 +262,8 @@ export type ContestItem = {
   status: ContestStatus
   starts_at: string
   ends_at: string
+  /** Máy chủ đang bỏ qua khung giờ điểm danh. Vắng mặt = không bỏ qua. */
+  check_in_window_bypassed?: boolean
   registration_opens_at: string | null
   registration_closes_at: string | null
   capacity: number | null

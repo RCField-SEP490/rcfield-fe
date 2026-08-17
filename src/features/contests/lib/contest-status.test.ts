@@ -350,3 +350,45 @@ describe("giải đã công bố kết quả", () => {
     ).toBe("AVAILABLE")
   })
 })
+
+describe("bỏ qua khung giờ điểm danh theo cờ của máy chủ", () => {
+  /**
+   * Cờ này PHẢI đến từ máy chủ, không phải từ biến build.
+   *
+   * Bản cũ đọc `import.meta.env.VITE_BYPASS_CONTEST_CHECKIN` — Vite nướng giá
+   * trị đó vào bản build, nên bật cờ ở backend rồi khởi động lại là chưa đủ:
+   * giao diện vẫn khoá nút, máy chủ đồng ý nhưng không ai bấm được. Đúng cái
+   * bẫy đã xảy ra trên production.
+   */
+  const chuaToiGio = {
+    status: "CLOSED" as const,
+    starts_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+    ends_at: new Date(Date.now() + 4 * 86_400_000).toISOString(),
+  }
+
+  it("máy chủ bật cờ thì mở nút dù giải còn ba ngày nữa", () => {
+    expect(
+      getContestCheckInAvailability({ ...chuaToiGio, check_in_window_bypassed: true }),
+    ).toEqual({ canCheckIn: true })
+  })
+
+  it("máy chủ bật cờ thì mở cả khi giải còn đang mở đăng ký", () => {
+    expect(
+      getContestCheckInAvailability({
+        ...chuaToiGio,
+        status: "OPEN",
+        check_in_window_bypassed: true,
+      }),
+    ).toEqual({ canCheckIn: true })
+  })
+
+  it("cờ tắt thì khoá như cũ", () => {
+    expect(
+      getContestCheckInAvailability({ ...chuaToiGio, check_in_window_bypassed: false }),
+    ).toMatchObject({ canCheckIn: false })
+  })
+
+  it("máy chủ cũ chưa trả trường này thì mặc định khoá, không tự mở", () => {
+    expect(getContestCheckInAvailability(chuaToiGio)).toMatchObject({ canCheckIn: false })
+  })
+})
