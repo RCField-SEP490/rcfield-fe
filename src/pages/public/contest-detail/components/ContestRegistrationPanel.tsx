@@ -290,6 +290,23 @@ export function ContestRegistrationPanel({
                 <p className="text-xs font-semibold text-orange-800">
                   Đăng ký của bạn đang chờ thanh toán lệ phí để hoàn tất.
                 </p>
+                {/*
+                  Có hạn thật: quá giờ này job nhả suất cho người khác. Không nói
+                  ra thì người dùng tưởng lúc nào trả cũng được, rồi quay lại sau
+                  một tiếng thấy đăng ký biến mất mà không hiểu vì sao.
+                */}
+                {existingRegistration.entryFeeHoldExpiresAt ? (
+                  <p className="mt-1 text-xs font-bold text-orange-900">
+                    Suất được giữ đến{" "}
+                    {new Date(
+                      existingRegistration.entryFeeHoldExpiresAt,
+                    ).toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    — quá giờ này suất sẽ trả lại cho người khác.
+                  </p>
+                ) : null}
                 <Button
                   type="button"
                   className="mt-2 w-full rounded-xl bg-orange-600 py-5 text-sm font-bold text-white hover:bg-orange-700"
