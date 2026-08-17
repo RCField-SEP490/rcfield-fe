@@ -4,6 +4,7 @@ import { CheckCircle2, Clock, Copy, Loader2, TimerOff } from "lucide-react"
 import { toast } from "sonner"
 
 import { bookingApi } from "@/features/booking/api/booking.api"
+import { customerPackageApi } from "@/features/customer-packages/api/customer-package.api"
 import type { BankTransferCheckout } from "@/features/booking/types/booking.types"
 import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { Button } from "@/shared/ui/button"
@@ -48,14 +49,26 @@ function useCountdown(expiresAt: string): number {
 /** Số giây để khách kịp đọc màn hình thành công trước khi chuyển trang. */
 const REDIRECT_SECONDS = 10
 
+/**
+ * Thứ đang được trả tiền.
+ *
+ * Cách nhận biết "tiền đã về" khác nhau theo từng loại: phiếu đặt sân đổi trạng
+ * thái khỏi PENDING, còn gói slot thì chuyển sang ACTIVE. Toàn bộ phần hiển thị
+ * — mã QR, đếm ngược, màn thành công — giống hệt nhau, nên chỉ tách đúng phần
+ * nhận biết ra thành tham số thay vì chép cả màn hình ra bản thứ hai.
+ */
+export type PaymentSubject =
+  | { kind: "booking"; bookingId: string }
+  | { kind: "package"; customerPackageId: string }
+
 export function BankTransferQrPanel({
-  bookingId,
+  subject,
   checkout,
   onPaid,
   onContinue,
   onExpired,
 }: {
-  bookingId: string
+  subject: PaymentSubject
   checkout: BankTransferCheckout
   /** Chạy đúng một lần ngay khi phát hiện tiền về. */
   onPaid: () => void
@@ -63,6 +76,7 @@ export function BankTransferQrPanel({
   onContinue?: () => void
   onExpired?: () => void
 }) {
+  const bookingId = subject.kind === "booking" ? subject.bookingId : null
   // Chỉ giữ đúng một mẩu state: "realtime đã báo tiền về chưa". Hết hạn và
   // "đã trả theo dữ liệu hỏi lại" đều suy ra được, nên không cần state riêng —
   // và suy ra thì không bao giờ lệch nhau.
@@ -78,7 +92,7 @@ export function BankTransferQrPanel({
           booking_id?: string
         } | null
         const id = data?.bookingId ?? data?.booking_id
-        if (id !== bookingId) return
+        if (!bookingId || id !== bookingId) return
         if (msg.event === "BOOKING_UPDATED" || msg.event === "BOOKING_PAID") {
           setPaidByRealtime(true)
         }
@@ -91,13 +105,27 @@ export function BankTransferQrPanel({
   // Đường 2 — lưới an toàn khi realtime rớt.
   const { data: booking } = useQuery({
     queryKey: ["booking-payment-poll", bookingId],
-    queryFn: () => bookingApi.getBooking(bookingId),
-    enabled: !paidByRealtime && remaining > 0,
+    queryFn: () => bookingApi.getBooking(bookingId!),
+    enabled: Boolean(bookingId) && !paidByRealtime && remaining > 0,
     refetchInterval: 5000,
     refetchIntervalInBackground: true,
   })
 
-  const paidByPolling = Boolean(booking?.status && booking.status !== "PENDING")
+  // Gói slot không có sự kiện realtime riêng, nên chỉ dựa vào hỏi lại. Đọc
+  // nguyên danh sách gói của khách rồi lọc ra đúng gói đang chờ — rẻ hơn thêm
+  // một endpoint chỉ để tra một dòng.
+  const packageId = subject.kind === "package" ? subject.customerPackageId : null
+  const { data: myPackages } = useQuery({
+    queryKey: ["package-payment-poll", packageId],
+    queryFn: () => customerPackageApi.listMine(),
+    enabled: Boolean(packageId) && remaining > 0,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+  })
+
+  const paidByPolling = bookingId
+    ? Boolean(booking?.status && booking.status !== "PENDING")
+    : Boolean(myPackages?.some((p) => p.id === packageId && p.status === "ACTIVE"))
   const paid = paidByRealtime || paidByPolling
 
   const phase: Phase = paid ? "paid" : remaining <= 0 ? "expired" : "waiting"

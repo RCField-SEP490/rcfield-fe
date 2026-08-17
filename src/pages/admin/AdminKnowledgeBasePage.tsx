@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { kbRefetchInterval } from "@/features/cafes/lib/kb-polling"
 import { BookOpen, FileText, Plus, Trash2, Upload, X, CheckCircle2, Clock, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -280,8 +281,7 @@ export function AdminKnowledgeBasePage() {
     queryKey: ["kb-documents", cafeId],
     queryFn: () => listKbDocuments(cafeId),
     enabled: !!cafeId,
-    refetchInterval: (query) =>
-      query.state.data?.some((d) => d.status === "PENDING") ? 5000 : false,
+    refetchInterval: (query) => kbRefetchInterval(query.state.data),
   })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["kb-documents", cafeId] })
