@@ -34,6 +34,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts"
+
 import type { LegendPayload, TooltipValueType } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 
@@ -466,6 +467,9 @@ function RealDashboard() {
   const [customFrom, setCustomFrom] = useState("")
   const [customTo, setCustomTo] = useState("")
   const [hoveredSeries, setHoveredSeries] = useState<string | null>(null)
+  const [hoveredLegendSeries, setHoveredLegendSeries] = useState<string | null>(null)
+  const [selectedLegendSeries, setSelectedLegendSeries] = useState<string | null>(null)
+  const [activeTooltipIndex, setActiveTooltipIndex] = useState<number | undefined>(undefined)
   const [hoveredPieType, setHoveredPieType] = useState<string | null>(null)
 
   const handleCafeChange = (newCafeId: string | null) => {
@@ -1144,12 +1148,51 @@ function RealDashboard() {
               Chưa có dữ liệu trong kỳ này
             </div>
           ) : (
-            <div className="h-56 w-full text-xs">
+            <div className="h-56 w-full text-xs relative">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={trend}
                   margin={{ top: 5, right: 5, left: -15, bottom: 0 }}
+                  onMouseMove={(state) => {
+                    const chartState = state as { activeTooltipIndex?: number }
+                    if (chartState && chartState.activeTooltipIndex !== undefined && chartState.activeTooltipIndex !== null) {
+                      setActiveTooltipIndex(chartState.activeTooltipIndex)
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setActiveTooltipIndex(undefined)
+                  }}
                 >
+                  <Tooltip
+                    formatter={(
+                      value: TooltipValueType | undefined,
+                      name: number | string | undefined,
+                      item: unknown,
+                    ) => {
+                      const activeSeries = hoveredLegendSeries || selectedLegendSeries
+                      if (activeSeries) {
+                        const payloadItem = item as { dataKey?: string | number; props?: { dataKey?: string | number } } | undefined
+                        const targetKey = String(payloadItem?.dataKey || payloadItem?.props?.dataKey || "")
+                        const seriesLabels: Record<string, string> = {
+                          slotFee: "Phí sân",
+                          rentalFee: "Thuê xe",
+                          fnbPreorder: "Đồ ăn & thức uống",
+                          extensionFee: "Phí gia hạn",
+                          damageCharge: "Phí bồi thường",
+                          packageFee: "Phí gói",
+                        }
+                        if (targetKey !== activeSeries && String(name) !== seriesLabels[activeSeries]) {
+                          return null
+                        }
+                      }
+                      return [formatTooltipCurrency(value), String(name || "")]
+                    }}
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "1px solid #e5e2e1",
+                      fontSize: 12,
+                    }}
+                  />
                   <defs>
                     {Object.entries(CHART_COLORS).map(([key, color]) => (
                       <linearGradient
@@ -1188,42 +1231,45 @@ function RealDashboard() {
                     tickFormatter={(v) => formatCurrency(v)}
                     tick={{ fontSize: 10 }}
                   />
-                  <Tooltip
-                    formatter={(
-                      value: TooltipValueType | undefined,
-                      name: number | string | undefined,
-                    ) => [formatTooltipCurrency(value), String(name || "")]}
-                    contentStyle={{
-                      borderRadius: "10px",
-                      border: "1px solid #e5e2e1",
-                      fontSize: 12,
-                    }}
-                  />
                   <Legend
-                    wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                    onMouseEnter={(entry: LegendPayload) =>
-                      setHoveredSeries(
-                        typeof entry.dataKey === "string"
-                          ? entry.dataKey
-                          : null,
-                      )
-                    }
-                    onMouseLeave={() => setHoveredSeries(null)}
-                  />
+                     wrapperStyle={{ fontSize: 11, paddingTop: 8, cursor: "pointer" }}
+                     onMouseEnter={(entry: LegendPayload) =>
+                       setHoveredLegendSeries(
+                         typeof entry.dataKey === "string"
+                           ? entry.dataKey
+                           : null,
+                       )
+                     }
+                     onMouseLeave={() => setHoveredLegendSeries(null)}
+                     onClick={(entry: LegendPayload) => {
+                       const key = typeof entry.dataKey === "string" ? entry.dataKey : null
+                       setSelectedLegendSeries((prev) => (prev === key ? null : key))
+                     }}
+                   />
                   <Area
                     type="monotone"
                     dataKey="slotFee"
                     name="Phí sân"
                     stroke={CHART_COLORS.slotFee}
                     fill="url(#db-grad-slotFee)"
-                    strokeWidth={hoveredSeries === "slotFee" ? 3.5 : 2}
+                    strokeWidth={
+                      hoveredLegendSeries === "slotFee" ||
+                      selectedLegendSeries === "slotFee" ||
+                      hoveredSeries === "slotFee"
+                        ? 3.5
+                        : 2
+                    }
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "slotFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "slotFee" ||
+                      selectedLegendSeries === "slotFee"
                         ? 1
                         : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "slotFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "slotFee" ||
+                      selectedLegendSeries === "slotFee"
                         ? 1
                         : 0.15
                     }
@@ -1236,14 +1282,24 @@ function RealDashboard() {
                     name="Thuê xe"
                     stroke={CHART_COLORS.rentalFee}
                     fill="url(#db-grad-rentalFee)"
-                    strokeWidth={hoveredSeries === "rentalFee" ? 3.5 : 2}
+                    strokeWidth={
+                      hoveredLegendSeries === "rentalFee" ||
+                      selectedLegendSeries === "rentalFee" ||
+                      hoveredSeries === "rentalFee"
+                        ? 3.5
+                        : 2
+                    }
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "rentalFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "rentalFee" ||
+                      selectedLegendSeries === "rentalFee"
                         ? 1
                         : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "rentalFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "rentalFee" ||
+                      selectedLegendSeries === "rentalFee"
                         ? 1
                         : 0.15
                     }
@@ -1256,14 +1312,24 @@ function RealDashboard() {
                     name="Đồ ăn & thức uống"
                     stroke={CHART_COLORS.fnbPreorder}
                     fill="url(#db-grad-fnbPreorder)"
-                    strokeWidth={hoveredSeries === "fnbPreorder" ? 3.5 : 2}
+                    strokeWidth={
+                      hoveredLegendSeries === "fnbPreorder" ||
+                      selectedLegendSeries === "fnbPreorder" ||
+                      hoveredSeries === "fnbPreorder"
+                        ? 3.5
+                        : 2
+                    }
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "fnbPreorder"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "fnbPreorder" ||
+                      selectedLegendSeries === "fnbPreorder"
                         ? 1
                         : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "fnbPreorder"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "fnbPreorder" ||
+                      selectedLegendSeries === "fnbPreorder"
                         ? 1
                         : 0.15
                     }
@@ -1277,14 +1343,24 @@ function RealDashboard() {
                     name="Phí gia hạn"
                     stroke={CHART_COLORS.extensionFee}
                     fill="url(#db-grad-extensionFee)"
-                    strokeWidth={hoveredSeries === "extensionFee" ? 3.5 : 2}
+                    strokeWidth={
+                      hoveredLegendSeries === "extensionFee" ||
+                      selectedLegendSeries === "extensionFee" ||
+                      hoveredSeries === "extensionFee"
+                        ? 3.5
+                        : 2
+                    }
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "extensionFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "extensionFee" ||
+                      selectedLegendSeries === "extensionFee"
                         ? 1
                         : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "extensionFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "extensionFee" ||
+                      selectedLegendSeries === "extensionFee"
                         ? 1
                         : 0.15
                     }
@@ -1297,14 +1373,24 @@ function RealDashboard() {
                     name="Phí bồi thường"
                     stroke={CHART_COLORS.damageCharge}
                     fill="url(#db-grad-damageCharge)"
-                    strokeWidth={hoveredSeries === "damageCharge" ? 3.5 : 2}
+                    strokeWidth={
+                      hoveredLegendSeries === "damageCharge" ||
+                      selectedLegendSeries === "damageCharge" ||
+                      hoveredSeries === "damageCharge"
+                        ? 3.5
+                        : 2
+                    }
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "damageCharge"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "damageCharge" ||
+                      selectedLegendSeries === "damageCharge"
                         ? 1
                         : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "damageCharge"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "damageCharge" ||
+                      selectedLegendSeries === "damageCharge"
                         ? 1
                         : 0.15
                     }
@@ -1317,14 +1403,24 @@ function RealDashboard() {
                     name="Phí gói"
                     stroke={CHART_COLORS.packageFee}
                     fill="url(#db-grad-packageFee)"
-                    strokeWidth={hoveredSeries === "packageFee" ? 3.5 : 2}
+                    strokeWidth={
+                      hoveredLegendSeries === "packageFee" ||
+                      selectedLegendSeries === "packageFee" ||
+                      hoveredSeries === "packageFee"
+                        ? 3.5
+                        : 2
+                    }
                     strokeOpacity={
-                      hoveredSeries === null || hoveredSeries === "packageFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "packageFee" ||
+                      selectedLegendSeries === "packageFee"
                         ? 1
                         : 0.15
                     }
                     fillOpacity={
-                      hoveredSeries === null || hoveredSeries === "packageFee"
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "packageFee" ||
+                      selectedLegendSeries === "packageFee"
                         ? 1
                         : 0.15
                     }
@@ -1333,8 +1429,94 @@ function RealDashboard() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              {/* Floating tooltip tự chế khi hover Legend tag hoặc click chọn khóa */}
+              {(() => {
+                const activeSeries = hoveredLegendSeries || selectedLegendSeries
+                if (!activeSeries || trend.length === 0) return null
+
+                const seriesLabels: Record<string, string> = {
+                  slotFee: "Phí sân",
+                  rentalFee: "Thuê xe",
+                  fnbPreorder: "Đồ ăn & thức uống",
+                  extensionFee: "Phí gia hạn",
+                  damageCharge: "Phí bồi thường",
+                  packageFee: "Phí gói",
+                }
+                const color = (CHART_COLORS as Record<string, string>)[activeSeries] || "#000000"
+
+                // Trường hợp 1: Người dùng đang rê chuột trên biểu đồ -> hiện tuần hiện tại & tổng tuần
+                if (activeTooltipIndex !== undefined && activeTooltipIndex !== null) {
+                  const point = trend[activeTooltipIndex]
+                  if (!point) return null
+                  const val = Number((point as unknown as Record<string, unknown>)[activeSeries] ?? 0)
+                  return (
+                    <div
+                      key="legend-tooltip-hovering"
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        background: "white",
+                        border: "1px solid #e5e2e1",
+                        borderRadius: 10,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        pointerEvents: "none",
+                        zIndex: 50,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                        minWidth: 180,
+                      }}
+                    >
+                      <p style={{ color: "#747878", fontWeight: 600, marginBottom: 4, fontSize: 11 }}>
+                        {point.label} {selectedLegendSeries ? "📌" : ""}
+                      </p>
+                      <p style={{ color, fontWeight: 700, margin: "0 0 4px 0" }}>
+                        {seriesLabels[activeSeries]}: {formatCurrency(val)}
+                      </p>
+                      <p style={{ color: "#1c1b1b", fontWeight: 600, margin: 0, fontSize: 11, borderTop: "1px solid #f0ede9", paddingTop: 4 }}>
+                        Tổng tuần này: {formatCurrency(point.total)}
+                      </p>
+                    </div>
+                  )
+                }
+
+                // Trường hợp 2: Hover/Lock tĩnh (không rê chuột trên chart) -> hiển thị tổng quan cả kỳ của phí đó
+                const totalInPeriod = trend.reduce((sum, item) => sum + (Number((item as unknown as Record<string, unknown>)[activeSeries]) || 0), 0)
+                return (
+                  <div
+                    key="legend-tooltip-static"
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      background: "white",
+                      border: "1px solid #e5e2e1",
+                      borderRadius: 10,
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      pointerEvents: "none",
+                      zIndex: 50,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      minWidth: 200,
+                    }}
+                  >
+                    <p style={{ color: "#747878", fontWeight: 600, marginBottom: 4, fontSize: 11 }}>
+                      {seriesLabels[activeSeries]} {selectedLegendSeries ? "📌 Đang khoá" : ""}
+                    </p>
+                    <p style={{ color, fontWeight: 700, margin: "0 0 4px 0", fontSize: 13 }}>
+                      Tổng cả kỳ: {formatCurrency(totalInPeriod)}
+                    </p>
+                    <p style={{ color: "#a0a4a4", fontSize: 10, margin: 0, fontStyle: "italic" }}>
+                      {selectedLegendSeries 
+                        ? "Rê chuột vào biểu đồ để xem chi tiết từng tuần" 
+                        : "Click vào tag để khoá đường xem chi tiết"}
+                    </p>
+                  </div>
+                )
+              })()}
             </div>
           )}
+
         </div>
 
         <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 shadow-sm xl:col-span-4">
@@ -1483,8 +1665,7 @@ function RealDashboard() {
                     tick={{ fontSize: 10, fontWeight: 700 }}
                   />
                   <Tooltip
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(v: any) => formatCurrency(Number(v || 0))}
+                    formatter={(v: unknown) => formatCurrency(Number(v || 0))}
                     contentStyle={{
                       borderRadius: "10px",
                       border: "1px solid #e5e2e1",
