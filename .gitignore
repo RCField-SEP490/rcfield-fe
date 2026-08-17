@@ -21,9 +21,14 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
-*.env
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
 
 # Antigravity / Agent Directory
 .agents
 .agents/
+
