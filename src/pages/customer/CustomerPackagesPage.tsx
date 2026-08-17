@@ -32,7 +32,9 @@ export function CustomerPackagesPage() {
       const result = await repayMutation.mutateAsync({
         customerPackageId: pkg.id,
       })
-      window.location.assign(result.payment_url)
+      if (result.payment_url) {
+        window.location.assign(result.payment_url)
+      }
     } catch {
       // Error handled by mutation hook
     } finally {
