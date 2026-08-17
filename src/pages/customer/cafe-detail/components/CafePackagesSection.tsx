@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, QrCode } from "lucide-react"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import {
@@ -7,7 +7,12 @@ import {
   usePublicPackages,
   usePurchasePackage,
 } from "@/features/customer-packages/hooks/use-customer-packages"
-import type { PublicPackage } from "@/features/customer-packages/api/customer-package.api"
+import type {
+  PublicPackage,
+  PurchasePackageResult,
+} from "@/features/customer-packages/api/customer-package.api"
+import { BankTransferQrPanel } from "@/pages/booking/components/checkout/BankTransferQrPanel"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
 import { formatApplicablePlayModes } from "@/features/customer-packages/lib/play-mode"
 import { Button } from "@/shared/ui/button"
 import { Skeleton } from "@/shared/ui/skeleton"
@@ -26,6 +31,9 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
   const authRole = useAuthStore((s) => s.role)
   const isCustomer = authRole === "customer"
   const [purchasingId, setPurchasingId] = useState<string | null>(null)
+  // Phiên chuyển khoản đang mở. Giữ nguyên kết quả trả về thay vì tách nhỏ:
+  // panel QR cần cả mã lẫn id gói để biết khi nào tiền về.
+  const [transferSession, setTransferSession] = useState<PurchasePackageResult | null>(null)
 
   const { data: myPackages = [] } = useMyPackages(
     cafeId && isCustomer ? { cafe_id: cafeId } : undefined,
@@ -40,16 +48,23 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
 
   if (!isLoading && packages.length === 0) return null
 
-  const handlePurchase = async (pkg: PublicPackage) => {
+  const handlePurchase = async (pkg: PublicPackage, gateway: "vnpay" | "bank_transfer") => {
     if (!cafeId) return
     setPurchasingId(pkg.id)
     try {
-      const result = await purchaseMutation.mutateAsync({ cafeId, packageId: pkg.id })
-      window.location.assign(result.payment_url)
+      const result = await purchaseMutation.mutateAsync({ cafeId, packageId: pkg.id, gateway })
+      if (result.flow === "bank_transfer" && result.bank_transfer) {
+        setTransferSession(result)
+        return
+      }
+      // Luồng cổng thanh toán vẫn chuyển trang như cũ.
+      if (result.payment_url) window.location.assign(result.payment_url)
     } catch (err) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code
       if (code === "PACKAGE_ALREADY_OWNED") {
         toast.error("Bạn đã có gói này đang hoạt động. Hãy dùng hết trước khi mua lại.")
+      } else if (code === "PAYMENT_METHOD_UNAVAILABLE") {
+        toast.error("Cơ sở này chưa mở chuyển khoản. Hãy chọn thanh toán qua cổng.")
       } else {
         toast.error("Không thể mua gói. Vui lòng thử lại.")
       }
@@ -78,11 +93,33 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
               isCustomer={isCustomer}
               isOwned={ownedPackageIds.has(pkg.id)}
               isPurchasing={purchasingId === pkg.id}
-              onPurchase={() => void handlePurchase(pkg)}
+              onPurchase={(gateway) => void handlePurchase(pkg, gateway)}
             />
           ))}
         </ul>
       )}
+      <Dialog
+        open={Boolean(transferSession)}
+        onOpenChange={(open) => !open && setTransferSession(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quét mã để thanh toán gói</DialogTitle>
+          </DialogHeader>
+          {transferSession?.bank_transfer && (
+            <BankTransferQrPanel
+              subject={{
+                kind: "package",
+                customerPackageId: transferSession.customer_package_id,
+              }}
+              checkout={transferSession.bank_transfer}
+              onPaid={() => toast.success("Đã nhận được thanh toán, gói đã kích hoạt!")}
+              onContinue={() => setTransferSession(null)}
+              onExpired={() => setTransferSession(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </CafeSection>
   )
 }
@@ -105,7 +142,7 @@ function PackageRow({
   isCustomer: boolean
   isOwned: boolean
   isPurchasing: boolean
-  onPurchase: () => void
+  onPurchase: (gateway: "vnpay" | "bank_transfer") => void
 }) {
   // Dùng helper chung: mảng rỗng = áp dụng mọi hình thức, map+join thẳng sẽ
   // cho ra chuỗi rỗng và khách tưởng gói không dùng được cho hình thức nào.
@@ -162,19 +199,35 @@ function PackageRow({
               Đang hoạt động
             </span>
           ) : (
-            <Button
-              className="h-10 rounded-xl bg-slate-950 px-5 text-sm font-bold text-white transition-colors hover:bg-orange-600"
-              disabled={isPurchasing}
-              onClick={onPurchase}
-            >
-              {isPurchasing ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Đang xử lý...
-                </>
-              ) : (
-                "Mua gói"
-              )}
-            </Button>
+            <div className="flex flex-col items-stretch gap-1.5">
+              {/*
+                Chuyển khoản đặt làm nút chính: tiền về thẳng tài khoản quán,
+                không qua cổng trung gian, và khách quét là xong trong một nhịp.
+              */}
+              <Button
+                className="h-10 rounded-xl bg-slate-950 px-5 text-sm font-bold text-white transition-colors hover:bg-orange-600"
+                disabled={isPurchasing}
+                onClick={() => onPurchase("bank_transfer")}
+              >
+                {isPurchasing ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Đang xử lý...
+                  </>
+                ) : (
+                  <>
+                    <QrCode className="size-4" /> Quét mã trả
+                  </>
+                )}
+              </Button>
+              <button
+                type="button"
+                disabled={isPurchasing}
+                onClick={() => onPurchase("vnpay")}
+                className="text-xs font-semibold text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline disabled:opacity-50"
+              >
+                Trả qua cổng thanh toán
+              </button>
+            </div>
           )
         ) : (
           <span className="text-sm font-semibold text-slate-400">Đăng nhập để mua</span>

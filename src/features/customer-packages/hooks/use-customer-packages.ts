@@ -4,6 +4,7 @@ import { useAuthStore } from '@/features/auth/stores/auth.store'
 import {
   customerPackageApi,
   customerPackageQueryKeys,
+  type PackagePaymentGateway,
   type CustomerPackageStatus,
 } from '../api/customer-package.api'
 
@@ -43,8 +44,15 @@ export function usePackageUsageHistory(customerPackageId?: string) {
 export function usePurchasePackage() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ cafeId, packageId }: { cafeId: string; packageId: string }) =>
-      customerPackageApi.purchase(cafeId, packageId),
+    mutationFn: ({
+      cafeId,
+      packageId,
+      gateway,
+    }: {
+      cafeId: string
+      packageId: string
+      gateway?: PackagePaymentGateway
+    }) => customerPackageApi.purchase(cafeId, packageId, gateway),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: customerPackageQueryKeys.all })
     },

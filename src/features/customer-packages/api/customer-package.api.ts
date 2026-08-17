@@ -1,3 +1,4 @@
+import type { BankTransferCheckout } from '@/features/booking/types/booking.types'
 import { api } from '@/shared/lib/axios'
 
 interface ApiEnvelope<T> {
@@ -35,12 +36,18 @@ export interface MyPackageItem {
   created_at: string
 }
 
+export type PackagePaymentGateway = "vnpay" | "bank_transfer"
+
 export interface PurchasePackageResult {
   customer_package_id: string
-  payment_url: string
+  /** Null khi trả bằng chuyển khoản — khách ở lại quét mã, không chuyển trang. */
+  payment_url: string | null
   txn_ref: string
   amount: number
   expires_at: string
+  flow: "redirect" | "bank_transfer"
+  /** Chỉ có khi cổng là chuyển khoản. */
+  bank_transfer?: BankTransferCheckout
 }
 
 export interface UsageHistoryEntry {
@@ -69,10 +76,14 @@ export const customerPackageApi = {
     return res.data.data
   },
 
-  purchase: async (cafeId: string, packageId: string): Promise<PurchasePackageResult> => {
+  purchase: async (
+    cafeId: string,
+    packageId: string,
+    gateway: PackagePaymentGateway = "vnpay",
+  ): Promise<PurchasePackageResult> => {
     const res = await api.post<ApiEnvelope<PurchasePackageResult>>(
       `/v1/cafes/${cafeId}/packages/${packageId}/purchase`,
-      {},
+      { gateway },
     )
     return res.data.data
   },

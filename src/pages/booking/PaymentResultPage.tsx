@@ -34,6 +34,12 @@ export function PaymentResultPage() {
   const responseCode = searchParams.get("response_code")
   const gatewayReportedSuccess = status === "success"
   const isCounterPayment = txnRef?.startsWith("ctr_") ?? false
+  /**
+   * Phí dự thi đi theo một luồng khác hẳn đơn đặt sân, và trang này vốn viết
+   * cho đơn đặt: nói "giữ chỗ", dẫn về "danh sách đơn đặt", mời "đặt lịch mới".
+   * Khách vừa huỷ thanh toán một giải đấu đọc vào không hiểu mình đang ở đâu.
+   */
+  const isContestEntry = txnRef?.startsWith("contest_") ?? false
 
   const {
     data: transaction,
@@ -81,7 +87,9 @@ export function PaymentResultPage() {
     ? "Biên nhận thanh toán phí phát sinh"
     : isPackagePurchase
       ? "Thanh toán gói thành công"
-      : "Biên nhận thanh toán đơn đặt"
+      : isContestEntry
+        ? "Đã thanh toán phí dự thi"
+        : "Biên nhận thanh toán đơn đặt"
 
   const handleResumePayment = async () => {
     if (!bookingId) return
@@ -96,9 +104,18 @@ export function PaymentResultPage() {
     }
   }
 
-  const failureDescription = responseCode === "24"
-    ? "Bạn đã hủy giao dịch tại VNPay. Đơn vẫn được giữ chỗ trong thời hạn thanh toán, nếu còn hiệu lực."
-    : "Giao dịch chưa hoàn tất. Đơn chỉ được giữ chỗ đến hết thời hạn thanh toán; bạn có thể tiếp tục thanh toán nếu đơn còn hiệu lực."
+  const userCancelled = responseCode === "24"
+
+  // Mã 24 nghĩa là khách TỰ bấm huỷ ở cổng, và máy chủ huỷ luôn đăng ký giải để
+  // nhả suất cho người khác. Mọi mã khác là hỏng ngoài ý muốn — sai OTP, lỗi
+  // ngân hàng — nên đăng ký vẫn còn và khách trả lại được.
+  const failureDescription = isContestEntry
+    ? userCancelled
+      ? "Bạn đã huỷ giao dịch tại VNPay, nên đăng ký dự giải này cũng được huỷ theo và suất đã trả lại cho người khác. Muốn tham gia thì đăng ký lại từ đầu."
+      : "Giao dịch chưa hoàn tất. Đăng ký dự giải của bạn vẫn được giữ trong thời hạn thanh toán — hãy thử thanh toán lại."
+    : userCancelled
+      ? "Bạn đã hủy giao dịch tại VNPay. Đơn vẫn được giữ chỗ trong thời hạn thanh toán, nếu còn hiệu lực."
+      : "Giao dịch chưa hoàn tất. Đơn chỉ được giữ chỗ đến hết thời hạn thanh toán; bạn có thể tiếp tục thanh toán nếu đơn còn hiệu lực."
 
   return (
     <main className="min-h-screen bg-[#f3f6f8] px-4 py-10 md:px-6 md:py-16">
@@ -122,7 +139,11 @@ export function PaymentResultPage() {
                     ? "Chưa thể xác thực thanh toán"
                     : isVerifyingSuccess
                       ? "Đang xác thực thanh toán"
-                      : "Thanh toán chưa hoàn tất"}
+                      : isContestEntry
+                        ? userCancelled
+                          ? "Đã huỷ đăng ký dự giải"
+                          : "Chưa thanh toán được phí dự thi"
+                        : "Thanh toán chưa hoàn tất"}
               </h1>
               <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-600">
                 {isSuccess
@@ -169,14 +190,14 @@ export function PaymentResultPage() {
               </div>
             )}
 
-            {!isSuccess && !isVerifyingSuccess && isFetchingBooking && (
+            {!isSuccess && !isVerifyingSuccess && !isContestEntry && isFetchingBooking && (
               <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
                 <Loader2 className="size-5 animate-spin text-orange-500" />
                 Đang kiểm tra thời hạn giữ chỗ...
               </div>
             )}
 
-            {isCheckingFailedPayment && (
+            {isCheckingFailedPayment && !isContestEntry && (
               <div className="mt-6 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
                 <Loader2 className="size-5 animate-spin text-orange-500" />
                 Đang kiểm tra trạng thái đơn đặt...
@@ -199,6 +220,12 @@ export function PaymentResultPage() {
                   <Home className="size-4" /> Xem gói của tôi
                 </Link>
               </Button>
+            ) : isContestEntry ? (
+              <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
+                <Link to={routePaths.customerContestRegistrations}>
+                  <Trophy className="size-4" /> Đăng ký dự giải của tôi
+                </Link>
+              </Button>
             ) : (
               <Button asChild size="lg" variant="outline" className="h-11 rounded-lg px-5 text-sm font-bold">
                 <Link to="/customer/bookings">
@@ -215,7 +242,15 @@ export function PaymentResultPage() {
               </Button>
             ) : null}
 
-            {isSuccess && bookingId ? (
+            {isSuccess && isContestEntry ? (
+              // Phí dự thi không có đơn đặt để mở, nên nút chính dẫn về nơi
+              // khách theo dõi đăng ký và mã điểm danh của mình.
+              <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
+                <Link to={routePaths.customerContestRegistrations}>
+                  Xem đăng ký dự giải <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : isSuccess && bookingId ? (
               <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
                 <Link to={`/booking/${bookingId}`}>
                   Xem chi tiết đơn đặt <ArrowRight className="size-4" />
@@ -229,6 +264,14 @@ export function PaymentResultPage() {
               <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
                 <Link to={`/booking/${bookingId}`}>
                   Kiểm tra đơn đặt <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : !isSuccess && !isVerifyingSuccess && !isCheckingOutcome && isContestEntry ? (
+              // Huỷ rồi thì phải đăng ký lại từ đầu, nên dẫn thẳng về danh sách
+              // giải chứ không mời "thanh toán lại" một đăng ký đã không còn.
+              <Button asChild size="lg" className="h-11 rounded-lg bg-orange-600 px-5 text-sm font-bold hover:bg-orange-700">
+                <Link to={routePaths.contests}>
+                  <Trophy className="size-4" /> {userCancelled ? "Đăng ký lại" : "Xem giải đấu"}
                 </Link>
               </Button>
             ) : !isSuccess && !isVerifyingSuccess && !isCheckingOutcome ? (

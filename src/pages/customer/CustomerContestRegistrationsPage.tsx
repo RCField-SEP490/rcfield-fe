@@ -275,6 +275,26 @@ export function CustomerContestRegistrationsPage() {
                             status={registration.paymentStatus}
                           />
                         </div>
+
+                        {/*
+                          Đăng ký bị huỷ mà không nói vì sao là chỗ khách hàng
+                          mất phương hướng nhất: hệ thống có thể tự huỷ khi quá
+                          hạn trả lệ phí, hoặc khi khách bấm huỷ ở cổng thanh
+                          toán. Nhìn thấy mỗi chữ "Đã huỷ" thì họ không biết
+                          mình còn đăng ký lại được hay không.
+                        */}
+                        {registration.status === "CANCELLED" &&
+                        registration.cancellationReason ? (
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                            <p className="text-sm font-bold text-amber-900">
+                              Lý do huỷ: {registration.cancellationReason}
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-amber-800">
+                              Suất đã được trả lại cho người khác. Giải còn mở
+                              đăng ký thì bạn vẫn đăng ký lại được từ đầu.
+                            </p>
+                          </div>
+                        ) : null}
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           <InfoTile
                             label="Người thi đấu"
@@ -341,6 +361,21 @@ export function CustomerContestRegistrationsPage() {
                             <ArrowRight className="ml-2 size-4" />
                           </Link>
                         </Button>
+                        {registration.status === "CANCELLED" ? (
+                          <Button
+                            asChild
+                            className="rounded-xl bg-orange-600 font-bold hover:bg-orange-700"
+                          >
+                            <Link
+                              to={routePaths.contestDetail.replace(
+                                ":contestId",
+                                contest?.id ?? registration.contestId,
+                              )}
+                            >
+                              Đăng ký lại
+                            </Link>
+                          </Button>
+                        ) : null}
                         {["PENDING", "CONFIRMED"].includes(
                           registration.status,
                         ) ? (

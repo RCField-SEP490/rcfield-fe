@@ -942,7 +942,7 @@ export function CreateBookingPage() {
           )}
           {currentStep === "payment" && bankTransfer && (
             <BankTransferQrPanel
-              bookingId={bankTransfer.bookingId}
+              subject={{ kind: "booking", bookingId: bankTransfer.bookingId }}
               checkout={bankTransfer.checkout}
               onPaid={() => toast.success("Đã nhận được thanh toán!")}
               onContinue={() => {

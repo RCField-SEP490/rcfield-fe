@@ -98,7 +98,7 @@ export function BankTransferPaymentPage() {
       </p>
 
       <BankTransferQrPanel
-        bookingId={bookingId!}
+        subject={{ kind: "booking", bookingId: bookingId! }}
         checkout={data.bank_transfer}
         onPaid={() => {
           toast.success("Đã nhận được thanh toán!")

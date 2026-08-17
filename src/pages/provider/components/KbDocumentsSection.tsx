@@ -196,6 +196,7 @@ export function KbDocumentsSection({ cafeId }: { cafeId: string }) {
   const { data: docs = [], isLoading } = useQuery({
     queryKey: cafeQueryKeys.kbDocuments(cafeId),
     queryFn: () => cafeApi.listKbDocuments(cafeId),
+    refetchInterval: (query) => kbRefetchInterval(query.state.data),
   })
 
   const uploadMutation = useMutation({
