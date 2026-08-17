@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
+import { kbRefetchInterval } from "@/features/cafes/lib/kb-polling"
 import type { KbContentType, KbDocument } from "@/features/cafes/types"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
