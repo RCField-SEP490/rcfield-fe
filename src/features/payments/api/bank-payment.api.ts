@@ -35,6 +35,83 @@ export interface OwnerLedger {
   summary: { matched_total: number; needs_review_count: number }
 }
 
+/**
+ * Một dòng sao kê dưới góc nhìn đối soát.
+ *
+ * Khác `BankTransactionItem` (sổ per-cafe) ở ba trường bên dưới, và đó chính là
+ * ba trường khiến việc đối soát làm được: `external_id` để dò ngược về dòng
+ * trên sao kê ngân hàng, `account_number` để biết tiền vào tài khoản nào, và
+ * `expected_amount` để nhìn ra khách chuyển thiếu hay dư.
+ */
+/**
+ * Nguồn tiền — quyết định dòng này đối chiếu với báo cáo của bên nào.
+ *
+ * `BANK` vào thẳng tài khoản ngân hàng chi nhánh → so với sao kê ngân hàng.
+ * `VNPAY` nằm ở tài khoản người bán của cổng → so với báo cáo đối soát VNPay.
+ * Hai bên không được cộng chung, vì con số gộp không khớp với bên nào cả.
+ */
+export type ReconciliationChannel = "BANK" | "VNPAY"
+
+export interface ReconciliationRow {
+  id: string
+  channel: ReconciliationChannel
+  external_id: string
+  gateway: string
+  account_number: string
+  amount: number
+  content: string
+  ref_code: string | null
+  transaction_date: string
+  match_status: "MATCHED" | "NEEDS_REVIEW" | "IGNORED"
+  match_reason: string | null
+  cafe_id: string | null
+  cafe_name: string | null
+  txn_ref: string | null
+  expected_amount: number | null
+  subject: "BOOKING" | "PACKAGE" | "CONTEST" | null
+  subject_id: string | null
+  resolved_by_name: string | null
+  resolved_at: string | null
+  resolution_note: string | null
+}
+
+export interface ReconciliationSummary {
+  total_count: number
+  total_amount: number
+  /** Con số so với SAO KÊ NGÂN HÀNG. */
+  bank_count: number
+  bank_amount: number
+  /** Con số so với BÁO CÁO ĐỐI SOÁT CỦA VNPAY. */
+  vnpay_count: number
+  vnpay_amount: number
+  matched_count: number
+  matched_amount: number
+  needs_review_count: number
+  needs_review_amount: number
+  ignored_count: number
+  ignored_amount: number
+  unreconciled_amount: number
+}
+
+export interface ReconciliationPage {
+  items: ReconciliationRow[]
+  total: number
+  page: number
+  limit: number
+  summary: ReconciliationSummary
+}
+
+export interface ReconciliationFilters {
+  from?: string
+  to?: string
+  cafe_id?: string
+  channel?: ReconciliationChannel
+  status?: string
+  q?: string
+  page?: number
+  limit?: number
+}
+
 export const bankPaymentApi = {
   /**
    * Danh sách ngân hàng hỗ trợ VietQR — công khai, không gắn với chi nhánh.
@@ -144,6 +221,33 @@ export const bankPaymentApi = {
     )
     return res.data.data
   },
+
+  /** Sổ đối soát gộp mọi chi nhánh, lọc theo kỳ. */
+  listReconciliation: async (
+    filters: ReconciliationFilters,
+  ): Promise<ReconciliationPage> => {
+    const res = await api.get<ApiEnvelope<ReconciliationPage>>(
+      "/v1/provider/reconciliation",
+      { params: filters },
+    )
+    return res.data.data
+  },
+
+  /**
+   * Tải kỳ đang lọc về dạng CSV.
+   *
+   * `responseType: "blob"` là bắt buộc: để mặc định thì axios cố parse thân
+   * phản hồi thành JSON, và tệp về tới nơi đã hỏng mã tiếng Việt.
+   */
+  exportReconciliation: async (
+    filters: Omit<ReconciliationFilters, "page" | "limit">,
+  ): Promise<Blob> => {
+    const res = await api.get<Blob>("/v1/provider/reconciliation/export", {
+      params: filters,
+      responseType: "blob",
+    })
+    return res.data
+  },
 }
 
 export const bankPaymentQueryKeys = {
@@ -156,4 +260,6 @@ export const bankPaymentQueryKeys = {
   transactions: (cafeId?: string, status?: string) =>
     ["bank-transactions", cafeId, status ?? "all"] as const,
   pending: (cafeId?: string) => ["bank-transactions", cafeId, "pending"] as const,
+  reconciliation: (filters: ReconciliationFilters) =>
+    ["provider-reconciliation", filters] as const,
 }

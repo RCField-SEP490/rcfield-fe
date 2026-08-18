@@ -64,6 +64,9 @@ const providerNavGroups: NavGroup[] = [
       { label: "Đặt lịch", icon: ClipboardList, to: routePaths.providerBookings },
       { label: "Giải đấu", icon: Trophy, to: routePaths.providerContests },
       { label: "Nhân sự", icon: Users, to: routePaths.providerStaff },
+      // Xếp vào "Vận hành" chứ không phải "Hệ thống": đối soát là việc làm đều
+      // hằng tháng, cạnh đặt lịch và nhân sự — không phải thiết lập một lần.
+      { label: "Đối soát", icon: Landmark, to: routePaths.providerReconciliation },
     ],
   },
 

@@ -60,6 +60,17 @@ const REDIRECT_SECONDS = 10
 export type PaymentSubject =
   | { kind: "booking"; bookingId: string }
   | { kind: "package"; customerPackageId: string }
+  /**
+   * Khoản phát sinh cuối phiên: gia hạn, đồ ăn tại quầy, đền bù hư hỏng.
+   *
+   * KHÔNG dùng `kind: "booking"` cho trường hợp này. Lúc tất toán, đơn đã ở
+   * CONFIRMED hoặc COMPLETED chứ không còn PENDING — mà cách nhận biết của
+   * nhánh booking là "đơn đã rời khỏi PENDING chưa". Điều kiện đó đúng ngay từ
+   * lần hỏi đầu tiên, nên màn hình báo đã thanh toán trước khi có đồng nào về.
+   *
+   * Ở đây phải soi chính GIAO DỊCH, không soi trạng thái đơn.
+   */
+  | { kind: "settlement"; bookingId: string; txnRef: string }
 
 export function BankTransferQrPanel({
   subject,
@@ -92,6 +103,8 @@ export function BankTransferQrPanel({
           booking_id?: string
         } | null
         const id = data?.bookingId ?? data?.booking_id
+        // Chỉ nhánh đơn đặt mới tin sự kiện này. Khoản phát sinh cuối phiên có
+        // nhiều lý do khiến đơn được cập nhật mà chẳng liên quan tới tiền.
         if (!bookingId || id !== bookingId) return
         if (msg.event === "BOOKING_UPDATED" || msg.event === "BOOKING_PAID") {
           setPaidByRealtime(true)
@@ -123,9 +136,23 @@ export function BankTransferQrPanel({
     refetchIntervalInBackground: true,
   })
 
-  const paidByPolling = bookingId
-    ? Boolean(booking?.status && booking.status !== "PENDING")
-    : Boolean(myPackages?.some((p) => p.id === packageId && p.status === "ACTIVE"))
+  // Khoản phát sinh cuối phiên: hỏi thẳng giao dịch, vì trạng thái đơn không
+  // nói được gì — nó đã rời PENDING từ lúc khách trả tiền đặt lịch.
+  const settlementRef = subject.kind === "settlement" ? subject.txnRef : null
+  const { data: settlementTx } = useQuery({
+    queryKey: ["settlement-payment-poll", settlementRef],
+    queryFn: () => bookingApi.getPaymentTransaction(settlementRef!),
+    enabled: Boolean(settlementRef) && remaining > 0,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    retry: false,
+  })
+
+  const paidByPolling = settlementRef
+    ? settlementTx?.status === "SUCCESS"
+    : bookingId
+      ? Boolean(booking?.status && booking.status !== "PENDING")
+      : Boolean(myPackages?.some((p) => p.id === packageId && p.status === "ACTIVE"))
   const paid = paidByRealtime || paidByPolling
 
   const phase: Phase = paid ? "paid" : remaining <= 0 ? "expired" : "waiting"
