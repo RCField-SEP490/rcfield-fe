@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import {
   bankPaymentApi,
   bankPaymentQueryKeys,
+  type ReconciliationChannel,
   type ReconciliationFilters,
   type ReconciliationRow,
 } from "@/features/payments/api/bank-payment.api"
@@ -68,6 +69,11 @@ const NHAN_LY_DO: Record<string, string> = {
   SESSION_REPLACED: "Phiên thanh toán đã bị thay bằng phiên mới",
 }
 
+const NHAN_NGUON: Record<ReconciliationChannel, { text: string; lop: string }> = {
+  BANK: { text: "Chuyển khoản", lop: "bg-[#e8eef7] text-[#1f4a80] border-[#a9c2e0]" },
+  VNPAY: { text: "VNPay", lop: "bg-[#f3eaf7] text-[#5c2d73] border-[#cdaadd]" },
+}
+
 const NHAN_LOAI: Record<string, string> = {
   BOOKING: "Đặt sân",
   PACKAGE: "Mua gói",
@@ -89,6 +95,7 @@ export function ProviderReconciliationPage() {
   const [tu, setTu] = useState(thangNay.tu)
   const [den, setDen] = useState(thangNay.den)
   const [chiNhanh, setChiNhanh] = useState("")
+  const [nguon, setNguon] = useState<"" | ReconciliationChannel>("")
   const [trangThai, setTrangThai] = useState("")
   const [tuKhoaGo, setTuKhoaGo] = useState("")
   const [tuKhoa, setTuKhoa] = useState("")
@@ -105,12 +112,13 @@ export function ProviderReconciliationPage() {
       from: tu ? new Date(`${tu}T00:00:00`).toISOString() : undefined,
       to: den ? new Date(`${den}T23:59:59.999`).toISOString() : undefined,
       cafe_id: chiNhanh || undefined,
+      channel: nguon || undefined,
       status: trangThai || undefined,
       q: tuKhoa || undefined,
       page: trang,
       limit: 50,
     }),
-    [tu, den, chiNhanh, trangThai, tuKhoa, trang],
+    [tu, den, chiNhanh, nguon, trangThai, tuKhoa, trang],
   )
 
   const { data: dsChiNhanh } = useQuery({
@@ -144,6 +152,7 @@ export function ProviderReconciliationPage() {
         from: boLoc.from,
         to: boLoc.to,
         cafe_id: boLoc.cafe_id,
+        channel: boLoc.channel,
         status: boLoc.status,
         q: boLoc.q,
       })
@@ -218,6 +227,18 @@ export function ProviderReconciliationPage() {
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">Nguồn tiền</span>
+              <select
+                value={nguon}
+                onChange={(e) => doiBoLoc(() => setNguon(e.target.value as "" | ReconciliationChannel))}
+                className="h-11 rounded-md border border-[#c4c7c8] bg-white px-3 text-sm font-medium text-[#1c1b1b]"
+              >
+                <option value="">Tất cả nguồn</option>
+                <option value="BANK">Chuyển khoản</option>
+                <option value="VNPAY">VNPay</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1.5">
               <span className="text-xs font-bold uppercase tracking-wider text-[#747878]">Trạng thái</span>
               <select
                 value={trangThai}
@@ -280,35 +301,42 @@ export function ProviderReconciliationPage() {
         {/* ── Bốn con số của kỳ ────────────────────────────────────────── */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <OTong
-            nhan="Ngân hàng ghi có"
+            nhan="Tổng tiền vào"
             giaTri={tienVN(tong?.total_amount ?? 0)}
             phu={`${tong?.total_count ?? 0} giao dịch trong kỳ`}
             noiBat
           />
+          {/*
+            Hai nguồn để RIÊNG hai ô, không cộng chung. Tiền chuyển khoản vào
+            thẳng tài khoản ngân hàng chi nhánh; tiền VNPay nằm ở tài khoản
+            người bán của cổng rồi mới quyết toán về sau. Mỗi con số đối chiếu
+            với một báo cáo khác nhau — gộp lại thì không khớp với bên nào cả.
+          */}
           <OTong
-            nhan="Đã đối soát"
-            giaTri={tienVN(tong?.matched_amount ?? 0)}
-            phu={`${tong?.matched_count ?? 0} giao dịch đã gắn vào đơn`}
+            nhan="Chuyển khoản"
+            giaTri={tienVN(tong?.bank_amount ?? 0)}
+            phu={`${tong?.bank_count ?? 0} giao dịch · so với sao kê ngân hàng`}
+          />
+          <OTong
+            nhan="VNPay"
+            giaTri={tienVN(tong?.vnpay_amount ?? 0)}
+            phu={`${tong?.vnpay_count ?? 0} giao dịch · so với báo cáo VNPay`}
           />
           {/*
             Con số quan trọng nhất trên màn hình, và là lý do màn hình tồn tại:
-            tiền ngân hàng đã ghi có mà hệ thống chưa gắn được vào đơn nào.
-            Chốt sổ là đưa nó về 0.
+            tiền đã vào mà hệ thống chưa gắn được vào đơn nào. Chốt sổ là đưa nó
+            về 0. Chỉ phát sinh ở nguồn chuyển khoản — dòng VNPay là bản ghi của
+            chính mình nên không có gì để lệch.
           */}
           <OTong
             nhan="Chưa đối soát"
             giaTri={tienVN(tong?.unreconciled_amount ?? 0)}
             phu={
               (tong?.unreconciled_amount ?? 0) > 0
-                ? "Cần xử lý trước khi chốt sổ"
-                : "Khớp hoàn toàn với sao kê"
+                ? `${tong?.needs_review_count ?? 0} giao dịch cần xử lý trước khi chốt sổ`
+                : "Khớp hoàn toàn"
             }
             canhBao={(tong?.unreconciled_amount ?? 0) > 0}
-          />
-          <OTong
-            nhan="Cần kiểm tra"
-            giaTri={String(tong?.needs_review_count ?? 0)}
-            phu={tienVN(tong?.needs_review_amount ?? 0)}
           />
         </section>
 
@@ -340,7 +368,8 @@ export function ProviderReconciliationPage() {
                   <thead className="border-b border-[#c4c7c8] bg-[#faf9f8]">
                     <tr className="text-xs font-bold uppercase tracking-wider text-[#747878]">
                       <th className="px-4 py-3">Ngày giao dịch</th>
-                      <th className="px-4 py-3">Mã ngân hàng</th>
+                      <th className="px-4 py-3">Nguồn</th>
+                      <th className="px-4 py-3">Mã đối soát</th>
                       <th className="px-4 py-3">Chi nhánh</th>
                       <th className="px-4 py-3 text-right">Số tiền</th>
                       <th className="px-4 py-3 text-right">Chênh lệch</th>
@@ -580,13 +609,30 @@ function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
         {gioVN(r.transaction_date)}
       </td>
       <td className="px-4 py-3">
+        <span
+          className={
+            "inline-block rounded-full border px-2.5 py-1 text-[11px] font-bold " +
+            (NHAN_NGUON[r.channel]?.lop ?? "")
+          }
+        >
+          {NHAN_NGUON[r.channel]?.text ?? r.channel}
+        </span>
+      </td>
+      <td className="px-4 py-3">
         {/*
-          Mã ngân hàng để font đơn cách: người dùng dò từng ký tự giữa màn hình
+          Mã đối soát để font đơn cách: người dùng dò từng ký tự giữa màn hình
           này và tệp sao kê, và font tỉ lệ làm 0/O, 1/l nhìn gần như nhau.
         */}
-        <span className="font-mono text-xs font-semibold text-[#1c1b1b]">{r.external_id}</span>
+        {r.external_id ? (
+          <span className="font-mono text-xs font-semibold text-[#1c1b1b]">{r.external_id}</span>
+        ) : (
+          // Giao dịch cũ, trả trước khi hệ thống bắt đầu lưu mã cổng. Nói thẳng
+          // là "không có" chứ không để trống — trống đọc ra như lỗi hiển thị.
+          <span className="text-xs italic text-[#a0a3a3]">chưa lưu mã</span>
+        )}
         <span className="mt-0.5 block text-[11px] text-[#747878]">
-          {r.gateway} · TK {r.account_number}
+          {r.gateway}
+          {r.account_number ? ` · TK ${r.account_number}` : ""}
         </span>
         {r.ref_code ? (
           <span className="mt-0.5 block font-mono text-[11px] text-[#5d5f5f]">

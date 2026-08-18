@@ -43,8 +43,18 @@ export interface OwnerLedger {
  * trên sao kê ngân hàng, `account_number` để biết tiền vào tài khoản nào, và
  * `expected_amount` để nhìn ra khách chuyển thiếu hay dư.
  */
+/**
+ * Nguồn tiền — quyết định dòng này đối chiếu với báo cáo của bên nào.
+ *
+ * `BANK` vào thẳng tài khoản ngân hàng chi nhánh → so với sao kê ngân hàng.
+ * `VNPAY` nằm ở tài khoản người bán của cổng → so với báo cáo đối soát VNPay.
+ * Hai bên không được cộng chung, vì con số gộp không khớp với bên nào cả.
+ */
+export type ReconciliationChannel = "BANK" | "VNPAY"
+
 export interface ReconciliationRow {
   id: string
+  channel: ReconciliationChannel
   external_id: string
   gateway: string
   account_number: string
@@ -68,6 +78,12 @@ export interface ReconciliationRow {
 export interface ReconciliationSummary {
   total_count: number
   total_amount: number
+  /** Con số so với SAO KÊ NGÂN HÀNG. */
+  bank_count: number
+  bank_amount: number
+  /** Con số so với BÁO CÁO ĐỐI SOÁT CỦA VNPAY. */
+  vnpay_count: number
+  vnpay_amount: number
   matched_count: number
   matched_amount: number
   needs_review_count: number
@@ -89,6 +105,7 @@ export interface ReconciliationFilters {
   from?: string
   to?: string
   cafe_id?: string
+  channel?: ReconciliationChannel
   status?: string
   q?: string
   page?: number
