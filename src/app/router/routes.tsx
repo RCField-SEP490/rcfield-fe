@@ -104,6 +104,7 @@ import { ProviderStaffPage } from "@/pages/provider/ProviderStaffPage"
 import { ProviderStaffDetailPage } from "@/pages/provider/ProviderStaffDetailPage"
 import { StaffActivatePage } from "@/pages/staff/activate/StaffActivatePage"
 import { ProviderRevenuePage } from "@/pages/provider/ProviderRevenuePage"
+import { ProviderReconciliationPage } from "@/pages/provider/ProviderReconciliationPage"
 import { ProviderConfigurationPage } from "@/pages/provider/ProviderConfigurationPage"
 import { ProviderHelpPage } from "@/pages/provider/ProviderHelpPage"
 import { ChannelSettingsPage } from "@/pages/provider/ChannelSettingsPage"
@@ -444,6 +445,10 @@ export const router = createBrowserRouter([
           {
             path: routePaths.providerRevenue,
             element: providerGuardRoute(<ProviderRevenuePage />),
+          },
+          {
+            path: routePaths.providerReconciliation,
+            element: providerGuardRoute(<ProviderReconciliationPage />),
           },
           {
             path: routePaths.providerContests,

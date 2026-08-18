@@ -74,6 +74,7 @@ export const routePaths = {
   providerStaff: "/provider/staff",
   providerStaffDetail: "/provider/staff/:staffId",
   providerRevenue: "/provider/revenue",
+  providerReconciliation: "/provider/reconciliation",
   providerContests: "/provider/contests",
   providerContestCreate: "/provider/contests/new",
   providerContestCreateForm: "/provider/contests/new/form",
