@@ -341,7 +341,18 @@ export function ProviderReconciliationPage() {
         </section>
 
         {/* ── Bảng ─────────────────────────────────────────────────────── */}
-        <section className="overflow-hidden rounded-xl border border-[#c4c7c8] bg-white">
+        {/*
+          `min-w-0` là bắt buộc, không phải để cho đẹp.
+
+          Thẻ cha là flex-col, và mọi flex item mặc định lấy `min-width: auto` —
+          nghĩa là nó TỪ CHỐI co lại nhỏ hơn nội dung bên trong. Bảng rộng
+          1400px vì thế nong cả khối này ra, khối này nong tiếp trang ra, và cả
+          trang trượt ngang: thanh điều hướng bị cắt, ô tổng cuối cùng mất một
+          nửa. Cái `overflow-x-auto` bên dưới không cứu được, vì phần tử cuộn
+          chỉ cuộn khi chính nó có bề rộng hữu hạn — mà ở đây nó đang bị kéo
+          rộng bằng đúng nội dung.
+        */}
+        <section className="min-w-0 overflow-hidden rounded-xl border border-[#c4c7c8] bg-white">
           {isLoading && !data ? (
             <p className="p-8 text-center text-sm font-semibold text-[#747878]">Đang tải sổ đối soát…</p>
           ) : isError ? (
@@ -364,18 +375,32 @@ export function ProviderReconciliationPage() {
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1100px] text-left text-sm">
+                {/*
+                  Sáu cột, không phải chín. Ba cặp được gộp lại vì mỗi cặp luôn
+                  được đọc cùng nhau và tách ra chỉ tốn bề rộng cho tiêu đề:
+                  nguồn ghép vào mã đối soát, cần-thu và chênh-lệch ghép vào số
+                  tiền, nút xử lý ghép vào trạng thái.
+
+                  `min-w` đủ hẹp để vừa màn hình laptop thường nên bảng không
+                  phải cuộn ngang. Vẫn giữ `overflow-x-auto` ở thẻ bao làm lưới
+                  an toàn cho màn hẹp — khi đó nó cuộn trong khung, không kéo cả
+                  trang (xem chú thích `min-w-0` ở section).
+                */}
+                <table className="w-full min-w-[900px] text-left text-sm">
                   <thead className="border-b border-[#c4c7c8] bg-[#faf9f8]">
                     <tr className="text-xs font-bold uppercase tracking-wider text-[#747878]">
-                      <th className="px-4 py-3">Ngày giao dịch</th>
-                      <th className="px-4 py-3">Nguồn</th>
-                      <th className="px-4 py-3">Mã đối soát</th>
-                      <th className="px-4 py-3">Chi nhánh</th>
-                      <th className="px-4 py-3 text-right">Số tiền</th>
-                      <th className="px-4 py-3 text-right">Chênh lệch</th>
-                      <th className="px-4 py-3">Nội dung</th>
-                      <th className="px-4 py-3">Trạng thái</th>
-                      <th className="px-4 py-3 text-right">Thao tác</th>
+                      <th className="whitespace-nowrap px-4 py-3">Ngày</th>
+                      {/*
+                        Hai cột mã, chia theo AI SINH RA mã đó — không chia theo
+                        loại mã. Người đối soát luôn làm việc theo hướng: cầm
+                        dòng trên sao kê thì tra cột trái, cầm đơn hàng thì tra
+                        cột phải.
+                      */}
+                      <th className="whitespace-nowrap px-4 py-3">Mã bên ngân hàng / cổng</th>
+                      <th className="whitespace-nowrap px-4 py-3">Chi nhánh</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-right">Số tiền</th>
+                      <th className="whitespace-nowrap px-4 py-3">Nội dung &amp; mã đơn</th>
+                      <th className="whitespace-nowrap px-4 py-3">Trạng thái</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -591,6 +616,23 @@ function OTong({
       <p className="mt-1 text-xs font-semibold text-[#5d5f5f]">{phu}</p>
     </div>
   )
+}/**
+ * Một mã, kèm nhãn nói rõ nó là mã gì.
+ *
+ * Trước đây các mã được xếp cạnh nhau, cách nhau dấu chấm giữa, không nhãn —
+ * và một dòng có tới bốn mã khác nhau: mã ngân hàng, số tài khoản, mã tham
+ * chiếu, mã đơn hàng. Nhìn vào không biết mã nào để tra sao kê, mã nào để tra
+ * đơn. Người đối soát phải đoán, mà đoán sai thì tra nhầm hệ thống.
+ */
+function Ma({ nhan, gia }: { nhan: string; gia: string }) {
+  return (
+    <span className="mt-0.5 flex items-baseline gap-1.5 text-[11px] leading-snug">
+      <span className="shrink-0 text-[#8a8d8d]">{nhan}</span>
+      <span className="truncate font-mono font-semibold text-[#3d4040]" title={gia}>
+        {gia}
+      </span>
+    </span>
+  )
 }
 
 function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
@@ -599,107 +641,156 @@ function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
     lop: "bg-[#f1f0ef] text-[#5d5f5f] border-[#c4c7c8]",
   }
   // Chỉ tính được chênh lệch khi đã biết hệ thống chờ thu bao nhiêu. Chưa khớp
-  // được đơn nào thì không có gì để trừ — hiện "—" chứ không hiện 0, vì 0 đọc
-  // ra là "khớp đúng", ngược hẳn sự thật.
+  // được đơn nào thì không có gì để trừ — không hiện dòng nào cả, vì 0 đọc ra
+  // là "khớp đúng", ngược hẳn sự thật.
   const lech = r.expected_amount == null ? null : r.amount - r.expected_amount
+
+  // Mã tham chiếu thường CHÍNH LÀ nội dung khách gõ khi chuyển khoản. Hiện cả
+  // hai khi chúng trùng nhau thì cùng một chuỗi xuất hiện hai lần ở hai cột,
+  // và người đọc tưởng là hai mã khác nhau.
+  const noiDungLaMaThamChieu =
+    !!r.ref_code && r.content.trim().toUpperCase() === r.ref_code.toUpperCase()
 
   return (
     <tr className="border-b border-[#eceaea] align-top last:border-0 hover:bg-[#faf9f8]">
-      <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#1c1b1b]">
+      <td className="whitespace-nowrap px-4 py-3 text-[13px] font-semibold text-[#1c1b1b]">
         {gioVN(r.transaction_date)}
       </td>
+
+      {/*
+        Cột này gom mọi mã do BÊN KIA sinh ra — thứ dùng để tra trên sao kê ngân
+        hàng hoặc báo cáo VNPay. Mã của phía mình (mã tham chiếu, mã đơn) nằm ở
+        cột Nội dung, để hai loại không lẫn vào nhau.
+      */}
       <td className="px-4 py-3">
-        <span
-          className={
-            "inline-block rounded-full border px-2.5 py-1 text-[11px] font-bold " +
-            (NHAN_NGUON[r.channel]?.lop ?? "")
-          }
-        >
-          {NHAN_NGUON[r.channel]?.text ?? r.channel}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        {/*
-          Mã đối soát để font đơn cách: người dùng dò từng ký tự giữa màn hình
-          này và tệp sao kê, và font tỉ lệ làm 0/O, 1/l nhìn gần như nhau.
-        */}
-        {r.external_id ? (
-          <span className="font-mono text-xs font-semibold text-[#1c1b1b]">{r.external_id}</span>
-        ) : (
-          // Giao dịch cũ, trả trước khi hệ thống bắt đầu lưu mã cổng. Nói thẳng
-          // là "không có" chứ không để trống — trống đọc ra như lỗi hiển thị.
-          <span className="text-xs italic text-[#a0a3a3]">chưa lưu mã</span>
-        )}
-        <span className="mt-0.5 block text-[11px] text-[#747878]">
-          {r.gateway}
-          {r.account_number ? ` · TK ${r.account_number}` : ""}
-        </span>
-        {r.ref_code ? (
-          <span className="mt-0.5 block font-mono text-[11px] text-[#5d5f5f]">
-            Mã tham chiếu: {r.ref_code}
+        <div className="max-w-[260px]">
+          <span
+            className={
+              "inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold " +
+              (NHAN_NGUON[r.channel]?.lop ?? "")
+            }
+          >
+            {NHAN_NGUON[r.channel]?.text ?? r.channel}
           </span>
-        ) : null}
+          {/*
+            Mã để font đơn cách: người dùng dò từng ký tự giữa màn hình này và
+            tệp sao kê, mà font tỉ lệ làm 0/O, 1/l nhìn gần như nhau.
+          */}
+          {r.external_id ? (
+            <Ma
+              nhan={r.channel === "VNPAY" ? "Mã VNPay" : "Mã ngân hàng"}
+              gia={r.external_id}
+            />
+          ) : (
+            // Giao dịch cũ, trả trước khi hệ thống bắt đầu lưu mã cổng. Nói
+            // thẳng là chưa có, chứ để trống thì đọc ra như lỗi hiển thị.
+            <span className="mt-0.5 block text-[11px] italic text-[#a0a3a3]">
+              chưa lưu mã giao dịch
+            </span>
+          )}
+          {r.account_number ? <Ma nhan="Tài khoản" gia={r.account_number} /> : null}
+        </div>
       </td>
-      <td className="px-4 py-3 font-semibold text-[#1c1b1b]">{r.cafe_name ?? "—"}</td>
-      <td className="whitespace-nowrap px-4 py-3 text-right font-bold text-[#1c1b1b]">
-        {tienVN(r.amount)}
-        {r.expected_amount != null ? (
+
+      <td className="whitespace-nowrap px-4 py-3 text-[13px] font-semibold text-[#1c1b1b]">
+        {r.cafe_name ?? "—"}
+      </td>
+
+      {/*
+        Số tiền — cần thu — chênh lệch gộp một ô, xếp dọc.
+
+        Ba con số này luôn được đọc CÙNG NHAU: thu bao nhiêu, đáng lẽ bao nhiêu,
+        lệch bao nhiêu. Tách thành ba cột thì mỗi cột rộng bằng tiêu đề của nó
+        ("CHÊNH LỆCH" dài hơn hẳn con số bên dưới), và mắt phải nhảy ngang ba
+        lần cho một phép trừ.
+      */}
+      <td className="whitespace-nowrap px-4 py-3 text-right">
+        <span className="block font-bold text-[#1c1b1b]">{tienVN(r.amount)}</span>
+        {r.expected_amount != null && lech !== 0 ? (
           <span className="mt-0.5 block text-[11px] font-semibold text-[#747878]">
             Cần thu {tienVN(r.expected_amount)}
           </span>
         ) : null}
-      </td>
-      <td className="whitespace-nowrap px-4 py-3 text-right font-bold">
-        {lech == null ? (
-          <span className="text-[#c4c7c8]">—</span>
-        ) : lech === 0 ? (
-          <span className="text-[#1e6b34]">0 ₫</span>
-        ) : (
-          <span className={lech < 0 ? "text-[#8a2020]" : "text-[#8a4b12]"}>
-            {lech > 0 ? "+" : ""}
-            {tienVN(lech)}
-          </span>
-        )}
-      </td>
-      <td className="max-w-[280px] px-4 py-3 text-[#5d5f5f]">
-        <span className="block truncate" title={r.content}>
-          {r.content}
-        </span>
-        {r.subject ? (
-          <span className="mt-0.5 block text-[11px] font-semibold text-[#747878]">
-            {NHAN_LOAI[r.subject]} · {r.txn_ref}
+        {lech != null && lech !== 0 ? (
+          <span
+            className={
+              "mt-0.5 block text-[11px] font-bold " +
+              (lech < 0 ? "text-[#8a2020]" : "text-[#8a4b12]")
+            }
+          >
+            {lech < 0 ? "Thiếu " : "Dư "}
+            {tienVN(Math.abs(lech))}
           </span>
         ) : null}
       </td>
+
+      {/*
+        Cột này gom mã của PHÍA MÌNH: mã tham chiếu in lên QR, và mã đơn hàng
+        khoản tiền được gán vào.
+
+        Bọc trong div chứ KHÔNG đặt max-width thẳng lên <td>: bố cục bảng bỏ qua
+        max-width trên ô, nên một mã đơn 40 ký tự sẽ kéo cột giãn ra và đẩy các
+        cột sau văng khỏi màn hình. Div là khối thường nên nhận max-width, và
+        truncate mới cắt được.
+      */}
       <td className="px-4 py-3">
-        <span
-          className={"inline-block rounded-full border px-2.5 py-1 text-[11px] font-bold " + badge.lop}
-        >
-          {badge.text}
-        </span>
-        {r.match_reason ? (
-          <span className="mt-1 block text-[11px] text-[#747878]">
-            {NHAN_LY_DO[r.match_reason] ?? r.match_reason}
-          </span>
-        ) : null}
-        {r.resolved_by_name ? (
-          <span className="mt-1 block text-[11px] text-[#747878]">
-            Xử lý bởi {r.resolved_by_name}
-          </span>
-        ) : null}
+        <div className="max-w-[260px]">
+          {noiDungLaMaThamChieu ? (
+            // Trùng nhau là ca BÌNH THƯỜNG: khách quét QR và gõ đúng nội dung
+            // gợi ý. Nói gộp một dòng, đỡ bày ra hai mã y hệt nhau.
+            <Ma nhan="Mã tham chiếu" gia={r.ref_code as string} />
+          ) : (
+            <>
+              <span
+                className="block truncate text-[13px] text-[#3d4040]"
+                title={r.content}
+              >
+                {r.content}
+              </span>
+              {r.ref_code ? <Ma nhan="Mã tham chiếu" gia={r.ref_code} /> : null}
+            </>
+          )}
+          {r.subject ? (
+            <span className="mt-1 block text-[11px] font-semibold text-[#747878]">
+              {NHAN_LOAI[r.subject]}
+            </span>
+          ) : null}
+          {r.txn_ref ? <Ma nhan="Mã đơn" gia={r.txn_ref} /> : null}
+        </div>
       </td>
-      <td className="px-4 py-3 text-right">
-        {/*
-          Chỉ hiện nút ở dòng CẦN KIỂM TRA. Dòng đã khớp mà bày nút "xử lý" ra
-          là mời người ta đụng vào một khoản tiền đang đúng.
-        */}
-        {r.match_status === "NEEDS_REVIEW" ? (
-          <Button variant="outline" size="sm" onClick={onXuLy}>
-            Xử lý
-          </Button>
-        ) : (
-          <span className="text-xs text-[#c4c7c8]">—</span>
-        )}
+
+      {/*
+        Trạng thái và nút xử lý gộp một ô: nút chỉ xuất hiện ở dòng CẦN KIỂM
+        TRA, nên một cột riêng cho nó sẽ trống ở hầu hết các dòng.
+      */}
+      <td className="px-4 py-3">
+        <div className="max-w-[210px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={
+                "inline-block whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-bold " +
+                badge.lop
+              }
+            >
+              {badge.text}
+            </span>
+            {r.match_status === "NEEDS_REVIEW" ? (
+              <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={onXuLy}>
+                Xử lý
+              </Button>
+            ) : null}
+          </div>
+          {r.match_reason ? (
+            <span className="mt-1 block text-[11px] leading-snug text-[#747878]">
+              {NHAN_LY_DO[r.match_reason] ?? r.match_reason}
+            </span>
+          ) : null}
+          {r.resolved_by_name ? (
+            <span className="mt-1 block truncate text-[11px] text-[#747878]">
+              Xử lý bởi {r.resolved_by_name}
+            </span>
+          ) : null}
+        </div>
       </td>
     </tr>
   )
