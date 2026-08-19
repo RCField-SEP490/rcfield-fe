@@ -2,16 +2,23 @@ import { useQuery } from "@tanstack/react-query"
 import { Trophy } from "lucide-react"
 
 import { useAuthStore } from "@/features/auth/stores/auth.store"
-import { useMyBookings } from "@/features/booking/hooks/use-booking"
 import { racingApi, racingQueryKeys } from "@/features/racing/api/racing.api"
 import { DriverTitleChip } from "@/features/racing/components/DriverTitleChip"
 import { Avatar, AvatarBadge, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Card, CardContent } from "@/shared/ui/card"
 
+/**
+ * Thẻ danh tính của khách, hiện ở mọi trang trong khu vực khách hàng.
+ *
+ * Trước đây chỗ này là HAI thẻ chồng nhau, và con số "Lượt chơi" nằm ở cả hai —
+ * cùng một giá trị, in hai lần, cách nhau đúng một đường viền. Người đọc không
+ * có cách nào biết đó là một hay là hai chỉ số khác nhau.
+ *
+ * Giờ gộp lại một thẻ, và mỗi chỉ số chỉ xuất hiện đúng một lần TRÊN TOÀN
+ * TRANG — bốn con số dưới đây không lặp lại ở thẻ hồ sơ bên phải nữa.
+ */
 export function ProfileSidebar() {
   const user = useAuthStore((state) => state.user)
-  const { data: bookingsData } = useMyBookings()
-  const bookingCount = bookingsData?.total ?? 0
   const { data: passport } = useQuery({
     queryKey: racingQueryKeys.passport(),
     queryFn: () => racingApi.getMyPassport(),
@@ -20,83 +27,67 @@ export function ProfileSidebar() {
   })
 
   const fullName = user?.fullName ?? "--"
-  const email = user?.email ?? "--"
-  const avatarUrl = user?.avatarUrl ?? undefined
   const titleLabel = passport?.current_title.label ?? null
 
   return (
-    <div className="space-y-4">
-      <Card className="rounded-xl shadow-sm">
-        <CardContent className="p-6 text-center">
-          <div className="relative mx-auto h-24 w-24">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={avatarUrl} />
-              <AvatarFallback>{getInitials(fullName)}</AvatarFallback>
-              {titleLabel ? (
-                <AvatarBadge className="size-5 [&>svg]:size-3">
-                  <Trophy />
-                </AvatarBadge>
-              ) : null}
-            </Avatar>
-          </div>
-          <h2 className="mt-4 text-2xl font-semibold">{fullName}</h2>
-          <p className="text-sm text-muted-foreground">{email}</p>
-          {titleLabel ? (
-            <div className="mt-3 flex justify-center">
-              <DriverTitleChip
-                label={titleLabel}
-                code={passport?.current_title.code}
-              />
-            </div>
-          ) : null}
+    <Card className="rounded-xl shadow-sm">
+      <CardContent className="p-6">
+        <div className="text-center">
+          <Avatar className="mx-auto h-20 w-20">
+            <AvatarImage src={user?.avatarUrl ?? undefined} />
+            <AvatarFallback>{getInitials(fullName)}</AvatarFallback>
+            {titleLabel ? (
+              <AvatarBadge className="size-5 [&>svg]:size-3">
+                <Trophy />
+              </AvatarBadge>
+            ) : null}
+          </Avatar>
+
+          <h2 className="mt-4 truncate text-lg font-semibold">{fullName}</h2>
+          <p className="truncate text-sm text-muted-foreground">{user?.email ?? "--"}</p>
+
           {passport ? (
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-1 truncate text-xs text-muted-foreground">
               @{passport.driver_handle}
             </p>
           ) : null}
-          <div className="mt-5 grid grid-cols-2 gap-4 border-t pt-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Số booking</p>
-              <p className="font-semibold">{bookingCount}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Lượt chơi</p>
-              <p className="font-semibold">
-                {passport ? passport.stats.completed_plays : "--"}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {passport ? (
-        <Card className="rounded-xl border-orange-200 bg-orange-50/60 shadow-sm">
-          <CardContent className="p-5">
-            <div className="grid grid-cols-3 gap-3 text-center text-sm">
-              <div>
-                <p className="text-lg font-black text-slate-900">
-                  {passport.stats.completed_plays}
-                </p>
-                <p className="text-xs text-muted-foreground">Lượt chơi</p>
-              </div>
-              <div>
-                <p className="text-lg font-black text-slate-900">
-                  {passport.stats.distinct_cafes_played}
-                </p>
-                <p className="text-xs text-muted-foreground">Quán đã đi</p>
-              </div>
-              <div>
-                <p className="text-lg font-black text-slate-900">
-                  {passport.achievements.length}
-                </p>
-                <p className="text-xs text-muted-foreground">Danh hiệu</p>
-              </div>
+          {titleLabel ? (
+            <div className="mt-3 flex justify-center">
+              <DriverTitleChip label={titleLabel} code={passport?.current_title.code} />
             </div>
-          </CardContent>
-        </Card>
-      ) : null}
+          ) : null}
+        </div>
+
+        {/*
+          Bốn chỉ số, mỗi cái một lần. Lưới 2×2 chứ không phải một hàng bốn cột:
+          cột này rộng 300px, nhét bốn số ngang thì nhãn nào cũng bị bẻ hai dòng.
+        */}
+        {passport ? (
+          <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t pt-5">
+            <Stat label="Lượt chơi" value={String(passport.stats.completed_plays)} />
+            <Stat label="Quán đã đi" value={String(passport.stats.distinct_cafes_played)} />
+            <Stat label="Danh hiệu" value={String(passport.achievements.length)} />
+            <Stat label="Vòng nhanh nhất" value={formatLap(passport.stats.best_global_lap_ms)} />
+          </dl>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-xl font-semibold tabular-nums">{value}</dd>
     </div>
   )
+}
+
+function formatLap(value?: number | null) {
+  if (value === null || value === undefined) return "--"
+  return `${(value / 1000).toFixed(2)}s`
 }
 
 function getInitials(name: string) {

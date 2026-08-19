@@ -21,6 +21,8 @@ export interface RevenueTrendItem {
   extensionFee: number;
   damageCharge: number;
   packageFee?: number;
+  /** Phí dự giải — nguồn thứ ba, không gắn booking nào. */
+  contestFee?: number;
   total: number;
 }
 
