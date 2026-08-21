@@ -26,6 +26,8 @@ export interface MyPackageItem {
   package_id: string
   cafe_id: string
   cafe_name: string
+  /** Đường dẫn trang chi nhánh đi theo slug, không theo id. */
+  cafe_slug?: string
   package_name: string
   applicable_play_modes?: string[]
   slots_total: number
