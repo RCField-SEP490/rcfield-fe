@@ -34,6 +34,7 @@ import {
   RegistrationStatusBadge,
 } from "@/features/contests/components"
 import { CustomerPageShell } from "@/pages/customer/components/CustomerPageShell"
+import { CustomerSubNav } from "@/pages/customer/components/CustomerSubNav"
 import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
 import { EmptyState } from "@/shared/ui/empty-state"
@@ -147,6 +148,7 @@ export function CustomerContestRegistrationsPage() {
 
   return (
     <CustomerPageShell>
+      <CustomerSubNav activeTab="contests" />
       <div className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>

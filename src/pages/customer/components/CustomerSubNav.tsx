@@ -1,18 +1,46 @@
 import { Link } from "react-router"
-import { CalendarCheck, Package, Star, UserRound } from "lucide-react"
+import { CalendarCheck, Package, Star, Trophy, UserRound } from "lucide-react"
+import { routePaths } from "@/app/router/route-paths"
 import { cn } from "@/shared/lib/utils"
 
-export type CustomerTab = "profile" | "bookings" | "packages" | "reviews"
+export type CustomerTab = "profile" | "bookings" | "contests" | "packages" | "reviews"
 
 interface CustomerSubNavProps {
   activeTab: CustomerTab
 }
 
+/**
+ * Năm mục, không phải bốn.
+ *
+ * Trang "Giải đấu đã đăng ký" vốn đã tồn tại và có route, nhưng không nằm ở
+ * đây — nên từ bốn trang kia không có gì cho thấy nó có mặt trên đời, và vào
+ * được nó chỉ qua menu ở thanh đầu trang. Vào rồi thì thanh tab biến mất luôn,
+ * không có đường quay lại.
+ *
+ * Xếp ngay sau "Lịch đặt sân" vì hai thứ này cùng một họ: đều là những buổi
+ * khách đã đăng ký và sắp phải có mặt.
+ */
 const tabConfig = [
-  { id: "profile" as const, label: "Hồ sơ", path: "/customer/profile", icon: UserRound },
-  { id: "bookings" as const, label: "Lịch đặt sân", path: "/customer/bookings", icon: CalendarCheck },
-  { id: "packages" as const, label: "Gói hội viên", path: "/customer/packages", icon: Package },
-  { id: "reviews" as const, label: "Đánh giá của tôi", path: "/customer/reviews", icon: Star },
+  { id: "profile" as const, label: "Hồ sơ", path: routePaths.customerProfile, icon: UserRound },
+  {
+    id: "bookings" as const,
+    label: "Lịch đặt sân",
+    path: routePaths.customerBookings,
+    icon: CalendarCheck,
+  },
+  {
+    id: "contests" as const,
+    label: "Giải đấu",
+    path: routePaths.customerContestRegistrations,
+    icon: Trophy,
+  },
+  {
+    id: "packages" as const,
+    label: "Gói hội viên",
+    path: routePaths.customerPackages,
+    icon: Package,
+  },
+  { id: "reviews" as const, label: "Đánh giá của tôi", path: routePaths.customerReviews, icon: Star },
 ]
 
 export function CustomerSubNav({ activeTab }: CustomerSubNavProps) {

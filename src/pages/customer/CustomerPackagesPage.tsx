@@ -71,10 +71,11 @@ export function CustomerPackagesPage() {
             <EmptyState />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {packages.map((pkg) => (
+              {gopGoiHetHan(packages).map(({ pkg, soLanDaMua }) => (
                 <OwnedPackageCard
                   key={pkg.id}
                   pkg={pkg}
+                  soLanDaMua={soLanDaMua}
                   showUsage={expandedId === pkg.id}
                   onToggleUsage={() =>
                     setExpandedId(expandedId === pkg.id ? null : pkg.id)
@@ -103,14 +104,61 @@ export function CustomerPackagesPage() {
   )
 }
 
+/**
+ * Gộp các lần mua ĐÃ HẾT HIỆU LỰC của cùng một gói thành một thẻ.
+ *
+ * Mỗi lần mua là một dòng riêng trong `customer_packages` — đúng về dữ liệu, vì
+ * mỗi lần có số dư lượt và hạn dùng riêng. Nhưng khi đã hết hạn thì những khác
+ * biệt đó không còn ý nghĩa với người xem: hai thẻ "Gói vip — RC Tân Bình — Hết
+ * hạn" nằm cạnh nhau chỉ khác nhau ở ngày, và người đọc phải dừng lại đối chiếu
+ * mới hiểu vì sao có hai cái.
+ *
+ * Gói CÒN DÙNG ĐƯỢC thì KHÔNG gộp: lúc đó số lượt còn lại và ngày hết hạn của
+ * từng lần mua là thứ khách cần biết để tính xem nên tiêu cái nào trước.
+ *
+ * Giữ lần mua GẦN NHẤT làm đại diện (danh sách đã sắp theo `created_at DESC`),
+ * và đếm số lần để nói rõ đây là nhiều lần mua chứ không phải lỗi hiển thị.
+ */
+function gopGoiHetHan(
+  packages: MyPackageItem[],
+): Array<{ pkg: MyPackageItem; soLanDaMua: number }> {
+  const ketQua: Array<{ pkg: MyPackageItem; soLanDaMua: number }> = []
+  const viTriTheoGoi = new Map<string, number>()
+
+  for (const pkg of packages) {
+    const conDungDuoc =
+      pkg.status !== "EXPIRED" && pkg.status !== "EXHAUSTED"
+    if (conDungDuoc) {
+      ketQua.push({ pkg, soLanDaMua: 1 })
+      continue
+    }
+
+    // Khoá theo gói + chi nhánh: cùng tên gói ở hai chi nhánh là hai thứ khác
+    // nhau, giá và quyền lợi đều riêng.
+    const khoa = `${pkg.cafe_id}:${pkg.package_id}`
+    const daCo = viTriTheoGoi.get(khoa)
+    if (daCo === undefined) {
+      viTriTheoGoi.set(khoa, ketQua.length)
+      ketQua.push({ pkg, soLanDaMua: 1 })
+    } else {
+      ketQua[daCo].soLanDaMua += 1
+    }
+  }
+
+  return ketQua
+}
+
 function OwnedPackageCard({
   pkg,
+  soLanDaMua,
   showUsage,
   onToggleUsage,
   isPurchasing,
   onRepay,
 }: {
   pkg: MyPackageItem
+  /** Số lần đã mua gói này — chỉ khác 1 khi các lần mua hết hạn được gộp lại. */
+  soLanDaMua: number
   showUsage: boolean
   onToggleUsage: () => void
   isPurchasing: boolean
@@ -150,6 +198,16 @@ function OwnedPackageCard({
             {pkg.package_name}
           </CardTitle>
           <p className="text-[9px] font-bold text-slate-400 mt-1 truncate">{pkg.cafe_name}</p>
+          {/*
+            Nói rõ thẻ này gộp mấy lần mua. Thiếu dòng này thì việc gộp lại
+            thành che dữ liệu: khách từng mua ba lần mà chỉ thấy một thẻ, không
+            có gì cho biết hai lần kia đi đâu.
+          */}
+          {soLanDaMua > 1 ? (
+            <p className="text-[9px] font-bold text-slate-400 mt-0.5">
+              Đã mua {soLanDaMua} lần · hiển thị lần gần nhất
+            </p>
+          ) : null}
         </div>
         <StatusBadge status={effectiveStatus} />
       </CardHeader>
@@ -242,13 +300,32 @@ function OwnedPackageCard({
             )}
           </Button>
         ) : (
-          <Button
-            variant="ghost"
-            className="w-full h-8 text-xs font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-            onClick={onToggleUsage}
-          >
-            {showUsage ? "Ẩn lịch sử" : "Xem lịch sử dùng"}
-          </Button>
+          <>
+            {/*
+              Gói đã hết hiệu lực thì việc cần làm tiếp theo là MUA LẠI, không
+              phải xem lịch sử. Trước đây khách phải tự nhớ ra là mình mua ở chi
+              nhánh nào rồi đi tìm lại trang đó.
+
+              Dẫn về trang chi nhánh chứ không mua thẳng tại đây: luồng mua cần
+              chọn cổng thanh toán và có khung QR chuyển khoản riêng, nhân bản
+              sang đây là hai chỗ cùng xử lý tiền và sớm muộn lệch nhau.
+            */}
+            {!isUsable && pkg.cafe_slug ? (
+              <Button
+                asChild
+                className="w-full h-9 rounded-xl bg-slate-950 hover:bg-orange-600 text-white font-bold text-xs"
+              >
+                <Link to={`/cafes/${pkg.cafe_slug}#goi`}>Mua lại gói này</Link>
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              className="w-full h-8 text-xs font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              onClick={onToggleUsage}
+            >
+              {showUsage ? "Ẩn lịch sử" : "Xem lịch sử dùng"}
+            </Button>
+          </>
         )}
 
         {showUsage && (

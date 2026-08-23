@@ -75,6 +75,9 @@ export function CafePackagesSection({ cafeId }: CafePackagesSectionProps) {
 
   return (
     <CafeSection
+      // Neo cho nút "Mua lại gói này" ở trang Gói hội viên nhảy thẳng xuống đây,
+      // thay vì đổ khách xuống đầu một trang chi nhánh rất dài.
+      id="goi"
       title="Gói slot tại cơ sở này"
       lead="Mua trước nhiều lượt để chơi rẻ hơn — gói dùng dần, không cần đặt hết một lúc."
     >

@@ -288,6 +288,7 @@ const CHART_COLORS = {
   extensionFee: "#10b981",
   damageCharge: "#f59e0b",
   packageFee: "#8b5cf6",
+  contestFee: "#0ea5e9",
 }
 
 // Map màu cố định theo type — dùng cho cả AreaChart lẫn PieChart
@@ -771,7 +772,8 @@ function RealDashboard() {
       "Đồ ăn & thức uống (đ)",
       "Phí gia hạn (đ)",
       "Phí bồi thường (đ)",
-      "Phí gói (đ)"
+      "Phí gói (đ)",
+      "Phí dự giải (đ)"
     ])
     trHeader.height = 25
     trHeader.eachCell((cell) => {
@@ -790,7 +792,8 @@ function RealDashboard() {
           item.fnbPreorder || 0,
           item.extensionFee || 0,
           item.damageCharge || 0,
-          item.packageFee || 0
+          item.packageFee || 0,
+          item.contestFee || 0
         ])
         row.height = 22
         row.eachCell((cell, colNum) => {
@@ -1180,6 +1183,7 @@ function RealDashboard() {
                           extensionFee: "Phí gia hạn",
                           damageCharge: "Phí bồi thường",
                           packageFee: "Phí gói",
+                          contestFee: "Phí dự giải",
                         }
                         if (targetKey !== activeSeries && String(name) !== seriesLabels[activeSeries]) {
                           return null
@@ -1427,6 +1431,36 @@ function RealDashboard() {
                     onMouseEnter={() => setHoveredSeries("packageFee")}
                     onMouseLeave={() => setHoveredSeries(null)}
                   />
+                  <Area
+                    type="monotone"
+                    dataKey="contestFee"
+                    name="Phí dự giải"
+                    stroke={CHART_COLORS.contestFee}
+                    fill="url(#db-grad-contestFee)"
+                    strokeWidth={
+                      hoveredLegendSeries === "contestFee" ||
+                      selectedLegendSeries === "contestFee" ||
+                      hoveredSeries === "contestFee"
+                        ? 3.5
+                        : 2
+                    }
+                    strokeOpacity={
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "contestFee" ||
+                      selectedLegendSeries === "contestFee"
+                        ? 1
+                        : 0.15
+                    }
+                    fillOpacity={
+                      hoveredLegendSeries === null && selectedLegendSeries === null ||
+                      hoveredLegendSeries === "contestFee" ||
+                      selectedLegendSeries === "contestFee"
+                        ? 1
+                        : 0.15
+                    }
+                    onMouseEnter={() => setHoveredSeries("contestFee")}
+                    onMouseLeave={() => setHoveredSeries(null)}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
               {/* Floating tooltip tự chế khi hover Legend tag hoặc click chọn khóa */}
@@ -1441,6 +1475,7 @@ function RealDashboard() {
                   extensionFee: "Phí gia hạn",
                   damageCharge: "Phí bồi thường",
                   packageFee: "Phí gói",
+                  contestFee: "Phí dự giải",
                 }
                 const color = (CHART_COLORS as Record<string, string>)[activeSeries] || "#000000"
 
