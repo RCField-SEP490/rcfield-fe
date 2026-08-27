@@ -165,6 +165,7 @@ export function ProviderSubscriptionsPage() {
   const requests = prData?.data ?? []
   const hasPending = requests.some((request) => request.status === "PENDING")
   const branchCount = cafeData?.meta.total ?? 0
+  const channelCount = subData?.channels_used ?? 0
   const currentPlanId = subscription?.planId
   const currentPlanName = subscription?.plan?.name
   const currentRank = currentPlanName ? PLAN_ORDER[currentPlanName] : -1
@@ -232,7 +233,11 @@ export function ProviderSubscriptionsPage() {
           </div>
         </motion.section>
 
-        <UsageQuotaBars subscription={subscription} branchCount={branchCount} />
+        <UsageQuotaBars
+          subscription={subscription}
+          branchCount={branchCount}
+          channelCount={channelCount}
+        />
 
         <motion.section
           initial={{ opacity: 0, y: 16 }}

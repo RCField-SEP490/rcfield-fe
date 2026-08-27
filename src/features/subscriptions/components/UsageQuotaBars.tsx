@@ -1,9 +1,20 @@
 import type { ProviderSubscription } from "../types"
 
+/**
+ * Hai số đếm để BẮT BUỘC, không cho mặc định 0.
+ *
+ * `channelCount` từng là tuỳ chọn với mặc định 0, và nơi gọi duy nhất quên
+ * truyền — nên thanh "Kênh kết nối" luôn hiện 0 dù chủ sân đã nối Facebook.
+ * Không có lỗi nào ở đâu cả: `?: number` khiến "quên truyền" là hợp lệ, và số 0
+ * trông y hệt một câu trả lời thật.
+ *
+ * Để bắt buộc thì quên truyền là hỏng lúc biên dịch, không phải hỏng lặng lẽ
+ * trên màn hình của hội đồng.
+ */
 interface Props {
   subscription: ProviderSubscription | null
-  branchCount?: number
-  channelCount?: number
+  branchCount: number
+  channelCount: number
 }
 
 function QuotaBar({
@@ -40,7 +51,7 @@ function QuotaBar({
   )
 }
 
-export function UsageQuotaBars({ subscription, branchCount = 0, channelCount = 0 }: Props) {
+export function UsageQuotaBars({ subscription, branchCount, channelCount }: Props) {
   if (!subscription?.plan) return null
   const { plan, aiMessagesUsed } = subscription
 
