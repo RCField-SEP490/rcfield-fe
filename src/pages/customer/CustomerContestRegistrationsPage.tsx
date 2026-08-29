@@ -28,6 +28,7 @@ import {
   formatContestDateTime,
   formatMatchLabel,
   getRegistrationDisplayName,
+} from "@/features/contests/lib/contest-runtime"
 import { ContestStatusBadge } from "@/features/contests/components"
 import { CustomerPageShell } from "@/pages/customer/components/CustomerPageShell"
 import { CustomerSubNav } from "@/pages/customer/components/CustomerSubNav"
@@ -264,7 +265,11 @@ export function CustomerContestRegistrationsPage() {
     },
   })
 
-  const registrations = registrationsQuery.data ?? []
+  const registrationsData = registrationsQuery.data
+  const registrations = useMemo(
+    () => registrationsData ?? [],
+    [registrationsData],
+  )
 
   const stats = useMemo(() => {
     return {

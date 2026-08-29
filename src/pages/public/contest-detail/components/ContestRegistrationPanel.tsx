@@ -253,13 +253,10 @@ export function ContestRegistrationPanel({
     existingRegistration?.paymentStatus === "MARKED_PAID" ||
     existingRegistration?.paymentStatus === "PAID"
 
-  const isHoldExpired = useMemo(() => {
-    if (!existingRegistration?.entryFeeHoldExpiresAt) return false
-    return (
-      new Date(existingRegistration.entryFeeHoldExpiresAt).getTime() <=
-      Date.now()
-    )
-  }, [existingRegistration?.entryFeeHoldExpiresAt])
+  const [now] = useState(() => Date.now())
+  const isHoldExpired = existingRegistration?.entryFeeHoldExpiresAt
+    ? new Date(existingRegistration.entryFeeHoldExpiresAt).getTime() <= now
+    : false
 
   const isCancelled =
     !isPaid &&
