@@ -103,13 +103,13 @@ function getUnifiedBadge(
   now: number,
 ): { label: string; className: string } {
   const { status, paymentStatus, customerJourneyStatus, entryFeeHoldExpiresAt, checkedInAt, contest } = registration
-
+  const isPaid = paymentStatus === "MARKED_PAID" || paymentStatus === "PAID"
   const holdExpiresAt = entryFeeHoldExpiresAt ? new Date(entryFeeHoldExpiresAt).getTime() : null
   const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
   const contestStarted = contest?.starts_at ? new Date(contest.starts_at).getTime() < now : false
 
-  // 1. Quá hạn thanh toán hoặc Đã hủy
-  if (status === "CANCELLED" || (paymentStatus === "PENDING_PAYMENT" && isHoldExpired))
+  // 1. Quá hạn thanh toán hoặc Đã hủy (chỉ khi CHƯA thanh toán)
+  if (!isPaid && (status === "CANCELLED" || (paymentStatus === "PENDING_PAYMENT" && isHoldExpired)))
     return {
       label: "Đã hủy",
       className: "bg-red-100 text-red-800 border-none font-bold text-xs",
@@ -188,18 +188,18 @@ function getAccentColor(
   now: number,
 ): string {
   const { status, paymentStatus, customerJourneyStatus, entryFeeHoldExpiresAt, checkedInAt, contest } = registration
-
+  const isPaid = paymentStatus === "MARKED_PAID" || paymentStatus === "PAID"
   const holdExpiresAt = entryFeeHoldExpiresAt ? new Date(entryFeeHoldExpiresAt).getTime() : null
   const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
   const contestStarted = contest?.starts_at ? new Date(contest.starts_at).getTime() < now : false
 
-  if (status === "CANCELLED" || (paymentStatus === "PENDING_PAYMENT" && isHoldExpired)) return "bg-slate-300"
-  if ((status === "CONFIRMED" || paymentStatus === "PAID") && contestStarted && !checkedInAt) return "bg-orange-400"
-  if (paymentStatus === "PENDING_PAYMENT") return "bg-amber-400"
+  if (!isPaid && (status === "CANCELLED" || (paymentStatus === "PENDING_PAYMENT" && isHoldExpired))) return "bg-slate-300"
+  if ((status === "CONFIRMED" || isPaid) && contestStarted && !checkedInAt) return "bg-orange-400"
+  if (paymentStatus === "PENDING_PAYMENT" && !isHoldExpired) return "bg-amber-400"
   if (customerJourneyStatus === "IN_BRACKET" || customerJourneyStatus === "ADVANCED")
     return "bg-purple-500"
   if (customerJourneyStatus === "READY_TO_RACE") return "bg-teal-500"
-  if (status === "CONFIRMED") return "bg-emerald-500"
+  if (status === "CONFIRMED" || isPaid) return "bg-emerald-500"
   return "bg-orange-400"
 }
 
@@ -237,9 +237,7 @@ export function CustomerContestRegistrationsPage() {
 
   const entryFeePaymentMutation = useMutation({
     mutationFn: (registrationId: string) =>
-      contestApi.createEntryFeePayment(registrationId, {
-        return_url: window.location.href,
-      }),
+      contestApi.createEntryFeePayment(registrationId),
     onSuccess: (payment) => {
       window.location.href = payment.payment_url
     },
@@ -415,17 +413,22 @@ export function CustomerContestRegistrationsPage() {
               : null
             const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
 
-            // Một đăng ký bị coi là Hủy nếu backend set CANCELLED hoặc bị quá hạn giữ chỗ thanh toán
+            const isPaid =
+              registration.paymentStatus === "MARKED_PAID" ||
+              registration.paymentStatus === "PAID"
+
+            // Một đăng ký bị coi là Hủy NẾU CHƯA thanh toán VÀ (status === CANCELLED hoặc bị quá hạn giữ chỗ thanh toán)
             const isEffectiveCancelled =
-              registration.status === "CANCELLED" ||
-              (registration.paymentStatus === "PENDING_PAYMENT" && isHoldExpired)
+              !isPaid &&
+              (registration.status === "CANCELLED" ||
+                (registration.paymentStatus === "PENDING_PAYMENT" && isHoldExpired))
 
             const badge = getUnifiedBadge(registration, now)
             const accent = getAccentColor(registration, now)
 
             const showQr =
               !isEffectiveCancelled &&
-              registration.status === "CONFIRMED" &&
+              (registration.status === "CONFIRMED" || isPaid) &&
               !!registration.checkInCode
 
             return (
@@ -509,8 +512,8 @@ export function CustomerContestRegistrationsPage() {
                         </div>
                       ) : null}
 
-                      {/* 2. Đã hết thời gian thanh toán lại (Hết hạn giữ chỗ) */}
-                      {registration.entryFeeHoldExpiresAt && isHoldExpired ? (
+                      {/* 2. Đã hết thời gian thanh toán lại (Hết hạn giữ chỗ - Chỉ hiện khi CHƯA thanh toán) */}
+                      {!isPaid && registration.entryFeeHoldExpiresAt && isHoldExpired ? (
                         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
                           <p className="text-sm font-bold text-red-900">
                             Đã hết thời gian giữ chỗ thanh toán lệ phí (hết hạn lúc{" "}
@@ -528,8 +531,9 @@ export function CustomerContestRegistrationsPage() {
                         </div>
                       ) : null}
 
-                      {/* 3. Lý do hủy khác (Do admin/user hủy mà không phải do timeout holdExpiresAt) */}
-                      {registration.status === "CANCELLED" &&
+                      {/* 3. Lý do hủy khác (Chỉ hiện khi CHƯA thanh toán và bị hủy) */}
+                      {!isPaid &&
+                      registration.status === "CANCELLED" &&
                       registration.cancellationReason &&
                       !isHoldExpired ? (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -690,11 +694,11 @@ export function CustomerContestRegistrationsPage() {
                     </div>
 
                     {/* ── Nút hành động — cố định dưới cùng bên phải ─── */}
-                    {!isEffectiveCancelled && (
-                      <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end">
-                        {/* Thanh toán qua đơn đặt */}
-                        {registration.paymentStatus === "PENDING_PAYMENT" &&
-                        !isHoldExpired &&
+                    <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end">
+                      {/* Thanh toán lại (khi đơn chưa thanh toán & chưa quá hạn giữ chỗ & chưa bị hủy) */}
+                      {registration.paymentStatus === "PENDING_PAYMENT" &&
+                      !isHoldExpired &&
+                      registration.status !== "CANCELLED" ? (
                         entryFeeIsIncludedInBooking ? (
                           <Button
                             asChild
@@ -710,8 +714,7 @@ export function CustomerContestRegistrationsPage() {
                               Thanh toán đơn đặt
                             </Link>
                           </Button>
-                        ) : registration.paymentStatus === "PENDING_PAYMENT" && !isHoldExpired ? (
-                          /* Thanh toán lệ phí trực tiếp */
+                        ) : (
                           <Button
                             type="button"
                             className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
@@ -724,25 +727,42 @@ export function CustomerContestRegistrationsPage() {
                             <CreditCard className="mr-2 size-4" />
                             {payingId === registration.id
                               ? "Đang chuyển hướng..."
-                              : "Thanh toán lệ phí"}
+                              : "Thanh toán lại"}
                           </Button>
-                        ) : null}
+                        )
+                      ) : null}
 
-                        {/* Hủy đăng ký — CHỈ cho phép khi chưa thanh toán (PENDING + PENDING_PAYMENT) */}
-                        {registration.status === "PENDING" &&
-                        registration.paymentStatus === "PENDING_PAYMENT" &&
-                        !isHoldExpired ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="rounded-xl border-red-200 bg-red-50 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
-                            onClick={() => setCancelId(registration.id)}
+                      {/* Đăng ký lại (khi đơn đã bị hủy hoặc đã hết hạn giữ chỗ) */}
+                      {isEffectiveCancelled ? (
+                        <Button
+                          asChild
+                          className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
+                        >
+                          <Link
+                            to={routePaths.contestDetail.replace(
+                              ":contestId",
+                              contest?.id ?? registration.contestId,
+                            )}
                           >
-                            Hủy đăng ký
-                          </Button>
-                        ) : null}
-                      </div>
-                    )}
+                            Đăng ký lại
+                          </Link>
+                        </Button>
+                      ) : null}
+
+                      {/* Hủy đăng ký — CHỈ cho phép khi chưa thanh toán và còn hạn */}
+                      {registration.status === "PENDING" &&
+                      registration.paymentStatus === "PENDING_PAYMENT" &&
+                      !isHoldExpired ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-xl border-red-200 bg-red-50 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
+                          onClick={() => setCancelId(registration.id)}
+                        >
+                          Hủy đăng ký
+                        </Button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </article>

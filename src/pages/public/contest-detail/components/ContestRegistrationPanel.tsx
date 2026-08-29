@@ -251,6 +251,22 @@ export function ContestRegistrationPanel({
     }
   }
 
+  const isPaid =
+    existingRegistration?.paymentStatus === "MARKED_PAID" ||
+    existingRegistration?.paymentStatus === "PAID"
+
+  const isHoldExpired = existingRegistration?.entryFeeHoldExpiresAt
+    ? new Date(existingRegistration.entryFeeHoldExpiresAt).getTime() <= Date.now()
+    : false
+
+  const isCancelled =
+    !isPaid &&
+    (existingRegistration?.status === "CANCELLED" ||
+      (existingRegistration?.paymentStatus === "PENDING_PAYMENT" && isHoldExpired))
+
+  const activeRegistration =
+    existingRegistration && !isCancelled ? existingRegistration : null
+
   return (
     <Card className="rounded-2xl border border-[#e5e2e1] bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -277,7 +293,7 @@ export function ContestRegistrationPanel({
               giải đấu này.
             </p>
           </div>
-        ) : existingRegistration ? (
+        ) : activeRegistration ? (
           <div className="space-y-4 rounded-2xl border border-orange-100 bg-orange-50/30 p-5">
             <div className="flex items-center gap-2 text-emerald-600">
               <ShieldCheck className="size-5 shrink-0" />
@@ -319,17 +335,7 @@ export function ContestRegistrationPanel({
                 </Button>
               </div>
             ) : null}
-            <JourneyStatusBadge
-              status={existingRegistration.customerJourneyStatus}
-              className="h-auto px-3 py-1 font-bold"
-            />
-            <div className="grid grid-cols-2 gap-3 border-t border-orange-100 pt-2 text-xs">
-              <div>
-                <p className="font-bold text-slate-400">Trạng thái đăng ký</p>
-                <p className="mt-1 text-sm font-extrabold text-slate-900">
-                  {getRegistrationStatusLabel(existingRegistration.status)}
-                </p>
-              </div>
+            <div className="border-t border-orange-100 pt-2 text-xs">
               <div>
                 <p className="font-bold text-slate-400">Lệ phí thi đấu</p>
                 <p className="mt-1 text-sm font-extrabold text-slate-900">
@@ -350,6 +356,12 @@ export function ContestRegistrationPanel({
           </div>
         ) : (
           <div className="space-y-4">
+            {isCancelled ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+                Đơn đăng ký trước đó của bạn đã bị hủy (do hủy thanh toán hoặc quá hạn). Bạn có thể chọn xe và đăng ký lại từ đầu ngay bên dưới.
+              </div>
+            ) : null}
+
             {registrationBlockedMessage ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
                 {registrationBlockedMessage}
