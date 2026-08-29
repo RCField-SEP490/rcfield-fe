@@ -2,6 +2,7 @@ import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router"
+import { QRCodeSVG } from "qrcode.react"
 import {
   CalendarClock,
   Car,
@@ -17,6 +18,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
+import { formatCurrency } from "@/shared/lib/format"
 
 import {
   contestApi,
@@ -89,23 +91,49 @@ const MATCH_STATUS_VI: Record<string, string> = {
 }
 
 // ─── Tính 1 badge trạng thái tổng hợp ─────────────────────────────────────────
-function getUnifiedBadge(registration: {
-  status: string
-  paymentStatus: string
-  customerJourneyStatus: string
-}): { label: string; className: string } {
-  const { status, paymentStatus, customerJourneyStatus } = registration
+function getUnifiedBadge(
+  registration: {
+    status: string
+    paymentStatus: string
+    customerJourneyStatus: string
+    entryFeeHoldExpiresAt?: string | null
+    checkedInAt?: string | null
+    contest?: { starts_at?: string | null } | null
+  },
+  now: number,
+): { label: string; className: string } {
+  const { status, paymentStatus, customerJourneyStatus, entryFeeHoldExpiresAt, checkedInAt, contest } = registration
 
-  if (status === "CANCELLED")
+  const holdExpiresAt = entryFeeHoldExpiresAt ? new Date(entryFeeHoldExpiresAt).getTime() : null
+  const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
+  const contestStarted = contest?.starts_at ? new Date(contest.starts_at).getTime() < now : false
+
+  // 1. Quá hạn thanh toán hoặc Đã hủy
+  if (status === "CANCELLED" || (paymentStatus === "PENDING_PAYMENT" && isHoldExpired))
     return {
       label: "Đã hủy",
       className: "bg-red-100 text-red-800 border-none font-bold text-xs",
     }
-  if (paymentStatus === "PENDING_PAYMENT")
+
+  // 2. Không đến (Đã xác nhận / Đã thanh toán, nhưng quá giờ bắt đầu giải mà chưa check-in)
+  if (
+    (status === "CONFIRMED" || paymentStatus === "PAID") &&
+    contestStarted &&
+    !checkedInAt
+  )
+    return {
+      label: "Không đến",
+      className: "bg-orange-100 text-orange-800 border-none font-bold text-xs",
+    }
+
+  // 3. Chờ thanh toán lệ phí (vẫn còn trong hạn giữ chỗ)
+  if (paymentStatus === "PENDING_PAYMENT" && !isHoldExpired)
     return {
       label: "Chờ thanh toán lệ phí",
       className: "bg-amber-100 text-amber-800 border-none font-bold text-xs",
     }
+
+  // 4. Trạng thái hành trình thi đấu
   if (customerJourneyStatus === "ADVANCED")
     return {
       label: "Đã vào vòng tiếp",
@@ -148,13 +176,25 @@ function getUnifiedBadge(registration: {
 }
 
 // ─── Accent bar color ─────────────────────────────────────────────────────────
-function getAccentColor(registration: {
-  status: string
-  paymentStatus: string
-  customerJourneyStatus: string
-}): string {
-  const { status, paymentStatus, customerJourneyStatus } = registration
-  if (status === "CANCELLED") return "bg-slate-300"
+function getAccentColor(
+  registration: {
+    status: string
+    paymentStatus: string
+    customerJourneyStatus: string
+    entryFeeHoldExpiresAt?: string | null
+    checkedInAt?: string | null
+    contest?: { starts_at?: string | null } | null
+  },
+  now: number,
+): string {
+  const { status, paymentStatus, customerJourneyStatus, entryFeeHoldExpiresAt, checkedInAt, contest } = registration
+
+  const holdExpiresAt = entryFeeHoldExpiresAt ? new Date(entryFeeHoldExpiresAt).getTime() : null
+  const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
+  const contestStarted = contest?.starts_at ? new Date(contest.starts_at).getTime() < now : false
+
+  if (status === "CANCELLED" || (paymentStatus === "PENDING_PAYMENT" && isHoldExpired)) return "bg-slate-300"
+  if ((status === "CONFIRMED" || paymentStatus === "PAID") && contestStarted && !checkedInAt) return "bg-orange-400"
   if (paymentStatus === "PENDING_PAYMENT") return "bg-amber-400"
   if (customerJourneyStatus === "IN_BRACKET" || customerJourneyStatus === "ADVANCED")
     return "bg-purple-500"
@@ -176,7 +216,7 @@ export function CustomerContestRegistrationsPage() {
   // State hành động
   const [cancelId, setCancelId] = useState<string | null>(null)
   const [payingId, setPayingId] = useState<string | null>(null)
-  const [zoomedQr, setZoomedQr] = useState<string | null>(null)
+  const [zoomedCode, setZoomedCode] = useState<string | null>(null)
 
   const registrationsQuery = useQuery({
     queryKey: contestQueryKeys.myRegistrations({
@@ -359,27 +399,34 @@ export function CustomerContestRegistrationsPage() {
             const byocDeclaration =
               registration.vehicleSource === "BYOC"
                 ? ((registration.metadata?.byoc_declaration ?? null) as {
-                    vehicle_name?: string | null
-                    vehicle_brand?: string | null
-                    vehicle_class?: string | null
-                    notes?: string | null
-                  } | null)
+                  vehicle_name?: string | null
+                  vehicle_brand?: string | null
+                  vehicle_class?: string | null
+                  notes?: string | null
+                } | null)
                 : null
             const contestUpcoming = contest?.starts_at
               ? new Date(contest.starts_at).getTime() > now
               : false
             const entryFeeIsIncludedInBooking = Boolean(registration.bookingId)
 
-            const badge = getUnifiedBadge(registration)
-            const accent = getAccentColor(registration)
+            const holdExpiresAt = registration.entryFeeHoldExpiresAt
+              ? new Date(registration.entryFeeHoldExpiresAt).getTime()
+              : null
+            const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
+
+            // Một đăng ký bị coi là Hủy nếu backend set CANCELLED hoặc bị quá hạn giữ chỗ thanh toán
+            const isEffectiveCancelled =
+              registration.status === "CANCELLED" ||
+              (registration.paymentStatus === "PENDING_PAYMENT" && isHoldExpired)
+
+            const badge = getUnifiedBadge(registration, now)
+            const accent = getAccentColor(registration, now)
 
             const showQr =
+              !isEffectiveCancelled &&
               registration.status === "CONFIRMED" &&
               !!registration.checkInCode
-
-            const qrUrl = showQr
-              ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(registration.checkInCode!)}&bgcolor=ffffff&color=0f172a&margin=2`
-              : null
 
             return (
               <article
@@ -440,8 +487,11 @@ export function CustomerContestRegistrationsPage() {
                         ) : null}
                       </div>
 
-                      {/* Cảnh báo hạn giữ suất */}
-                      {registration.entryFeeHoldExpiresAt ? (
+                      {/* 1. Suất được giữ đến (Còn hạn) */}
+                      {registration.paymentStatus === "PENDING_PAYMENT" &&
+                      registration.entryFeeHoldExpiresAt &&
+                      !isHoldExpired &&
+                      !isEffectiveCancelled ? (
                         <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
                           <p className="text-sm font-bold text-orange-900">
                             Suất được giữ đến{" "}
@@ -459,9 +509,29 @@ export function CustomerContestRegistrationsPage() {
                         </div>
                       ) : null}
 
-                      {/* Lý do hủy */}
+                      {/* 2. Đã hết thời gian thanh toán lại (Hết hạn giữ chỗ) */}
+                      {registration.entryFeeHoldExpiresAt && isHoldExpired ? (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                          <p className="text-sm font-bold text-red-900">
+                            Đã hết thời gian giữ chỗ thanh toán lệ phí (hết hạn lúc{" "}
+                            {new Date(
+                              registration.entryFeeHoldExpiresAt,
+                            ).toLocaleTimeString("vi-VN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                            )
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-red-800">
+                            Đơn đã chuyển sang trạng thái đã hủy do quá thời gian thanh toán lại.
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {/* 3. Lý do hủy khác (Do admin/user hủy mà không phải do timeout holdExpiresAt) */}
                       {registration.status === "CANCELLED" &&
-                      registration.cancellationReason ? (
+                      registration.cancellationReason &&
+                      !isHoldExpired ? (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                           <p className="text-sm font-bold text-amber-900">
                             Lý do hủy: {registration.cancellationReason}
@@ -493,21 +563,21 @@ export function CustomerContestRegistrationsPage() {
                         </div>
 
                         {/* QR Code */}
-                        {showQr && qrUrl ? (
+                        {showQr && registration.checkInCode ? (
                           <div className="shrink-0 flex flex-col items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => setZoomedQr(qrUrl)}
-                              className="group relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
+                              onClick={() => setZoomedCode(registration.checkInCode!)}
+                              className="group relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white p-1.5 shadow-sm hover:shadow-md transition-shadow flex items-center justify-center"
                               title="Phóng to mã QR"
                             >
-                              <img
-                                src={qrUrl}
-                                alt="Mã QR check-in"
-                                className="w-full h-full object-contain p-1"
+                              <QRCodeSVG
+                                value={registration.checkInCode}
+                                size={64}
+                                level="M"
                               />
                               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                <QrCode className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+                                <QrCode className="size-5 text-slate-800 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-sm" />
                               </div>
                             </button>
                             <span className="text-[10px] font-bold text-slate-400">
@@ -519,11 +589,11 @@ export function CustomerContestRegistrationsPage() {
 
                       {/* Nhắc nhở check-in */}
                       {registration.status === "CONFIRMED" &&
-                      contestUpcoming &&
-                      registration.checkInCode ? (
+                        contestUpcoming &&
+                        registration.checkInCode ? (
                         <p className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
                           <Ticket className="size-4 shrink-0" />
-                          Khi đến điểm danh, mang theo mã:{" "}
+                          Hãy đưa mã này cho nhân viên để check-in:{" "}
                           <span className="font-black tracking-widest">
                             {registration.checkInCode}
                           </span>
@@ -598,27 +668,21 @@ export function CustomerContestRegistrationsPage() {
                             Thông tin theo dõi
                           </h4>
                           <div className="mt-3 space-y-2 text-sm text-slate-600">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold">Trạng thái giải:</span>
-                              {contest ? (
-                                <ContestStatusBadge status={contest.status} size="sm" />
-                              ) : (
-                                <span>--</span>
-                              )}
-                            </div>
                             <p>
-                              <span className="font-semibold">Người thi đấu:</span>{" "}
-                              {registration.participant?.email ?? "Đang cập nhật"}
+                              <span className="font-semibold">Họ tên:</span>{" "}
+                              {registration.participant?.fullName?.trim() || getRegistrationDisplayName(registration)}
+                            </p>
+                            <p>
+                              <span className="font-semibold">Email:</span>{" "}
+                              {registration.participant?.email?.trim() || "Chưa có"}
                             </p>
                             <p>
                               <span className="font-semibold">Lệ phí:</span>{" "}
-                              {getPaymentStatusLabel(registration.paymentStatus)}
-                            </p>
-                            <p>
-                              <span className="font-semibold">Check-in:</span>{" "}
-                              {registration.checkedInAt
-                                ? formatContestDateTime(registration.checkedInAt)
-                                : "Chưa check-in"}
+                              {(() => {
+                                const fee = registration.entryFeeAmount ?? contest?.entry_fee
+                                if (fee === null || fee === undefined) return "--"
+                                return fee > 0 ? formatCurrency(fee) : "Miễn phí"
+                              })()}
                             </p>
                           </div>
                         </section>
@@ -626,71 +690,59 @@ export function CustomerContestRegistrationsPage() {
                     </div>
 
                     {/* ── Nút hành động — cố định dưới cùng bên phải ─── */}
-                    <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end">
-                      {/* Thanh toán qua đơn đặt */}
-                      {registration.paymentStatus === "PENDING_PAYMENT" &&
-                      entryFeeIsIncludedInBooking ? (
-                        <Button
-                          asChild
-                          className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
-                        >
-                          <Link
-                            to={routePaths.customerBookingDetail.replace(
-                              ":bookingId",
-                              registration.bookingId!,
-                            )}
+                    {!isEffectiveCancelled && (
+                      <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end">
+                        {/* Thanh toán qua đơn đặt */}
+                        {registration.paymentStatus === "PENDING_PAYMENT" &&
+                        !isHoldExpired &&
+                        entryFeeIsIncludedInBooking ? (
+                          <Button
+                            asChild
+                            className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
+                          >
+                            <Link
+                              to={routePaths.customerBookingDetail.replace(
+                                ":bookingId",
+                                registration.bookingId!,
+                              )}
+                            >
+                              <CreditCard className="mr-2 size-4" />
+                              Thanh toán đơn đặt
+                            </Link>
+                          </Button>
+                        ) : registration.paymentStatus === "PENDING_PAYMENT" && !isHoldExpired ? (
+                          /* Thanh toán lệ phí trực tiếp */
+                          <Button
+                            type="button"
+                            className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
+                            disabled={payingId === registration.id}
+                            onClick={() => {
+                              setPayingId(registration.id)
+                              entryFeePaymentMutation.mutate(registration.id)
+                            }}
                           >
                             <CreditCard className="mr-2 size-4" />
-                            Thanh toán đơn đặt
-                          </Link>
-                        </Button>
-                      ) : registration.paymentStatus === "PENDING_PAYMENT" ? (
-                        /* Thanh toán lệ phí trực tiếp */
-                        <Button
-                          type="button"
-                          className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
-                          disabled={payingId === registration.id}
-                          onClick={() => {
-                            setPayingId(registration.id)
-                            entryFeePaymentMutation.mutate(registration.id)
-                          }}
-                        >
-                          <CreditCard className="mr-2 size-4" />
-                          {payingId === registration.id
-                            ? "Đang chuyển hướng..."
-                            : "Thanh toán lệ phí"}
-                        </Button>
-                      ) : null}
+                            {payingId === registration.id
+                              ? "Đang chuyển hướng..."
+                              : "Thanh toán lệ phí"}
+                          </Button>
+                        ) : null}
 
-                      {/* Đăng ký lại (khi đã hủy) */}
-                      {registration.status === "CANCELLED" ? (
-                        <Button
-                          asChild
-                          className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
-                        >
-                          <Link
-                            to={routePaths.contestDetail.replace(
-                              ":contestId",
-                              contest?.id ?? registration.contestId,
-                            )}
+                        {/* Hủy đăng ký — CHỈ cho phép khi chưa thanh toán (PENDING + PENDING_PAYMENT) */}
+                        {registration.status === "PENDING" &&
+                        registration.paymentStatus === "PENDING_PAYMENT" &&
+                        !isHoldExpired ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-xl border-red-200 bg-red-50 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
+                            onClick={() => setCancelId(registration.id)}
                           >
-                            Đăng ký lại
-                          </Link>
-                        </Button>
-                      ) : null}
-
-                      {/* Hủy đăng ký */}
-                      {["PENDING", "CONFIRMED"].includes(registration.status) ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="rounded-xl border-red-200 bg-red-50 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
-                          onClick={() => setCancelId(registration.id)}
-                        >
-                          Hủy đăng ký
-                        </Button>
-                      ) : null}
-                    </div>
+                            Hủy đăng ký
+                          </Button>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 </div>
               </article>
@@ -750,9 +802,9 @@ export function CustomerContestRegistrationsPage() {
 
       {/* ── Dialog phóng to QR ────────────────────────────────────────────── */}
       <Dialog
-        open={!!zoomedQr}
+        open={!!zoomedCode}
         onOpenChange={(v) => {
-          if (!v) setZoomedQr(null)
+          if (!v) setZoomedCode(null)
         }}
       >
         <DialogContent className="rounded-3xl border-none sm:max-w-xs">
@@ -764,13 +816,14 @@ export function CustomerContestRegistrationsPage() {
               Nhân viên quét mã này khi bạn đến điểm danh.
             </DialogDescription>
           </DialogHeader>
-          {zoomedQr ? (
+          {zoomedCode ? (
             <div className="flex flex-col items-center gap-3 py-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <img
-                  src={zoomedQr}
-                  alt="Mã QR Check-in phóng to"
-                  className="w-56 h-56 object-contain"
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-center">
+                <QRCodeSVG
+                  value={zoomedCode}
+                  size={200}
+                  level="M"
+                  includeMargin
                 />
               </div>
               <p className="text-xs font-semibold text-slate-500 text-center">
