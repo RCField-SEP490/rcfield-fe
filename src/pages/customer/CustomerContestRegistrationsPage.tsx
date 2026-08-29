@@ -694,12 +694,11 @@ export function CustomerContestRegistrationsPage() {
                     </div>
 
                     {/* ── Nút hành động — cố định dưới cùng bên phải ─── */}
-                    <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end">
-                      {/* Thanh toán lại (khi đơn chưa thanh toán & chưa quá hạn giữ chỗ & chưa bị hủy) */}
-                      {registration.paymentStatus === "PENDING_PAYMENT" &&
-                      !isHoldExpired &&
-                      registration.status !== "CANCELLED" ? (
-                        entryFeeIsIncludedInBooking ? (
+                    {registration.paymentStatus === "PENDING_PAYMENT" &&
+                    !isHoldExpired &&
+                    registration.status !== "CANCELLED" ? (
+                      <div className="mt-2 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2 justify-end">
+                        {entryFeeIsIncludedInBooking ? (
                           <Button
                             asChild
                             className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
@@ -729,40 +728,21 @@ export function CustomerContestRegistrationsPage() {
                               ? "Đang chuyển hướng..."
                               : "Thanh toán lại"}
                           </Button>
-                        )
-                      ) : null}
+                        )}
 
-                      {/* Đăng ký lại (khi đơn đã bị hủy hoặc đã hết hạn giữ chỗ) */}
-                      {isEffectiveCancelled ? (
-                        <Button
-                          asChild
-                          className="rounded-xl bg-orange-600 font-bold text-white hover:bg-orange-700"
-                        >
-                          <Link
-                            to={routePaths.contestDetail.replace(
-                              ":contestId",
-                              contest?.id ?? registration.contestId,
-                            )}
+                        {/* Hủy đăng ký — CHỈ cho phép khi chưa thanh toán và còn hạn */}
+                        {registration.status === "PENDING" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="rounded-xl border-red-200 bg-red-50 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
+                            onClick={() => setCancelId(registration.id)}
                           >
-                            Đăng ký lại
-                          </Link>
-                        </Button>
-                      ) : null}
-
-                      {/* Hủy đăng ký — CHỈ cho phép khi chưa thanh toán và còn hạn */}
-                      {registration.status === "PENDING" &&
-                      registration.paymentStatus === "PENDING_PAYMENT" &&
-                      !isHoldExpired ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="rounded-xl border-red-200 bg-red-50 font-bold text-red-700 hover:bg-red-100 hover:text-red-800"
-                          onClick={() => setCancelId(registration.id)}
-                        >
-                          Hủy đăng ký
-                        </Button>
-                      ) : null}
-                    </div>
+                            Hủy đăng ký
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </article>
