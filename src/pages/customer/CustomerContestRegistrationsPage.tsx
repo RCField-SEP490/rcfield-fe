@@ -94,7 +94,7 @@ function getUnifiedBadge(
   registration: {
     status: string
     paymentStatus: string
-    customerJourneyStatus: string
+    customerJourneyStatus?: string | null
     entryFeeHoldExpiresAt?: string | null
     checkedInAt?: string | null
     contest?: { starts_at?: string | null } | null
@@ -102,7 +102,7 @@ function getUnifiedBadge(
   now: number,
 ): { label: string; className: string } {
   const { status, paymentStatus, customerJourneyStatus, entryFeeHoldExpiresAt, checkedInAt, contest } = registration
-  const isPaid = paymentStatus === "MARKED_PAID" || paymentStatus === "PAID"
+  const isPaid = paymentStatus === "MARKED_PAID" || (paymentStatus as string) === "PAID"
   const holdExpiresAt = entryFeeHoldExpiresAt ? new Date(entryFeeHoldExpiresAt).getTime() : null
   const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
   const contestStarted = contest?.starts_at ? new Date(contest.starts_at).getTime() < now : false
@@ -116,7 +116,7 @@ function getUnifiedBadge(
 
   // 2. Không đến (Đã xác nhận / Đã thanh toán, nhưng quá giờ bắt đầu giải mà chưa check-in)
   if (
-    (status === "CONFIRMED" || paymentStatus === "PAID") &&
+    (status === "CONFIRMED" || (paymentStatus as string) === "PAID") &&
     contestStarted &&
     !checkedInAt
   )
@@ -179,7 +179,7 @@ function getAccentColor(
   registration: {
     status: string
     paymentStatus: string
-    customerJourneyStatus: string
+    customerJourneyStatus?: string | null
     entryFeeHoldExpiresAt?: string | null
     checkedInAt?: string | null
     contest?: { starts_at?: string | null } | null
@@ -187,7 +187,7 @@ function getAccentColor(
   now: number,
 ): string {
   const { status, paymentStatus, customerJourneyStatus, entryFeeHoldExpiresAt, checkedInAt, contest } = registration
-  const isPaid = paymentStatus === "MARKED_PAID" || paymentStatus === "PAID"
+  const isPaid = paymentStatus === "MARKED_PAID" || (paymentStatus as string) === "PAID"
   const holdExpiresAt = entryFeeHoldExpiresAt ? new Date(entryFeeHoldExpiresAt).getTime() : null
   const isHoldExpired = holdExpiresAt ? holdExpiresAt <= now : false
   const contestStarted = contest?.starts_at ? new Date(contest.starts_at).getTime() < now : false
@@ -418,7 +418,7 @@ export function CustomerContestRegistrationsPage() {
 
             const isPaid =
               registration.paymentStatus === "MARKED_PAID" ||
-              registration.paymentStatus === "PAID"
+              (registration.paymentStatus as string) === "PAID"
 
             // Một đăng ký bị coi là Hủy NẾU CHƯA thanh toán VÀ (status === CANCELLED hoặc bị quá hạn giữ chỗ thanh toán)
             const isEffectiveCancelled =

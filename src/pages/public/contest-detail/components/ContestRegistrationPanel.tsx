@@ -251,7 +251,7 @@ export function ContestRegistrationPanel({
 
   const isPaid =
     existingRegistration?.paymentStatus === "MARKED_PAID" ||
-    existingRegistration?.paymentStatus === "PAID"
+    (existingRegistration?.paymentStatus as string) === "PAID"
 
   const [now] = useState(() => Date.now())
   const isHoldExpired = existingRegistration?.entryFeeHoldExpiresAt
@@ -300,7 +300,7 @@ export function ContestRegistrationPanel({
                 Bạn đã đăng ký giải đấu này
               </span>
             </div>
-            {existingRegistration.paymentStatus === "PENDING_PAYMENT" ? (
+            {activeRegistration.paymentStatus === "PENDING_PAYMENT" ? (
               <div className="rounded-xl border border-orange-200 bg-white p-3">
                 <p className="text-xs font-semibold text-orange-800">
                   Đăng ký của bạn đang chờ thanh toán lệ phí để hoàn tất.
@@ -310,11 +310,11 @@ export function ContestRegistrationPanel({
                   ra thì người dùng tưởng lúc nào trả cũng được, rồi quay lại sau
                   một tiếng thấy đăng ký biến mất mà không hiểu vì sao.
                 */}
-                {existingRegistration.entryFeeHoldExpiresAt ? (
+                {activeRegistration.entryFeeHoldExpiresAt ? (
                   <p className="mt-1 text-xs font-bold text-orange-900">
                     Suất được giữ đến{" "}
                     {new Date(
-                      existingRegistration.entryFeeHoldExpiresAt,
+                      activeRegistration.entryFeeHoldExpiresAt,
                     ).toLocaleTimeString("vi-VN", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -338,17 +338,17 @@ export function ContestRegistrationPanel({
               <div>
                 <p className="font-bold text-slate-400">Lệ phí thi đấu</p>
                 <p className="mt-1 text-sm font-extrabold text-slate-900">
-                  {getPaymentStatusLabel(existingRegistration.paymentStatus)}
+                  {getPaymentStatusLabel(activeRegistration.paymentStatus)}
                 </p>
               </div>
             </div>
-            {existingRegistration.checkInCode ? (
+            {activeRegistration.checkInCode ? (
               <div className="rounded-xl border border-orange-100/50 bg-white p-3 text-center">
                 <p className="text-2xs font-bold uppercase tracking-wider text-slate-400">
                   Mã điểm danh (Check-in)
                 </p>
                 <p className="mt-1 text-lg font-black tracking-widest text-slate-900">
-                  {existingRegistration.checkInCode}
+                  {activeRegistration.checkInCode}
                 </p>
               </div>
             ) : null}
