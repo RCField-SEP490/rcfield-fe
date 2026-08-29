@@ -46,25 +46,48 @@ export function HomeHeroSection() {
               </p>
             </motion.div>
 
-            <motion.div variants={fadeUpItem} className="flex flex-wrap gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="h-13 rounded-2xl bg-orange-600 px-7 font-black text-white shadow-[0_20px_42px_-20px_rgba(234,88,12,0.8)] hover:bg-orange-500"
-              >
-                <Link to={routePaths.cafes}>
-                  Khám phá sân RC
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="h-13 rounded-2xl border-slate-200 bg-white/80 px-7 font-black text-slate-800 shadow-[var(--landing-shadow-soft)] hover:border-slate-300 hover:bg-white"
-              >
-                <Link to={routePaths.register}>Tạo tài khoản miễn phí</Link>
-              </Button>
+            <motion.div variants={fadeUpItem} className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  asChild
+                  size="lg"
+                  className="h-13 rounded-2xl bg-orange-600 px-7 font-black text-white shadow-[0_20px_42px_-20px_rgba(234,88,12,0.8)] hover:bg-orange-500"
+                >
+                  <Link to={routePaths.cafes}>
+                    Khám phá sân RC
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="h-13 rounded-2xl border-slate-200 bg-white/80 px-7 font-black text-slate-800 shadow-[var(--landing-shadow-soft)] hover:border-slate-300 hover:bg-white"
+                >
+                  <Link to={routePaths.register}>Tạo tài khoản miễn phí</Link>
+                </Button>
+              </div>
+
+              {/* Nút Tải App Android thiết kế viền cam bo cong pill-shape nằm bên dưới */}
+              <div>
+                <a
+                  href="https://expo.dev/artifacts/eas/3DP15ELBbs7m-EHYNxAMGlALX2d7QWW2Caz4KLMBswo.apk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3.5 rounded-full border border-orange-300 bg-white px-5 py-2.5 shadow-md hover:border-orange-400 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-50 text-[#FF5500] group-hover:scale-110 transition-transform">
+                    <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">
+                      <path d="M17.523 15.3414C17.06 15.3414 16.691 14.9659 16.691 14.5029C16.691 14.0399 17.06 13.6644 17.523 13.6644C17.986 13.6644 18.355 14.0399 18.355 14.5029C18.355 14.9659 17.986 15.3414 17.523 15.3414ZM6.477 15.3414C6.014 15.3414 5.645 14.9659 5.645 14.5029C5.645 14.0399 6.014 13.6644 6.477 13.6644C6.94 13.6644 7.309 14.0399 7.309 14.5029C7.309 14.9659 6.94 15.3414 6.477 15.3414ZM17.947 10.7099L19.645 7.7669C19.789 7.5179 19.703 7.2029 19.454 7.0589C19.205 6.9149 18.89 7.0009 18.746 7.2499L17.009 10.2579C15.539 9.5889 13.844 9.2029 12 9.2029C10.156 9.2029 8.461 9.5889 6.991 10.2579L5.254 7.2499C5.11 7.0009 4.795 6.9149 4.546 7.0589C4.297 7.2029 4.211 7.5179 4.355 7.7669L6.053 10.7099C2.793 12.5139 0.548 15.8679 0.088 19.7999H23.912C23.452 15.8679 21.207 12.5139 17.947 10.7099Z" />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[11px] font-bold text-slate-600 leading-none">Tải xuống cho</div>
+                    <div className="text-sm font-black text-slate-900 leading-tight mt-0.5">Android (APK)</div>
+                  </div>
+                </a>
+              </div>
             </motion.div>
 
             <motion.div variants={fadeUpItem} className="grid gap-3 sm:grid-cols-3">
