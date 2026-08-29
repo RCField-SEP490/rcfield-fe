@@ -369,6 +369,7 @@ export type ContestRegistrationParticipant = {
   avatarUrl: string | null
   driverHandle?: string | null
   driverTitleLabel?: string | null
+  phone?: string | null
 }
 
 export type ContestRegistrationLatestMatch = {
