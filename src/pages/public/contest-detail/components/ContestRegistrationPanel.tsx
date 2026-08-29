@@ -16,11 +16,9 @@ import {
   contestApi,
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
-import { JourneyStatusBadge } from "@/features/contests/components"
 import { formatContestDateTime } from "@/features/contests/lib/contest-runtime"
 import {
   getPaymentStatusLabel,
-  getRegistrationStatusLabel,
   type ContestRegistrationAvailability,
 } from "@/features/contests/lib/contest-status"
 import { contestByocDeclarationSchema } from "@/features/contests/schemas/contest.schema"
@@ -255,9 +253,13 @@ export function ContestRegistrationPanel({
     existingRegistration?.paymentStatus === "MARKED_PAID" ||
     existingRegistration?.paymentStatus === "PAID"
 
-  const isHoldExpired = existingRegistration?.entryFeeHoldExpiresAt
-    ? new Date(existingRegistration.entryFeeHoldExpiresAt).getTime() <= Date.now()
-    : false
+  const isHoldExpired = useMemo(() => {
+    if (!existingRegistration?.entryFeeHoldExpiresAt) return false
+    return (
+      new Date(existingRegistration.entryFeeHoldExpiresAt).getTime() <=
+      Date.now()
+    )
+  }, [existingRegistration?.entryFeeHoldExpiresAt])
 
   const isCancelled =
     !isPaid &&

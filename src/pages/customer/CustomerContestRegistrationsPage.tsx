@@ -28,8 +28,6 @@ import {
   formatContestDateTime,
   formatMatchLabel,
   getRegistrationDisplayName,
-} from "@/features/contests/lib/contest-runtime"
-import { getPaymentStatusLabel } from "@/features/contests/lib/contest-status"
 import { ContestStatusBadge } from "@/features/contests/components"
 import { CustomerPageShell } from "@/pages/customer/components/CustomerPageShell"
 import { CustomerSubNav } from "@/pages/customer/components/CustomerSubNav"
