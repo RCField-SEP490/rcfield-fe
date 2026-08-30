@@ -122,6 +122,15 @@ export interface AvailabilityResponse {
   available: boolean
   byoc_remaining?: number
   vehicles: AvailableVehicle[]
+  /**
+   * Vì sao khung giờ này không đặt được, khi lý do KHÔNG phải là hết chỗ.
+   *
+   * Vắng mặt nghĩa là hết chỗ theo sức chứa — trường hợp thường gặp, không cần
+   * giải thích gì thêm.
+   */
+  unavailable_reason?: "CONTEST"
+  /** Giải đang giữ sân, chỉ có khi `unavailable_reason === "CONTEST"`. */
+  contest?: { id: string; name: string }
 }
 
 export interface BookingParticipant {
@@ -389,6 +398,8 @@ export interface CafeBookingListItem {
   customerName: string
   customerPhone: string | null
   sessionStatus?: string | null
+  /** Giờ kết thúc dự kiến của phiên — đã tính cả gia hạn, khác `slotEnd`. */
+  sessionPlannedEndAt?: string | null
 }
 
 export interface CafeBookingListResponse {

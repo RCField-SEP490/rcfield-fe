@@ -1,3 +1,4 @@
+import { AndroidAppDownloadSection } from "./components/landing/AndroidAppDownloadSection"
 import { FeaturedVenuesSection } from "./components/landing/FeaturedVenuesSection"
 import { HomeHeroSection } from "./components/landing/HomeHeroSection"
 import { HomePartnerTeaser } from "./components/landing/HomePartnerTeaser"
@@ -9,6 +10,7 @@ export function LandingPage() {
       <HomeHeroSection />
       <HowItWorksSection />
       <FeaturedVenuesSection />
+      <AndroidAppDownloadSection />
       <HomePartnerTeaser />
     </>
   )

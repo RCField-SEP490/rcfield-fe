@@ -26,11 +26,19 @@ export const subscriptionApi = {
     data: ProviderSubscription | null
     /** Thời điểm đã tiêu suất dùng thử; null nghĩa là chưa dùng. */
     trial_used_at: string | null
+    /**
+     * Số kênh chat đang kết nối.
+     *
+     * Đến từ backend chứ không tự đếm ở đây: nó dùng chung câu truy vấn với
+     * chốt chặn hạn mức, nên thanh hiển thị không thể lệch với thứ đang chặn.
+     */
+    channels_used: number
   }> => {
     const res = await api.get<{
       success: boolean
       data: ProviderSubscription | null
       trial_used_at: string | null
+      channels_used: number
     }>("/v1/provider/subscription")
     return res.data
   },

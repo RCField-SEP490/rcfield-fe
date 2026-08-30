@@ -33,6 +33,7 @@ import { CafePaymentSettingsCard } from "@/pages/provider/components/CafePayment
 import { BankTransactionsPanel } from "@/pages/provider/components/BankTransactionsPanel"
 import { ProviderCafeVehiclesSection } from "@/pages/provider/components/ProviderCafeVehiclesSection"
 import {
+  formatGio,
   formatOccupancyRate,
   MetricCard,
   ProviderPageHeader,
@@ -358,13 +359,24 @@ export function ProviderCafeDetailPage() {
                       ? formatOccupancyRate(branchOperation.occupancyRate)
                       : "--"
                   }
+                  /*
+                    "Theo công suất tháng này" không nói được gì.
+
+                    Mẫu số của tỷ lệ này là MỌI suất chơi của MỌI giờ mở cửa từ
+                    đầu tháng tới giờ — 100% nghĩa là tất cả các sân kín khách
+                    liên tục suốt cả tháng, một mức không quán nào chạm tới. Nên
+                    một con số như "0,2%" đứng trơ ra sẽ đọc thành "hệ thống
+                    tính sai" chứ không phải "quán còn nhiều chỗ trống".
+                    
+                    In thẳng phân số ra thì con số tự giải thích chính nó.
+                  */
                   helper={
                     isBranchOperationsError
                       ? "Không thể tải dữ liệu"
                       : branchOperation?.occupancyRate === null
-                        ? "Chưa có sức chứa khả dụng"
+                        ? "Chi nhánh chưa khai sức chứa sân"
                         : branchOperation
-                          ? "Theo công suất tháng này"
+                          ? `${formatGio(branchOperation.occupiedSlotMinutes)} đã đặt / ${formatGio(branchOperation.bookableSlotMinutes)} có thể bán`
                           : "Đang tải..."
                   }
                   icon={<TrendingUp />}

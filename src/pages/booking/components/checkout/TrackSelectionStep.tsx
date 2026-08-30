@@ -563,8 +563,17 @@ function buildSlotsFromAvailability(
       available = byocRemaining > 0
     }
 
+    /*
+      Sân bị giải đấu giữ riêng KHÔNG phải là "hết chỗ".
+
+      Trước đây cả hai cùng ra nhãn "Hết", nên một ngày có giải hiện mười ba
+      khung giờ "Hết" liên tiếp và khách kết luận quán kín lịch — trong khi sự
+      thật là hôm đó có giải, hôm sau vẫn trống. Hai tình huống dẫn tới hai hành
+      động khác nhau: hết chỗ thì thử giờ khác trong ngày, có giải thì đổi ngày.
+    */
     let status: DailySlotStatus
-    if (!available) status = "booked"
+    if (data.unavailable_reason === "CONTEST") status = "contest"
+    else if (!available) status = "booked"
     else if (remaining <= 2) status = "limited"
     else status = "available"
 
@@ -577,6 +586,7 @@ function buildSlotsFromAvailability(
       rentalCount: playMode === "BYOC" ? 0 : rentalCount,
       byocRemaining: playMode === "RENTAL" ? 0 : byocRemaining,
       capacityKind: playMode === "RENTAL" ? "rental_vehicle" : "byoc_spot",
+      contestName: data.contest?.name,
     }
   })
 }

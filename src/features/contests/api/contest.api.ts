@@ -140,47 +140,47 @@ function mapContestRegistration(raw: any): ContestRegistration {
     metadata: raw.metadata ?? {},
     participant: raw.participant
       ? {
-          id: raw.participant.id,
-          fullName:
-            raw.participant.full_name ?? raw.participant.fullName ?? null,
-          email: raw.participant.email ?? null,
-          avatarUrl:
-            raw.participant.avatar_url ?? raw.participant.avatarUrl ?? null,
-          driverHandle: raw.participant.driver_handle ?? null,
-          driverTitleLabel: raw.participant.driver_title_label ?? null,
-        }
+        id: raw.participant.id,
+        fullName:
+          raw.participant.full_name ?? raw.participant.fullName ?? null,
+        email: raw.participant.email ?? null,
+        avatarUrl:
+          raw.participant.avatar_url ?? raw.participant.avatarUrl ?? null,
+        driverHandle: raw.participant.driver_handle ?? null,
+        driverTitleLabel: raw.participant.driver_title_label ?? null,
+      }
       : null,
     contest: raw.contest ? mapContestItem(raw.contest) : null,
     latestMatch: raw.latest_match
       ? {
-          matchId: raw.latest_match.match_id,
-          contestId: raw.latest_match.contest_id,
-          roundNo: raw.latest_match.round_no,
-          matchNo: raw.latest_match.match_no,
-          name: raw.latest_match.name ?? null,
-          status: raw.latest_match.status,
-          matchType: raw.latest_match.match_type,
-          scheduledAt: raw.latest_match.scheduled_at ?? null,
-          startedAt: raw.latest_match.started_at ?? null,
-          endedAt: raw.latest_match.ended_at ?? null,
-          nextMatchId: raw.latest_match.next_match_id ?? null,
-          participantStatus: raw.latest_match.participant_status ?? null,
-          finishPosition: raw.latest_match.finish_position ?? null,
-          isWinner: Boolean(raw.latest_match.is_winner),
-        }
+        matchId: raw.latest_match.match_id,
+        contestId: raw.latest_match.contest_id,
+        roundNo: raw.latest_match.round_no,
+        matchNo: raw.latest_match.match_no,
+        name: raw.latest_match.name ?? null,
+        status: raw.latest_match.status,
+        matchType: raw.latest_match.match_type,
+        scheduledAt: raw.latest_match.scheduled_at ?? null,
+        startedAt: raw.latest_match.started_at ?? null,
+        endedAt: raw.latest_match.ended_at ?? null,
+        nextMatchId: raw.latest_match.next_match_id ?? null,
+        participantStatus: raw.latest_match.participant_status ?? null,
+        finishPosition: raw.latest_match.finish_position ?? null,
+        isWinner: Boolean(raw.latest_match.is_winner),
+      }
       : null,
     customerJourneyStatus:
       raw.customer_journey_status ?? raw.customerJourneyStatus ?? null,
     booking: raw.booking
       ? {
-          id: raw.booking.id,
-          status: raw.booking.status,
-          paymentExpiresAt:
-            raw.booking.payment_expires_at ??
-            raw.booking.paymentExpiresAt ??
-            null,
-          totalAmount: raw.booking.total_amount ?? raw.booking.totalAmount ?? 0,
-        }
+        id: raw.booking.id,
+        status: raw.booking.status,
+        paymentExpiresAt:
+          raw.booking.payment_expires_at ??
+          raw.booking.paymentExpiresAt ??
+          null,
+        totalAmount: raw.booking.total_amount ?? raw.booking.totalAmount ?? 0,
+      }
       : null,
   }
 }
@@ -194,23 +194,23 @@ export function mapContestMatch(raw: any): ContestMatch {
       total_time_seconds: participant.total_time_seconds ?? null,
       registration: participant.registration
         ? {
-            id: participant.registration.id,
-            user_id: participant.registration.user_id,
-            participant_name: participant.registration.participant_name ?? null,
-            participant_email:
-              participant.registration.participant_email ?? null,
-            participant_avatar_url:
-              participant.registration.participant_avatar_url ?? null,
-            driver_handle: participant.registration.driver_handle ?? null,
-            driver_title_label:
-              participant.registration.driver_title_label ?? null,
-            status: participant.registration.status,
-            check_in_code: participant.registration.check_in_code ?? null,
-            checked_in_at: participant.registration.checked_in_at ?? null,
-            is_my_registration: Boolean(
-              participant.registration.is_my_registration,
-            ),
-          }
+          id: participant.registration.id,
+          user_id: participant.registration.user_id,
+          participant_name: participant.registration.participant_name ?? null,
+          participant_email:
+            participant.registration.participant_email ?? null,
+          participant_avatar_url:
+            participant.registration.participant_avatar_url ?? null,
+          driver_handle: participant.registration.driver_handle ?? null,
+          driver_title_label:
+            participant.registration.driver_title_label ?? null,
+          status: participant.registration.status,
+          check_in_code: participant.registration.check_in_code ?? null,
+          checked_in_at: participant.registration.checked_in_at ?? null,
+          is_my_registration: Boolean(
+            participant.registration.is_my_registration,
+          ),
+        }
         : null,
     })),
   }

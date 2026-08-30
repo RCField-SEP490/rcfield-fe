@@ -77,7 +77,6 @@ export function ContestMatchBoard({
     string[]
   >([])
   const [selectedCafeId, setSelectedCafeId] = useState("")
-  const [driversPerMatch, setDriversPerMatch] = useState<number>(2)
   const [seedingMode, setSeedingMode] = useState<"MANUAL" | "CHECK_IN_ORDER">(
     "CHECK_IN_ORDER",
   )
@@ -99,6 +98,46 @@ export function ContestMatchBoard({
   }, [contest])
 
   const matchGroups = useMemo(() => groupMatchesByRound(matches), [matches])
+
+  /**
+   * Nói trước sắp sinh ra bao nhiêu lượt và mỗi lượt mấy người.
+   *
+   * Không có dòng này thì đua tính giờ là cái bẫy: chọn 15 người rồi bấm tạo,
+   * ra 15 lượt mỗi lượt MỘT người — trông như hệ thống bỏ qua thứ mình vừa
+   * chọn. Thật ra thể thức nó vậy: chạy một mình bấm giờ, không có đối thủ
+   * cùng lượt.
+   */
+  const generatePreview = useMemo(() => {
+    const selectedCount = selectedRegistrationIds.length
+    // Phải khớp TỪNG CHI TIẾT với `resolveRunsPerDriver` ở backend: thiếu cấu
+    // hình thì mặc định 3 lượt, và luôn kẹp trong khoảng 1–5. Đoán mặc định là 1
+    // thì khối "Sẽ tạo ra" báo 15 lượt rồi hệ thống sinh ra 45 — đúng kiểu nói
+    // dối mà khối này sinh ra để dẹp.
+    const rawRuns = Number(contest.config?.runs_per_driver)
+    const runsPerDriver = Number.isFinite(rawRuns)
+      ? Math.min(5, Math.max(1, Math.floor(rawRuns)))
+      : 3
+
+    if (runtimeFormat === "TIME_TRIAL" || isQualifyingFinalFormat(runtimeFormat)) {
+      const totalRuns = selectedCount * runsPerDriver
+      const phase = isQualifyingFinalFormat(runtimeFormat) ? " vòng loại" : ""
+      return {
+        headline: `${totalRuns} lượt chạy${phase} · mỗi lượt 1 vận động viên`,
+        note:
+          runsPerDriver > 1
+            ? `${selectedCount} VĐV × ${runsPerDriver} lượt mỗi người. Đua tính giờ chạy một mình bấm giờ, lấy vòng nhanh nhất qua tất cả các lượt.`
+            : "Đua tính giờ chạy một mình bấm giờ, không có đối thủ cùng lượt. Các lượt cách nhau 5 phút." +
+              (isQualifyingFinalFormat(runtimeFormat)
+                ? " Nhánh chung kết 2 người mỗi trận sinh sau, từ bảng xếp hạng vòng loại."
+                : ""),
+      }
+    }
+
+    return {
+      headline: `${Math.ceil(selectedCount / 2)} trận · mỗi trận 2 vận động viên`,
+      note: "Đấu loại trực tiếp ghép cặp, người thắng đi tiếp. Số lẻ thì có người được vào thẳng vòng sau.",
+    }
+  }, [selectedRegistrationIds, contest.config, runtimeFormat])
 
   const isQualifyingFinal = isQualifyingFinalFormat(runtimeFormat)
   const { qualifying: qualifyingMatches, final: finalMatches } = useMemo(
@@ -152,12 +191,13 @@ export function ContestMatchBoard({
   const handleGenerate = async () => {
     // Bốc thăm không gửi danh sách người: backend tự lấy toàn bộ người đã duyệt
     // rồi xáo bằng seed lưu lại được, nên không ai can thiệp được vào lá thăm.
+    // Không gửi `drivers_per_match`: thể thức tự quyết số người mỗi lượt, và
+    // backend lấy giá trị từ cấu hình giải khi trường này vắng mặt.
     const rawData = isKnockoutDraw
-      ? { cafe_id: selectedCafeId, drivers_per_match: 2 }
+      ? { cafe_id: selectedCafeId }
       : {
           cafe_id: selectedCafeId,
           registration_ids: selectedRegistrationIds,
-          drivers_per_match: driversPerMatch,
           seeding_mode: seedingMode,
         }
 
@@ -217,19 +257,7 @@ export function ContestMatchBoard({
             </Field>
 
             {isKnockoutDraw ? null : (
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Số người mỗi trận/lượt">
-                  <input
-                    type="number"
-                    min={1}
-                    max={64}
-                    className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
-                    value={driversPerMatch}
-                    onChange={(event) =>
-                      setDriversPerMatch(Number(event.target.value))
-                    }
-                  />
-                </Field>
+              <div className="space-y-4">
                 <Field label="Cách xếp thứ tự">
                   <select
                     className="h-10 w-full rounded-lg border border-[#c4c7c8] bg-white px-3 text-sm"
@@ -244,6 +272,26 @@ export function ContestMatchBoard({
                     <option value="MANUAL">Theo danh sách đã chọn</option>
                   </select>
                 </Field>
+
+                {/*
+                  Thay cho ô "Số người mỗi trận/lượt" đã bỏ.
+
+                  Ô đó cho gõ một con số nhưng KHÔNG engine nào đọc — thể thức tự
+                  quyết số người mỗi lượt. Gõ 2 vào giải đua tính giờ vẫn ra 15
+                  lượt một người, và người dùng không hiểu vì sao con số mình vừa
+                  nhập biến mất. Thà nói thẳng sắp tạo ra cái gì.
+                */}
+                <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-3">
+                  <p className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
+                    Sẽ tạo ra
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[#1c1b1b]">
+                    {generatePreview.headline}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-[#747878]">
+                    {generatePreview.note}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -465,8 +513,16 @@ export function ContestMatchBoard({
             <div className="space-y-4">
               {matchGroups.map((group) => (
                 <div key={group.roundNo}>
+                  {/*
+                    Với đua tính giờ, `roundNo` là lượt chạy THỨ MẤY CỦA MỖI VĐV
+                    chứ không phải vòng đấu — gọi là "Vòng 2" khiến người xem
+                    tưởng đây là vòng trong, tức là đã loại bớt người ở vòng
+                    trước. Thực tế cả 15 người đều chạy lại lượt hai.
+                  */}
                   <h4 className="mb-2 text-sm font-extrabold uppercase tracking-wider text-[#747878]">
-                    Vòng {group.roundNo}
+                    {isTimeTrialGroup(group.matches)
+                      ? `Lượt chạy ${group.roundNo} · toàn bộ vận động viên`
+                      : `Vòng ${group.roundNo}`}
                   </h4>
                   {isTimeTrialGroup(group.matches) ? (
                     <TimeTrialTable
@@ -600,7 +656,7 @@ function TimeTrialTable({
     <div className="overflow-hidden rounded-lg border border-[#e5e2e1] bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#e5e2e1] bg-[#fcf8f8] px-3 py-2">
         <span className="text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-          Đua tính giờ · {matches.length} lượt
+          Đua tính giờ · {matches.length} lượt · mỗi lượt 1 người
         </span>
         {day ? (
           <span className="text-xs font-semibold text-[#747878]">{day}</span>
@@ -610,7 +666,7 @@ function TimeTrialTable({
         <table className="w-full min-w-[520px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#e5e2e1] text-xs font-extrabold uppercase tracking-wider text-[#747878]">
-              <th className="px-3 py-2 font-extrabold">Lượt</th>
+              <th className="px-3 py-2 font-extrabold">Thứ tự chạy</th>
               <th className="px-3 py-2 font-extrabold">Vận động viên</th>
               <th className="px-3 py-2 font-extrabold">Giờ chạy</th>
               <th className="px-3 py-2 font-extrabold">Vòng nhanh nhất</th>

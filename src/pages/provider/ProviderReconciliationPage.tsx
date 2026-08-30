@@ -138,6 +138,20 @@ export function ProviderReconciliationPage() {
   const tong = data?.summary
   const soTrang = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1
 
+  /**
+   * Số tài khoản nhận dùng chung cho MỌI dòng đang hiển thị, hoặc `null` khi
+   * chúng khác nhau.
+   *
+   * Chi nhánh thường chỉ có một tài khoản nhận, nên cột nào cũng in lại đúng
+   * chuỗi đó — sáu dòng là sáu lần `0372899192`. Nó không giúp phân biệt giao
+   * dịch nào với giao dịch nào, chỉ chiếm một dòng chữ trên mỗi hàng.
+   */
+  const taiKhoanChung = (() => {
+    const soTaiKhoan = (data?.items ?? []).map((r) => r.account_number).filter(Boolean)
+    if (soTaiKhoan.length === 0 || soTaiKhoan.length !== (data?.items.length ?? 0)) return null
+    return new Set(soTaiKhoan).size === 1 ? (soTaiKhoan[0] as string) : null
+  })()
+
   function doiBoLoc(dat: () => void) {
     dat()
     // Đang ở trang 4 của kỳ cũ mà đổi sang kỳ chỉ có 1 trang thì bảng trống
@@ -405,7 +419,12 @@ export function ProviderReconciliationPage() {
                   </thead>
                   <tbody>
                     {data.items.map((r) => (
-                      <Dong key={r.id} r={r} onXuLy={() => setDangXuLy(r)} />
+                      <Dong
+                        key={r.id}
+                        r={r}
+                        anSoTaiKhoan={taiKhoanChung !== null}
+                        onXuLy={() => setDangXuLy(r)}
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -414,6 +433,21 @@ export function ProviderReconciliationPage() {
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#c4c7c8] px-4 py-3">
                 <p className="text-xs font-semibold text-[#747878]">
                   Trang {data.page}/{soTrang} · {data.total} giao dịch
+                  {/*
+                    Mọi dòng cùng một tài khoản nhận thì nói MỘT lần ở đây, thay
+                    vì lặp lại y hệt trên từng dòng. Số tài khoản không phải thứ
+                    phân biệt các giao dịch với nhau — nó chỉ trả lời "tiền về
+                    tài khoản nào", một câu hỏi hỏi một lần là đủ.
+
+                    Vẫn hiện theo dòng khi có nhiều tài khoản khác nhau, vì lúc
+                    đó nó lại là thông tin phân biệt thật.
+                  */}
+                  {taiKhoanChung ? (
+                    <>
+                      {" · Tài khoản nhận "}
+                      <span className="font-mono text-[#3d4040]">{taiKhoanChung}</span>
+                    </>
+                  ) : null}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -624,10 +658,10 @@ function OTong({
  * chiếu, mã đơn hàng. Nhìn vào không biết mã nào để tra sao kê, mã nào để tra
  * đơn. Người đối soát phải đoán, mà đoán sai thì tra nhầm hệ thống.
  */
-function Ma({ nhan, gia }: { nhan: string; gia: string }) {
+function Ma({ nhan, gia }: { nhan?: string; gia: string }) {
   return (
     <span className="mt-0.5 flex items-baseline gap-1.5 text-[11px] leading-snug">
-      <span className="shrink-0 text-[#8a8d8d]">{nhan}</span>
+      {nhan ? <span className="shrink-0 text-[#8a8d8d]">{nhan}</span> : null}
       <span className="truncate font-mono font-semibold text-[#3d4040]" title={gia}>
         {gia}
       </span>
@@ -635,7 +669,16 @@ function Ma({ nhan, gia }: { nhan: string; gia: string }) {
   )
 }
 
-function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
+function Dong({
+  r,
+  anSoTaiKhoan,
+  onXuLy,
+}: {
+  r: ReconciliationRow
+  /** Tài khoản nhận đã ghi một lần ở chân bảng — đừng lặp lại trên từng dòng. */
+  anSoTaiKhoan: boolean
+  onXuLy: () => void
+}) {
   const badge = NHAN_TRANG_THAI[r.match_status] ?? {
     text: r.match_status,
     lop: "bg-[#f1f0ef] text-[#5d5f5f] border-[#c4c7c8]",
@@ -676,11 +719,13 @@ function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
             Mã để font đơn cách: người dùng dò từng ký tự giữa màn hình này và
             tệp sao kê, mà font tỉ lệ làm 0/O, 1/l nhìn gần như nhau.
           */}
+          {/*
+            Bỏ nhãn "Mã ngân hàng"/"Mã VNPay": tiêu đề cột đã là "Mã bên ngân
+            hàng / cổng", và chiếc chip ngay phía trên đã nói nguồn là gì. Ba
+            lần nói cùng một điều trên cùng một ô.
+          */}
           {r.external_id ? (
-            <Ma
-              nhan={r.channel === "VNPAY" ? "Mã VNPay" : "Mã ngân hàng"}
-              gia={r.external_id}
-            />
+            <Ma gia={r.external_id} />
           ) : (
             // Giao dịch cũ, trả trước khi hệ thống bắt đầu lưu mã cổng. Nói
             // thẳng là chưa có, chứ để trống thì đọc ra như lỗi hiển thị.
@@ -688,7 +733,9 @@ function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
               chưa lưu mã giao dịch
             </span>
           )}
-          {r.account_number ? <Ma nhan="Tài khoản" gia={r.account_number} /> : null}
+          {r.account_number && !anSoTaiKhoan ? (
+            <Ma nhan="TK" gia={r.account_number} />
+          ) : null}
         </div>
       </td>
 
@@ -750,12 +797,31 @@ function Dong({ r, onXuLy }: { r: ReconciliationRow; onXuLy: () => void }) {
               {r.ref_code ? <Ma nhan="Mã tham chiếu" gia={r.ref_code} /> : null}
             </>
           )}
-          {r.subject ? (
-            <span className="mt-1 block text-[11px] font-semibold text-[#747878]">
-              {NHAN_LOAI[r.subject]}
+          {/*
+            Loại giao dịch và mã đơn gộp một dòng.
+
+            Mã đơn là định danh nội bộ, dài và bị cắt cụt nên không đọc hết
+            được — nó chỉ dùng để rê chuột xem đầy đủ hoặc chép đi tra. Cho nó
+            một dòng riêng kèm nhãn "Mã đơn" là trả giá bằng chiều cao của MỌI
+            hàng cho một thứ hiếm khi cần tới.
+          */}
+          {r.subject || r.txn_ref ? (
+            <span className="mt-1 flex items-baseline gap-1.5 text-[11px] leading-snug">
+              {r.subject ? (
+                <span className="shrink-0 font-semibold text-[#747878]">
+                  {NHAN_LOAI[r.subject]}
+                </span>
+              ) : null}
+              {r.txn_ref ? (
+                <span
+                  className="truncate font-mono text-[#8a8d8d]"
+                  title={r.txn_ref}
+                >
+                  {r.txn_ref}
+                </span>
+              ) : null}
             </span>
           ) : null}
-          {r.txn_ref ? <Ma nhan="Mã đơn" gia={r.txn_ref} /> : null}
         </div>
       </td>
 
