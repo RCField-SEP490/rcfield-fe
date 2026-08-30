@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { api } from "@/shared/lib/axios"
+import type { BankTransferCheckout } from "@/features/booking/types/booking.types"
 
 export type DamagePartType =
   | "TIRE_WHEEL"
@@ -103,6 +104,12 @@ export interface CreateWalkInBookingInput {
     guest_phone: string
     participant_type: string
   }[]
+  fnb_items?: {
+    menu_item_id: string
+    variant_id?: string
+    quantity: number
+    notes?: string
+  }[]
 }
 
 export interface CreateWalkInBookingResponse {
@@ -112,6 +119,7 @@ export interface CreateWalkInBookingResponse {
   source: string
   paymentStatus: string
   totalAmount: number
+  bankTransfer?: BankTransferCheckout
 }
 
 export interface TodayBookingItem {
@@ -151,6 +159,7 @@ export interface TodayBookingItem {
   plannedVehicles: string[]
   sessions: any[]
   hasPendingRefund?: boolean
+  createdAt?: string
 
   // Legacy aliases used by older UI widgets/mocks while the staff API was stabilizing.
   id?: string
@@ -158,7 +167,6 @@ export interface TodayBookingItem {
   customerPhone?: string | null
   startTime?: string
   endTime?: string
-  createdAt?: string
   mode?: string
   vehicleName?: string | null
   trackTypeName?: string | null
@@ -450,21 +458,32 @@ export const staffApi = {
   updateDamageItems: async (
     sessionId: string,
     inspectionId: string,
-    damageLineItems: DamageLineItemInput[],
+    payload:
+      | DamageLineItemInput[]
+      | {
+          damageLineItems: DamageLineItemInput[]
+          checklist?: { itemKey?: string; itemLabel: string; status: string; note?: string }[]
+          staffNotes?: string
+        },
   ): Promise<{
     damageLineItems: DamageLineItemDetail[]
     totalDamageCharge: number
+    checklist?: any[]
+    staffNotes?: string
   }> => {
+    const body = Array.isArray(payload) ? { damageLineItems: payload } : payload
     const res = await api.put<{
       success: boolean
       data: {
         inspectionId: string
         damageLineItems: DamageLineItemDetail[]
         totalDamageCharge: number
+        checklist?: any[]
+        staffNotes?: string
       }
     }>(
       `/v1/staff/sessions/${sessionId}/inspections/${inspectionId}/damage-items`,
-      { damageLineItems },
+      body,
     )
     return res.data.data
   },
@@ -556,6 +575,36 @@ export const staffApi = {
       success: boolean
       data: CreateWalkInBookingResponse
     }>("/v1/staff/bookings", body)
+    return res.data.data
+  },
+
+  confirmWalkInBankTransfer: async (
+    bookingId: string,
+  ): Promise<{ success: boolean; bookingId: string; status: string }> => {
+    const res = await api.post<{
+      success: boolean
+      data: { success: boolean; bookingId: string; status: string }
+    }>(`/v1/staff/bookings/${bookingId}/confirm-bank-transfer`)
+    return res.data.data
+  },
+
+  initiateWalkInSettleBankTransfer: async (
+    bookingId: string,
+  ): Promise<{
+    success: boolean
+    bookingId: string
+    amount: number
+    bankTransfer: BankTransferCheckout
+  }> => {
+    const res = await api.post<{
+      success: boolean
+      data: {
+        success: boolean
+        bookingId: string
+        amount: number
+        bankTransfer: BankTransferCheckout
+      }
+    }>(`/v1/staff/bookings/${bookingId}/settle-bank-transfer`)
     return res.data.data
   },
 
