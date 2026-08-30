@@ -39,7 +39,7 @@ export interface PaymentComponentResponse {
   refundedAt?: string | null
 }
 
-export type PaymentGateway = "VNPAY" | "DIRECT" | "MOCK"
+export type PaymentGateway = "VNPAY" | "DIRECT" | "MOCK" | "VIETQR" | "CASH"
 export type PaymentTransactionType = "PAYMENT" | "REFUND" | "CAPTURE" | "HOLD"
 export type PaymentTransactionStatus = "SUCCESS" | "PENDING" | "FAILED"
 
@@ -309,7 +309,7 @@ export interface CreateBookingResult {
 }
 
 /** Phương thức nhận tiền khả dụng của một chi nhánh. */
-export type CafePaymentMethodOption = "vnpay" | "bank_transfer"
+export type CafePaymentMethodOption = "vnpay" | "bank_transfer" | "pay_later"
 
 /**
  * Cách màn hình thanh toán xử lý kết quả checkout.

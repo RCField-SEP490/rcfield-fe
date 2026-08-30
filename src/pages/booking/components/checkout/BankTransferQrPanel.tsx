@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { CheckCircle2, Clock, Copy, Loader2, TimerOff } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Clock, Copy, Loader2, TimerOff } from "lucide-react"
 import { toast } from "sonner"
 
 import { bookingApi } from "@/features/booking/api/booking.api"
@@ -9,6 +9,7 @@ import type { BankTransferCheckout } from "@/features/booking/types/booking.type
 import { useWebSocket } from "@/features/notifications/hooks/useWebSocket"
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
+import { routePaths } from "@/app/router/route-paths"
 
 /**
  * Màn chờ chuyển khoản.
@@ -78,6 +79,8 @@ export function BankTransferQrPanel({
   onPaid,
   onContinue,
   onExpired,
+  onPayLater,
+  onChangeMethod,
 }: {
   subject: PaymentSubject
   checkout: BankTransferCheckout
@@ -86,6 +89,10 @@ export function BankTransferQrPanel({
   /** Chạy khi hết đếm ngược, hoặc khi khách bấm đi ngay. */
   onContinue?: () => void
   onExpired?: () => void
+  /** Chạy khi khách bấm chọn thanh toán sau (giữ chỗ trong 30 phút). */
+  onPayLater?: () => void
+  /** Chạy khi khách muốn đổi phương thức thanh toán khác. */
+  onChangeMethod?: () => void
 }) {
   const bookingId = subject.kind === "booking" ? subject.bookingId : null
   // Chỉ giữ đúng một mẩu state: "realtime đã báo tiền về chưa". Hết hạn và
@@ -181,6 +188,15 @@ export function BankTransferQrPanel({
           Mã này không còn hiệu lực. Nếu bạn đã chuyển tiền, liên hệ quán để
           được hỗ trợ — tiền vẫn được ghi nhận trong sổ đối soát.
         </p>
+        {onContinue && (
+          <Button
+            type="button"
+            className="mt-5 bg-slate-900 hover:bg-slate-800 text-white font-bold h-10 px-5 text-xs rounded-xl"
+            onClick={onContinue}
+          >
+            Quay lại đơn của tôi
+          </Button>
+        )}
       </div>
     )
   }
@@ -321,6 +337,41 @@ export function BankTransferQrPanel({
           Quét mã thì nội dung đã điền sẵn. Nếu gõ tay, giữ đúng nội dung trên
           để hệ thống nhận ra đơn của bạn.
         </p>
+
+        {/* Nút tuỳ chọn thanh toán sau hoặc đổi phương thức thanh toán */}
+        <div className="mt-6 flex flex-col gap-2.5 pt-3 border-t border-[#f1eeee]">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (onPayLater) {
+                onPayLater()
+              } else if (bookingId) {
+                toast.info("Đơn đặt lịch đã được giữ chỗ! Bạn có 30 phút để hoàn tất thanh toán.")
+                window.location.href = routePaths.customerBookingDetail.replace(
+                  ":bookingId",
+                  bookingId,
+                )
+              }
+            }}
+            className="w-full h-10.5 rounded-xl border-orange-200 bg-[#fff3eb]/40 hover:bg-[#fff3eb] text-xs font-bold text-[#ea580c] hover:text-[#c2410c] flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+          >
+            <Clock className="size-4 text-[#ea580c]" />
+            <span>Thanh toán sau (Giữ chỗ 30 phút)</span>
+          </Button>
+
+          {onChangeMethod && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onChangeMethod}
+              className="w-full h-9 rounded-xl text-xs font-semibold text-[#747878] hover:text-[#1c1b1b] hover:bg-[#f6f4f4] flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="size-3.5" />
+              <span>Đổi phương thức thanh toán khác</span>
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

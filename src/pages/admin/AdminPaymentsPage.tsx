@@ -19,6 +19,7 @@ import {
 } from "@/pages/admin/components/AdminPrimitives"
 import { subscriptionApi } from "@/features/subscriptions/api/subscription.api"
 import type { LedgerRow, LedgerSource } from "@/features/subscriptions/types"
+import { formatPaymentGateway } from "@/shared/lib/format"
 
 const SOURCE_LABELS: Record<LedgerSource, string> = {
   SAAS: "Gói thuê bao",
@@ -115,7 +116,7 @@ export function AdminPaymentsPage() {
       key={`${row.id}-gateway`}
       className="text-xs font-semibold text-[#444748]"
     >
-      {row.gateway ?? "—"}
+      {row.gateway ? formatPaymentGateway(row.gateway) : "—"}
     </span>,
     <span key={`${row.id}-date`} className="font-mono text-xs text-[#747878]">
       {formatDateTime(row.created_at)}

@@ -1,6 +1,17 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ElementType } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, Download, Landmark, Loader2, Search } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowDownLeft,
+  CheckCircle2,
+  CreditCard,
+  Download,
+  Landmark,
+  Loader2,
+  RotateCcw,
+  Search,
+  TrendingUp,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -72,6 +83,7 @@ const NHAN_LY_DO: Record<string, string> = {
 const NHAN_NGUON: Record<ReconciliationChannel, { text: string; lop: string }> = {
   BANK: { text: "Chuyển khoản", lop: "bg-[#e8eef7] text-[#1f4a80] border-[#a9c2e0]" },
   VNPAY: { text: "VNPay", lop: "bg-[#f3eaf7] text-[#5c2d73] border-[#cdaadd]" },
+  REFUND: { text: "Hoàn tiền", lop: "bg-[#fdf2f2] text-[#991b1b] border-[#fecaca]" },
 }
 
 const NHAN_LOAI: Record<string, string> = {
@@ -248,8 +260,9 @@ export function ProviderReconciliationPage() {
                 className="h-11 rounded-md border border-[#c4c7c8] bg-white px-3 text-sm font-medium text-[#1c1b1b]"
               >
                 <option value="">Tất cả nguồn</option>
-                <option value="BANK">Chuyển khoản</option>
-                <option value="VNPAY">VNPay</option>
+                <option value="BANK">Chuyển khoản (Tiền vào)</option>
+                <option value="VNPAY">VNPay (Tiền vào)</option>
+                <option value="REFUND">Hoàn tiền (Tiền ra)</option>
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
@@ -312,45 +325,53 @@ export function ProviderReconciliationPage() {
           </div>
         </section>
 
-        {/* ── Bốn con số của kỳ ────────────────────────────────────────── */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* ── Các con số của kỳ (Dòng tiền vào - Tiền ra - Thực nhận) ───── */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <OTong
             nhan="Tổng tiền vào"
             giaTri={tienVN(tong?.total_amount ?? 0)}
-            phu={`${tong?.total_count ?? 0} giao dịch trong kỳ`}
-            noiBat
+            phu={`${tong?.total_count ?? 0} giao dịch thu trong kỳ`}
+            icon={ArrowDownLeft}
+            variant="inflow"
           />
-          {/*
-            Hai nguồn để RIÊNG hai ô, không cộng chung. Tiền chuyển khoản vào
-            thẳng tài khoản ngân hàng chi nhánh; tiền VNPay nằm ở tài khoản
-            người bán của cổng rồi mới quyết toán về sau. Mỗi con số đối chiếu
-            với một báo cáo khác nhau — gộp lại thì không khớp với bên nào cả.
-          */}
           <OTong
-            nhan="Chuyển khoản"
+            nhan="Tiền hoàn trả (Tiền ra)"
+            giaTri={(tong?.refund_amount ?? 0) > 0 ? `−${tienVN(tong?.refund_amount ?? 0)}` : "0 ₫"}
+            phu={`${tong?.refund_count ?? 0} giao dịch hoàn hủy đơn/cọc`}
+            icon={RotateCcw}
+            variant={(tong?.refund_amount ?? 0) > 0 ? "outflow" : "default"}
+          />
+          <OTong
+            nhan="Doanh thu thực nhận"
+            giaTri={tienVN(tong?.net_amount ?? ((tong?.total_amount ?? 0) - (tong?.refund_amount ?? 0)))}
+            phu="Doanh thu thuần sau khi trừ hoàn tiền"
+            icon={TrendingUp}
+            variant="primary"
+          />
+          <OTong
+            nhan="Chuyển khoản (VietQR)"
             giaTri={tienVN(tong?.bank_amount ?? 0)}
-            phu={`${tong?.bank_count ?? 0} giao dịch · so với sao kê ngân hàng`}
+            phu={`${tong?.bank_count ?? 0} giao dịch · Đối chiếu sao kê ngân hàng`}
+            icon={Landmark}
+            variant="default"
           />
           <OTong
-            nhan="VNPay"
+            nhan="Cổng thanh toán VNPay"
             giaTri={tienVN(tong?.vnpay_amount ?? 0)}
-            phu={`${tong?.vnpay_count ?? 0} giao dịch · so với báo cáo VNPay`}
+            phu={`${tong?.vnpay_count ?? 0} giao dịch · Đối chiếu báo cáo VNPay`}
+            icon={CreditCard}
+            variant="default"
           />
-          {/*
-            Con số quan trọng nhất trên màn hình, và là lý do màn hình tồn tại:
-            tiền đã vào mà hệ thống chưa gắn được vào đơn nào. Chốt sổ là đưa nó
-            về 0. Chỉ phát sinh ở nguồn chuyển khoản — dòng VNPay là bản ghi của
-            chính mình nên không có gì để lệch.
-          */}
           <OTong
-            nhan="Chưa đối soát"
+            nhan="Trạng thái đối soát"
             giaTri={tienVN(tong?.unreconciled_amount ?? 0)}
             phu={
               (tong?.unreconciled_amount ?? 0) > 0
-                ? `${tong?.needs_review_count ?? 0} giao dịch cần xử lý trước khi chốt sổ`
-                : "Khớp hoàn toàn"
+                ? `${tong?.needs_review_count ?? 0} giao dịch cần kiểm tra gán đơn`
+                : "Khớp 100% với đơn hệ thống"
             }
-            canhBao={(tong?.unreconciled_amount ?? 0) > 0}
+            icon={(tong?.unreconciled_amount ?? 0) > 0 ? AlertTriangle : CheckCircle2}
+            variant={(tong?.unreconciled_amount ?? 0) > 0 ? "warning" : "success"}
           />
         </section>
 
@@ -618,36 +639,62 @@ function OTong({
   nhan,
   giaTri,
   phu,
-  noiBat,
-  canhBao,
+  icon: Icon,
+  variant = "default",
 }: {
   nhan: string
   giaTri: string
   phu: string
-  noiBat?: boolean
-  canhBao?: boolean
+  icon?: ElementType
+  variant?: "default" | "primary" | "inflow" | "outflow" | "warning" | "success"
 }) {
+  const styles = {
+    default: "border-[#e5e7eb] bg-white text-[#111827] shadow-sm hover:border-[#cbd5e1]",
+    primary: "border-orange-200 bg-gradient-to-br from-orange-50/70 via-white to-amber-50/40 text-orange-950 shadow-sm hover:border-orange-300",
+    inflow: "border-blue-200 bg-gradient-to-br from-blue-50/60 via-white to-indigo-50/30 text-blue-950 shadow-sm hover:border-blue-300",
+    outflow: "border-rose-200 bg-gradient-to-br from-rose-50/60 via-white to-pink-50/30 text-rose-950 shadow-sm hover:border-rose-300",
+    warning: "border-amber-200 bg-gradient-to-br from-amber-50/70 via-white to-yellow-50/40 text-amber-950 shadow-sm hover:border-amber-300",
+    success: "border-emerald-200 bg-gradient-to-br from-emerald-50/60 via-white to-teal-50/30 text-emerald-950 shadow-sm hover:border-emerald-300",
+  }[variant]
+
+  const iconStyles = {
+    default: "bg-gray-100 text-gray-600",
+    primary: "bg-orange-100 text-orange-600",
+    inflow: "bg-blue-100 text-blue-600",
+    outflow: "bg-rose-100 text-rose-600",
+    warning: "bg-amber-100 text-amber-600",
+    success: "bg-emerald-100 text-emerald-600",
+  }[variant]
+
+  const valueColor = {
+    default: "text-[#1c1b1b]",
+    primary: "text-orange-600",
+    inflow: "text-blue-700",
+    outflow: "text-rose-600",
+    warning: "text-amber-700",
+    success: "text-emerald-700",
+  }[variant]
+
   return (
-    <div
-      className={
-        "rounded-xl border bg-white p-5 " +
-        (canhBao ? "border-[#e0a06a] bg-[#fffaf4]" : "border-[#c4c7c8]")
-      }
-    >
-      <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#747878]">
-        {canhBao ? <AlertTriangle className="size-3.5 text-[#b3661f]" /> : null}
-        {nhan}
+    <div className={`relative flex flex-col justify-between overflow-hidden rounded-2xl border p-5 transition-all hover:shadow-md ${styles}`}>
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#6b7280]">
+            {nhan}
+          </span>
+          {Icon && (
+            <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${iconStyles}`}>
+              <Icon className="size-4" />
+            </div>
+          )}
+        </div>
+        <div className={`mt-2.5 whitespace-nowrap text-2xl font-black tracking-tight ${valueColor}`}>
+          {giaTri}
+        </div>
+      </div>
+      <p className="mt-2 truncate text-xs font-medium text-[#6b7280]" title={phu}>
+        {phu}
       </p>
-      <p
-        className={
-          "mt-2 font-extrabold leading-tight tracking-tight " +
-          (noiBat ? "text-3xl text-[#1c1b1b]" : "text-2xl") +
-          (canhBao ? " text-[#8a4b12]" : " text-[#1c1b1b]")
-        }
-      >
-        {giaTri}
-      </p>
-      <p className="mt-1 text-xs font-semibold text-[#5d5f5f]">{phu}</p>
     </div>
   )
 }/**
@@ -752,13 +799,20 @@ function Dong({
         lần cho một phép trừ.
       */}
       <td className="whitespace-nowrap px-4 py-3 text-right">
-        <span className="block font-bold text-[#1c1b1b]">{tienVN(r.amount)}</span>
-        {r.expected_amount != null && lech !== 0 ? (
+        <span
+          className={
+            "block font-bold " +
+            (r.channel === "REFUND" ? "text-rose-700" : "text-[#1c1b1b]")
+          }
+        >
+          {r.channel === "REFUND" ? `−${tienVN(r.amount)}` : tienVN(r.amount)}
+        </span>
+        {r.expected_amount != null && lech !== 0 && r.channel !== "REFUND" ? (
           <span className="mt-0.5 block text-[11px] font-semibold text-[#747878]">
             Cần thu {tienVN(r.expected_amount)}
           </span>
         ) : null}
-        {lech != null && lech !== 0 ? (
+        {lech != null && lech !== 0 && r.channel !== "REFUND" ? (
           <span
             className={
               "mt-0.5 block text-[11px] font-bold " +

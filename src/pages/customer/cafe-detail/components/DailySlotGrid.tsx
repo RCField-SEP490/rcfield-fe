@@ -46,18 +46,21 @@ type DailySlotGridProps = {
   minBookingNoticeMinutes?: number
   noticeMessage?: string
   maxSelectableSlots?: number
+  allowCurrentSlot?: boolean
 }
 
 function capacityLabel(kind: DailySlotCapacityKind): string {
   return kind === "rental_vehicle" ? "xe thuê" : "chỗ mang xe riêng"
 }
 
-function slotAvailabilityLabel(slot: DailySlot): string {
+function slotAvailabilityLabel(slot: DailySlot, isCurrent?: boolean): string {
   if (slot.status === "contest") return "Có giải đấu"
   if (slot.status === "booked") return "Hết"
   if (slot.status === "closed") return "Đóng"
-  if (slot.remaining > 0)
+  if (slot.remaining > 0) {
+    if (isCurrent) return `Chơi ngay (${slot.remaining})`
     return `Còn ${slot.remaining} ${capacityLabel(slot.capacityKind)}`
+  }
   return "Hết"
 }
 
@@ -94,6 +97,7 @@ export function DailySlotGrid({
   minBookingNoticeMinutes = 0,
   noticeMessage,
   maxSelectableSlots = 8,
+  allowCurrentSlot = false,
 }: DailySlotGridProps) {
   const [selectionLimitMessage, setSelectionLimitMessage] = useState(false)
   const today = new Date().toLocaleDateString("sv-SE")
@@ -120,15 +124,28 @@ export function DailySlotGrid({
 
   const getSlotTiming = (slot: DailySlot) => {
     const [hh, mm] = slot.startTime.split(":").map(Number)
-    const slotMinutes = hh * 60 + mm
-    const isPast = isToday && slotMinutes < nowMinutes
+    const slotStartMinutes = hh * 60 + mm
+    const slotEndMinutes = slotStartMinutes + slotDurationMinutes
+
+    const isPast =
+      isToday &&
+      (allowCurrentSlot
+        ? slotEndMinutes <= nowMinutes
+        : slotStartMinutes < nowMinutes)
+    const isCurrent =
+      isToday &&
+      allowCurrentSlot &&
+      slotStartMinutes <= nowMinutes &&
+      slotEndMinutes > nowMinutes
+
     const isTooSoon =
       isToday &&
       !isPast &&
+      !allowCurrentSlot &&
       minBookingNoticeMinutes > 0 &&
-      slotMinutes - nowMinutes < minBookingNoticeMinutes
+      slotStartMinutes - nowMinutes < minBookingNoticeMinutes
 
-    return { isPast, isTooSoon }
+    return { isPast, isTooSoon, isCurrent }
   }
 
   // Slot is within the confirmed selection range
@@ -298,7 +315,7 @@ export function DailySlotGrid({
 
       <div className="grid grid-cols-4 gap-1.5">
         {visibleSlots.map((slot) => {
-          const { isPast, isTooSoon } = getSlotTiming(slot)
+          const { isPast, isTooSoon, isCurrent } = getSlotTiming(slot)
 
           const isBooked =
             slot.status === "booked" ||
@@ -326,10 +343,16 @@ export function DailySlotGrid({
                     "bg-muted text-muted-foreground opacity-70 border-muted",
                   !isSelected &&
                     !isBooked &&
+                    isCurrent &&
+                    "border-emerald-500 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-500 font-bold hover:bg-emerald-100",
+                  !isSelected &&
+                    !isBooked &&
+                    !isCurrent &&
                     slot.status === "available" &&
                     "border-emerald-200 bg-emerald-50/70 text-emerald-900 hover:bg-emerald-100",
                   !isSelected &&
                     !isBooked &&
+                    !isCurrent &&
                     slot.status === "limited" &&
                     "border-amber-200 bg-amber-50/80 text-amber-900 hover:bg-amber-100",
                   isSelected &&
@@ -345,7 +368,7 @@ export function DailySlotGrid({
                     ? "Đã qua"
                     : isTooSoon
                       ? "Quá sát"
-                      : slotAvailabilityLabel(slot)}
+                      : slotAvailabilityLabel(slot, isCurrent)}
                 </span>
               </Button>
             </span>

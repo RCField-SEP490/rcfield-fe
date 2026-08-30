@@ -50,7 +50,7 @@ export interface OwnerLedger {
  * `VNPAY` nằm ở tài khoản người bán của cổng → so với báo cáo đối soát VNPay.
  * Hai bên không được cộng chung, vì con số gộp không khớp với bên nào cả.
  */
-export type ReconciliationChannel = "BANK" | "VNPAY"
+export type ReconciliationChannel = "BANK" | "VNPAY" | "REFUND"
 
 export interface ReconciliationRow {
   id: string
@@ -84,6 +84,11 @@ export interface ReconciliationSummary {
   /** Con số so với BÁO CÁO ĐỐI SOÁT CỦA VNPAY. */
   vnpay_count: number
   vnpay_amount: number
+  /** Tiền hoàn trả khách (Outflow) trong kỳ. */
+  refund_count: number
+  refund_amount: number
+  /** Doanh thu thực nhận sau khi trừ hoàn tiền. */
+  net_amount: number
   matched_count: number
   matched_amount: number
   needs_review_count: number

@@ -16,6 +16,7 @@ import {
   Coffee,
   Car,
   ArrowRight,
+  Camera,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
@@ -31,6 +32,7 @@ import {
   StaffStatCard,
 } from "./components/StaffUI"
 import { StaffPendingTransfersCard } from "./components/StaffPendingTransfersCard"
+import { StaffCameraQrScannerModal } from "@/features/staff/components/StaffCameraQrScannerModal"
 
 export default function StaffDashboardPage() {
   const navigate = useNavigate()
@@ -43,6 +45,7 @@ export default function StaffDashboardPage() {
 
   const [activeCafe, setActiveCafe] = useState<BackendCafe | null>(null)
   const [scanCode, setScanCode] = useState("")
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false)
 
   const { data: todayBookings = [] } = useQuery({
     queryKey: staffQueryKeys.todayBookings(),
@@ -73,17 +76,18 @@ export default function StaffDashboardPage() {
     }
   }, [assignedCafeId])
 
-  const handleQRSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!scanCode.trim()) return
+  const processBookingCheckIn = async (rawCode: string) => {
+    const trimmed = rawCode.trim().toUpperCase()
+    if (!trimmed) return
 
-    const trimmed = scanCode.trim().toUpperCase()
+    setScanCode(rawCode.trim())
+
     const match = bookings.find(
-      (b) => b.shortCode.toUpperCase() === trimmed || b.bookingId === scanCode.trim()
+      (b) => b.shortCode.toUpperCase() === trimmed || b.bookingId === rawCode.trim()
     )
 
     if (!match) {
-      toast.error(`Mã đặt lịch "${scanCode}" không tồn tại trong hôm nay!`)
+      toast.error(`Mã đặt lịch "${rawCode}" không tồn tại trong hôm nay!`)
       return
     }
 
@@ -115,6 +119,12 @@ export default function StaffDashboardPage() {
       toast.success(`Quét mã QR ${match.shortCode} thành công!`)
       navigate(`/staff/sessions/${newSessionId}`)
     }
+  }
+
+  const handleQRSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!scanCode.trim()) return
+    await processBookingCheckIn(scanCode)
   }
 
   // 1. Unassigned cafe guard fallback (layout guard handles most, but safe fallback here)
@@ -203,27 +213,47 @@ export default function StaffDashboardPage() {
 
       {/* 4. Action Forms Panel */}
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Check-In QR Simulator */}
+        {/* Check-In QR Simulator / Camera Scanner */}
         <StaffCard className="md:col-span-2 space-y-4" glow>
-          <div className="flex items-center gap-2 text-[#ea580c]">
-            <QrCode className="size-5" />
-            <h3 className="font-bold text-[#1c1b1b] text-base">Quét mã QR nhận xe</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[#ea580c]">
+              <QrCode className="size-5" />
+              <h3 className="font-bold text-[#1c1b1b] text-base">Quét mã QR nhận xe</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCameraScannerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#ea580c] bg-[#fff3eb] hover:bg-[#ffe5d4] rounded-lg transition-colors border border-[#ffdbca] shadow-xs cursor-pointer"
+            >
+              <Camera className="size-4" />
+              <span>Mở Camera quét</span>
+            </button>
           </div>
 
           <form onSubmit={handleQRSubmit} className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Nhập mã đơn đặt lịch (ví dụ: RCF-8829)"
-              value={scanCode}
-              onChange={(e) => setScanCode(e.target.value)}
-              className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c] placeholder-[#a09e9d] transition-all"
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Nhập mã đơn đặt lịch (ví dụ: RCF-8829)"
+                value={scanCode}
+                onChange={(e) => setScanCode(e.target.value)}
+                className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 pr-11 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c] placeholder-[#a09e9d] transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                title="Mở camera quét mã QR"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-md text-[#747878] hover:bg-[#fff3eb] hover:text-[#ea580c] transition-colors cursor-pointer"
+              >
+                <Camera className="size-4" />
+              </button>
+            </div>
             <StaffButton type="submit" variant="primary">
               Nhận xe
             </StaffButton>
           </form>
           <p className="text-xs text-[#6b7280] leading-relaxed">
-            Nhập mã đơn hoặc quét QR của khách hàng để mở nhanh giao diện kiểm tra và bàn giao xe cho lượt chạy mới.
+            Nhập mã đơn, dùng máy quét hoặc bấm <strong>Mở Camera quét</strong> để nhận diện nhanh mã QR của khách và mở giao diện bàn giao xe.
           </p>
         </StaffCard>
 
@@ -421,6 +451,15 @@ export default function StaffDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Camera QR Scanner Modal */}
+      <StaffCameraQrScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScanSuccess={(code) => {
+          processBookingCheckIn(code)
+        }}
+      />
     </div>
   )
 }

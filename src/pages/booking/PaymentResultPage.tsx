@@ -18,7 +18,7 @@ import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent } from "@/shared/ui/card"
 import { bookingApi } from "@/features/booking/api/booking.api"
-import { formatCurrency } from "@/shared/lib/format"
+import { formatCurrency, formatPaymentGateway } from "@/shared/lib/format"
 
 /**
  * A result page is a payment receipt, not the booking invoice. The booking
@@ -405,12 +405,7 @@ function formatPaymentResultComponent(type: string, additionalPayment: boolean):
 }
 
 function formatGateway(gateway?: string): string {
-  const labels: Record<string, string> = {
-    VNPAY: "VNPay",
-    MOCK: "Thanh toán thử nghiệm",
-    DIRECT: "Thanh toán trực tiếp",
-  }
-  return gateway ? (labels[gateway] ?? gateway) : "Đang cập nhật"
+  return formatPaymentGateway(gateway)
 }
 
 function formatPaymentTime(value?: string): string {

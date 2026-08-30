@@ -28,6 +28,7 @@ import { CafeQuickViewDialog } from "./components/CafeQuickViewDialog"
 import {
   buildBookingUrl,
   cafeInBounds,
+  filterCafes,
   haversineKm,
   type MapBounds,
   type UserLocation,
@@ -250,7 +251,7 @@ export function ExplorePage() {
   }, [mapBounds, searchOnMove])
 
   const filteredCafes = useMemo(() => {
-    let visible = cafes
+    let visible = filterCafes(cafes, filters.params)
     if (searchOnMove && mapBounds)
       visible = visible.filter((c) => cafeInBounds(c, mapBounds))
 
@@ -284,10 +285,16 @@ export function ExplorePage() {
       }
       return 0
     })
-  }, [cafes, userLocation, mapBounds, searchOnMove, favoriteIds])
+  }, [cafes, userLocation, mapBounds, searchOnMove, favoriteIds, filters.params])
 
   const handleBookNow = (cafeId: string, vehicleId?: string) => {
-    navigate(buildBookingUrl(cafeId, vehicleId))
+    navigate(
+      buildBookingUrl(cafeId, vehicleId, {
+        date: filters.date,
+        time: filters.time,
+        playMode: filters.playMode,
+      }),
+    )
   }
 
   return (

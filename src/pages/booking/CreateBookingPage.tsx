@@ -224,12 +224,14 @@ export function CreateBookingPage() {
   )
   const [bookingCalendarStart] = useState(getVietnamToday)
   const [time, setTime] = useState(
-    searchParams.get("slot") ?? bookingCatalog.timeOptions[0],
+    searchParams.get("slot") ?? searchParams.get("time") ?? bookingCatalog.timeOptions[0],
   )
   const [preselectedSlotEnd, setPreselectedSlotEnd] = useState(
     searchParams.get("slotEnd") ?? null,
   )
-  const [playMode, setPlayMode] = useState<CustomerPlayMode>("RENTAL")
+  const [playMode, setPlayMode] = useState<CustomerPlayMode>(
+    searchParams.get("playMode") === "BYOC" ? "BYOC" : "RENTAL",
+  )
   const [participants, setParticipants] = useState(1)
   const [companions, setCompanions] = useState<Companion[]>([])
   const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(
@@ -624,6 +626,15 @@ export function CreateBookingPage() {
         ...(appliedPromo ? { promotion_code: appliedPromo.code } : {}),
       })
 
+      if (selectedPaymentMethod === "pay_later") {
+        toast.success("Giữ chỗ đặt lịch thành công! Bạn có 30 phút để hoàn tất thanh toán.")
+        window.location.href = routePaths.customerBookingDetail.replace(
+          ":bookingId",
+          booking.booking_id,
+        )
+        return
+      }
+
       const checkout = await createCheckoutMutation.mutateAsync({
         bookingId: booking.booking_id,
         paymentMethod: selectedPaymentMethod,
@@ -945,6 +956,16 @@ export function CreateBookingPage() {
               subject={{ kind: "booking", bookingId: bankTransfer.bookingId }}
               checkout={bankTransfer.checkout}
               onPaid={() => toast.success("Đã nhận được thanh toán!")}
+              onPayLater={() => {
+                toast.success("Đơn đặt lịch đã được giữ chỗ trong 30 phút! Bạn có thể thanh toán sau.")
+                window.location.href = routePaths.customerBookingDetail.replace(
+                  ":bookingId",
+                  bankTransfer.bookingId,
+                )
+              }}
+              onChangeMethod={() => {
+                setBankTransfer(null)
+              }}
               onContinue={() => {
                 // Về thẳng đơn vừa trả tiền chứ không về danh sách: khách vừa
                 // chuyển tiền xong, thứ họ muốn xem là đơn đó — bắt tự dò lại
@@ -994,6 +1015,7 @@ export function CreateBookingPage() {
           slotMultiplier={isMockId ? 1 : slotMultiplier}
           discountAmount={appliedPromo?.discount_amount ?? 0}
           promoCode={appliedPromo?.code ?? null}
+          isPayLater={selectedPaymentMethod === "pay_later"}
           isNextDisabled={
             (currentStep === "track" &&
               (!selectedTrackConfig ||

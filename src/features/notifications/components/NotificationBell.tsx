@@ -93,10 +93,10 @@ export function NotificationBell() {
       n.type === "SESSION_CHECKIN_INSPECTION" ||
       n.type === "SESSION_CHECKOUT_INSPECTION"
     ) {
-      if (sessionId) {
-        navigate(`/customer/inspections/${sessionId}`)
-      } else if (bookingId) {
+      if (bookingId) {
         navigate(`/customer/bookings/${bookingId}?section=handover`)
+      } else if (sessionId) {
+        navigate(`/customer/bookings`)
       } else {
         navigate("/customer/bookings")
       }
