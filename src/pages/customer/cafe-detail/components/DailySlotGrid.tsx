@@ -4,7 +4,20 @@ import { cn } from "@/shared/lib/utils"
 import { Clock3 } from "lucide-react"
 import { useState } from "react"
 
-export type DailySlotStatus = "available" | "limited" | "booked" | "closed"
+export type DailySlotStatus =
+  | "available"
+  | "limited"
+  | "booked"
+  /** Ngoài giờ mở cửa. */
+  | "closed"
+  /**
+   * Sân bị một giải đấu giữ riêng trong khung giờ này.
+   *
+   * Tách khỏi `booked` vì hai thứ này khác hẳn nhau với khách: "hết chỗ" nghĩa
+   * là thử giờ khác trong cùng ngày, còn "có giải đấu" thường khoá cả ngày và
+   * việc cần làm là đổi sang ngày khác — hoặc đăng ký thi đấu.
+   */
+  | "contest"
 export type DailySlotCapacityKind = "rental_vehicle" | "byoc_spot"
 
 export type DailySlot = {
@@ -16,6 +29,8 @@ export type DailySlot = {
   rentalCount: number
   byocRemaining: number
   capacityKind: DailySlotCapacityKind
+  /** Tên giải đang giữ sân — chỉ có khi `status === "contest"`. */
+  contestName?: string
 }
 
 type DailySlotGridProps = {
@@ -38,6 +53,7 @@ function capacityLabel(kind: DailySlotCapacityKind): string {
 }
 
 function slotAvailabilityLabel(slot: DailySlot): string {
+  if (slot.status === "contest") return "Có giải đấu"
   if (slot.status === "booked") return "Hết"
   if (slot.status === "closed") return "Đóng"
   if (slot.remaining > 0)
@@ -139,6 +155,7 @@ export function DailySlotGrid({
       if (
         !s ||
         s.status === "booked" ||
+        s.status === "contest" ||
         s.status === "closed" ||
         isPast ||
         isTooSoon
@@ -160,7 +177,12 @@ export function DailySlotGrid({
   }
 
   const handleSlotClick = (slot: DailySlot) => {
-    if (slot.status === "booked" || slot.status === "closed") return
+    if (
+      slot.status === "booked" ||
+      slot.status === "closed" ||
+      slot.status === "contest"
+    )
+      return
 
     if (!selectedSlotId) {
       startNew(slot)
@@ -248,12 +270,39 @@ export function DailySlotGrid({
         </div>
       )}
 
+      {/*
+        Nói thẳng vì sao cả ngày không đặt được.
+
+        Không có dòng này thì khách chỉ thấy một lưới toàn chữ "Có giải đấu" và
+        vẫn phải tự suy ra rằng nên đổi ngày. Nêu tên giải cũng biến một ngày
+        hỏng thành một lời mời — thông tin công khai, vì giải vốn được đăng lên
+        trang chủ để gọi người tham gia.
+      */}
+      {(() => {
+        const slotGiai = visibleSlots.filter((s) => s.status === "contest")
+        if (slotGiai.length === 0) return null
+        const tenGiai = slotGiai.find((s) => s.contestName)?.contestName
+        const caNgay = slotGiai.length === visibleSlots.length
+        return (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-900">
+            <span className="font-bold">
+              {caNgay ? "Cả ngày này" : `${slotGiai.length} khung giờ`} sân được
+              giữ riêng cho giải đấu
+              {tenGiai ? ` “${tenGiai}”` : ""}.
+            </span>{" "}
+            Bạn chọn ngày khác giúp mình nhé — hoặc đăng ký thi đấu nếu muốn
+            tham gia.
+          </div>
+        )
+      })()}
+
       <div className="grid grid-cols-4 gap-1.5">
         {visibleSlots.map((slot) => {
           const { isPast, isTooSoon } = getSlotTiming(slot)
 
           const isBooked =
             slot.status === "booked" ||
+            slot.status === "contest" ||
             slot.status === "closed" ||
             isPast ||
             isTooSoon

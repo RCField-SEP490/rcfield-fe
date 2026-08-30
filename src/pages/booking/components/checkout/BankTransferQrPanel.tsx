@@ -261,24 +261,24 @@ export function BankTransferQrPanel({
             )}
           </div>
 
-          <dl className="mt-3 space-y-0.5 text-xs leading-relaxed text-[#747878]">
-            <div>
-              <dt className="inline">Tên chủ TK: </dt>
-              <dd className="inline font-bold text-[#1c1b1b]">
-                {checkout.account_name}
-              </dd>
-            </div>
-            <div>
-              <dt className="inline">Số TK: </dt>
-              <dd className="inline font-bold tabular-nums text-[#1c1b1b]">
-                {checkout.account_number}
-              </dd>
-            </div>
-            <div>
-              <dt className="inline">Ngân hàng: </dt>
-              <dd className="inline">{checkout.bank_name}</dd>
-            </div>
-          </dl>
+          {/*
+            Dưới mã QR chỉ nói NGƯỜI NHẬN là ai — thứ khách phải soi trước khi
+            bấm xác nhận trong app ngân hàng. Số tài khoản không nằm ở đây: nó
+            đã có ở khối bên dưới kèm nút sao chép, và bày hai lần trên cùng một
+            màn hình khiến người đọc tưởng là hai tài khoản khác nhau.
+
+            Cũng bỏ luôn nhãn "Tên chủ TK:" / "Ngân hàng:". Nhãn kèm giá trị
+            viết theo lối `inline` rồi căn giữa thì mỗi dòng dài một kiểu, mép
+            trái mép phải đều so le — chính là chỗ trông "không đều". Đặt ngay
+            dưới một mã QR, một cái tên in đậm và một tên ngân hàng đã tự nói
+            được nó là gì.
+          */}
+          <div className="mt-3 leading-snug">
+            <p className="text-sm font-bold text-[#1c1b1b]">
+              {checkout.account_name}
+            </p>
+            <p className="mt-0.5 text-xs text-[#747878]">{checkout.bank_name}</p>
+          </div>
         </div>
 
         {/*
@@ -308,7 +308,7 @@ export function BankTransferQrPanel({
           và tên chủ tài khoản đã nằm trên thẻ ngay trên kia rồi.
         */}
         <div className="mt-5 divide-y divide-[#f1eeee] rounded-xl bg-[#fbfafa] px-3.5 text-sm">
-          <Row label="Số tài khoản" value={checkout.account_number} copyable />
+          <Row label="Số tài khoản" value={checkout.account_number} copyable numeric />
           <Row label="Nội dung" value={checkout.ref_code} copyable highlight />
         </div>
 
@@ -331,19 +331,23 @@ function Row({
   value,
   copyable,
   highlight,
+  numeric,
 }: {
   label: string
   value: string
   copyable?: boolean
   highlight?: boolean
+  /** Dãy số dài — dùng chữ số đều bề ngang để hai hàng thẳng cột với nhau. */
+  numeric?: boolean
 }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
-      <dt className="text-[#747878]">{label}</dt>
-      <dd className="flex items-center gap-1.5">
+      <dt className="shrink-0 text-[#747878]">{label}</dt>
+      <dd className="flex min-w-0 items-center gap-1.5">
         <span
           className={cn(
-            "font-bold text-[#1c1b1b]",
+            "truncate font-bold text-[#1c1b1b]",
+            numeric && "tabular-nums",
             highlight && "rounded bg-orange-50 px-2 py-0.5 text-orange-700",
           )}
         >
@@ -354,7 +358,7 @@ function Row({
             type="button"
             variant="ghost"
             size="sm"
-            className="size-7 p-0"
+            className="size-7 shrink-0 p-0"
             onClick={() => {
               void navigator.clipboard.writeText(value)
               toast.success("Đã sao chép")

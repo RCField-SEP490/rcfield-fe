@@ -1133,7 +1133,16 @@ export function ProviderBookingsPage() {
   const [detailBookingId, setDetailBookingId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "ALL">("ALL")
-  const [periodPreset, setPeriodPreset] = useState<BookingPeriodPreset>("TODAY")
+  /*
+    Mặc định xem TẤT CẢ, không phải hôm nay.
+
+    Chủ sân mở trang này để nắm tình hình cả chuỗi, không phải để trực quầy —
+    việc trực từng ca là của màn hình nhân viên. Lọc sẵn theo hôm nay khiến
+    trang trắng trơn vào bất kỳ ngày nào không có đơn, và ba ô thống kê phía
+    trên đều về 0. Nhìn vào không phân biệt được "chưa có đơn nào" với "hệ thống
+    hỏng" — thứ mà một danh sách rỗng luôn gợi ý trước.
+  */
+  const [periodPreset, setPeriodPreset] = useState<BookingPeriodPreset>("ALL_TIME")
   const [customFrom, setCustomFrom] = useState(today)
   const [customTo, setCustomTo] = useState(today)
   const limit = 20

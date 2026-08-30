@@ -97,6 +97,23 @@ function restoreProviderSidebarScroll(element: HTMLElement | null) {
   }
 }
 
+/**
+ * Những loại thông báo ĐÃ có nhánh xử lý riêng ở `handleWsMessage`.
+ *
+ * Chúng được hiện bằng thông báo đầy đủ hơn — có nút "Xem", có tên chi nhánh,
+ * có giờ chơi — nên nhánh tổng quát phải im lặng, nếu không chủ sân nhận hai
+ * hộp cho cùng một đơn.
+ *
+ * Thêm một nhánh riêng mới thì nhớ thêm loại tương ứng vào đây. Quên là lại
+ * hiện hai lần, và triệu chứng chỉ lộ ra khi có người thật bấm thử.
+ */
+const LOAI_DA_CO_THONG_BAO_RIENG = new Set([
+  // ← sự kiện NEW_BOOKING
+  "BOOKING_CREATED",
+  // ← sự kiện BOOKING_CANCELLED_OPERATIONAL
+  "BOOKING_CANCELLED",
+])
+
 export function ProviderShell({ children, contentClassName }: { children: ReactNode; contentClassName?: string }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -208,11 +225,28 @@ export function ProviderShell({ children, contentClassName }: { children: ReactN
 
       if (msg.event === "notification") {
         const payload = msg.data as { type: string; title: string; message: string }
-        
-        toast.success(`🔔 ${payload.title}`, {
-          description: payload.message,
-          duration: 10000,
-        })
+
+        /*
+          Mỗi sự kiện nghiệp vụ được backend đẩy xuống HAI lần, có chủ đích:
+
+            1. một sự kiện riêng (`NEW_BOOKING`, `BOOKING_CANCELLED_OPERATIONAL`)
+               để làm mới bộ nhớ đệm và hiện thông báo đầy đủ, có nút bấm;
+            2. một `notification` đã lưu vào cơ sở dữ liệu, để nó nằm lại trong
+               chuông thông báo và đọc lại được sau.
+
+          Cả hai đều cần. Nhưng nhánh này vốn hiện thông báo cho MỌI loại, nên
+          những loại đã có nhánh riêng bị bắn ra hai lần — hai hộp gần giống hệt
+          nhau, chỉ khác vài chữ, cùng nói về một đơn.
+
+          Vì vậy chỉ chặn phần HIỆN thông báo. Việc làm mới danh sách chuông vẫn
+          chạy cho mọi loại, nếu không thì chuông đứng im.
+        */
+        if (!LOAI_DA_CO_THONG_BAO_RIENG.has(payload.type)) {
+          toast.success(`🔔 ${payload.title}`, {
+            description: payload.message,
+            duration: 10000,
+          })
+        }
 
         void queryClient.invalidateQueries({ queryKey: ["notifications"] })
         

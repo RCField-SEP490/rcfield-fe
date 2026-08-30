@@ -438,6 +438,21 @@ function formatSlotFee(value: BackendCafe["slotFeeRate"]) {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(numberValue)
 }
 
+/**
+ * Phút-suất → giờ, làm tròn cho người đọc.
+ *
+ * Đơn vị gốc là "phút-suất": một giờ mở cửa với hai sân chạy song song đếm
+ * thành 120. Con số thô lên tới hàng trăm nghìn nên không ai đọc nổi; đổi sang
+ * giờ rồi rút gọn hàng nghìn thì so sánh được bằng mắt.
+ */
+export function formatGio(minutes: number | null | undefined) {
+  if (minutes === null || minutes === undefined || !Number.isFinite(minutes)) return "--"
+  const hours = minutes / 60
+  if (hours >= 1000) return `${Math.round(hours / 100) / 10}k giờ`
+  if (hours >= 10) return `${Math.round(hours)} giờ`
+  return `${Math.round(hours * 10) / 10} giờ`
+}
+
 export function formatOccupancyRate(rate: number | null | undefined) {
   if (rate === null || rate === undefined) return "--"
   const percentage = rate * 100
