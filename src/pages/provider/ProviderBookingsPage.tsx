@@ -59,6 +59,90 @@ const STATUS_LABELS: Record<BookingStatus, { label: string; className: string }>
   CANCELLED: { label: "Đã hủy", className: "bg-red-100 text-red-800" },
 }
 
+/**
+ * Nhãn trạng thái hiển thị cho một đơn — TRẠNG THÁI ĐƠN THẮNG TRẠNG THÁI PHIÊN.
+ *
+ * Trước đây trạng thái phiên được xét trước và không có điều kiện gì, nên
+ * `AWAITING_PAYMENT` ("chờ thu phí phát sinh") không bao giờ hiện ra được: nhãn
+ * có sẵn trong `STATUS_LABELS` nhưng nhánh phiên đã trả về "Đang chơi" từ
+ * trước. Đơn đã chốt sổ chờ thu tiền vẫn nhấp nháy xanh "Đang chơi", và người
+ * ở quầy không có cách nào biết đơn nào còn nợ tiền.
+ *
+ * Cùng lỗi đó còn che được cả đơn ĐÃ HUỶ: phiên treo ở ACTIVE thì đơn huỷ vẫn
+ * hiện "Đang chơi".
+ *
+ * Ba trạng thái dưới đây là trạng thái CHỐT của đơn — chúng chỉ đạt tới khi mọi
+ * phiên đã đóng, nên gặp phiên còn "đang chạy" nghĩa là dữ liệu lệch. Lúc đó sự
+ * thật về TIỀN mới là thứ đáng hiện.
+ */
+const SETTLED_BOOKING_STATUSES = ["CANCELLED", "AWAITING_PAYMENT", "COMPLETED"] as const
+
+/**
+ * Quá bao lâu so với giờ dự kiến thì thôi gọi là "đang chơi".
+ *
+ * Bằng đúng `SESSION_CHECKOUT_GRACE_MINUTES` của backend
+ * (`lib/session-operational-timing.ts`). Hai bên phải cùng một con số, nếu
+ * không thì nhân viên nhận cảnh báo "quá giờ" trong khi màn hình vẫn xanh
+ * "đang chơi", và không ai biết bên nào nói thật.
+ */
+const CHECKOUT_GRACE_MINUTES = 10
+
+function getBookingDisplayStatus(
+  bookingStatus: string,
+  sessionStatus?: string | null,
+  sessionPlannedEndAt?: string | null,
+): { label: string; className: string; pulse?: boolean } {
+  if (
+    (SETTLED_BOOKING_STATUSES as readonly string[]).includes(bookingStatus)
+  ) {
+    const settled = STATUS_LABELS[bookingStatus as BookingStatus]
+    if (settled) return settled
+  }
+
+  /*
+    Phiên đã quá giờ trả xe thì KHÔNG còn là "đang chơi".
+
+    Phiên chỉ đóng khi có người làm biên bản trả xe kèm ảnh — hệ thống cố ý
+    không tự đóng, vì tự đóng là dựng ra một lần bàn giao không có bằng chứng.
+    Hệ quả: một phiên khách bỏ về mà quên trả xe sẽ nằm ở ACTIVE mãi mãi, và
+    nhãn cũ vẫn nhấp nháy xanh "Đang chơi" sau mười bốn ngày.
+
+    Đó là sự thật về DỮ LIỆU nhưng là lời nói dối về TÌNH HÌNH: không ai đang
+    chơi cả, và việc cần làm là đi tìm chiếc xe.
+  */
+  const quaGio =
+    Boolean(sessionPlannedEndAt) &&
+    Date.now() >
+      new Date(sessionPlannedEndAt as string).getTime() +
+        CHECKOUT_GRACE_MINUTES * 60_000
+
+  if (sessionStatus === "ACTIVE" || sessionStatus === "EXTENDING") {
+    if (quaGio) {
+      return {
+        label: "Quá giờ, chưa trả xe",
+        className: "bg-red-100 text-red-800",
+      }
+    }
+    return sessionStatus === "ACTIVE"
+      ? {
+          label: "Đang chơi",
+          className: "bg-emerald-100 text-emerald-800",
+          pulse: true,
+        }
+      : { label: "Đang gia hạn", className: "bg-amber-100 text-amber-800" }
+  }
+  if (sessionStatus === "CHECKING_OUT") {
+    return { label: "Chờ trả xe", className: "bg-blue-100 text-blue-800" }
+  }
+
+  return (
+    STATUS_LABELS[bookingStatus as BookingStatus] ?? {
+      label: bookingStatus,
+      className: "bg-slate-100 text-slate-700",
+    }
+  )
+}
+
 const PLAY_MODE_LABELS: Record<string, string> = {
   RENTAL: "Thuê xe",
   BYOC: "Xe riêng",
@@ -327,35 +411,18 @@ function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClos
             {/* Status + mode + Check-in code badges */}
             <div className="flex items-center gap-2 flex-wrap">
               {(() => {
-                if (booking.session?.status === "ACTIVE") {
-                  return (
-                    <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold bg-emerald-100 text-emerald-800 animate-pulse">
-                      Đang chơi
-                    </span>
-                  )
-                }
-                if (booking.session?.status === "EXTENDING") {
-                  return (
-                    <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold bg-amber-100 text-amber-800">
-                      Đang gia hạn
-                    </span>
-                  )
-                }
-                if (booking.session?.status === "CHECKING_OUT") {
-                  return (
-                    <span className="inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold bg-blue-100 text-blue-800">
-                      Chờ trả xe
-                    </span>
-                  )
-                }
-                const s = STATUS_LABELS[booking.status as BookingStatus]
-                return s ? (
+                const shown = getBookingDisplayStatus(
+                  booking.status,
+                  booking.session?.status,
+                  booking.session?.plannedEndAt,
+                )
+                return (
                   <span
-                    className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${s.className}`}
+                    className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${shown.className}${shown.pulse ? " animate-pulse" : ""}`}
                   >
-                    {s.label}
+                    {shown.label}
                   </span>
-                ) : null
+                )
               })()}
               <span
                 className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${booking.playMode === "RENTAL" ? "bg-orange-100 text-orange-800" : "bg-blue-100 text-blue-800"}`}
@@ -1263,7 +1330,6 @@ export function ProviderBookingsPage() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {bookings.map((booking) => {
-                  const statusInfo = STATUS_LABELS[booking.status] ?? STATUS_LABELS.PENDING
                   const canCancel = (booking.status === "CONFIRMED" || booking.status === "PENDING") && !booking.sessionStatus
                   return (
                     <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
@@ -1292,30 +1358,16 @@ export function ProviderBookingsPage() {
                       </td>
                       <td className="py-3">
                         {(() => {
-                          if (booking.sessionStatus === "ACTIVE") {
-                            return (
-                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 animate-pulse">
-                                Đang chơi
-                              </span>
-                            )
-                          }
-                          if (booking.sessionStatus === "EXTENDING") {
-                            return (
-                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800">
-                                Đang gia hạn
-                              </span>
-                            )
-                          }
-                          if (booking.sessionStatus === "CHECKING_OUT") {
-                            return (
-                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-800">
-                                Chờ trả xe
-                              </span>
-                            )
-                          }
+                          const shown = getBookingDisplayStatus(
+                            booking.status,
+                            booking.sessionStatus,
+                            booking.sessionPlannedEndAt,
+                          )
                           return (
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusInfo.className}`}>
-                              {statusInfo.label}
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${shown.className}${shown.pulse ? " animate-pulse" : ""}`}
+                            >
+                              {shown.label}
                             </span>
                           )
                         })()}

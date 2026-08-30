@@ -389,6 +389,8 @@ export interface CafeBookingListItem {
   customerName: string
   customerPhone: string | null
   sessionStatus?: string | null
+  /** Giờ kết thúc dự kiến của phiên — đã tính cả gia hạn, khác `slotEnd`. */
+  sessionPlannedEndAt?: string | null
 }
 
 export interface CafeBookingListResponse {

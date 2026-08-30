@@ -34,6 +34,7 @@ import { getContestWorkspacePath } from "@/pages/provider/contest-runtime/contes
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
+import { ConfirmDialog } from "@/shared/ui/confirm-dialog"
 
 export function ProviderContestsPage() {
   const navigate = useNavigate()
@@ -274,24 +275,35 @@ export function ProviderContestsPage() {
                         {getContestStatusLabel(contest.status)}
                       </Badge>
                     </div>
-                    <p className="mt-2 text-sm font-medium text-[#5d5f5f]">
-                      {contest.description || "Chưa có mô tả giải đấu."}
+                    {/* Không mô tả thì không in gì. Dòng "Chưa có mô tả giải
+                        đấu." chiếm nguyên một hàng trên MỌI thẻ để nói rằng
+                        không có gì để nói. */}
+                    {contest.description ? (
+                      <p className="mt-2 text-sm font-medium text-[#5d5f5f]">
+                        {contest.description}
+                      </p>
+                    ) : null}
+                    {/*
+                      Bỏ "Template" khỏi dòng này: mỗi khuôn mẫu ghim sẵn đúng
+                      một thể thức và được đặt trùng tên luôn, nên nó lặp lại y
+                      nguyên chữ vừa đọc ở "Format" — hai lần "Đấu loại trực
+                      tiếp" cạnh nhau trên từng thẻ.
+
+                      Bỏ luôn các nhãn "Loại:/Format:/Entry fee:": chúng dài hơn
+                      chính giá trị, và giá trị thì tự nói được nó là gì.
+                    */}
+                    <p className="mt-3 text-xs font-semibold text-[#747878]">
+                      {[
+                        contest.contest_type?.name,
+                        contest.contest_format?.name,
+                        contest.entry_fee > 0
+                          ? `Lệ phí ${formatCurrency(contest.entry_fee)}`
+                          : "Miễn lệ phí",
+                        `${contest.participating_branches.length} chi nhánh`,
+                      ]
+                        .filter(Boolean)
+                        .join("  ·  ")}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-[#747878]">
-                      <span>Loại: {contest.contest_type?.name ?? "--"}</span>
-                      <span>
-                        Format: {contest.contest_format?.name ?? "--"}
-                      </span>
-                      <span>
-                        Template: {contest.contest_template?.name ?? "--"}
-                      </span>
-                      <span>
-                        Entry fee: {formatCurrency(contest.entry_fee)}
-                      </span>
-                      <span>
-                        Chi nhánh: {contest.participating_branches.length}
-                      </span>
-                    </div>
                     <ContestHealthBadges contest={contest} />
                   </div>
 
@@ -359,17 +371,34 @@ export function ProviderContestsPage() {
                       </Button>
                     ) : null}
                     {!["COMPLETED", "CANCELLED"].includes(contest.status) ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 gap-2 rounded-lg border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                        onClick={() =>
+                      /*
+                        Hỏi lại trước khi huỷ. Trước đây một cú bấm là huỷ luôn
+                        cả giải LẪN toàn bộ đăng ký của vận động viên, không có
+                        bước nào để dừng lại — mà nút "Hủy" thì nằm ngay cạnh
+                        "Vận hành" trên mọi thẻ.
+
+                        Backend còn một chốt nữa: giải đã thu lệ phí thì từ chối
+                        huỷ và trả về số người cùng số tiền. Hộp thoại này chỉ
+                        chặn cú bấm nhầm, không thay cho chốt đó.
+                      */
+                      <ConfirmDialog
+                        title="Huỷ giải đấu này?"
+                        description={`Toàn bộ ${contest.public_stats?.registration_count ?? 0} đăng ký sẽ bị huỷ theo và không khôi phục được. Nếu đã có người nộp lệ phí, hệ thống sẽ từ chối — hoàn tiền cho họ trước rồi mới huỷ được giải.`}
+                        confirmLabel="Huỷ giải đấu"
+                        trigger={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 gap-2 rounded-lg border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                          >
+                            <Trash2 className="size-4" />
+                            Hủy
+                          </Button>
+                        }
+                        onConfirm={() =>
                           void handleStatusAction(contest.id, "cancel")
                         }
-                      >
-                        <Trash2 className="size-4" />
-                        Hủy
-                      </Button>
+                      />
                     ) : null}
                   </div>
                 </div>
@@ -391,6 +420,19 @@ const contestStatusLanes = [
   { label: "Đã hủy", value: "CANCELLED", hint: "Đã hủy" },
 ] as const
 
+/**
+ * Nhãn tình trạng — chỉ hiện thứ ĐANG cần biết ở giai đoạn hiện tại.
+ *
+ * Trước đây luôn in đủ năm nhãn cho mọi giải, nên một giải mới tạo đã bị cảnh
+ * báo vàng "Chưa công bố bảng xếp hạng" (đương nhiên chưa, giải còn chưa chạy),
+ * còn một giải đã xong vẫn bị nhắc "Chưa phân công staff" (nhắc để làm gì nữa).
+ *
+ * Hậu quả không phải là xấu mà là VÔ DỤNG: khi mọi thẻ đều vàng thì màu vàng
+ * không còn nghĩa gì, và người dùng phải đọc hết từng chữ để tìm giải nào thật
+ * sự cần đụng tới. Có mười giải là thành một bức tường.
+ *
+ * Luật ở đây: một nhãn chỉ xuất hiện khi nó vừa ĐÚNG LÚC vừa CÓ VIỆC ĐỂ LÀM.
+ */
 function ContestHealthBadges({ contest }: { contest: ContestItem }) {
   const stats = contest.public_stats
   const registrationCount = stats?.registration_count ?? 0
@@ -405,76 +447,116 @@ function ContestHealthBadges({ contest }: { contest: ContestItem }) {
   const hasLiveMatches = Boolean(matchStats?.has_live_matches)
   const leaderboardPublished = Boolean(contest.published_leaderboard)
 
-  const badges = [
-    {
-      key: "registrations",
-      icon: <Users className="size-3.5" />,
-      label:
-        capacityRemaining === null || capacityRemaining === undefined
-          ? `${registrationCount} đăng ký`
-          : `${registrationCount} đăng ký · còn ${capacityRemaining}`,
-      tone: registrationCount > 0 ? "ok" : "warn",
-    },
-    {
+  const status = contest.status
+  const isFinished = status === "COMPLETED" || status === "CANCELLED"
+  const isRunning = status === "RUNNING"
+  const isTakingSignups = status === "DRAFT" || status === "OPEN"
+
+  type Chip = {
+    key: string
+    icon: React.ReactNode
+    label: string
+    tone: "ok" | "warn" | "neutral" | "live"
+  }
+  const chips: Chip[] = []
+
+  // Đang chạy: chỉ một thứ đáng nhìn từ danh sách — có trận đang diễn ra không.
+  if (isRunning && hasLiveMatches) {
+    chips.push({
+      key: "live",
+      icon: <Flag className="size-3.5" />,
+      label: "Đang có trận đấu",
+      tone: "live",
+    })
+  }
+
+  // Số người: luôn có ý nghĩa, nhưng chỗ trống còn lại chỉ đáng quan tâm khi
+  // vẫn còn nhận đăng ký.
+  chips.push({
+    key: "registrations",
+    icon: <Users className="size-3.5" />,
+    label:
+      isTakingSignups &&
+      capacityRemaining !== null &&
+      capacityRemaining !== undefined
+        ? `${registrationCount} đăng ký · còn ${capacityRemaining} chỗ`
+        : `${registrationCount} vận động viên`,
+    tone: isTakingSignups && registrationCount === 0 ? "warn" : "neutral",
+  })
+
+  // Duyệt và điểm danh chỉ là việc trong ngày thi đấu.
+  if (!isFinished && !isTakingSignups) {
+    chips.push({
       key: "approval",
       icon:
-        confirmedCount > 0 ? (
+        checkedInCount > 0 ? (
           <CheckCircle2 className="size-3.5" />
         ) : (
           <AlertTriangle className="size-3.5" />
         ),
-      label: `${confirmedCount} duyệt · ${checkedInCount} check-in`,
-      tone: confirmedCount > 0 ? "ok" : "warn",
-    },
-    {
+      label: `${confirmedCount} đã duyệt · ${checkedInCount} đã điểm danh`,
+      tone: checkedInCount > 0 ? "ok" : "warn",
+    })
+  }
+
+  // Thiếu nhân sự chỉ là vấn đề khi giải chưa xong. Giải đã kết thúc mà còn bị
+  // nhắc phân công thì đó là tiếng ồn thuần tuý.
+  if (!isFinished && staffCount === 0) {
+    chips.push({
       key: "staff",
-      icon:
-        staffCount > 0 ? (
-          <CheckCircle2 className="size-3.5" />
-        ) : (
-          <AlertTriangle className="size-3.5" />
-        ),
-      label: staffCount > 0 ? `${staffCount} staff` : "Chưa phân công staff",
-      tone: staffCount > 0 ? "ok" : "warn",
-    },
-    {
-      key: "runtime",
-      icon:
-        totalRounds > 0 ? (
-          <CheckCircle2 className="size-3.5" />
-        ) : (
-          <Flag className="size-3.5" />
-        ),
-      label: hasLiveMatches
-        ? "Đang có trận đấu"
-        : totalRounds > 0
-          ? `${totalRounds} vòng đấu`
-          : "Chưa bốc thăm",
-      tone: hasLiveMatches ? "live" : totalRounds > 0 ? "ok" : "neutral",
-    },
-    {
+      icon: <AlertTriangle className="size-3.5" />,
+      label: "Chưa phân công nhân sự",
+      tone: "warn",
+    })
+  }
+
+  // Chưa bốc thăm chỉ đáng cảnh báo khi đã tới lúc phải bốc.
+  if (!isFinished) {
+    if (totalRounds > 0) {
+      chips.push({
+        key: "runtime",
+        icon: <CheckCircle2 className="size-3.5" />,
+        label: `${totalRounds} vòng đấu`,
+        tone: "ok",
+      })
+    } else if (!isTakingSignups) {
+      chips.push({
+        key: "runtime",
+        icon: <AlertTriangle className="size-3.5" />,
+        label: "Chưa bốc thăm",
+        tone: "warn",
+      })
+    }
+  }
+
+  // Bảng xếp hạng: chỉ nói khi đã có, hoặc khi giải chạy xong mà còn thiếu.
+  if (leaderboardPublished) {
+    chips.push({
       key: "leaderboard",
-      icon: leaderboardPublished ? (
-        <CheckCircle2 className="size-3.5" />
-      ) : (
-        <AlertTriangle className="size-3.5" />
-      ),
-      label: leaderboardPublished
-        ? "Đã công bố bảng xếp hạng"
-        : "Chưa công bố bảng xếp hạng",
-      tone: leaderboardPublished ? "ok" : "neutral",
-    },
-  ] as const
+      icon: <CheckCircle2 className="size-3.5" />,
+      label: "Đã công bố kết quả",
+      tone: "ok",
+    })
+  } else if (status === "COMPLETED") {
+    chips.push({
+      key: "leaderboard",
+      icon: <AlertTriangle className="size-3.5" />,
+      label: "Chưa công bố kết quả",
+      tone: "warn",
+    })
+  }
+
+  if (chips.length === 0) return null
 
   return (
     <div className="mt-4 flex flex-wrap gap-2">
-      {badges.map((badge) => (
+      {chips.map((chip) => (
         <span
-          key={badge.key}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${getHealthBadgeClass(badge.tone)}`}
+          key={chip.key}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold ${getHealthBadgeClass(chip.tone)}`}
         >
-          {badge.icon}
-          {badge.label}
+          {chip.icon}
+          {chip.label}
         </span>
       ))}
     </div>
