@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router"
+import { Link, useNavigate } from "react-router"
 import {
   AlertTriangle,
   XCircle,
@@ -9,7 +9,9 @@ import {
   Loader2,
   ChevronRight,
   Car,
+  QrCode,
 } from "lucide-react"
+import { routePaths } from "@/app/router/route-paths"
 import { Button } from "@/shared/ui/button"
 import { Badge } from "@/shared/ui/badge"
 import { cn, getApiErrorInfo } from "@/shared/lib/utils"
@@ -22,7 +24,7 @@ import {
   useCancelBooking,
   useCreateCheckout,
 } from "@/features/booking/hooks/use-booking"
-import type { BookingStatus } from "@/features/booking/types/booking.types"
+import type { BookingStatus, BookingListItem } from "@/features/booking/types/booking.types"
 import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
 
 type FilterKey = "all" | BookingStatus
@@ -81,11 +83,13 @@ const PLAY_MODE_FILTERS: Array<{ key: PlayModeFilter; label: string }> = [
 ]
 
 export function CustomerBookingsPage() {
+  const navigate = useNavigate()
   const [now] = useState(() => Date.now())
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all")
   const [playModeFilter, setPlayModeFilter] = useState<PlayModeFilter>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [cancelTarget, setCancelTarget] = useState<string | null>(null)
+  const [paymentTarget, setPaymentTarget] = useState<BookingListItem | null>(null)
   const [resumingId, setResumingId] = useState<string | null>(null)
 
   const handleFilterChange = (filter: FilterKey) => {
@@ -354,7 +358,7 @@ export function CustomerBookingsPage() {
                         <Button
                           size="sm"
                           className="h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs rounded-lg shadow-sm"
-                          onClick={() => handleResumePayment(booking.id)}
+                          onClick={() => setPaymentTarget(booking)}
                           disabled={resumingId === booking.id}
                         >
                           {resumingId === booking.id ? (
@@ -497,6 +501,106 @@ export function CustomerBookingsPage() {
                   : cancelTargetBooking?.status === "PENDING"
                     ? "Có, hủy giữ chỗ"
                     : "Có, xác nhận hủy"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {paymentTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200/80 shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-200 text-left">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-950">
+                    Chọn phương thức thanh toán
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold">
+                    Mã đơn #{paymentTarget.id.substring(0, 8).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-slate-600"
+                onClick={() => setPaymentTarget(null)}
+              >
+                <XCircle className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Option 1: Chuyển khoản VietQR */}
+              <button
+                type="button"
+                onClick={() => {
+                  const bookingId = paymentTarget.id
+                  setPaymentTarget(null)
+                  void navigate(
+                    routePaths.paymentBankTransfer.replace(":bookingId", bookingId),
+                  )
+                }}
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-orange-500 bg-white hover:bg-orange-50/50 transition-all text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                    <QrCode className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm group-hover:text-orange-600 transition-colors">
+                      Chuyển khoản VietQR
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Quét mã QR bằng app Ngân hàng (Tự động xác nhận)
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-orange-500 transition-colors shrink-0" />
+              </button>
+
+              {/* Option 2: VNPay Online */}
+              <button
+                type="button"
+                onClick={() => {
+                  const bookingId = paymentTarget.id
+                  setPaymentTarget(null)
+                  handleResumePayment(bookingId)
+                }}
+                disabled={resumingId === paymentTarget.id}
+                className="w-full flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-blue-500 bg-white hover:bg-blue-50/50 transition-all text-left group cursor-pointer disabled:opacity-50"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                    <CreditCard className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                      VNPAY Online
+                      {resumingId === paymentTarget.id && (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Thẻ ATM, Visa, Ví VNPAY (Chuyển sang cổng VNPay)
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" />
+              </button>
+            </div>
+
+            <div className="pt-1 text-center">
+              <Button
+                variant="outline"
+                className="w-full border-slate-200 font-bold h-10 text-xs rounded-xl text-slate-600 hover:bg-slate-50"
+                onClick={() => setPaymentTarget(null)}
+              >
+                Hủy bỏ
               </Button>
             </div>
           </div>

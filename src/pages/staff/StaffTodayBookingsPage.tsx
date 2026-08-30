@@ -9,6 +9,7 @@ import {
   Plus,
   ArrowRight,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   Tag,
   Loader2,
@@ -16,24 +17,36 @@ import {
   Phone,
   Users,
   MapPin,
-  UtensilsCrossed,
   QrCode,
   ChevronDown,
   ChevronUp,
   X,
   Trophy,
+  Play,
+  Coffee,
+  Minus,
+  Check,
+  CheckCircle2,
+  User,
+  Banknote,
+  CreditCard,
+  Zap,
+  Smartphone,
+  AlertCircle,
 } from "lucide-react"
 import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useVehicleUnits } from "@/features/vehicles/hooks/useVehicleUnits"
 import { staffApi, staffQueryKeys } from "@/features/staff/api/staff.api"
+import { menuApi, menuQueryKeys } from "@/features/menu/api/menu.api"
+import type { MenuItem } from "@/features/menu/types"
 import {
   bookingApi,
   bookingQueryKeys,
 } from "@/features/booking/api/booking.api"
-import { VehicleStatus, type VehicleUnit } from "@/features/vehicles/types"
-import { cn, getCatalogImageUrl } from "@/shared/lib/utils"
+import { VehicleStatus, type VehicleUnit, type VehicleCatalog } from "@/features/vehicles/types"
+import { cn, getCatalogImageUrl, sanitizeImageUrl } from "@/shared/lib/utils"
 import { VehicleImage } from "@/shared/ui/vehicle-image"
 import { routePaths } from "@/app/router/route-paths"
 import { isCheckInDeadlineExpired } from "@/features/booking/lib/check-in-window"
@@ -59,6 +72,8 @@ import {
   type DailySlotStatus,
 } from "@/pages/customer/cafe-detail/components/DailySlotGrid"
 import type { HourlySlotAvailability } from "@/features/booking/hooks/use-booking"
+import type { BankTransferCheckout } from "@/features/booking/types/booking.types"
+import { WalkInBankTransferModal } from "./components/WalkInBankTransferModal"
 
 type TabType = "LIST" | "WALKIN"
 
@@ -229,14 +244,6 @@ function getVehicleCount(booking: any): number {
   return booking.vehicleCount ?? booking.plannedVehicles?.length ?? 0
 }
 
-function getFnbAmount(booking: any): number {
-  return Number(booking.fnbPreorderFee ?? 0)
-}
-
-function getFnbOnsiteAmount(booking: any): number {
-  return Number(booking.fnbOnsiteFee ?? 0)
-}
-
 function getBookingStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     PENDING: "Chờ thanh toán",
@@ -248,21 +255,7 @@ function getBookingStatusLabel(status: string): string {
   return labels[status] ?? "Không xác định"
 }
 
-function VehicleThumbnail({ unit }: { unit: VehicleUnit }) {
-  const imageUrl = unit.distinctive_image_url ?? getCatalogImageUrl(unit.catalog)
 
-  return (
-    <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-[#e5e2e1] bg-[#f5f3f2]">
-      <VehicleImage
-        imageUrl={imageUrl}
-        alt={unit.catalog?.name || unit.identifier}
-        className="h-full w-full object-cover"
-        fallbackClassName="bg-[#f5f3f2] text-[#6b7280]"
-        iconClassName="size-7"
-      />
-    </div>
-  )
-}
 
 export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -284,6 +277,14 @@ export default function StaffTodayBookingsPage() {
   const [showQrPanel, setShowQrPanel] = useState(false)
   const [qrBookingId, setQrBookingId] = useState("")
   const [qrInputValue, setQrInputValue] = useState("")
+
+  // Walk-in Bank Transfer QR Modal state
+  const [bankTransferModalData, setBankTransferModalData] = useState<{
+    bookingId: string
+    bookingCode?: string
+    bankTransfer: BankTransferCheckout
+    autoCheckIn: boolean
+  } | null>(null)
 
   const {
     data: qrBookingData,
@@ -333,6 +334,8 @@ export default function StaffTodayBookingsPage() {
   })
 
   // Walk-in form states
+  const [walkinStep, setWalkinStep] = useState<1 | 2 | 3 | 4>(1)
+  const [isWalkinSubmitting, setIsWalkinSubmitting] = useState(false)
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
   const [fieldErrors, setFieldErrors] = useState<WalkInFieldErrors>({})
@@ -345,6 +348,20 @@ export default function StaffTodayBookingsPage() {
   const [selectedSlot, setSelectedSlot] = useState("")
   const [selectedSlotEnd, setSelectedSlotEnd] = useState<string | null>(null)
   const [selectedVehicles, setSelectedVehicles] = useState<VehicleUnit[]>([])
+  const [selectedFnbCart, setSelectedFnbCart] = useState<
+    Record<
+      string,
+      {
+        menuItem: MenuItem
+        variantId?: string
+        variantName?: string
+        unitPrice: number
+        quantity: number
+      }
+    >
+  >({})
+  const [fnbSearchTerm, setFnbSearchTerm] = useState("")
+  const [fnbSelectedCategory, setFnbSelectedCategory] = useState<string>("ALL")
   const bookingDate = todayDate
 
   // Cafe details — dùng useQuery thay vì useEffect+setState
@@ -356,11 +373,79 @@ export default function StaffTodayBookingsPage() {
   })
 
   // Only load physical units that are currently in AVAILABLE state.
-  const { data: availableVehicles = [], isLoading: loadingVehicles } =
+  const { data: availableVehicles = [] } =
     useVehicleUnits(assignedCafeId ?? "", { status: VehicleStatus.AVAILABLE })
 
   // Track configs (must be before useEffects that reference it)
   const { data: trackConfigs = [] } = useTrackConfigs(assignedCafeId ?? "")
+
+  // F&B Menu Query for Walk-in pre-orders
+  const { data: fnbMenuData, isLoading: isLoadingFnbMenu } = useQuery({
+    queryKey: menuQueryKeys.list(assignedCafeId ?? "", { available: true }),
+    queryFn: () => menuApi.listMenuItems(assignedCafeId!, { available: true }),
+    enabled: !!assignedCafeId,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const fnbMenuItems = useMemo(() => fnbMenuData?.data || [], [fnbMenuData])
+
+  const fnbCategories = useMemo(() => {
+    const list: string[] = []
+    fnbMenuItems.forEach((item) => {
+      if (item.categoryName && !list.includes(item.categoryName)) {
+        list.push(item.categoryName)
+      }
+    })
+    return list
+  }, [fnbMenuItems])
+
+  const filteredFnbMenuItems = useMemo(() => {
+    return fnbMenuItems.filter((item) => {
+      const matchCat =
+        fnbSelectedCategory === "ALL" ||
+        item.categoryName === fnbSelectedCategory
+      const term = fnbSearchTerm.trim().toLowerCase()
+      const matchTerm =
+        !term ||
+        item.name.toLowerCase().includes(term) ||
+        (item.categoryName && item.categoryName.toLowerCase().includes(term))
+      return matchCat && matchTerm
+    })
+  }, [fnbMenuItems, fnbSearchTerm, fnbSelectedCategory])
+
+  const handleUpdateFnbQuantity = (
+    menuItem: MenuItem,
+    variantId?: string,
+    variantName?: string,
+    unitPrice?: number,
+    delta: number = 1,
+  ) => {
+    const key = variantId ? `${menuItem.id}::${variantId}` : menuItem.id
+    const price = unitPrice ?? Number(menuItem.price)
+
+    setSelectedFnbCart((prev) => {
+      const existing = prev[key]
+      const currentQty = existing ? existing.quantity : 0
+      const newQty = currentQty + delta
+
+      if (newQty <= 0) {
+        const copy = { ...prev }
+        delete copy[key]
+        return copy
+      }
+
+      return {
+        ...prev,
+        [key]: {
+          menuItem,
+          variantId,
+          variantName,
+          unitPrice: price,
+          quantity: newQty,
+        },
+      }
+    })
+  }
 
   // Sync tab with URL query parameter
   useEffect(() => {
@@ -400,6 +485,9 @@ export default function StaffTodayBookingsPage() {
     setSelectedVehicles([])
     setSelectedSlot("")
     setSelectedSlotEnd(null)
+    setSelectedFnbCart({})
+    setFnbSearchTerm("")
+    setFnbSelectedCategory("ALL")
     setSearchParams({})
   }
 
@@ -518,6 +606,40 @@ export default function StaffTodayBookingsPage() {
     [selectedVehicles, selectableVehicleIds],
   )
 
+  const groupedVehiclesByCatalog = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        catalog: VehicleCatalog
+        units: VehicleUnit[]
+      }
+    >()
+
+    selectableVehicles.forEach((unit) => {
+      const catId = unit.catalog?.id || unit.catalogId || "unknown"
+      if (!map.has(catId)) {
+        map.set(catId, {
+            catalog: unit.catalog || {
+              id: catId,
+              name: "Mẫu xe chưa phân loại",
+              hourlyRate: 0,
+              securityDeposit: 0,
+              tier: "STANDARD",
+              compatibleTrackTypes: [],
+              images: [],
+              createdAt: "",
+              updatedAt: "",
+              cafeId: "",
+            },
+          units: [],
+        })
+      }
+      map.get(catId)!.units.push(unit)
+    })
+
+    return Array.from(map.values())
+  }, [selectableVehicles])
+
   useEffect(() => {
     if (!selectedSlotAvailability) return
     setSelectedVehicles((current) => {
@@ -564,11 +686,19 @@ export default function StaffTodayBookingsPage() {
     return total + hourly * (computedDuration / 60)
   }, 0)
 
-  const totalAmount = slotFeeTotal + rentalFeeTotal
+  const fnbTotalAmount = useMemo(() => {
+    return Object.values(selectedFnbCart).reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
+      0,
+    )
+  }, [selectedFnbCart])
+
+  const totalAmount = slotFeeTotal + rentalFeeTotal + fnbTotalAmount
 
   // Submit Walk-in Form
-  const handleWalkinSubmit = (e: React.FormEvent) => {
+  const handleWalkinSubmit = async (e: React.FormEvent, autoCheckIn: boolean = true) => {
     e.preventDefault()
+    if (isWalkinSubmitting) return
 
     const slotStart = selectedSlot
       ? toVietnamSlotISOString(bookingDate, selectedSlot)
@@ -591,7 +721,7 @@ export default function StaffTodayBookingsPage() {
 
     if (!parsed.success) {
       const errors = parsed.error.flatten().fieldErrors
-      setFieldErrors({
+      const fieldErrorMap: WalkInFieldErrors = {
         customerName: errors.customerName?.[0],
         customerPhone: errors.customerPhone?.[0],
         playMode: errors.playMode?.[0],
@@ -602,7 +732,26 @@ export default function StaffTodayBookingsPage() {
         slotDurationMinutes: errors.slotDurationMinutes?.[0],
         scheduleConfigured: errors.scheduleConfigured?.[0],
         vehicleIds: errors.vehicleIds?.[0],
-      })
+      }
+      setFieldErrors(fieldErrorMap)
+
+      const firstErrMsg = Object.values(errors).flat()[0]
+      if (firstErrMsg) {
+        toast.error(firstErrMsg)
+      }
+
+      if (
+        errors.customerName ||
+        errors.customerPhone ||
+        errors.slotStart ||
+        errors.slotEnd ||
+        errors.trackTypeId ||
+        errors.scheduleConfigured
+      ) {
+        setWalkinStep(1)
+      } else if (errors.vehicleIds) {
+        setWalkinStep(2)
+      }
       return
     }
 
@@ -610,10 +759,11 @@ export default function StaffTodayBookingsPage() {
       parsed.data.playMode === "RENTAL" &&
       (isLoadingSelectedSlotAvailability || !selectedSlotAvailability)
     ) {
-      setFieldErrors({
-        vehicleIds:
-          "Đang kiểm tra xe trống cho khung giờ đã chọn. Vui lòng thử lại ngay sau đó.",
-      })
+      const msg =
+        "Đang kiểm tra xe trống cho khung giờ đã chọn. Vui lòng thử lại ngay sau đó."
+      setFieldErrors({ vehicleIds: msg })
+      toast.error(msg)
+      setWalkinStep(2)
       return
     }
     if (
@@ -622,50 +772,101 @@ export default function StaffTodayBookingsPage() {
         (vehicleId) => !selectableVehicleIds.has(vehicleId),
       )
     ) {
-      setFieldErrors({
-        vehicleIds: "Một hoặc nhiều xe vừa không còn trống. Vui lòng chọn lại.",
-      })
+      const msg = "Một hoặc nhiều xe vừa không còn trống. Vui lòng chọn lại."
+      setFieldErrors({ vehicleIds: msg })
+      toast.error(msg)
+      setWalkinStep(2)
       return
     }
 
     setFieldErrors({})
+    setIsWalkinSubmitting(true)
 
-    createWalkInBooking({
-      playMode: parsed.data.playMode,
-      trackTypeId: parsed.data.trackTypeId,
-      slotStart: parsed.data.slotStart,
-      slotEnd: parsed.data.slotEnd,
-      paymentMethod: parsed.data.paymentMethod,
-      vehicleIds: parsed.data.vehicleIds,
-      participants: [
-        {
-          guest_name: parsed.data.customerName,
-          guest_phone: parsed.data.customerPhone,
-          participant_type: "WALK_IN_GUEST",
-        },
-      ],
-    }).then((success) => {
-      if (success) {
+    const fnbItems = Object.values(selectedFnbCart).map((item) => ({
+      menu_item_id: item.menuItem.id,
+      variant_id: item.variantId,
+      quantity: item.quantity,
+    }))
+
+    try {
+      const res = await createWalkInBooking({
+        playMode: parsed.data.playMode,
+        trackTypeId: parsed.data.trackTypeId,
+        slotStart: parsed.data.slotStart,
+        slotEnd: parsed.data.slotEnd,
+        paymentMethod: parsed.data.paymentMethod,
+        vehicleIds: parsed.data.vehicleIds,
+        participants: [
+          {
+            guest_name: parsed.data.customerName,
+            guest_phone: parsed.data.customerPhone,
+            participant_type: "WALK_IN_GUEST",
+          },
+        ],
+        fnbItems: fnbItems.length > 0 ? fnbItems : undefined,
+      })
+
+      if (res?.bookingId) {
+        if (res.bankTransfer && parsed.data.paymentMethod === "BANK_TRANSFER") {
+          setBankTransferModalData({
+            bookingId: res.bookingId,
+            bookingCode: res.bookingCode,
+            bankTransfer: res.bankTransfer,
+            autoCheckIn,
+          })
+          return
+        }
+
+        if (autoCheckIn) {
+          toast.info("Đang khởi tạo ca chơi cho khách...")
+          const checkInRes = await startCheckIn(res.bookingId)
+          const sessionId = checkInRes?.sessionId ?? checkInRes?.id
+          if (sessionId) {
+            resetWalkinForm()
+            navigate(`/staff/sessions/${sessionId}`)
+            return
+          }
+        }
         resetWalkinForm()
         setActiveTab("LIST")
         setSearchParams({})
       }
-    })
-  }
-
-  // Toggle vehicle selection for Walk-in
-  const toggleVehicle = (unit: VehicleUnit) => {
-    const isSelected = selectedVehicles.some((v) => v.id === unit.id)
-    if (isSelected) {
-      setSelectedVehicles(selectedVehicles.filter((v) => v.id !== unit.id))
-    } else {
-      setSelectedVehicles([...selectedVehicles, unit])
+    } finally {
+      setIsWalkinSubmitting(false)
     }
   }
 
+  const handleBankTransferSuccess = async (
+    bookingId: string,
+    autoCheckIn: boolean,
+  ) => {
+    setBankTransferModalData(null)
+    if (autoCheckIn) {
+      toast.info("Đang khởi tạo ca chơi cho khách...")
+      const checkInRes = await startCheckIn(bookingId)
+      const sessionId = checkInRes?.sessionId ?? checkInRes?.id
+      if (sessionId) {
+        resetWalkinForm()
+        navigate(`/staff/sessions/${sessionId}`)
+        return
+      }
+    }
+    resetWalkinForm()
+    setActiveTab("LIST")
+    setSearchParams({})
+  }
+
+
+
   const handleStartCheckIn = async (booking: CustomerBookingDetail | any) => {
-    if (isCheckInDeadlineExpired(getSlotStart(booking))) {
-      toast.error("Đơn đã quá thời hạn nhận xe 30 phút kể từ giờ bắt đầu")
+    const isExpired = isCheckInDeadlineExpired(getSlotStart(booking), nowTime, {
+      source: booking.source,
+      slotEnd: booking.slotEnd ?? booking.slot_end,
+      createdAt: booking.createdAt ?? booking.created_at,
+    })
+
+    if (isExpired) {
+      toast.error("Đơn đã quá thời hạn nhận xe")
       return
     }
 
@@ -985,7 +1186,11 @@ export default function StaffTodayBookingsPage() {
                           </p>
                         </div>
                         {qrBookingData.status === "CONFIRMED" &&
-                          isCheckInDeadlineExpired(qrBookingData.slotStart) && (
+                          isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
+                            source: (qrBookingData as any).source,
+                            slotEnd: qrBookingData.slotEnd,
+                            createdAt: qrBookingData.createdAt,
+                          }) && (
                             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
                               Đơn đã quá thời hạn nhận xe 30 phút kể từ giờ bắt đầu.
                             </div>
@@ -1004,7 +1209,11 @@ export default function StaffTodayBookingsPage() {
                           </div>
                         )}
                         {qrBookingData.status === "CONFIRMED" &&
-                          !isCheckInDeadlineExpired(qrBookingData.slotStart) &&
+                          !isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
+                            source: (qrBookingData as any).source,
+                            slotEnd: qrBookingData.slotEnd,
+                            createdAt: qrBookingData.createdAt,
+                          }) &&
                           qrBookingData.session && (
                             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
                               Đã nhận xe lúc{" "}
@@ -1017,7 +1226,11 @@ export default function StaffTodayBookingsPage() {
                             </div>
                           )}
                         {qrBookingData.status === "CONFIRMED" &&
-                          !isCheckInDeadlineExpired(qrBookingData.slotStart) &&
+                          !isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
+                            source: (qrBookingData as any).source,
+                            slotEnd: qrBookingData.slotEnd,
+                            createdAt: qrBookingData.createdAt,
+                          }) &&
                           !qrBookingData.session && (
                             <StaffButton
                               onClick={() => handleStartCheckIn(qrBookingData)}
@@ -1053,8 +1266,6 @@ export default function StaffTodayBookingsPage() {
                 const trackLabel = getTrackLabel(b)
                 const participantCount = getParticipantCount(b)
                 const vehicleCount = getVehicleCount(b)
-                const fnbAmount = getFnbAmount(b)
-                const fnbOnsiteAmount = getFnbOnsiteAmount(b)
                 const activeSession = ![
                   "COMPLETED",
                   "CANCELLED",
@@ -1069,9 +1280,14 @@ export default function StaffTodayBookingsPage() {
                       ].includes(session.status),
                     )
                   : undefined
+                const isWalkIn = b.source === "STAFF_MANUAL"
                 const checkInWindowExpired =
                   b.status === "CONFIRMED" &&
-                  isCheckInDeadlineExpired(slotStart) &&
+                  isCheckInDeadlineExpired(slotStart, nowTime, {
+                    source: b.source,
+                    slotEnd: b.slotEnd ?? (b as any).slot_end,
+                    createdAt: b.createdAt ?? (b as any).created_at,
+                  }) &&
                   (!activeSession || activeSession.status === "CHECKED_IN")
                 const completedSession =
                   b.status === "COMPLETED"
@@ -1120,8 +1336,6 @@ export default function StaffTodayBookingsPage() {
                               ? "neutral"
                               : "warning"
 
-                const hasFnb = fnbAmount > 0
-                const hasOnsiteFnb = fnbOnsiteAmount > 0
                 const countdown = activeSession
                   ? null
                   : getSlotCountdown(slotStart, nowTime)
@@ -1142,7 +1356,7 @@ export default function StaffTodayBookingsPage() {
 
                 return (
                   <StaffCard key={bookingId} className="space-y-3">
-                    {/* Row 1 — ID + status + remaining + detail link */}
+                    {/* Row 1 — ID + status + source badge + remaining + detail link */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs text-[#a09e9d] font-mono font-bold">
@@ -1151,6 +1365,17 @@ export default function StaffTodayBookingsPage() {
                         <StaffBadge variant={badgeVariant}>
                           {displayLabel}
                         </StaffBadge>
+                        {isWalkIn ? (
+                          <span className="flex items-center gap-1 rounded-full border border-orange-300 bg-[#fff7ed] px-2.5 py-0.5 text-[10px] font-black text-[#ea580c] shadow-2xs">
+                            <Zap className="size-3 fill-current" />
+                            Vãng lai (Tại quầy)
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700">
+                            <Smartphone className="size-3" />
+                            Đặt qua App
+                          </span>
+                        )}
                         {b.status === "CANCELLED" && Boolean(b.hasPendingRefund) && (
                           <StaffBadge variant="warning">
                             Chờ xác nhận hoàn tiền
@@ -1256,7 +1481,7 @@ export default function StaffTodayBookingsPage() {
                       </span>
                     </div>
 
-                    {/* Row 4 — Counts + FnB badge */}
+                    {/* Row 4 — Counts */}
                     <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#f0eeee]">
                       <span className="flex items-center gap-1 rounded-md bg-[#f5f3f2] px-2 py-1 text-[11px] font-bold text-[#4c4a49]">
                         <Users className="size-3 text-[#6b7280]" />
@@ -1266,18 +1491,6 @@ export default function StaffTodayBookingsPage() {
                         <span className="flex items-center gap-1 rounded-md bg-[#f5f3f2] px-2 py-1 text-[11px] font-bold text-[#4c4a49]">
                           <Car className="size-3 text-[#6b7280]" />
                           {vehicleCount} xe thuê
-                        </span>
-                      )}
-                      {hasFnb && (
-                        <span className="flex items-center gap-1 rounded-md bg-orange-50 border border-orange-200 px-2 py-1 text-[11px] font-bold text-orange-700">
-                          <UtensilsCrossed className="size-3" />
-                          Đồ ăn & thức uống đặt trước · {formatCurrency(fnbAmount)}
-                        </span>
-                      )}
-                      {hasOnsiteFnb && (
-                        <span className="flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-bold text-amber-700">
-                          <UtensilsCrossed className="size-3" />
-                          Đồ ăn & thức uống gọi tại ca · {formatCurrency(fnbOnsiteAmount)}
                         </span>
                       )}
                       <div className="ml-auto">
@@ -1303,9 +1516,22 @@ export default function StaffTodayBookingsPage() {
                             onClick={() => handleStartCheckIn(b)}
                             variant="primary"
                             size="sm"
+                            className={cn(
+                              isWalkIn &&
+                                "bg-[#ea580c] hover:bg-[#c2410c] text-white shadow-2xs font-extrabold",
+                            )}
                           >
-                            Nhận xe & bàn giao
-                            <ArrowRight className="size-3.5" />
+                            {isWalkIn ? (
+                              <>
+                                <Play className="size-3.5 fill-current" />
+                                Bàn giao & Mở phiên
+                              </>
+                            ) : (
+                              <>
+                                Nhận xe & bàn giao
+                                <ArrowRight className="size-3.5" />
+                              </>
+                            )}
                           </StaffButton>
                         ) : completedSession ? (
                           <StaffButton
@@ -1345,8 +1571,7 @@ export default function StaffTodayBookingsPage() {
           )}
         </div>
       )}
-
-      {/* 4. DYNAMIC WALK-IN REGISTRATION FORM */}
+{/* 4. DYNAMIC WALK-IN REGISTRATION FORM */}
       {activeTab === "WALKIN" && (
         <div className="mx-auto w-full max-w-[1440px]">
           <StaffCard className="p-5 md:p-7">
@@ -1365,466 +1590,1167 @@ export default function StaffTodayBookingsPage() {
             </div>
 
             <form onSubmit={handleWalkinSubmit} className="space-y-6">
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-                <section className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {/* Customer Name */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                        Tên Khách Hàng <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nhập tên khách hàng"
-                        value={customerName}
-                        onChange={(e) => {
-                          setCustomerName(e.target.value)
-                          setFieldErrors((p) => ({
-                            ...p,
-                            customerName: undefined,
-                          }))
-                        }}
-                        className={cn(
-                          "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
-                          fieldErrors.customerName
-                            ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                            : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
-                        )}
-                      />
-                      {fieldErrors.customerName && (
-                        <p className="mt-1 text-xs text-rose-500">
-                          {fieldErrors.customerName}
-                        </p>
-                      )}
-                    </div>
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                <section className="space-y-6 xl:col-span-8">
+                {/* STEPPER PROGRESS NAVIGATION HEADER */}
+                <div className="rounded-xl border border-[#e5e2e1] bg-white p-4 shadow-xs">
+                  <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+                    {[
+                      { id: 1, title: "1. Giờ chơi & Sân", icon: Clock },
+                      ...(playMode !== "BYOC" ? [{ id: 2, title: "2. Chọn Xe thuê", icon: Car }] : []),
+                      { id: 3, title: `${playMode !== "BYOC" ? "3" : "2"}. Đồ ăn & Nước`, icon: Coffee },
+                      { id: 4, title: `${playMode !== "BYOC" ? "4" : "3"}. Thanh toán`, icon: ShieldCheck },
+                    ].map((stepItem, idx, arr) => {
+                      const Icon = stepItem.icon
+                      const isActive = walkinStep === stepItem.id
+                      const isCompleted = walkinStep > stepItem.id
 
-                    {/* Customer Phone */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                        Số điện thoại <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="Nhập số điện thoại khách hàng"
-                        value={customerPhone}
-                        onChange={(e) => {
-                          setCustomerPhone(e.target.value)
-                          setFieldErrors((p) => ({
-                            ...p,
-                            customerPhone: undefined,
-                          }))
-                        }}
-                        className={cn(
-                          "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
-                          fieldErrors.customerPhone
-                            ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                            : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
-                        )}
-                      />
-                      {fieldErrors.customerPhone && (
-                        <p className="mt-1 text-xs text-rose-500">
-                          {fieldErrors.customerPhone}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    {/* Play Mode */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                        Chế độ chơi <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={playMode}
-                        onChange={(e) => {
-                          setPlayMode(e.target.value as "RENTAL" | "BYOC")
-                          setSelectedVehicles([])
-                          setSelectedSlot("")
-                          setSelectedSlotEnd(null)
-                          setFieldErrors((current) => ({
-                            ...current,
-                            playMode: undefined,
-                            vehicleIds: undefined,
-                            slotStart: undefined,
-                            slotEnd: undefined,
-                          }))
-                        }}
-                        className={cn(
-                          "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
-                          fieldErrors.playMode
-                            ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                            : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
-                        )}
-                      >
-                        <option value="RENTAL">Thuê xe của hàng</option>
-                        <option value="BYOC">Tự mang xe</option>
-                      </select>
-                      {fieldErrors.playMode && (
-                        <p className="mt-1 text-xs text-rose-500">
-                          {fieldErrors.playMode}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Track selector */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                        Đường đua hoạt động{" "}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={selectedTrackCode}
-                        onChange={(e) => {
-                          const match = trackConfigs.find(
-                            (c) => c.track_type?.code === e.target.value,
-                          )
-                          if (match) {
-                            const targetTrackCode = match.track_type?.code ?? ""
-                            setSelectedTrackCode(targetTrackCode)
-                            setSelectedTrackName(match.track_type?.name ?? "")
-                            setSelectedSlot("")
-                            setSelectedSlotEnd(null)
-                            setFieldErrors((current) => ({
-                              ...current,
-                              trackTypeId: undefined,
-                              slotStart: undefined,
-                              slotEnd: undefined,
-                              vehicleIds: undefined,
-                            }))
-                            // Filter out incompatible vehicles
-                            setSelectedVehicles((prev) =>
-                              prev.filter((v) => {
-                                const compat = v.catalog?.compatibleTrackTypes
-                                return (
-                                  !compat ||
-                                  compat.length === 0 ||
-                                  compat.some((t) =>
-                                    typeof t === "string"
-                                      ? t === targetTrackCode
-                                      : t.code === targetTrackCode ||
-                                        t.id === targetTrackCode,
-                                  )
-                                )
-                              }),
-                            )
-                          }
-                        }}
-                        className={cn(
-                          "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
-                          fieldErrors.trackTypeId
-                            ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                            : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
-                        )}
-                      >
-                        {trackConfigs
-                          .filter((c) => c.is_active)
-                          .map((c) => (
-                            <option key={c.id} value={c.track_type?.code ?? ""}>
-                              {c.track_type?.name ?? c.id}
-                            </option>
-                          ))}
-                      </select>
-                      {fieldErrors.trackTypeId && (
-                        <p className="mt-1 text-xs text-rose-500">
-                          {fieldErrors.trackTypeId}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Payment Method */}
-                    <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
-                        Thanh toán tại quầy{" "}
-                        <span className="text-rose-500">*</span>
-                      </label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => {
-                          setPaymentMethod(
-                            e.target.value as "CASH" | "BANK_TRANSFER",
-                          )
-                          setFieldErrors((current) => ({
-                            ...current,
-                            paymentMethod: undefined,
-                          }))
-                        }}
-                        className={cn(
-                          "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
-                          fieldErrors.paymentMethod
-                            ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                            : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
-                        )}
-                      >
-                        <option value="CASH">Tiền mặt</option>
-                        <option value="BANK_TRANSFER">Chuyển khoản</option>
-                      </select>
-                      {fieldErrors.paymentMethod && (
-                        <p className="mt-1 text-xs text-rose-500">
-                          {fieldErrors.paymentMethod}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* DATE & DYNAMIC SLOT GRID */}
-                  <div className="rounded-xl border border-orange-100 bg-orange-50/20 p-4 md:p-6 space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[#ea580c]" />
-                        <span className="text-sm font-bold text-[#1c1b1b]">
-                          Ngày chơi: Hôm nay (
-                          {new Date().toLocaleDateString("vi-VN", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
-                          )
-                        </span>
-                      </div>
-                      <span className="rounded-full bg-[#fff3eb] border border-[#ffdbca] px-2.5 py-0.5 text-[10px] font-bold text-[#ea580c]">
-                        Khách vãng lai trong ngày
-                      </span>
-                    </div>
-
-                    {isClosedToday && (
-                      <div className="rounded-lg border border-rose-200 bg-rose-50 p-3.5 text-xs font-bold text-rose-700">
-                        Cửa hàng hôm nay đóng cửa (Theo lịch hoạt động). Không
-                        thể khởi tạo ca chơi trực tiếp.
-                      </div>
-                    )}
-
-                    {!isLoadingCafe &&
-                      !isClosedToday &&
-                      !isScheduleConfigured && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3.5 text-xs font-bold text-amber-800">
-                          Cơ sở chưa cấu hình giờ hoạt động hoặc thời lượng slot
-                          hợp lệ. Không thể tạo đơn tại quầy.
-                        </div>
-                      )}
-
-                    <div
-                      className={cn(
-                        "transition-opacity",
-                        (isLoadingAvailability ||
-                          isClosedToday ||
-                          !isScheduleConfigured) &&
-                          "pointer-events-none opacity-40",
-                      )}
-                    >
-                      {isLoadingAvailability && (
-                        <div className="flex items-center gap-2 text-xs text-[#6b7280] mb-2 animate-pulse font-semibold">
-                          <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
-                          Đang cập nhật danh sách slot trống...
-                        </div>
-                      )}
-
-                      {isLoadingCafe ? (
-                        <div className="h-52 animate-pulse rounded-lg bg-muted" />
-                      ) : isScheduleConfigured ? (
-                        <DailySlotGrid
-                          slots={slots}
-                          selectedSlotId={selectedSlot}
-                          selectedSlotEndId={selectedSlotEnd ?? undefined}
-                          onSelectSlot={setSelectedSlot}
-                          slotDurationMinutes={slotDuration}
-                          minBookingNoticeMinutes={0}
-                          openHour={openHour}
-                          closeHour={closeHour}
-                          date={bookingDate}
-                          onSelectRange={(start, end) => {
-                            setSelectedSlot(start)
-                            setSelectedSlotEnd(end || null)
-                            setFieldErrors((current) => ({
-                              ...current,
-                              slotStart: undefined,
-                              slotEnd: undefined,
-                              vehicleIds: undefined,
-                            }))
-                          }}
-                        />
-                      ) : (
-                        <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/50 px-4 py-6 text-center text-xs text-amber-800">
-                          Chưa có lịch hoạt động hợp lệ để hiển thị slot.
-                        </div>
-                      )}
-                    </div>
-                    {(fieldErrors.slotStart ||
-                      fieldErrors.slotEnd ||
-                      fieldErrors.slotDurationMinutes ||
-                      fieldErrors.scheduleConfigured) && (
-                      <p className="text-xs font-medium text-rose-600">
-                        {fieldErrors.slotStart ??
-                          fieldErrors.slotEnd ??
-                          fieldErrors.slotDurationMinutes ??
-                          fieldErrors.scheduleConfigured}
-                      </p>
-                    )}
-                  </div>
-                </section>
-
-                <aside className="space-y-4 xl:sticky xl:top-5 xl:self-start">
-                  {/* VEHICLE FLEET MULTI SELECTOR */}
-                  {playMode !== "BYOC" && (
-                    <div className="space-y-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49]">
-                        Chọn xe cho thuê ({selectedSelectableVehicles.length} đã
-                        chọn) <span className="text-rose-500">*</span>
-                      </label>
-
-                      {!selectedSlot ? (
-                        <div className="rounded-xl border border-dashed border-[#e5e2e1] bg-[#fcf8f8] px-4 py-6 text-center text-xs text-[#6b7280]">
-                          Chọn slot trước để xem các xe thực sự còn có thể thuê.
-                        </div>
-                      ) : loadingVehicles ||
-                        isLoadingSelectedSlotAvailability ? (
-                        <div className="h-20 animate-pulse bg-[#fcf8f8] border border-[#e5e2e1] rounded-xl" />
-                      ) : (
-                        <div
-                          className={cn(
-                            "max-h-[26rem] space-y-2 overflow-y-auto rounded-xl border bg-[#fcf8f8] p-2",
-                            fieldErrors.vehicleIds
-                              ? "border-rose-400"
-                              : "border-[#e5e2e1]",
+                      return (
+                        <React.Fragment key={stepItem.id}>
+                          <button
+                            type="button"
+                            onClick={() => setWalkinStep(stepItem.id as 1 | 2 | 3 | 4)}
+                            className={cn(
+                              "flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all shrink-0 cursor-pointer",
+                              isActive
+                                ? "bg-[#fff7ed] text-[#ea580c] border border-[#ffdbca] shadow-xs"
+                                : isCompleted
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : "bg-gray-50 text-gray-500 border border-transparent hover:bg-gray-100"
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                "flex size-6 items-center justify-center rounded-full text-xs font-extrabold shrink-0",
+                                isActive
+                                  ? "bg-[#ea580c] text-white"
+                                  : isCompleted
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-gray-200 text-gray-600"
+                              )}
+                            >
+                              {isCompleted ? <Check className="size-3.5 stroke-[3]" /> : <Icon className="size-3.5" />}
+                            </div>
+                            <span className="whitespace-nowrap font-extrabold">{stepItem.title}</span>
+                          </button>
+                          {idx < arr.length - 1 && (
+                            <div className="mx-1 h-0.5 flex-1 bg-gray-200 min-w-4 rounded-full" />
                           )}
-                        >
-                          {selectableVehicles.map((unit) => {
-                            const isSelected = selectedSelectableVehicles.some(
-                              (v) => v.id === unit.id,
-                            )
-                            const hourlyRate = unit.catalog?.hourlyRate
+                        </React.Fragment>
+                      )
+                    })}
+                  </div>
+                </div>
 
-                            return (
-                              <button
-                                type="button"
-                                key={unit.id}
-                                aria-pressed={isSelected}
-                                onClick={() => {
-                                  toggleVehicle(unit)
-                                  setFieldErrors((current) => ({
-                                    ...current,
-                                    vehicleIds: undefined,
-                                  }))
-                                }}
-                                className={cn(
-                                  "flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ea580c]",
-                                  isSelected
-                                    ? "border-[#ea580c] bg-[#fff3eb] shadow-sm"
-                                    : "border-[#e5e2e1] bg-white hover:border-[#f1a77d] hover:bg-[#fffaf7]",
-                                )}
-                              >
-                                <VehicleThumbnail unit={unit} />
-                                <div className="min-w-0 flex-1 space-y-1">
-                                  <div className="flex min-w-0 items-center justify-between gap-2">
-                                    <p className="truncate text-sm font-bold text-[#1c1b1b]">
-                                      {unit.catalog?.name || unit.identifier}
-                                    </p>
-                                    {isSelected && (
-                                      <span className="shrink-0 rounded-full bg-[#ea580c] px-2 py-0.5 text-[10px] font-bold text-white">
-                                        Đã chọn
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p
-                                    className="truncate text-xs font-medium text-[#6b7280]"
-                                    title={unit.identifier}
-                                  >
-                                    Mã xe: {unit.identifier}
-                                  </p>
-                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                                    {unit.color && (
-                                      <span className="rounded-full bg-[#f5f3f2] px-2 py-0.5 font-medium text-[#4c4a49]">
-                                        {unit.color}
-                                      </span>
-                                    )}
-                                    <span className="font-bold text-[#ea580c]">
-                                      {hourlyRate != null
-                                        ? `${formatCurrency(hourlyRate)}/giờ`
-                                        : "Chưa cập nhật giá"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </button>
-                            )
-                          })}
+                {/* STEP 1: CUSTOMER & SLOT SELECTION */}
+                {walkinStep === 1 && (
+                  <div className="space-y-6">
+                    <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 md:p-6 space-y-4 shadow-xs">
+                      <div className="border-b border-[#e5e2e1] pb-3">
+                        <h4 className="text-base font-bold text-[#1c1b1b]">
+                          Bước 1: Thông tin khách hàng & Hình thức chơi
+                        </h4>
+                        <p className="text-xs text-[#6b7280]">
+                          Nhập tên khách vãng lai, số điện thoại liên hệ và chọn đường đua
+                        </p>
+                      </div>
 
-                          {selectableVehicles.length === 0 && (
-                            <p className="py-6 text-center text-xs text-[#6b7280] italic">
-                              Không còn xe phù hợp và trống cho slot/sân này.
-                              Vui lòng chọn slot hoặc sân khác.
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {/* Customer Name */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                            Tên Khách Hàng <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Nhập tên khách hàng"
+                            value={customerName}
+                            onChange={(e) => {
+                              setCustomerName(e.target.value)
+                              setFieldErrors((p) => ({
+                                ...p,
+                                customerName: undefined,
+                              }))
+                            }}
+                            className={cn(
+                              "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                              fieldErrors.customerName
+                                ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                                : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
+                            )}
+                          />
+                          {fieldErrors.customerName && (
+                            <p className="mt-1 text-xs text-rose-500">
+                              {fieldErrors.customerName}
                             </p>
                           )}
                         </div>
+
+                        {/* Customer Phone */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                            Số điện thoại <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="tel"
+                            placeholder="Nhập số điện thoại khách hàng"
+                            value={customerPhone}
+                            onChange={(e) => {
+                              setCustomerPhone(e.target.value)
+                              setFieldErrors((p) => ({
+                                ...p,
+                                customerPhone: undefined,
+                              }))
+                            }}
+                            className={cn(
+                              "w-full rounded-lg border bg-white px-4 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                              fieldErrors.customerPhone
+                                ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                                : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
+                            )}
+                          />
+                          {fieldErrors.customerPhone && (
+                            <p className="mt-1 text-xs text-rose-500">
+                              {fieldErrors.customerPhone}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        {/* Play Mode */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                            Chế độ chơi <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={playMode}
+                            onChange={(e) => {
+                              setPlayMode(e.target.value as "RENTAL" | "BYOC")
+                              setSelectedVehicles([])
+                              setSelectedSlot("")
+                              setSelectedSlotEnd(null)
+                              setFieldErrors((current) => ({
+                                ...current,
+                                playMode: undefined,
+                                vehicleIds: undefined,
+                                slotStart: undefined,
+                                slotEnd: undefined,
+                              }))
+                            }}
+                            className={cn(
+                              "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                              fieldErrors.playMode
+                                ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                                : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
+                            )}
+                          >
+                            <option value="RENTAL">Thuê xe của hàng</option>
+                            <option value="BYOC">Tự mang xe</option>
+                          </select>
+                          {fieldErrors.playMode && (
+                            <p className="mt-1 text-xs text-rose-500">
+                              {fieldErrors.playMode}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Track selector */}
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-[#4c4a49] mb-1.5">
+                            Đường đua hoạt động <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={selectedTrackCode}
+                            onChange={(e) => {
+                              const match = trackConfigs.find(
+                                (c) => c.track_type?.code === e.target.value,
+                              )
+                              if (match) {
+                                const targetTrackCode = match.track_type?.code ?? ""
+                                setSelectedTrackCode(targetTrackCode)
+                                setSelectedTrackName(match.track_type?.name ?? "")
+                                setSelectedSlot("")
+                                setSelectedSlotEnd(null)
+                                setFieldErrors((current) => ({
+                                  ...current,
+                                  trackTypeId: undefined,
+                                  slotStart: undefined,
+                                  slotEnd: undefined,
+                                  vehicleIds: undefined,
+                                }))
+                                setSelectedVehicles((prev) =>
+                                  prev.filter((v) => {
+                                    const compat = v.catalog?.compatibleTrackTypes
+                                    return (
+                                      !compat ||
+                                      compat.length === 0 ||
+                                      compat.some((t) =>
+                                        typeof t === "string"
+                                          ? t === targetTrackCode
+                                          : t.code === targetTrackCode ||
+                                            t.id === targetTrackCode,
+                                      )
+                                    )
+                                  }),
+                                )
+                              }
+                            }}
+                            className={cn(
+                              "w-full rounded-lg border bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1",
+                              fieldErrors.trackTypeId
+                                ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
+                                : "border-[#e5e2e1] focus:border-[#ea580c] focus:ring-[#ea580c]",
+                            )}
+                          >
+                            {trackConfigs
+                              .filter((c) => c.is_active)
+                              .map((c) => (
+                                <option key={c.id} value={c.track_type?.code ?? ""}>
+                                  {c.track_type?.name ?? c.id}
+                                </option>
+                              ))}
+                          </select>
+                          {fieldErrors.trackTypeId && (
+                            <p className="mt-1 text-xs text-rose-500">
+                              {fieldErrors.trackTypeId}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DATE & DYNAMIC SLOT GRID */}
+                    <div className="rounded-xl border border-orange-100 bg-orange-50/20 p-4 md:p-6 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-[#ea580c]" />
+                          <span className="text-sm font-bold text-[#1c1b1b]">
+                            Chọn Khung Giờ Chơi Hôm Nay
+                          </span>
+                          <span className="text-xs text-[#6b7280]">
+                            ({bookingDate})
+                          </span>
+                        </div>
+                        {slotDuration > 0 && (
+                          <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-800">
+                            {slotDuration} phút/slot
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        {isLoadingAvailability || isLoadingCafe ? (
+                          <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
+                            <Loader2 className="size-4 animate-spin text-[#ea580c]" />
+                            Đang tải lịch slot...
+                          </div>
+                        ) : isClosedToday ? (
+                          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-center text-xs text-rose-700">
+                            Quán đóng cửa hôm nay theo lịch hoạt động.
+                          </div>
+                        ) : isScheduleConfigured ? (
+                          <DailySlotGrid
+                            slots={slots}
+                            selectedSlotId={selectedSlot || ""}
+                            selectedSlotEndId={selectedSlotEnd || undefined}
+                            slotDurationMinutes={slotDuration}
+                            openHour={openHour}
+                            closeHour={closeHour}
+                            date={todayDate}
+                            allowCurrentSlot={true}
+                            onSelectSlot={(slotId) => {
+                              setSelectedSlot(slotId)
+                              setSelectedSlotEnd(null)
+                              setSelectedVehicles([])
+                              setFieldErrors((current) => ({
+                                ...current,
+                                slotStart: undefined,
+                                slotEnd: undefined,
+                                vehicleIds: undefined,
+                              }))
+                            }}
+                            onSelectRange={(start, end) => {
+                              setSelectedSlot(start)
+                              setSelectedSlotEnd(end)
+                              setSelectedVehicles([])
+                              setFieldErrors((current) => ({
+                                ...current,
+                                slotStart: undefined,
+                                slotEnd: undefined,
+                                vehicleIds: undefined,
+                              }))
+                            }}
+                          />
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/50 px-4 py-6 text-center text-xs text-amber-800">
+                            Chưa có lịch hoạt động hợp lệ để hiển thị slot.
+                          </div>
+                        )}
+                      </div>
+                      {(fieldErrors.slotStart ||
+                        fieldErrors.slotEnd ||
+                        fieldErrors.slotDurationMinutes ||
+                        fieldErrors.scheduleConfigured) && (
+                        <p className="text-xs font-medium text-rose-600">
+                          {fieldErrors.slotStart ??
+                            fieldErrors.slotEnd ??
+                            fieldErrors.slotDurationMinutes ??
+                            fieldErrors.scheduleConfigured}
+                        </p>
                       )}
+                    </div>
+
+                    {/* Step 1 Next Action */}
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const errors: WalkInFieldErrors = {}
+                          const phoneRegex = /^(84|0[35789])\d{8}$/
+                          if (!customerName.trim()) {
+                            errors.customerName = "Vui lòng nhập tên khách hàng"
+                          }
+                          if (!customerPhone.trim()) {
+                            errors.customerPhone = "Vui lòng nhập số điện thoại"
+                          } else if (!phoneRegex.test(customerPhone.trim())) {
+                            errors.customerPhone =
+                              "Số điện thoại cần có 10 số và bắt đầu bằng 03, 05, 07, 08 hoặc 09"
+                          }
+                          if (!selectedSlot) {
+                            errors.slotStart = "Vui lòng chọn khung giờ chơi"
+                          }
+
+                          if (Object.keys(errors).length > 0) {
+                            setFieldErrors(errors)
+                            const firstErr = Object.values(errors)[0]
+                            if (firstErr) toast.error(firstErr)
+                            return
+                          }
+                          setFieldErrors({})
+                          setWalkinStep(playMode === "BYOC" ? 3 : 2)
+                        }}
+                        className="flex items-center gap-2 rounded-xl bg-[#ea580c] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#d94e07] transition-all cursor-pointer"
+                      >
+                        <span>Tiếp tục: {playMode === "BYOC" ? "Chọn Đồ ăn & Nước" : "Chọn Xe thuê"}</span>
+                        <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: VEHICLE SELECTION (Only for RENTAL) */}
+                {walkinStep === 2 && playMode !== "BYOC" && (
+                  <div className="space-y-6">
+                    <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 md:p-6 space-y-5 shadow-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e2e1] pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-10 items-center justify-center rounded-xl bg-[#fff7ed] text-[#ea580c]">
+                            <Car className="size-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-bold text-[#1c1b1b]">
+                              Bước 2: Chọn Xe Thuê Cho Khách
+                            </h4>
+                            <p className="text-xs text-[#6b7280]">
+                              Chọn các xe sẵn sàng thuộc từng Mẫu xe / Danh mục cho khách chơi
+                            </p>
+                          </div>
+                        </div>
+                        {selectedSelectableVehicles.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-[#fff7ed] border border-[#ffdbca] px-3 py-1 text-xs font-bold text-[#ea580c]">
+                              Đã chọn {selectedSelectableVehicles.length} xe
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedVehicles([])}
+                              className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Bỏ chọn tất cả
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* List of Catalogs */}
+                      {!selectedSlot ? (
+                        <div className="rounded-lg border border-dashed border-[#e5e2e1] bg-[#fcf8f8] p-6 text-center text-xs text-[#6b7280]">
+                          Vui lòng chọn khung giờ trước để tải danh sách xe sẵn sàng.
+                        </div>
+                      ) : groupedVehiclesByCatalog.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/50 p-6 text-center text-xs text-amber-800 font-semibold">
+                          Không có xe nào khả dụng trong khung giờ này.
+                        </div>
+                      ) : (
+                        <div className="space-y-5">
+                          {groupedVehiclesByCatalog.map(({ catalog, units }) => {
+                            const selectedUnitsInCatalog = units.filter((u) =>
+                              selectedVehicles.some((sv) => sv.id === u.id)
+                            )
+                            const catalogCover = getCatalogImageUrl(catalog)
+
+                            return (
+                              <div
+                                key={catalog.id}
+                                className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4 space-y-3"
+                              >
+                                {/* Catalog Header */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e2e1] pb-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="relative size-12 shrink-0 overflow-hidden rounded-lg border border-[#e5e2e1] bg-white">
+                                      <VehicleImage
+                                        imageUrl={catalogCover}
+                                        alt={catalog.name}
+                                        className="h-full w-full object-cover"
+                                        fallbackClassName="bg-white text-[#6b7280]"
+                                        iconClassName="size-6"
+                                      />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h5 className="text-sm font-bold text-[#1c1b1b] leading-tight break-words">
+                                        {catalog.name}
+                                      </h5>
+                                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                        <span className="font-black text-[#ea580c]">
+                                          {formatCurrency(catalog.hourlyRate)}/giờ
+                                        </span>
+                                        {catalog.tier && (
+                                          <span className="rounded bg-slate-200/60 px-1.5 py-0.5 text-[10px] font-extrabold text-[#4c4a49]">
+                                            {catalog.tier}
+                                          </span>
+                                        )}
+                                        <span className="text-[11px] text-[#6b7280]">
+                                          ({units.length} xe khả dụng)
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {selectedUnitsInCatalog.length > 0 && (
+                                    <span className="rounded-full bg-[#ea580c] px-2.5 py-0.5 text-[11px] font-bold text-white shrink-0">
+                                      Đã chọn {selectedUnitsInCatalog.length} xe
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Units List - Horizontal Card Layout */}
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                  {units.map((unit) => {
+                                    const isSelected = selectedVehicles.some((v) => v.id === unit.id)
+                                    const unitImage = sanitizeImageUrl(unit.distinctive_image_url) || catalogCover
+
+                                    return (
+                                      <button
+                                        key={unit.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedVehicles((prev) =>
+                                            isSelected
+                                              ? prev.filter((v) => v.id !== unit.id)
+                                              : [...prev, unit]
+                                          )
+                                          setFieldErrors((current) => ({
+                                            ...current,
+                                            vehicleIds: undefined,
+                                          }))
+                                        }}
+                                        className={cn(
+                                          "flex items-center gap-3 rounded-xl border p-3 text-left transition-all cursor-pointer",
+                                          isSelected
+                                            ? "border-[#ea580c] bg-[#fff7ed] ring-1 ring-[#ea580c]/30 shadow-xs"
+                                            : "border-[#e5e2e1] bg-white hover:border-[#f1a77d] hover:bg-[#fff7ed]/30"
+                                        )}
+                                      >
+                                        {/* Physical Vehicle Thumbnail */}
+                                        <div className="relative size-14 shrink-0 overflow-hidden rounded-lg border border-[#e5e2e1] bg-[#f5f3f2]">
+                                          <VehicleImage
+                                            imageUrl={unitImage}
+                                            alt={unit.identifier}
+                                            className="h-full w-full object-cover"
+                                            fallbackClassName="bg-[#f5f3f2] text-[#6b7280]"
+                                            iconClassName="size-6"
+                                          />
+                                          {isSelected && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-[#ea580c]/35 backdrop-blur-[1px]">
+                                              <Check className="size-5 text-white stroke-[3] drop-shadow-sm" />
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Details */}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-extrabold text-[#1c1b1b] leading-tight break-words">
+                                            {unit.identifier}
+                                          </p>
+                                          {unit.color && (
+                                            <p className="mt-1 text-[11px] text-[#6b7280] font-medium leading-tight break-words">
+                                              Màu: {unit.color}
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        {/* Check Indicator */}
+                                        <div
+                                          className={cn(
+                                            "flex size-5 items-center justify-center rounded-md border shrink-0 transition-colors self-center",
+                                            isSelected
+                                              ? "border-[#ea580c] bg-[#ea580c] text-white"
+                                              : "border-[#d1d5db] bg-white"
+                                          )}
+                                        >
+                                          {isSelected && <Check className="size-3 stroke-[3]" />}
+                                        </div>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
                       {fieldErrors.vehicleIds && (
                         <p className="text-xs font-medium text-rose-600">
                           {fieldErrors.vehicleIds}
                         </p>
                       )}
-                      <p className="text-[11px] leading-relaxed text-[#6b7280]">
-                        Chỉ hiển thị xe có thể chọn trong khung giờ này.
-                      </p>
                     </div>
-                  )}
 
-                  {/* CAPACITY WARNING */}
-                  <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-bold text-blue-700">
-                      <ShieldCheck className="size-4 text-blue-600" />
-                      Kiểm tra an toàn & Công suất đường đua
+                    {/* Step 2 Actions */}
+                    <div className="flex items-center justify-between pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setWalkinStep(1)}
+                        className="flex items-center gap-2 rounded-xl border border-[#e5e2e1] bg-white px-5 py-2.5 text-sm font-bold text-[#1c1b1b] hover:bg-gray-50 cursor-pointer"
+                      >
+                        <ChevronLeft className="size-4" />
+                        <span>Quay lại: Lịch & Giờ chơi</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedVehicles.length === 0) {
+                            const msg = "Vui lòng chọn ít nhất 1 xe thuê cho khách"
+                            setFieldErrors({ vehicleIds: msg })
+                            toast.error(msg)
+                            return
+                          }
+                          setFieldErrors({})
+                          setWalkinStep(3)
+                        }}
+                        className="flex items-center gap-2 rounded-xl bg-[#ea580c] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#d94e07] transition-all cursor-pointer"
+                      >
+                        <span>Tiếp tục: Thêm Đồ ăn & Nước</span>
+                        <ArrowRight className="size-4" />
+                      </button>
                     </div>
-                    <p className="text-[11px] text-blue-900 leading-relaxed font-semibold">
-                      Hệ thống tự động kiểm tra tính sẵn sàng của đường đua{" "}
-                      <strong>{selectedTrackName || "đã chọn"}</strong> để tránh
-                      chồng chéo các ca chạy cùng lúc.
-                    </p>
                   </div>
+                )}
 
-                  {/* BILLING BREAKDOWN PREVIEW */}
-                  <div className="rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] p-4 space-y-2">
-                    <h5 className="text-xs font-extrabold uppercase tracking-wider text-[#6b7280]">
-                      Chi tiết hóa đơn dự kiến
-                    </h5>
-
-                    {isLoadingCafe ? (
-                      <div className="flex items-center gap-2 text-xs text-[#6b7280] py-2 animate-pulse font-semibold">
-                        <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
-                        Đang tải thông tin giá...
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5 text-xs font-bold">
-                        <div className="flex justify-between text-[#4c4a49]">
-                          <span>
-                            Phí giờ chơi ({slotCount} slots x{" "}
-                            {slotFeeRate.toLocaleString("vi-VN")} đ)
-                          </span>
-                          <span>{slotFeeTotal.toLocaleString("vi-VN")} đ</span>
+                {/* STEP 3: F&B SELECTION */}
+                {walkinStep === 3 && (
+                  <div className="space-y-6">
+                    <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 md:p-6 space-y-4 shadow-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e2e1] pb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-10 items-center justify-center rounded-xl bg-[#fff7ed] text-[#ea580c]">
+                            <Coffee className="size-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-base font-bold text-[#1c1b1b]">
+                              Bước 3: Thêm Đồ ăn & Nước uống
+                            </h4>
+                            <p className="text-xs text-[#6b7280]">
+                              Chọn các món giải khát, đồ ăn kèm cho khách vãng lai (không bắt buộc)
+                            </p>
+                          </div>
                         </div>
-                        {playMode !== "BYOC" && (
-                          <div className="flex justify-between text-[#4c4a49]">
-                            <span>
-                              Phí thuê xe ({selectedSelectableVehicles.length}{" "}
-                              xe)
+                        {Object.keys(selectedFnbCart).length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-[#fff7ed] border border-[#ffdbca] px-3 py-1 text-xs font-bold text-[#ea580c]">
+                              Đã chọn {Object.values(selectedFnbCart).reduce((a, b) => a + b.quantity, 0)} phần ({formatCurrency(fnbTotalAmount)})
                             </span>
-                            <span>
-                              {rentalFeeTotal.toLocaleString("vi-VN")} đ
-                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFnbCart({})}
+                              className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
+                            >
+                              Xóa hết
+                            </button>
                           </div>
                         )}
-                        <div className="flex justify-between text-[#1c1b1b] border-t border-[#e5e2e1] pt-2">
-                          <span>Tổng thanh toán tại quầy:</span>
-                          <span className="text-[#ea580c] text-sm font-black">
-                            {totalAmount.toLocaleString("vi-VN")} đ
+                      </div>
+
+                      {/* Search & Category Filter Row */}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        {/* Search */}
+                        <div className="relative flex-1 max-w-sm">
+                          <SearchIcon className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9ca3af]" />
+                          <input
+                            type="text"
+                            value={fnbSearchTerm}
+                            onChange={(e) => setFnbSearchTerm(e.target.value)}
+                            placeholder="Tìm món, nước uống, combo..."
+                            className="w-full rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] pl-9 pr-8 py-2 text-xs text-[#1c1b1b] focus:border-[#ea580c] focus:bg-white focus:outline-none"
+                          />
+                          {fnbSearchTerm && (
+                            <button
+                              type="button"
+                              onClick={() => setFnbSearchTerm("")}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#1c1b1b]"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Category Filter Chips */}
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
+                          <button
+                            type="button"
+                            onClick={() => setFnbSelectedCategory("ALL")}
+                            className={cn(
+                              "rounded-full px-3 py-1 text-xs font-bold transition-all shrink-0 cursor-pointer",
+                              fnbSelectedCategory === "ALL"
+                                ? "bg-[#ea580c] text-white"
+                                : "bg-[#f5f3f2] text-[#4c4a49] hover:bg-[#e5e2e1]",
+                            )}
+                          >
+                            Tất cả
+                          </button>
+                          {fnbCategories.map((cat) => (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => setFnbSelectedCategory(cat)}
+                              className={cn(
+                                "rounded-full px-3 py-1 text-xs font-bold transition-all shrink-0 cursor-pointer",
+                                fnbSelectedCategory === cat
+                                  ? "bg-[#ea580c] text-white"
+                                  : "bg-[#f5f3f2] text-[#4c4a49] hover:bg-[#e5e2e1]",
+                              )}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Menu Items Grid */}
+                      {isLoadingFnbMenu ? (
+                        <div className="flex items-center justify-center py-8 text-xs text-muted-foreground gap-2">
+                          <Loader2 className="size-4 animate-spin text-[#ea580c]" />
+                          Đang tải thực đơn đồ ăn & nước uống...
+                        </div>
+                      ) : filteredFnbMenuItems.length === 0 ? (
+                        <div className="rounded-lg border border-dashed border-[#e5e2e1] bg-[#fcf8f8] p-6 text-center text-xs text-[#6b7280]">
+                          Không tìm thấy món ăn nào phù hợp.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                          {filteredFnbMenuItems.map((item) => {
+                            const hasVariants = item.variants && item.variants.length > 0
+                            const basePrice = Number(item.price)
+
+                            if (!hasVariants) {
+                              const cartKey = item.id
+                              const cartEntry = selectedFnbCart[cartKey]
+                              const qty = cartEntry?.quantity || 0
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={cn(
+                                    "flex flex-col justify-between rounded-xl border p-3.5 space-y-3 transition-all",
+                                    qty > 0
+                                      ? "border-[#ea580c] bg-[#fff7ed]"
+                                      : "border-[#e5e2e1] bg-white",
+                                  )}
+                                >
+                                  <div>
+                                    <h5 className="text-xs font-bold text-[#1c1b1b] leading-tight break-words">
+                                      {item.name}
+                                    </h5>
+                                    {item.categoryName && (
+                                      <p className="mt-0.5 text-[10px] text-[#6b7280] leading-tight break-words">
+                                        {item.categoryName}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center justify-between border-t border-[#f5f3f2] pt-2">
+                                    <span className="font-extrabold text-[#ea580c] text-xs">
+                                      {formatCurrency(basePrice)}
+                                    </span>
+
+                                    {qty > 0 ? (
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateFnbQuantity(item, undefined, undefined, basePrice, -1)}
+                                          className="flex size-6 items-center justify-center rounded-lg border border-[#e5e2e1] bg-white text-[#1c1b1b] hover:bg-gray-50"
+                                        >
+                                          <Minus className="size-3" />
+                                        </button>
+                                        <span className="min-w-[18px] text-center text-xs font-extrabold text-[#1c1b1b]">
+                                          {qty}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleUpdateFnbQuantity(item, undefined, undefined, basePrice, 1)}
+                                          className="flex size-6 items-center justify-center rounded-lg bg-[#ea580c] text-white hover:bg-[#c2410c]"
+                                        >
+                                          <Plus className="size-3" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateFnbQuantity(item, undefined, undefined, basePrice, 1)}
+                                        className="flex items-center gap-1 rounded-lg border border-[#e5e2e1] bg-[#fcf8f8] px-2.5 py-1 text-xs font-bold text-[#1c1b1b] hover:border-[#ea580c] hover:bg-[#fff7ed] hover:text-[#ea580c]"
+                                      >
+                                        <Plus className="size-3 text-[#ea580c]" /> Thêm
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            }
+
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex flex-col justify-between rounded-xl border border-[#e5e2e1] bg-white p-3.5 space-y-3"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <h5 className="text-xs font-bold text-[#1c1b1b] leading-tight break-words">
+                                      {item.name}
+                                    </h5>
+                                    {item.categoryName && (
+                                      <p className="mt-0.5 text-[10px] text-[#6b7280] leading-tight break-words">
+                                        {item.categoryName}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <span className="rounded-full bg-[#f5f3f2] px-2 py-0.5 text-[10px] font-bold text-[#6b7280] shrink-0">
+                                    {item.variants?.length} tùy chọn
+                                  </span>
+                                </div>
+
+                                <div className="space-y-2 border-t border-[#f5f3f2] pt-2">
+                                  {item.variants?.map((v) => {
+                                    const vPrice = Number(v.price)
+                                    const cartKey = `${item.id}::${v.id}`
+                                    const cartEntry = selectedFnbCart[cartKey]
+                                    const qty = cartEntry?.quantity || 0
+
+                                    return (
+                                      <div
+                                        key={v.id}
+                                        className={cn(
+                                          "flex items-center justify-between rounded-lg p-1.5 transition-all text-xs",
+                                          qty > 0
+                                            ? "bg-[#fff7ed] border border-[#ffdbca]"
+                                            : "bg-[#fcf8f8]"
+                                        )}
+                                      >
+                                        <div className="min-w-0 flex-1 pr-2">
+                                          <span className="font-bold text-[#1c1b1b] leading-tight break-words block">
+                                            {v.name}
+                                          </span>
+                                          <span className="font-black text-[#ea580c] text-[11px]">
+                                            {formatCurrency(vPrice)}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          {qty > 0 ? (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleUpdateFnbQuantity(item, v.id, v.name, vPrice, -1)}
+                                                className="flex size-5 items-center justify-center rounded border border-[#e5e2e1] bg-white text-[#1c1b1b]"
+                                              >
+                                                <Minus className="size-2.5" />
+                                              </button>
+                                              <span className="min-w-[14px] text-center text-xs font-extrabold text-[#1c1b1b]">
+                                                {qty}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleUpdateFnbQuantity(item, v.id, v.name, vPrice, 1)}
+                                                className="flex size-5 items-center justify-center rounded bg-[#ea580c] text-white"
+                                              >
+                                                <Plus className="size-2.5" />
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleUpdateFnbQuantity(item, v.id, v.name, vPrice, 1)}
+                                          >
+                                            <Plus className="size-2.5 text-[#ea580c]" /> Thêm
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                    {/* Navigation Buttons for Step 3 */}
+                    <div className="flex items-center justify-between border-t border-[#e5e2e1] pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setWalkinStep(playMode === "BYOC" ? 1 : 2)}
+                        className="flex items-center gap-2 rounded-xl border border-[#e5e2e1] bg-white px-5 py-2.5 text-sm font-bold text-[#1c1b1b] shadow-xs hover:bg-[#fcf8f8] transition-all cursor-pointer"
+                      >
+                        <ChevronLeft className="size-4" />
+                        <span>Quay lại {playMode === "BYOC" ? "Thông tin" : "Chọn xe"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFieldErrors({})
+                          setWalkinStep(4)
+                        }}
+                        className="flex items-center gap-2 rounded-xl bg-[#ea580c] px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#d94e07] transition-all cursor-pointer"
+                      >
+                        <span>Tiếp tục: Xác nhận & Thanh toán</span>
+                        <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 4: CONFIRMATION & PAYMENT */}
+                {walkinStep === 4 && (
+                  <div className="space-y-6">
+                    <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 md:p-6 space-y-5 shadow-xs">
+                      <div className="flex items-center gap-3 border-b border-[#e5e2e1] pb-4">
+                        <div className="flex size-10 items-center justify-center rounded-xl bg-[#fff7ed] text-[#ea580c]">
+                          <CheckCircle2 className="size-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-bold text-[#1c1b1b]">
+                            Bước 4: Kiểm tra & Xác nhận Đặt chỗ
+                          </h4>
+                          <p className="text-xs text-[#6b7280]">
+                            Rà soát lại toàn bộ thông tin đơn hàng trước khi tiến hành thanh toán
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Error Alert if validation fails */}
+                      {Object.keys(fieldErrors).length > 0 && (
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs text-red-700 flex items-start gap-2.5">
+                          <AlertCircle className="size-4 text-red-600 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <p className="font-bold">Thông tin đơn chưa hợp lệ:</p>
+                            <ul className="list-disc list-inside space-y-0.5">
+                              {Object.entries(fieldErrors).map(([key, err]) => (
+                                <li key={key}>{err}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Customer & Schedule Summary */}
+                        <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4 space-y-3">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-[#ea580c] flex items-center gap-1.5">
+                            <User className="size-3.5" /> Thông tin khách & Lịch
+                          </h5>
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between"><span className="text-[#6b7280]">Họ tên:</span> <span className="font-bold text-[#1c1b1b]">{customerName || "—"}</span></div>
+                            <div className="flex justify-between"><span className="text-[#6b7280]">Số điện thoại:</span> <span className="font-bold text-[#1c1b1b]">{customerPhone || "—"}</span></div>
+                            <div className="flex justify-between"><span className="text-[#6b7280]">Đường đua:</span> <span className="font-bold text-[#1c1b1b]">{selectedTrackName}</span></div>
+                            <div className="flex justify-between"><span className="text-[#6b7280]">Hình thức:</span> <span className="font-bold text-[#ea580c]">{playMode === "RENTAL" ? "Thuê xe tại sân" : "Tự mang xe (BYOC)"}</span></div>
+                            <div className="flex justify-between"><span className="text-[#6b7280]">Khung giờ:</span> <span className="font-bold text-[#1c1b1b]">{selectedSlot ? (selectedSlotEnd ? `${selectedSlot} - ${selectedSlotEnd}` : selectedSlot) : "—"}</span></div>
+                            <div className="flex justify-between"><span className="text-[#6b7280]">Số lượng slot:</span> <span className="font-bold text-[#1c1b1b]">{slotCount} slot ({slotCount * (slotDuration || 30)} phút)</span></div>
+                          </div>
+                        </div>
+
+                        {/* Vehicle & F&B Summary */}
+                        <div className="rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-4 space-y-3">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-[#ea580c] flex items-center gap-1.5">
+                            <Car className="size-3.5" /> Dịch vụ kèm theo
+                          </h5>
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <span className="text-[#6b7280] block mb-1">Xe đã chọn:</span>
+                              {playMode === "BYOC" ? (
+                                <span className="italic text-[#6b7280]">Khách dùng xe cá nhân</span>
+                              ) : selectedSelectableVehicles.length === 0 ? (
+                                <span className="text-red-500 font-medium">Chưa chọn xe nào</span>
+                              ) : (
+                                <div className="space-y-1">
+                                  {selectedSelectableVehicles.map(v => (
+                                    <div key={v.id} className="flex justify-between bg-white px-2 py-1 rounded border border-[#e5e2e1] font-semibold">
+                                      <span>{v.catalog?.name || v.identifier} ({v.identifier})</span>
+                                      <span className="text-[#ea580c]">{formatCurrency(v.catalog?.hourlyRate || 0)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {Object.keys(selectedFnbCart).length > 0 && (
+                              <div className="border-t border-[#e5e2e1] pt-2">
+                                <span className="text-[#6b7280] block mb-1">Đồ ăn / Nước uống:</span>
+                                <div className="space-y-1">
+                                  {Object.entries(selectedFnbCart).map(([key, item]) => (
+                                    <div key={key} className="flex justify-between bg-white px-2 py-1 rounded border border-[#e5e2e1]">
+                                      <span>{item.menuItem.name} {item.variantName ? `(${item.variantName})` : ""} x{item.quantity}</span>
+                                      <span className="font-semibold">{formatCurrency(item.unitPrice * item.quantity)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Payment Method Selection */}
+                      <div className="border-t border-[#e5e2e1] pt-4 space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-wider text-[#1c1b1b] block">
+                          Phương thức thanh toán
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("CASH")}
+                            className={cn(
+                              "flex items-center justify-center gap-2 rounded-xl p-3 border font-bold text-xs transition-all cursor-pointer",
+                              paymentMethod === "CASH"
+                                ? "border-[#ea580c] bg-[#fff7ed] text-[#ea580c] shadow-xs"
+                                : "border-[#e5e2e1] bg-white text-[#6b7280] hover:bg-[#fcf8f8]"
+                            )}
+                          >
+                            <Banknote className="size-4" />
+                            <span>Tiền mặt tại quầy</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPaymentMethod("BANK_TRANSFER")}
+                            className={cn(
+                              "flex items-center justify-center gap-2 rounded-xl p-3 border font-bold text-xs transition-all cursor-pointer",
+                              paymentMethod === "BANK_TRANSFER"
+                                ? "border-[#ea580c] bg-[#fff7ed] text-[#ea580c] shadow-xs"
+                                : "border-[#e5e2e1] bg-white text-[#6b7280] hover:bg-[#fcf8f8]"
+                            )}
+                          >
+                            <CreditCard className="size-4" />
+                            <span>Chuyển khoản QR</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Navigation Buttons for Step 4 */}
+                    <div className="flex items-center justify-between pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setWalkinStep(3)}
+                        className="flex items-center gap-2 rounded-xl border border-[#e5e2e1] bg-white px-5 py-2.5 text-sm font-bold text-[#1c1b1b] shadow-xs hover:bg-[#fcf8f8] transition-all cursor-pointer"
+                      >
+                        <ChevronLeft className="size-4" />
+                        <span>Quay lại Đồ ăn & Nước</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+                <aside className="space-y-4 xl:sticky xl:top-5 xl:self-start xl:col-span-4">
+                  {/* DETAILED BOOKING SUMMARY CARD */}
+                  <div className="rounded-xl border border-[#e5e2e1] bg-white p-5 space-y-4 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-[#e5e2e1] pb-3">
+                      <div>
+                        <h4 className="text-sm font-bold text-[#1c1b1b]">Tóm tắt đơn đặt chỗ</h4>
+                        <p className="text-[11px] text-[#6b7280]">Cập nhật thời gian thực theo từng bước</p>
+                      </div>
+                      <span
+                        className={cn(
+                          "rounded-full px-2.5 py-0.5 text-[11px] font-bold border",
+                          playMode === "RENTAL"
+                            ? "bg-orange-100 text-orange-800 border-orange-200"
+                            : "bg-blue-100 text-blue-800 border-blue-200"
+                        )}
+                      >
+                        {playMode === "RENTAL" ? "Thuê xe" : "Xe cá nhân"}
+                      </span>
+                    </div>
+
+                    {/* Schedule & Track Details */}
+                    <div className="space-y-2 text-xs border-b border-[#e5e2e1] pb-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#6b7280]">Đường đua:</span>
+                        <span className="font-bold text-[#1c1b1b]">{selectedTrackName || "Chưa chọn"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#6b7280]">Ngày chơi:</span>
+                        <span className="font-semibold text-[#1c1b1b]">{bookingDate}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[#6b7280]">Khung giờ:</span>
+                        <span className="font-bold text-[#ea580c]">
+                          {selectedSlot ? (selectedSlotEnd ? `${selectedSlot} - ${selectedSlotEnd}` : selectedSlot) : "Chưa chọn slot"}
+                        </span>
+                      </div>
+                      {slotCount > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#6b7280]">Thời lượng:</span>
+                          <span className="font-medium text-[#4c4a49]">{slotCount} slot ({slotCount * (slotDuration || 30)} phút)</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Vehicle Items Breakdown */}
+                    <div className="space-y-2 text-xs border-b border-[#e5e2e1] pb-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold uppercase text-[10px] tracking-wider text-[#6b7280]">Xe đua sử dụng</span>
+                        {playMode === "RENTAL" && (
+                          <span className="text-[11px] font-semibold text-[#ea580c]">{selectedSelectableVehicles.length} xe đã chọn</span>
+                        )}
+                      </div>
+
+                      {playMode === "BYOC" ? (
+                        <div className="rounded-lg bg-[#f9fafb] p-2 text-center text-xs italic text-[#6b7280] border border-[#f3f4f6]">
+                          Khách tự mang xe cá nhân (Miễn phí thuê xe)
+                        </div>
+                      ) : selectedSelectableVehicles.length === 0 ? (
+                        <div className="rounded-lg bg-amber-50/60 p-2 text-center text-xs text-amber-700 border border-amber-200/60 font-medium">
+                          Chưa chọn xe thuê nào
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                          {selectedSelectableVehicles.map((v) => (
+                            <div key={v.id} className="flex justify-between items-center bg-[#fcf8f8] px-2.5 py-1.5 rounded-lg border border-[#e5e2e1]">
+                              <span className="font-medium truncate max-w-[170px]" title={v.catalog?.name || v.identifier}>
+                                {v.catalog?.name || v.identifier} <span className="text-[#6b7280] text-[10px]">({v.identifier})</span>
+                              </span>
+                              <span className="font-semibold text-[#1c1b1b] shrink-0">{formatCurrency(v.catalog?.hourlyRate || 0)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* F&B Items Breakdown */}
+                    {Object.keys(selectedFnbCart).length > 0 && (
+                      <div className="space-y-2 text-xs border-b border-[#e5e2e1] pb-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold uppercase text-[10px] tracking-wider text-[#6b7280]">Đồ ăn & Nước uống</span>
+                          <span className="text-[11px] font-semibold text-[#ea580c]">
+                            {Object.values(selectedFnbCart).reduce((a, b) => a + b.quantity, 0)} phần
                           </span>
+                        </div>
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          {Object.entries(selectedFnbCart).map(([key, item]) => (
+                            <div key={key} className="flex justify-between items-center bg-[#fcf8f8] px-2.5 py-1.5 rounded-lg border border-[#e5e2e1] gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-semibold text-[#1c1b1b] truncate text-[11px]">
+                                  {item.menuItem.name} {item.variantName ? <span className="text-[#6b7280] text-[10px]">({item.variantName})</span> : ""}
+                                </p>
+                                <p className="font-bold text-[#ea580c] text-[10px]">
+                                  {formatCurrency(item.unitPrice * item.quantity)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateFnbQuantity(item.menuItem, item.variantId, item.variantName, item.unitPrice, -1)}
+                                  className="flex size-5 items-center justify-center rounded border border-[#e5e2e1] bg-white text-[#1c1b1b] hover:bg-gray-100 cursor-pointer"
+                                  title="Giảm"
+                                >
+                                  <Minus className="size-2.5" />
+                                </button>
+                                <span className="min-w-[14px] text-center text-xs font-extrabold text-[#1c1b1b]">
+                                  {item.quantity}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateFnbQuantity(item.menuItem, item.variantId, item.variantName, item.unitPrice, 1)}
+                                  className="flex size-5 items-center justify-center rounded bg-[#ea580c] text-white hover:bg-[#d94e07] cursor-pointer"
+                                  title="Tăng"
+                                >
+                                  <Plus className="size-2.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
+
+                    {/* Financial Summary Breakdown */}
+                    <div className="space-y-2 pt-1">
+                      <h5 className="text-[10px] font-extrabold uppercase tracking-wider text-[#6b7280]">
+                        Chi tiết hóa đơn dự kiến
+                      </h5>
+
+                      {isLoadingCafe ? (
+                        <div className="flex items-center gap-2 text-xs text-[#6b7280] py-2 animate-pulse font-semibold">
+                          <Loader2 className="size-3.5 animate-spin text-[#ea580c]" />
+                          Đang tính toán giá...
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 text-xs font-medium">
+                          <div className="flex justify-between text-[#4c4a49]">
+                            <span className="text-[#6b7280]">Phí sân chơi ({slotCount} slot):</span>
+                            <span className="font-semibold text-[#1c1b1b]">{formatCurrency(slotFeeTotal)}</span>
+                          </div>
+                          {playMode !== "BYOC" && (
+                            <div className="flex justify-between text-[#4c4a49]">
+                              <span className="text-[#6b7280]">Phí thuê xe ({selectedSelectableVehicles.length} xe):</span>
+                              <span className="font-semibold text-[#1c1b1b]">{formatCurrency(rentalFeeTotal)}</span>
+                            </div>
+                          )}
+                          {fnbTotalAmount > 0 && (
+                            <div className="flex justify-between text-[#4c4a49]">
+                              <span className="text-[#6b7280]">Đồ ăn & Nước uống:</span>
+                              <span className="font-semibold text-[#1c1b1b]">{formatCurrency(fnbTotalAmount)}</span>
+                            </div>
+                          )}
+
+                          <div className="rounded-xl border border-[#ffdbca] bg-[#fff7ed] p-3 mt-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-[#1c1b1b]">Tổng thanh toán tại quầy:</span>
+                              <span className="text-base font-black text-[#ea580c]">{formatCurrency(totalAmount)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CAPACITY WARNING BADGE */}
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3.5 space-y-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-blue-700">
+                      <ShieldCheck className="size-4 text-blue-600 shrink-0" />
+                      Kiểm tra an toàn & Công suất
+                    </div>
+                    <p className="text-[11px] text-blue-900 leading-relaxed font-medium">
+                      Hệ thống tự động kiểm tra tính sẵn sàng của đường đua <strong>{selectedTrackName || "đã chọn"}</strong>.
+                    </p>
                   </div>
                 </aside>
               </div>
 
               {/* Form Actions */}
-              <div className="flex flex-col-reverse gap-3 border-t border-[#e5e2e1] pt-5 sm:flex-row">
+              <div className="flex flex-col-reverse gap-3 border-t border-[#e5e2e1] pt-5 sm:flex-row sm:items-center sm:justify-end">
                 <StaffButton
                   type="button"
                   onClick={() => {
@@ -1832,34 +2758,72 @@ export default function StaffTodayBookingsPage() {
                     setActiveTab("LIST")
                   }}
                   variant="outline"
-                  className="flex-1"
+                  disabled={isWalkinSubmitting}
+                  className="sm:w-32"
                 >
                   Hủy bỏ
                 </StaffButton>
                 <StaffButton
-                  type="submit"
-                  variant="primary"
-                  className="flex-1 uppercase tracking-wider"
+                  type="button"
+                  onClick={(e) => handleWalkinSubmit(e, false)}
+                  variant="outline"
                   disabled={
+                    isWalkinSubmitting ||
                     isLoadingCafe ||
                     !cafeDetails ||
                     isClosedToday ||
                     !isScheduleConfigured
                   }
+                  className="sm:w-48 font-bold"
                 >
-                  {isLoadingCafe ? (
+                  {isWalkinSubmitting ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    "Tạo đơn & Lưu lịch"
+                  )}
+                </StaffButton>
+                <StaffButton
+                  type="button"
+                  onClick={(e) => handleWalkinSubmit(e, true)}
+                  variant="primary"
+                  disabled={
+                    isWalkinSubmitting ||
+                    isLoadingCafe ||
+                    !cafeDetails ||
+                    isClosedToday ||
+                    !isScheduleConfigured
+                  }
+                  className="flex-1 uppercase tracking-wider font-extrabold sm:flex-initial"
+                >
+                  {isWalkinSubmitting ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
-                      Đang tải...
+                      Đang xử lý...
                     </>
                   ) : (
-                    "Khởi tạo & Nhận ca chạy"
+                    <>
+                      <Play className="size-4 mr-1.5 fill-current" />
+                      Tạo đơn & Nhận xe ngay
+                    </>
                   )}
                 </StaffButton>
               </div>
             </form>
           </StaffCard>
         </div>
+      )}
+
+      {/* Walk-in Bank Transfer QR Modal */}
+      {bankTransferModalData && (
+        <WalkInBankTransferModal
+          isOpen={true}
+          bookingId={bankTransferModalData.bookingId}
+          bookingCode={bankTransferModalData.bookingCode}
+          bankTransfer={bankTransferModalData.bankTransfer}
+          autoCheckIn={bankTransferModalData.autoCheckIn}
+          onSuccess={handleBankTransferSuccess}
+          onClose={() => setBankTransferModalData(null)}
+        />
       )}
     </div>
   )

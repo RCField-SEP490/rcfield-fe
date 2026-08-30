@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Building2, CheckCircle2, QrCode, Zap } from "lucide-react"
+import { Building2, CheckCircle2, Clock, QrCode, Zap } from "lucide-react"
 import type { CustomerPaymentMethod } from "@/features/customer-booking/data/customer-booking-demo"
 import type { CafePaymentMethodOption } from "@/features/booking/types/booking.types"
 import {
@@ -52,7 +52,7 @@ export function PaymentStep({
     enabled: Boolean(cafeId),
   })
 
-  const hasChoice = methods.length > 1
+  const isBankTransferSupported = methods.includes("bank_transfer")
   const showPromoInput =
     !selectedPackageId && cafeId && playMode && slotStart && subtotal !== undefined && onPromoApply
 
@@ -87,24 +87,20 @@ export function PaymentStep({
         <CardHeader>
           <CardTitle>Phương thức thanh toán</CardTitle>
           <p className="text-sm text-muted-foreground">
-            {hasChoice
-              ? "Chọn cách bạn muốn thanh toán."
-              : selectedPackageId
-                ? "Thanh toán phần còn lại (thuê xe, đồ ăn & thức uống) qua VNPay."
-                : "Xác nhận đơn đặt lịch và thanh toán qua cổng VNPay."}
+            Chọn hình thức bạn muốn hoàn tất thanh toán hoặc giữ chỗ trước cho đơn đặt lịch này.
           </p>
         </CardHeader>
         <CardContent>
-          {hasChoice ? (
-            <div className="space-y-3">
-              <MethodOption
-                icon={QrCode}
-                title="VNPay"
-                description="Thẻ ngân hàng, ví điện tử hoặc QR VNPay"
-                selected={selectedMethod === "vnpay"}
-                onSelect={() => onMethodChange?.("vnpay")}
-                badge={isSandbox ? "Sandbox" : undefined}
-              />
+          <div className="space-y-3">
+            <MethodOption
+              icon={QrCode}
+              title="VNPay"
+              description="Thẻ ngân hàng, ví điện tử hoặc QR VNPay"
+              selected={selectedMethod === "vnpay"}
+              onSelect={() => onMethodChange?.("vnpay")}
+              badge={isSandbox ? "Sandbox" : undefined}
+            />
+            {isBankTransferSupported && (
               <MethodOption
                 icon={Building2}
                 title="Chuyển khoản ngân hàng"
@@ -112,31 +108,15 @@ export function PaymentStep({
                 selected={selectedMethod === "bank_transfer"}
                 onSelect={() => onMethodChange?.("bank_transfer")}
               />
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-4 rounded-xl border-2 border-primary bg-primary/5 p-4">
-                <QrCode className="h-8 w-8 shrink-0 text-primary" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">VNPay</span>
-                    {isSandbox && (
-                      <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
-                        Sandbox
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Quét QR hoặc thanh toán qua ví điện tử VNPay
-                  </p>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Bấm "Xác nhận thanh toán" để chuyển đến trang thanh toán VNPay
-                {isSandbox ? " (môi trường thử nghiệm)" : ""}.
-              </p>
-            </>
-          )}
+            )}
+            <MethodOption
+              icon={Clock}
+              title="Giữ chỗ và thanh toán sau"
+              description="Giữ lịch chơi trong 30 phút. Bạn có thể thanh toán online sau hoặc tại quầy khi đến sân."
+              selected={selectedMethod === "pay_later"}
+              onSelect={() => onMethodChange?.("pay_later")}
+            />
+          </div>
 
           {isSandbox && onMockPayment && (
             <button

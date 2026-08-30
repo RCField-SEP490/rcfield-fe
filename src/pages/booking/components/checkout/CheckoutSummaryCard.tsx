@@ -37,6 +37,7 @@ type CheckoutSummaryCardProps = {
   slotMultiplier?: number
   discountAmount?: number
   promoCode?: string | null
+  isPayLater?: boolean
 }
 
 export function CheckoutSummaryCard({
@@ -59,6 +60,7 @@ export function CheckoutSummaryCard({
   slotMultiplier,
   discountAmount = 0,
   promoCode,
+  isPayLater = false,
 }: CheckoutSummaryCardProps) {
   const subtotal = components.reduce((sum, item) => sum + item.amount, 0)
   const total = Math.max(0, subtotal - discountAmount)
@@ -168,7 +170,14 @@ export function CheckoutSummaryCard({
           {isSubmitting ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Đang xử lý...</>
           ) : (
-            <>{isPaymentStep ? "Xác nhận thanh toán" : "Tiếp tục"}<ArrowRight className="h-4 w-4" /></>
+            <>
+              {isPaymentStep
+                ? isPayLater
+                  ? "Xác nhận giữ chỗ (Thanh toán sau)"
+                  : "Xác nhận thanh toán"
+                : "Tiếp tục"}
+              <ArrowRight className="h-4 w-4" />
+            </>
           )}
         </Button>
         {!isFirstStep && (

@@ -58,7 +58,7 @@ export function ExploreResultsHeader({
   const trackOptions = useMemo(
     () => [
       { value: "all", label: "Loại sân" },
-      ...trackTypes.map((t) => ({ value: t.id, label: t.name })),
+      ...trackTypes.map((t) => ({ value: t.code, label: t.name })),
     ],
     [trackTypes],
   )

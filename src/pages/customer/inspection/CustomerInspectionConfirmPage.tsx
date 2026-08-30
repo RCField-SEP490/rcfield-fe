@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react"
-import { useParams, useNavigate, useSearchParams } from "react-router"
+import { useParams, useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { type MockSessionDetail, type MockInspection } from "@/shared/data/customer-operational-mock-data"
 import { customerSessionApi } from "@/features/customer-session/api/customer-session.api"
@@ -26,8 +26,6 @@ export function CustomerInspectionConfirmPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [searchParams] = useSearchParams()
-  const targetInspectionId = searchParams.get("inspectionId")
 
   const [session, setSession] = useState<MockSessionDetail | null>(null)
   const [inspection, setInspection] = useState<MockInspection | null>(null)
@@ -52,16 +50,12 @@ export function CustomerInspectionConfirmPage() {
     setLoadError("")
     try {
       const detail = await customerSessionApi.getSessionDetail(sessionId)
-      const pendingInspection =
-        detail.inspections.find((item) => item.inspectionId === targetInspectionId) ??
-        detail.inspections.find((item) => !item.customerConfirmed && item.type === "CHECK_OUT") ??
-        detail.inspections.find((item) => !item.customerConfirmed && item.type === "CHECK_IN") ??
-        detail.inspections[detail.inspections.length - 1] ??
-        null
-
-      setSession(detail)
-      setInspection(pendingInspection)
-      setActivePhotoIdx(0)
+      if (detail?.bookingId) {
+        navigate(`/customer/bookings/${detail.bookingId}?section=handover`, { replace: true })
+        return
+      }
+      navigate('/customer/bookings', { replace: true })
+      return
     } catch (err) {
       const message =
         err && typeof err === "object" && "response" in err
@@ -73,7 +67,7 @@ export function CustomerInspectionConfirmPage() {
     } finally {
       if (!silent) setIsLoading(false)
     }
-  }, [sessionId, targetInspectionId])
+  }, [sessionId, navigate])
 
   useEffect(() => {
     queueMicrotask(() => {

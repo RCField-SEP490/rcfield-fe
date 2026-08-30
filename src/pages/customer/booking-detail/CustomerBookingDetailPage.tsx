@@ -28,6 +28,7 @@ import type { MockInspection } from "@/shared/data/customer-operational-mock-dat
 import { VehicleImage } from "@/shared/ui/vehicle-image"
 import { ZoomableInspectionImage } from "@/shared/components/ZoomableInspectionImage"
 import { hasExpiredCheckInWindow } from "@/features/booking/lib/check-in-window"
+import { cn } from "@/shared/lib/utils"
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -111,37 +112,111 @@ const PART_TYPE_LABELS: Record<string, string> = {
 function InspectionPhotosCard({ inspection }: { inspection: MockInspection }) {
   const isCheckIn = inspection.type === "CHECK_IN"
   return (
-    <Card className="border-slate-200/80 shadow-sm bg-white">
-      <CardHeader className="pb-3 border-b border-slate-100">
-        <CardTitle className="text-sm font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
-          <Camera className="h-4 w-4 text-orange-500" />
-          {isCheckIn ? "Ảnh bàn giao xe (Check-in)" : "Ảnh trả xe (Check-out)"}
-        </CardTitle>
+    <Card className="border-slate-200/80 shadow-sm bg-white overflow-hidden">
+      <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
+            <Camera className="h-4 w-4 text-orange-500" />
+            {isCheckIn ? "Biên bản bàn giao xe (Check-in)" : "Biên bản trả xe (Check-out)"}
+          </CardTitle>
+          <Badge
+            className={
+              isCheckIn
+                ? "bg-sky-100 text-sky-800 border-none font-bold text-[10px]"
+                : "bg-emerald-100 text-emerald-800 border-none font-bold text-[10px]"
+            }
+          >
+            {isCheckIn ? "Lúc nhận xe" : "Lúc trả xe"}
+          </Badge>
+        </div>
         <CardDescription className="text-xs">
           {isCheckIn
-            ? "Tình trạng xe tại thời điểm bàn giao — nhân viên chụp trước khi phiên chơi bắt đầu."
-            : "Tình trạng xe sau khi phiên chơi kết thúc — làm căn cứ đối chiếu hư hỏng (nếu có)."}
+            ? "Tình trạng xe tại thời điểm bàn giao — nhân viên kiểm tra và chụp ảnh trước khi phiên chơi bắt đầu."
+            : "Tình trạng xe sau khi phiên chơi kết thúc — làm căn cứ đối chiếu và nghiệm thu."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-4">
-        <div className="grid grid-cols-2 gap-3">
-          {inspection.photos.map((photo, idx) => (
-            <div key={idx} className="rounded-xl overflow-hidden border border-slate-100">
-              <ZoomableInspectionImage
-                src={photo.url}
-                alt={`Ảnh ${DIRECTION_LABEL[photo.direction] ?? photo.direction}`}
-                className="aspect-video w-full object-cover"
-              />
-              <div className="bg-slate-50 px-2.5 py-1.5">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                  {DIRECTION_LABEL[photo.direction] ?? photo.direction}
-                </p>
-                {photo.notes && (
-                  <p className="text-[11px] text-slate-600 mt-0.5 leading-tight">{photo.notes}</p>
-                )}
-              </div>
+      <CardContent className="p-4 space-y-4">
+        {/* Ghi chú */}
+        {(inspection.staffNotes || inspection.damageDescription) && (
+          <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-3 text-xs space-y-1">
+            <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 flex items-center gap-1">
+              <Info className="h-3 w-3 text-slate-400" />
+              Ghi chú của nhân viên:
+            </p>
+            <p className="font-semibold text-slate-800 leading-relaxed">
+              {inspection.staffNotes || inspection.damageDescription}
+            </p>
+          </div>
+        )}
+
+        {/* Checklist */}
+        {inspection.checklist && inspection.checklist.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Kiểm tra an toàn linh kiện:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+              {inspection.checklist.map((item, idx) => {
+                const isOk = item.checked
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-center justify-between p-2 rounded-lg border bg-white text-[11px]",
+                      isOk ? "border-slate-100" : "border-amber-200 bg-amber-50/50",
+                    )}
+                  >
+                    <span className="font-semibold text-slate-800 truncate mr-2">
+                      {item.label}
+                    </span>
+                    {isOk ? (
+                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                        ✓ Đạt
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0"
+                        title={item.notes}
+                      >
+                        ⚠️ {item.notes || "Có lưu ý"}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* Photos */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            Hình ảnh ghi nhận ({inspection.photos.length} ảnh):
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {inspection.photos.map((photo, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl overflow-hidden border border-slate-100 shadow-2xs group relative"
+              >
+                <ZoomableInspectionImage
+                  src={photo.url}
+                  alt={`Ảnh ${DIRECTION_LABEL[photo.direction] ?? photo.direction}`}
+                  className="aspect-video w-full object-cover"
+                />
+                <div className="bg-slate-50 px-2.5 py-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                    {DIRECTION_LABEL[photo.direction] ?? photo.direction}
+                  </p>
+                  {photo.notes && (
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-tight">
+                      {photo.notes}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
