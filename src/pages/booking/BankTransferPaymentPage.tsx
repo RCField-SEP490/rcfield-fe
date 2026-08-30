@@ -1,6 +1,6 @@
 import { useNavigate, useParams, useSearchParams } from "react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Loader2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -42,11 +42,6 @@ export function BankTransferPaymentPage() {
           )
         : await bookingApi.createCheckout(bookingId!, "bank_transfer")
       // Ném lỗi thay vì trả về phản hồi thiếu mã QR.
-      //
-      // `staleTime: Infinity` bên dưới sẽ giữ mãi thứ gì trả về được — nên nếu
-      // coi phản hồi hụt này là dữ liệu hợp lệ, khách kẹt ở màn "Không mở được
-      // trang thanh toán" suốt phiên, kể cả khi phía sau đã sẵn sàng trả mã.
-      // Là lỗi thì React Query tự gọi lại lúc vào trang lần sau.
       if (!result.bank_transfer) {
         throw new Error("Phản hồi thanh toán không kèm mã QR chuyển khoản")
       }
@@ -54,10 +49,21 @@ export function BankTransferPaymentPage() {
     },
     enabled: Boolean(bookingId),
     retry: false,
-    // Mã QR gắn với một giao dịch cụ thể; tự tải lại sẽ tạo nhầm phiên mới.
     refetchOnWindowFocus: false,
     staleTime: Infinity,
   })
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+    } else {
+      navigate(
+        isSettlement
+          ? routePaths.customerBookingDetail.replace(":bookingId", bookingId!)
+          : routePaths.customerBookings,
+      )
+    }
+  }
 
   if (isLoading) {
     return (
@@ -81,7 +87,7 @@ export function BankTransferPaymentPage() {
         </p>
         <Button
           className="mt-5"
-          onClick={() => void navigate("/customer/bookings")}
+          onClick={() => void navigate(routePaths.customerBookings)}
         >
           Xem đơn của tôi
         </Button>
@@ -90,7 +96,19 @@ export function BankTransferPaymentPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-10">
+    <div className="mx-auto max-w-lg px-4 py-8">
+      <div className="mb-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleBack}
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 -ml-2 rounded-lg"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại
+        </Button>
+      </div>
+
       <h1 className="mb-1 text-2xl font-black">Chuyển khoản để hoàn tất</h1>
       <p className="mb-6 text-sm text-muted-foreground">
         Quét mã bằng ứng dụng ngân hàng. Màn hình này tự cập nhật khi quán nhận
@@ -106,24 +124,28 @@ export function BankTransferPaymentPage() {
         checkout={data.bank_transfer}
         onPaid={() => {
           toast.success("Đã nhận được thanh toán!")
-          // Làm mới ngay khi tiền về, trong lúc màn thành công còn đếm ngược
-          // 10 giây. Không làm thì lúc sang trang chi tiết còn một nhịp hiện
-          // bản cache cũ ghi "chờ thanh toán" — đúng thứ khách vừa làm xong.
           void queryClient.invalidateQueries({
             queryKey: bookingQueryKeys.detail(bookingId),
           })
         }}
         onContinue={() =>
-          // Về thẳng đơn vừa trả tiền chứ không về danh sách: khách vừa chuyển
-          // tiền xong, thứ họ muốn xem là đơn đó.
           void navigate(
             routePaths.customerBookingDetail.replace(":bookingId", bookingId!),
-            // Thay vì đẩy thêm một mục vào lịch sử: bấm quay lại từ trang chi
-            // tiết mà rơi về màn mã QR của một đơn đã trả xong là vô nghĩa.
             { replace: true },
           )
         }
       />
+
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={handleBack}
+          className="w-full h-11 rounded-xl border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm"
+        >
+          <XCircle className="h-4 w-4 text-slate-500" />
+          Hủy thanh toán / Đổi phương thức
+        </Button>
+      </div>
     </div>
   )
 }

@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { useWebSocket, type WsMessage } from "@/features/notifications/hooks/useWebSocket"
-import { staffApi, staffQueryKeys, type DamageLineItemInput } from "@/features/staff/api/staff.api"
+import { staffApi, staffQueryKeys, type DamageLineItemInput, type CreateWalkInBookingResponse } from "@/features/staff/api/staff.api"
 import {
   type CustomerBookingDetail,
   type MockSessionDetail,
@@ -55,7 +55,9 @@ export interface StaffOperationContextType {
     paymentMethod: "CASH" | "BANK_TRANSFER"
     vehicleIds: string[]
     participants: { guest_name: string; guest_phone: string; participant_type: string }[]
-  }) => Promise<boolean>
+    fnbItems?: { menu_item_id: string; variant_id?: string; quantity: number; notes?: string }[]
+  }) => Promise<CreateWalkInBookingResponse | null>
+  confirmWalkInBankTransfer: (bookingId: string) => Promise<{ success: boolean; bookingId: string; status: string } | null>
   refreshData: () => Promise<void>
   startCheckIn: (bookingId: string) => Promise<any | null>
   submitInspection: (
@@ -518,6 +520,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
     paymentMethod: "CASH" | "BANK_TRANSFER"
     vehicleIds: string[]
     participants: { guest_name: string; guest_phone: string; participant_type: string }[]
+    fnbItems?: { menu_item_id: string; variant_id?: string; quantity: number; notes?: string }[]
   }) => {
     try {
       const res = await staffApi.createWalkInBooking({
@@ -528,6 +531,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         payment_method: data.paymentMethod,
         vehicle_ids: data.vehicleIds,
         participants: data.participants,
+        fnb_items: data.fnbItems,
       })
       toast.success(`Tạo đơn đặt lịch trực tiếp ${res.bookingCode || ""} thành công!`)
       await Promise.all([
@@ -535,12 +539,30 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         queryClient.invalidateQueries({ queryKey: staffQueryKeys.bookingLists() }),
         queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() }),
       ])
-      return true
+      return res
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string; errors?: { message: string }[] } }; message?: string }
       const msg = error.response?.data?.message || error.response?.data?.errors?.[0]?.message || error.message || "Something went wrong"
       toast.error(`Lỗi khi tạo đơn: ${msg}`)
-      return false
+      return null
+    }
+  }, [fetchData, queryClient])
+
+  const confirmWalkInBankTransfer = useCallback(async (bookingId: string) => {
+    try {
+      const res = await staffApi.confirmWalkInBankTransfer(bookingId)
+      toast.success("Xác nhận thanh toán chuyển khoản thành công!")
+      await Promise.all([
+        fetchData(),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.bookingLists() }),
+        queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() }),
+      ])
+      return res
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } }; message?: string }
+      const msg = error.response?.data?.message || error.message || "Lỗi xác nhận thanh toán"
+      toast.error(msg)
+      return null
     }
   }, [fetchData, queryClient])
 
@@ -775,6 +797,7 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
         customerPackages,
         resetDemoData,
         createWalkInBooking,
+        confirmWalkInBankTransfer,
         refreshData: fetchData,
         startCheckIn,
         submitInspection,

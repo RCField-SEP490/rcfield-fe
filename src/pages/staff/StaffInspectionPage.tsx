@@ -5,14 +5,17 @@ import {
   Camera,
   ClipboardList,
   AlertTriangle,
+  AlertCircle,
   ChevronLeft,
   Info,
   FileCheck,
   CheckCircle2,
+  Check,
   Plus,
   Trash2,
   ImagePlus,
   Loader2,
+  Wrench,
 } from "lucide-react"
 import { useStaffOperations } from "./context/StaffOperationContext"
 import { staffApi, type DamageLineItemInput } from "@/features/staff/api/staff.api"
@@ -35,9 +38,25 @@ type InspectionPhotoData = {
   notes?: string
 }
 
+type InspectionChecklistItem = {
+  itemKey?: string
+  itemLabel?: string
+  status?: string
+  checked?: boolean
+  notes?: string
+  note?: string
+  id?: string
+  label?: string
+}
+
 type InspectionRecord = {
   type: "CHECK_IN" | "CHECK_OUT"
   photos: InspectionPhotoData[]
+  staffNotes?: string
+  notes?: string
+  checklist?: InspectionChecklistItem[]
+  damageFlagged?: boolean
+  damageDescription?: string
 }
 
 type InspectionSession = {
@@ -68,6 +87,14 @@ type InspectionSessionApiData = {
     participantDetails?: { name: string }[]
     plannedParticipants?: string[]
   }
+}
+
+function parseCurrencyInput(value: string | number): number {
+  if (typeof value === "number") return isNaN(value) ? 0 : Math.max(0, value)
+  if (!value) return 0
+  const clean = value.toString().replace(/\D/g, "")
+  const parsed = parseInt(clean, 10)
+  return isNaN(parsed) ? 0 : Math.max(0, parsed)
 }
 
 export default function StaffInspectionPage() {
@@ -143,7 +170,7 @@ export default function StaffInspectionPage() {
   }, [booking, isByoc])
 
   const [checklist, setChecklist] = useState<
-    { id: string; label: string; checked: boolean; notes?: string }[]
+    { id: string; label: string; checked: boolean; notes?: string; partType?: string }[]
   >([])
   const [staffNotes, setStaffNotes] = useState("")
 
@@ -169,19 +196,23 @@ export default function StaffInspectionPage() {
     if (type === "CHECK_IN") {
       queueMicrotask(() => {
         setChecklist([
-          { id: "ck-1", label: "Pin đủ điện, đã sạc trước ca", checked: true },
-          { id: "ck-2", label: "Tay lái servo phản hồi tốt, bẻ cua bình thường", checked: true },
-          { id: "ck-3", label: "Lốp gắn chắc, không lung lay", checked: true },
-          { id: "ck-4", label: "Remote bắt sóng, xe phản hồi lệnh ổn định", checked: true },
+          { id: "ck-in-battery", label: "Pin đủ điện, đã sạc trước ca", checked: true },
+          { id: "ck-in-servo", label: "Tay lái servo phản hồi tốt, bẻ cua bình thường", checked: true },
+          { id: "ck-in-tire", label: "Lốp và bánh xe gắn chắc chắn, không lung lay", checked: true },
+          { id: "ck-in-remote", label: "Remote bắt sóng nhạy, xe phản hồi lệnh ổn định", checked: true },
+          { id: "ck-in-chassis", label: "Khung gầm và vỏ xe nguyên vẹn trước khi giao", checked: true },
         ])
       })
     } else if (type === "CHECK_OUT") {
       queueMicrotask(() => {
         setChecklist([
-          { id: "ck-o1", label: "Đã kiểm tra khung gầm xe (nứt, gãy, biến dạng)", checked: true },
-          { id: "ck-o2", label: "Đã kiểm tra cánh gió (móp méo, rơi rụng)", checked: true },
-          { id: "ck-o3", label: "Đã kiểm tra động cơ điện / motor (hoạt động, mùi khét)", checked: true },
-          { id: "ck-o4", label: "Đã kiểm tra vỏ nhựa / shell (xước sâu, móp rách)", checked: true },
+          { id: "ck-chassis", partType: "CHASSIS", label: "Khung gầm xe (nứt, gãy, cong vênh, biến dạng)", checked: true },
+          { id: "ck-shell", partType: "SHELL", label: "Vỏ nhựa xe / Shell (móp méo, rách vỡ, xước sâu)", checked: true },
+          { id: "ck-spoiler", partType: "SPOILER", label: "Cánh gió (gãy, biến dạng, rơi rụng)", checked: true },
+          { id: "ck-tire", partType: "TIRE_WHEEL", label: "Bánh xe & Lốp (văng ốc hex, mòn rách, kẹt trục)", checked: true },
+          { id: "ck-motor", partType: "MOTOR", label: "Motor / Động cơ (kẹt quay, quá nhiệt, mùi khét)", checked: true },
+          { id: "ck-servo", partType: "SERVO", label: "Hệ thống lái / Servo (kẹt góc, trượt bánh răng)", checked: true },
+          { id: "ck-remote", partType: "REMOTE", label: "Remote điều khiển (đủ tay cầm, cần lái nguyên vẹn)", checked: true },
         ])
       })
     }
@@ -322,37 +353,124 @@ export default function StaffInspectionPage() {
     reader.readAsDataURL(file)
   }
 
+  const PART_TYPE_LABELS: Record<string, string> = {
+    CHASSIS: "Khung gầm",
+    SHELL: "Vỏ nhựa (Shell)",
+    SPOILER: "Cánh gió",
+    TIRE_WHEEL: "Bánh xe / Lốp",
+    MOTOR: "Motor / Động cơ",
+    SERVO: "Servo / Tay lái",
+    REMOTE: "Remote / Điều khiển",
+    OTHER: "Khác",
+  }
+
+  const setChecklistItemStatus = (id: string, isOk: boolean) => {
+    const targetItem = checklist.find((item) => item.id === id)
+    if (!targetItem) return
+
+    const newChecklist = checklist.map((item) =>
+      item.id === id ? { ...item, checked: isOk } : item,
+    )
+    setChecklist(newChecklist)
+
+    if (type === "CHECK_OUT" && targetItem.partType) {
+      const partType = targetItem.partType as DamageLineItemInput["partType"]
+      if (!isOk) {
+        // Có hư hại: Tự động bật damageFlagged và thêm dòng linh kiện nếu chưa có
+        setDamageFlagged(true)
+        setDamageLineItems((prev) => {
+          if (prev.some((d) => d.partType === partType)) {
+            return prev
+          }
+          return [
+            ...prev,
+            { partType, partsPrice: 0, laborPrice: 0 },
+          ]
+        })
+      } else {
+        // Bình thường: Xóa dòng linh kiện khỏi bảng bồi thường
+        setDamageLineItems((prev) => {
+          const next = prev.filter((d) => d.partType !== targetItem.partType)
+          const allOk = newChecklist.every((item) => item.checked)
+          if (next.length === 0 && allOk) {
+            setDamageFlagged(false)
+          }
+          return next
+        })
+      }
+    }
+  }
+
   const toggleChecklistItem = (id: string) => {
-    setChecklist(checklist.map((item) => (item.id === id ? { ...item, checked: !item.checked } : item)))
+    const item = checklist.find((i) => i.id === id)
+    if (item) {
+      setChecklistItemStatus(id, !item.checked)
+    }
   }
 
   const handleChecklistNotes = (id: string, notes: string) => {
     setChecklist(checklist.map((item) => (item.id === id ? { ...item, notes } : item)))
   }
 
-  const PART_TYPE_LABELS: Record<string, string> = {
-    TIRE_WHEEL: "Bánh xe / Lốp",
-    SPOILER: "Cánh gió",
-    CHASSIS: "Khung gầm",
-    MOTOR: "Motor / Động cơ",
-    SHELL: "Vỏ nhựa (Shell)",
-    SERVO: "Servo / Tay lái",
-    REMOTE: "Remote / Điều khiển",
-    OTHER: "Khác",
-  }
-
   const totalDamageCharge = damageLineItems.reduce(
     (sum, item) => sum + (item.partsPrice || 0) + (item.laborPrice || 0), 0
   )
 
-  const addDamageItem = () =>
-    setDamageLineItems((prev) => [...prev, { partType: "TIRE_WHEEL", partsPrice: 0, laborPrice: 0 }])
+  const addDamageItem = () => {
+    setDamageFlagged(true)
+    setDamageLineItems((prev) => [
+      ...prev,
+      { partType: "OTHER", customPartName: "", partsPrice: 0, laborPrice: 0 },
+    ])
+  }
 
-  const removeDamageItem = (index: number) =>
-    setDamageLineItems((prev) => prev.filter((_, i) => i !== index))
+  const removeDamageItem = (index: number) => {
+    const itemToRemove = damageLineItems[index]
+    const nextDamageItems = damageLineItems.filter((_, i) => i !== index)
+    setDamageLineItems(nextDamageItems)
 
-  const updateDamageItem = (index: number, field: keyof DamageLineItemInput, value: string | number) =>
-    setDamageLineItems((prev) => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
+    if (itemToRemove?.partType) {
+      const hasOtherSamePart = nextDamageItems.some(
+        (d) => d.partType === itemToRemove.partType,
+      )
+      if (!hasOtherSamePart) {
+        setChecklist((prev) =>
+          prev.map((item) =>
+            item.partType === itemToRemove.partType
+              ? { ...item, checked: true, notes: "" }
+              : item,
+          ),
+        )
+      }
+    }
+
+    const allOk = checklist.every((item) => item.checked)
+    if (nextDamageItems.length === 0 && allOk) {
+      setDamageFlagged(false)
+    }
+  }
+
+  const updateDamageItem = (index: number, field: keyof DamageLineItemInput, value: string | number) => {
+    setDamageLineItems((prev) => {
+      const updated = prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+      return updated
+    })
+  }
+
+  const handleToggleDamageFlagged = (checked: boolean) => {
+    setDamageFlagged(checked)
+    if (!checked) {
+      setDamageLineItems([])
+      setChecklist((prev) => prev.map((item) => ({ ...item, checked: true, notes: "" })))
+    } else {
+      if (damageLineItems.length === 0) {
+        // Tự động thêm dòng đầu tiên
+        setDamageLineItems([
+          { partType: "OTHER", customPartName: "", partsPrice: 0, laborPrice: 0 },
+        ])
+      }
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -468,8 +586,10 @@ export default function StaffInspectionPage() {
                 onClick={() => setShowCheckInBaselines(!showCheckInBaselines)}
                 variant={showCheckInBaselines ? "primary" : "outline"}
                 size="sm"
+                className="flex items-center gap-1.5 font-bold"
               >
-                {showCheckInBaselines ? "Ẩn ảnh bàn giao gốc" : "So sánh ảnh bàn giao gốc"}
+                <FileCheck className="size-4" />
+                {showCheckInBaselines ? "Ẩn biên bản bàn giao gốc" : "So sánh biên bản bàn giao gốc (Ảnh & Checklist)"}
               </StaffButton>
             )}
           </div>
@@ -646,17 +766,98 @@ export default function StaffInspectionPage() {
               )}
 
               {showCheckInBaselines && checkInInspection && (
-                <div className="border-t border-[#e5e2e1] pt-4">
-                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-blue-800">Ảnh bàn giao lúc nhận xe</p>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {checkInInspection.photos.map((photo, index) => (
-                      <ZoomableInspectionImage
-                        key={`${photo.url}-${index}`}
-                        src={photo.url}
-                        alt={`Ảnh nhận xe ${index + 1}`}
-                        className="aspect-video w-full rounded-lg border border-blue-200 object-cover"
-                      />
-                    ))}
+                <div className="border-t border-blue-100 bg-blue-50/40 -mx-6 -mb-6 p-6 rounded-b-2xl space-y-4 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-blue-200/60 pb-3">
+                    <div className="flex items-center gap-2">
+                      <FileCheck className="size-4.5 text-blue-700" />
+                      <span className="text-xs font-black uppercase tracking-wider text-blue-900">
+                        Biên bản đối chiếu lúc bàn giao xe (Check-In gốc)
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full border border-blue-200">
+                      Dữ liệu đối chứng
+                    </span>
+                  </div>
+
+                  {/* 1. Ghi chú của nhân viên lúc bàn giao */}
+                  <div className="rounded-xl border border-blue-200 bg-white p-3.5 space-y-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-blue-800 flex items-center gap-1">
+                      <Info className="size-3.5 text-blue-600" />
+                      Ghi chú của nhân viên lúc giao xe:
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800 leading-relaxed pl-4.5">
+                      {checkInInspection.staffNotes ||
+                        checkInInspection.notes ||
+                        checkInInspection.damageDescription ||
+                        "Không có ghi chú bất thường khi bàn giao xe (Xe ở tình trạng bình thường)."}
+                    </p>
+                  </div>
+
+                  {/* 2. Checklist linh kiện lúc bàn giao */}
+                  {checkInInspection.checklist && checkInInspection.checklist.length > 0 && (
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-blue-800 block">
+                        Tình trạng linh kiện khi bàn giao xe:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {checkInInspection.checklist.map((item, idx) => {
+                          const isOk = item.checked ?? (item.status === "OK")
+                          return (
+                            <div
+                              key={idx}
+                              className={cn(
+                                "flex items-center justify-between p-2.5 rounded-lg border bg-white text-xs",
+                                isOk ? "border-slate-200" : "border-amber-300 bg-amber-50/50",
+                              )}
+                            >
+                              <span className="font-semibold text-slate-900 truncate mr-2">
+                                {item.itemLabel || item.label || item.itemKey}
+                              </span>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isOk ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    <CheckCircle2 className="size-3" />
+                                    Đạt
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200"
+                                    title={item.notes || item.note}
+                                  >
+                                    <AlertTriangle className="size-3" />
+                                    {item.notes || item.note || "Có lỗi"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. Ảnh chụp lúc nhận xe */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-800 block">
+                      Ảnh chụp lúc bàn giao ({checkInInspection.photos.length} ảnh):
+                    </span>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                      {checkInInspection.photos.map((photo, index) => (
+                        <div
+                          key={`${photo.url}-${index}`}
+                          className="group relative overflow-hidden rounded-xl border border-blue-200 bg-white shadow-2xs"
+                        >
+                          <ZoomableInspectionImage
+                            src={photo.url}
+                            alt={`Ảnh nhận xe ${index + 1}`}
+                            className="aspect-video w-full object-cover"
+                          />
+                          <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-xs">
+                            Ảnh gốc #{index + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -667,34 +868,135 @@ export default function StaffInspectionPage() {
         {/* Checklist & Notes */}
         <div className="grid md:grid-cols-2 gap-6">
           <StaffCard className="space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-2">
-              <ClipboardList className="size-4.5 text-[#ea580c]" />
-              {isByoc ? "Xác nhận điều kiện tham gia" : type === "CHECK_OUT" ? "Xác nhận đã kiểm tra linh kiện" : "Danh mục kiểm tra an toàn linh kiện"}
-            </h3>
-            <div className="space-y-3.5">
-              {checklist.map((item) => (
-                <div key={item.id} className="space-y-1">
-                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={item.checked}
-                      onChange={() => toggleChecklistItem(item.id)}
-                      className="mt-0.5 rounded border-[#e5e2e1] text-[#ea580c] focus:ring-[#ea580c] bg-white"
-                    />
-                    <span className="text-xs font-semibold text-[#4c4a49] leading-tight">{item.label}</span>
-                  </label>
-                  {!item.checked && (
-                    <input
-                      type="text"
-                      placeholder="Ghi chú thêm..."
-                      value={item.notes || ""}
-                      onChange={(e) => handleChecklistNotes(item.id, e.target.value)}
-                      className="ml-6 w-[calc(100%-1.5rem)] rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] text-rose-800 font-bold focus:outline-none"
-                    />
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-[#1c1b1b] flex items-center gap-2">
+                <ClipboardList className="size-4.5 text-[#ea580c]" />
+                {isByoc
+                  ? "Xác nhận điều kiện tham gia"
+                  : type === "CHECK_OUT"
+                    ? "Nghiệm thu linh kiện xe khi trả"
+                    : "Danh mục kiểm tra an toàn linh kiện"}
+              </h3>
+              {type === "CHECK_OUT" && !isByoc && (
+                <span
+                  className={cn(
+                    "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border",
+                    checklist.every((i) => i.checked)
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-rose-50 text-rose-700 border-rose-200",
                   )}
-                </div>
-              ))}
+                >
+                  {checklist.every((i) => i.checked)
+                    ? `🟢 Đạt chuẩn (${checklist.length}/${checklist.length})`
+                    : `🔴 Phát hiện ${checklist.filter((i) => !i.checked).length} lỗi`}
+                </span>
+              )}
             </div>
+
+            {type === "CHECK_OUT" && !isByoc ? (
+              <div className="space-y-2.5">
+                {checklist.map((item) => {
+                  const isOk = item.checked
+                  return (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "p-3 rounded-xl border transition-all duration-200 space-y-2",
+                        isOk
+                          ? "bg-white border-[#e5e2e1]"
+                          : "bg-rose-50/40 border-rose-200 shadow-2xs",
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          {isOk ? (
+                            <CheckCircle2 className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="size-4 text-rose-600 shrink-0 mt-0.5" />
+                          )}
+                          <span className="text-xs font-bold text-[#1c1b1b] leading-tight">
+                            {item.label}
+                          </span>
+                        </div>
+
+                        {/* 2-state toggle buttons */}
+                        <div className="flex items-center rounded-lg bg-[#f5f3f2] p-0.5 border border-[#e5e2e1] shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setChecklistItemStatus(item.id, true)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1",
+                              isOk
+                                ? "bg-emerald-600 text-white shadow-2xs"
+                                : "text-[#6b7280] hover:text-[#1c1b1b]",
+                            )}
+                          >
+                            <Check className="size-3" />
+                            Đạt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setChecklistItemStatus(item.id, false)}
+                            className={cn(
+                              "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1",
+                              !isOk
+                                ? "bg-rose-600 text-white shadow-2xs"
+                                : "text-[#6b7280] hover:text-rose-600",
+                            )}
+                          >
+                            <AlertTriangle className="size-3" />
+                            Hư hại
+                          </button>
+                        </div>
+                      </div>
+
+                      {!isOk && (
+                        <div className="space-y-1.5 pt-1">
+                          <input
+                            type="text"
+                            placeholder={`Mô tả chi tiết vết hư hại cho ${item.label.split("(")[0].trim()}...`}
+                            value={item.notes || ""}
+                            onChange={(e) => handleChecklistNotes(item.id, e.target.value)}
+                            className="w-full rounded-lg border border-rose-300 bg-white px-2.5 py-1.5 text-[11px] text-rose-900 font-semibold focus:outline-none focus:ring-1 focus:ring-rose-500 placeholder-rose-300"
+                          />
+                          <div className="flex items-center gap-1 text-[10px] text-amber-700 font-bold">
+                            <Wrench className="size-3" />
+                            <span>Đã tự động thêm vào Bảng bồi thường hư hỏng bên dưới</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {checklist.map((item) => (
+                  <div key={item.id} className="space-y-1">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={() => toggleChecklistItem(item.id)}
+                        className="mt-0.5 rounded border-[#e5e2e1] text-[#ea580c] focus:ring-[#ea580c] bg-white"
+                      />
+                      <span className="text-xs font-semibold text-[#4c4a49] leading-tight">
+                        {item.label}
+                      </span>
+                    </label>
+                    {!item.checked && (
+                      <input
+                        type="text"
+                        placeholder="Ghi chú thêm..."
+                        value={item.notes || ""}
+                        onChange={(e) => handleChecklistNotes(item.id, e.target.value)}
+                        className="ml-6 w-[calc(100%-1.5rem)] rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] text-rose-800 font-bold focus:outline-none"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </StaffCard>
 
           <StaffCard className="space-y-4">
@@ -703,7 +1005,11 @@ export default function StaffInspectionPage() {
             </h3>
             <textarea
               rows={4}
-              placeholder={isByoc ? "Ghi chú về xe khách hoặc điều kiện đặc biệt..." : "Nhập nhận xét chung của kiểm định viên..."}
+              placeholder={
+                isByoc
+                  ? "Ghi chú về xe khách hoặc điều kiện đặc biệt..."
+                  : "Nhập nhận xét chung của kiểm định viên..."
+              }
               value={staffNotes}
               onChange={(e) => setStaffNotes(e.target.value)}
               className="w-full rounded-xl border border-[#e5e2e1] bg-white p-4 text-xs font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none placeholder-[#a09e9d] resize-none"
@@ -714,37 +1020,39 @@ export default function StaffInspectionPage() {
         {/* Damage section — RENTAL check-out only */}
         {!isByoc && type === "CHECK_OUT" && (
           <StaffCard className="space-y-4">
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={damageFlagged}
-                onChange={(e) => {
-                  setDamageFlagged(e.target.checked)
-                  if (!e.target.checked) setDamageLineItems([])
-                }}
-                className="rounded border-[#e5e2e1] bg-white text-[#ea580c] focus:ring-[#ea580c]"
-              />
-              <span className="text-sm font-bold text-[#1c1b1b]">
-                Phát hiện hư hỏng do va chạm (Yêu cầu bồi thường sửa chữa)
-              </span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={damageFlagged}
+                  onChange={(e) => handleToggleDamageFlagged(e.target.checked)}
+                  className="rounded border-[#e5e2e1] bg-white text-[#ea580c] focus:ring-[#ea580c]"
+                />
+                <span className="text-sm font-bold text-[#1c1b1b]">
+                  Phát hiện hư hỏng do va chạm (Yêu cầu bồi thường sửa chữa)
+                </span>
+              </label>
+
+              {damageFlagged && (
+                <StaffButton type="button" size="sm" variant="outline" onClick={addDamageItem}>
+                  <Plus className="size-3.5" />
+                  Thêm hạng mục khác
+                </StaffButton>
+              )}
+            </div>
 
             {damageFlagged && (
               <div className="border-t border-[#e5e2e1] pt-4 space-y-3 animate-fadeIn">
                 <div className="flex items-center justify-between">
                   <h5 className="text-xs font-bold uppercase tracking-wider text-[#4c4a49]">
-                    Danh sách hạng mục hư hỏng
+                    Danh sách hạng mục linh kiện hư hỏng & bảng giá bồi thường
                   </h5>
-                  <StaffButton type="button" size="sm" variant="outline" onClick={addDamageItem}>
-                    <Plus className="size-3.5" />
-                    Thêm hạng mục
-                  </StaffButton>
                 </div>
 
                 {damageLineItems.length === 0 && (
                   <div className="rounded-lg border border-dashed border-[#e5e2e1] p-4 text-center">
                     <p className="text-xs text-[#6b7280] font-semibold">
-                      Chưa có hạng mục nào. Nhấn "Thêm hạng mục" để bắt đầu ghi nhận hư hỏng.
+                      Chưa có hạng mục nào. Chọn linh kiện bị hư hỏng ở checklist bên trên hoặc nhấn "Thêm hạng mục khác".
                     </p>
                   </div>
                 )}
@@ -765,6 +1073,7 @@ export default function StaffInspectionPage() {
                         type="button"
                         onClick={() => removeDamageItem(index)}
                         className="p-1.5 rounded text-[#6b7280] hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        title="Xóa hạng mục này"
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -773,7 +1082,7 @@ export default function StaffInspectionPage() {
                     {item.partType === "OTHER" && (
                       <input
                         type="text"
-                        placeholder="Nhập tên hư hỏng cụ thể..."
+                        placeholder="Nhập tên linh kiện / hư hỏng cụ thể..."
                         value={item.customPartName ?? ""}
                         onChange={(e) => updateDamageItem(index, "customPartName", e.target.value)}
                         className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] placeholder-[#a09e9d] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
@@ -786,12 +1095,21 @@ export default function StaffInspectionPage() {
                           Giá linh kiện (đ)
                         </label>
                         <input
-                          type="number"
-                          min={0}
-                          step={1000}
+                          type="text"
+                          inputMode="numeric"
                           placeholder="0"
-                          value={item.partsPrice || ""}
-                          onChange={(e) => updateDamageItem(index, "partsPrice", Number(e.target.value))}
+                          value={
+                            item.partsPrice
+                              ? Number(item.partsPrice).toLocaleString("vi-VN")
+                              : ""
+                          }
+                          onChange={(e) =>
+                            updateDamageItem(
+                              index,
+                              "partsPrice",
+                              parseCurrencyInput(e.target.value),
+                            )
+                          }
                           className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                         />
                       </div>
@@ -800,12 +1118,21 @@ export default function StaffInspectionPage() {
                           Phí công sửa (đ)
                         </label>
                         <input
-                          type="number"
-                          min={0}
-                          step={1000}
+                          type="text"
+                          inputMode="numeric"
                           placeholder="0"
-                          value={item.laborPrice || ""}
-                          onChange={(e) => updateDamageItem(index, "laborPrice", Number(e.target.value))}
+                          value={
+                            item.laborPrice
+                              ? Number(item.laborPrice).toLocaleString("vi-VN")
+                              : ""
+                          }
+                          onChange={(e) =>
+                            updateDamageItem(
+                              index,
+                              "laborPrice",
+                              parseCurrencyInput(e.target.value),
+                            )
+                          }
                           className="w-full rounded-lg border border-[#e5e2e1] bg-white px-3 py-2 text-xs font-semibold text-[#1c1b1b] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
                         />
                       </div>

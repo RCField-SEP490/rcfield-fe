@@ -24,6 +24,7 @@ import { toast } from "sonner"
 
 import { cafeApi, cafeQueryKeys } from "@/features/cafes/api/cafe.api"
 import { useCafeBookings, useCancelBooking, useBooking } from "@/features/booking/hooks/use-booking"
+import { formatPaymentGateway } from "@/shared/lib/format"
 import { sanitizeImageUrl } from "@/shared/lib/utils"
 import type { BookingStatus, CafeBookingListItem } from "@/features/booking/types/booking.types"
 import { MetricCard, Panel, PanelTitle, ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitives"
@@ -185,12 +186,7 @@ function formatDateTime(iso: string | Date) {
 }
 
 function gatewayLabel(gateway?: string | null) {
-  if (!gateway) return "Cổng thanh toán"
-  if (gateway.toUpperCase() === "VNPAY") return "VNPay"
-  if (gateway.toUpperCase() === "DIRECT" || gateway.toUpperCase() === "CASH") return "Tiền mặt / Tại quầy"
-  if (gateway.toUpperCase() === "MOCK") return "Mock Gateway"
-  if (gateway.toUpperCase() === "BANK_TRANSFER") return "Chuyển khoản ngân hàng"
-  return gateway
+  return formatPaymentGateway(gateway)
 }
 
 function BookingDetailDrawer({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {

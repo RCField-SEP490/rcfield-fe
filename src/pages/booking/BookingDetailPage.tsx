@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { env } from "@/shared/lib/env"
 import {
+  AlertCircle,
   AlertTriangle,
   CalendarClock,
   Camera,
   Car,
   CheckCircle2,
   ChevronDown,
+  ClipboardCheck,
   Clock3,
+  FileText,
   Gamepad2,
   Layers,
   MapPin,
@@ -17,13 +20,14 @@ import {
   Users,
   UtensilsCrossed,
   XCircle,
+  Wrench,
 } from "lucide-react"
 import { Link, useParams, useSearchParams } from "react-router"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Separator } from "@/shared/ui/separator"
-import { formatCurrency } from "@/shared/lib/format"
+import { formatCurrency, formatPaymentGatewayInline } from "@/shared/lib/format"
 import { getApiErrorInfo } from "@/shared/lib/utils"
 import {
   useBooking,
@@ -57,6 +61,16 @@ import {
 } from "@/features/notifications/hooks/useWebSocket"
 import { ExtensionAuditCard } from "@/features/customer-session/components/ExtensionAuditCard"
 
+interface ChecklistItemUi {
+  checked?: boolean
+  status?: string
+  label?: string
+  itemLabel?: string
+  itemKey?: string
+  notes?: string
+  note?: string
+}
+
 const DIRECTION_LABELS: Record<string, string> = {
   FRONT: "Trước",
   BACK: "Sau",
@@ -66,6 +80,17 @@ const DIRECTION_LABELS: Record<string, string> = {
   BOTTOM: "Từ dưới",
   DETAIL: "Cận cảnh",
   OTHER: "Ảnh tình trạng xe",
+}
+
+const PART_TYPE_LABELS: Record<string, string> = {
+  CHASSIS: "Khung gầm",
+  SHELL: "Vỏ nhựa (Shell)",
+  SPOILER: "Cánh gió",
+  TIRE_WHEEL: "Bánh xe / Lốp",
+  MOTOR: "Motor / Động cơ",
+  SERVO: "Servo / Tay lái",
+  REMOTE: "Remote / Điều khiển",
+  OTHER: "Khác",
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -414,14 +439,46 @@ export function BookingDetailPage() {
     const interval = window.setInterval(refreshBookingState, 10_000)
     return () => window.clearInterval(interval)
   }, [booking?.session?.status, booking?.status, refreshBookingState])
+  const checkInInspection = sessionDetail?.inspections?.find(
+    (ins) => ins.type === "CHECK_IN",
+  )
+  const checkOutInspection = sessionDetail?.inspections?.find(
+    (ins) => ins.type === "CHECK_OUT",
+  )
   const checkInPhotos =
-    sessionDetail?.inspections
-      ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
-      .flatMap((ins) => ins.photos) ?? []
+    checkInInspection?.photos?.length
+      ? checkInInspection.photos
+      : (sessionDetail?.inspections
+          ?.filter((ins) => ins.type === "CHECK_IN" && ins.photos.length > 0)
+          .flatMap((ins) => ins.photos) ?? [])
   const checkOutPhotos =
-    sessionDetail?.inspections
-      ?.filter((ins) => ins.type === "CHECK_OUT" && ins.photos.length > 0)
-      .flatMap((ins) => ins.photos) ?? []
+    checkOutInspection?.photos?.length
+      ? checkOutInspection.photos
+      : (sessionDetail?.inspections
+          ?.filter((ins) => ins.type === "CHECK_OUT" && ins.photos.length > 0)
+          .flatMap((ins) => ins.photos) ?? [])
+  const checkInChecklist = checkInInspection?.checklist ?? []
+  const checkOutChecklist = checkOutInspection?.checklist ?? []
+  const checkInStaffNotes = checkInInspection?.staffNotes?.trim() || ""
+  const checkOutStaffNotes = checkOutInspection?.staffNotes?.trim() || ""
+  type DamageItemRecord = { partType?: string; customPartName?: string | null; partsPrice?: number; laborPrice?: number; lineTotal?: number }
+  const checkOutDamageLineItems: DamageItemRecord[] =
+    (checkOutInspection as { damageLineItems?: DamageItemRecord[] })?.damageLineItems ??
+    (sessionDetail as { checkoutInspection?: { damageLineItems?: DamageItemRecord[] } })?.checkoutInspection?.damageLineItems ??
+    (sessionDetail as { damageClaim?: { damageLineItems?: DamageItemRecord[] } })?.damageClaim?.damageLineItems ??
+    []
+  const checkOutDamageTotal: number =
+    Number(
+      (checkOutInspection as { totalDamageCharge?: number })?.totalDamageCharge ??
+        (sessionDetail as { checkoutInspection?: { totalDamageCharge?: number } })?.checkoutInspection?.totalDamageCharge ??
+        (sessionDetail as { damageClaim?: { totalDamageCharge?: number } })?.damageClaim?.totalDamageCharge ??
+        0,
+    ) ||
+    checkOutDamageLineItems.reduce(
+      (sum: number, it: DamageItemRecord) =>
+        sum + Number(it.partsPrice || 0) + Number(it.laborPrice || 0),
+      0,
+    )
   const approvedExtensions = sessionDetail?.approvedExtensions ?? []
 
   const [secondsLeft, setSecondsLeft] = useState(0)
@@ -534,6 +591,11 @@ export function BookingDetailPage() {
     sessionDetail?.status ?? booking?.session?.status,
     currentTime,
   )
+
+  const currentSessionStatus = sessionDetail?.status ?? booking?.session?.status
+  const isCheckoutPending =
+    !!currentSessionStatus &&
+    ["ACTIVE", "EXTENDING"].includes(currentSessionStatus)
 
   const handlePayAdditionalFees = async () => {
     if (!bookingId) return
@@ -696,8 +758,28 @@ export function BookingDetailPage() {
       payment: undefined,
     }))
   const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
-  const additionalLines =
+  const rawAdditionalLines =
     financialSummary?.additionalLines ?? fallbackAdditionalLines
+  const hasDamageLine = rawAdditionalLines.some(
+    (l: { type?: string; label?: string }) =>
+      l.type === "DAMAGE_CHARGE" ||
+      l.label?.includes("bồi thường") ||
+      l.label?.includes("hư hỏng"),
+  )
+  const additionalLines = [
+    ...rawAdditionalLines,
+    ...(!hasDamageLine && checkOutDamageTotal > 0
+      ? [
+          {
+            componentId: "checkout-damage-charge",
+            label: "Phí bồi thường hư hỏng",
+            amount: checkOutDamageTotal,
+            status: "PENDING",
+            payment: undefined,
+          },
+        ]
+      : []),
+  ]
   const prepaidDiscountAmount =
     financialSummary?.prepaidDiscountAmount ??
     Number(booking?.discountAmount ?? 0)
@@ -710,13 +792,12 @@ export function BookingDetailPage() {
     financialSummary?.prepaidPaidAmount ??
     (initialPaymentWasSuccessful ? prepaidServiceAmount : 0)
   const additionalTotal =
-    financialSummary?.additionalTotal ??
-    additionalLines.reduce((sum, line) => sum + Number(line.amount), 0)
-  const additionalOutstandingAmount =
-    financialSummary?.additionalOutstandingAmount ??
-    additionalLines
-      .filter((line) => line.status === "PENDING")
-      .reduce((sum, line) => sum + Number(line.amount), 0)
+    financialSummary?.additionalTotal && hasDamageLine
+      ? financialSummary.additionalTotal
+      : additionalLines.reduce((sum, line) => sum + Number(line.amount), 0)
+  const additionalOutstandingAmount = additionalLines
+    .filter((line) => line.status === "PENDING")
+    .reduce((sum, line) => sum + Number(line.amount), 0)
   const totalPaidAmount =
     financialSummary?.totalPaidAmount ??
     prepaidPaidAmount +
@@ -841,23 +922,7 @@ export function BookingDetailPage() {
       </section>
     )
   }
-  // Rơi về VNPAY cho mọi giá trị lạ là sai: đơn trả bằng chuyển khoản sẽ hiện
-  // "Đã thanh toán qua VNPAY", và khách khiếu nại thì không ai lần ra được tiền
-  // thật đã đi đường nào.
-  const gatewayLabel = (gateway?: string) => {
-    switch (gateway?.toUpperCase()) {
-      case "DIRECT":
-        return "tiền mặt"
-      case "MOCK":
-        return "DEV Mock"
-      case "BANK_TRANSFER":
-        return "chuyển khoản ngân hàng"
-      case "VNPAY":
-        return "VNPAY"
-      default:
-        return gateway ?? "cổng thanh toán"
-    }
-  }
+  const gatewayLabel = (gateway?: string | null) => formatPaymentGatewayInline(gateway)
 
   const refundComponents =
     booking?.payment_components?.filter(
@@ -1647,8 +1712,10 @@ export function BookingDetailPage() {
               </Card>
             )}
 
-            {/* Check-in handover photos */}
-            {checkInPhotos.length > 0 && (
+            {/* Check-in handover card */}
+            {(checkInPhotos.length > 0 ||
+              checkInChecklist.length > 0 ||
+              Boolean(checkInStaffNotes)) && (
               <Card
                 ref={handoverCardRef}
                 className="rounded-xl shadow-sm overflow-hidden scroll-mt-24"
@@ -1658,14 +1725,26 @@ export function BookingDetailPage() {
                   onClick={() => setCheckInPhotosOpen((v) => !v)}
                   className="w-full flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors text-left"
                 >
-                  <div className="flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+                      <Camera className="h-5 w-5 shrink-0" />
+                    </div>
                     <div>
                       <p className="font-semibold text-sm text-foreground">
-                        Ảnh bàn giao xe (Check-in)
+                        Biên bản & ảnh bàn giao xe (Check-in)
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {checkInPhotos.length} ảnh · biên bản bàn giao xe
+                        {[
+                          checkInPhotos.length > 0
+                            ? `${checkInPhotos.length} ảnh`
+                            : null,
+                          checkInChecklist.length > 0
+                            ? `${checkInChecklist.length} mục kiểm tra`
+                            : null,
+                          "Biên bản bàn giao xe",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     </div>
                   </div>
@@ -1674,57 +1753,155 @@ export function BookingDetailPage() {
                   />
                 </button>
                 {checkInPhotosOpen && (
-                  <CardContent className="pt-0 pb-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      {checkInPhotos.map((photo, idx) => (
-                        <div
-                          key={idx}
-                          className="overflow-hidden rounded-xl border border-border"
-                        >
-                          <ZoomableInspectionImage
-                            src={photo.url}
-                            alt={
-                              DIRECTION_LABELS[photo.direction] ??
-                              photo.direction
-                            }
-                            className="aspect-video w-full object-cover"
-                          />
-                          <div className="bg-muted/50 px-2.5 py-1.5">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                              {DIRECTION_LABELS[photo.direction] ??
-                                photo.direction}
-                            </p>
-                            {photo.notes && (
-                              <p className="mt-0.5 text-[11px] leading-tight text-foreground">
-                                {photo.notes}
-                              </p>
-                            )}
-                          </div>
+                  <CardContent className="pt-0 pb-5 space-y-4">
+                    {/* Ghi chú của nhân viên */}
+                    {checkInStaffNotes && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+                        <FileText className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-bold text-amber-950 mb-0.5">
+                            Ghi chú của nhân viên trực ca:
+                          </p>
+                          <p className="text-amber-900 leading-relaxed whitespace-pre-line">
+                            {checkInStaffNotes}
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* Checklist kiểm tra xe */}
+                    {checkInChecklist.length > 0 && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+                            <span>Checklist kiểm tra kỹ thuật khi nhận xe</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                            {
+                              checkInChecklist.filter(
+                                (c: ChecklistItemUi) =>
+                                  c.checked !== false &&
+                                  c.status !== "DAMAGED" &&
+                                  c.status !== "NOT_OK",
+                              ).length
+                            }
+                            /{checkInChecklist.length} Hạng mục đạt
+                          </span>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-2">
+                          {checkInChecklist.map((item: ChecklistItemUi, idx) => {
+                            const isOk =
+                              item.checked !== false &&
+                              item.status !== "DAMAGED" &&
+                              item.status !== "NOT_OK"
+                            const label =
+                              item.label ||
+                              item.itemLabel ||
+                              item.itemKey ||
+                              `Hạng mục ${idx + 1}`
+                            const note = item.notes || item.note
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-start gap-2 rounded-lg bg-white p-2.5 border border-slate-200/80 text-xs shadow-2xs"
+                              >
+                                {isOk ? (
+                                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                                ) : (
+                                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-slate-800 leading-snug">
+                                    {label}
+                                  </p>
+                                  {note ? (
+                                    <p className="text-[11px] text-slate-500 mt-0.5 italic">
+                                      {note}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Danh sách ảnh */}
+                    {checkInPhotos.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Camera className="h-3.5 w-3.5 text-slate-500" />
+                          <span>
+                            Ảnh chụp hiện trạng bàn giao xe ({checkInPhotos.length} ảnh)
+                          </span>
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {checkInPhotos.map((photo, idx) => (
+                            <div
+                              key={idx}
+                              className="overflow-hidden rounded-xl border border-border"
+                            >
+                              <ZoomableInspectionImage
+                                src={photo.url}
+                                alt={
+                                  DIRECTION_LABELS[photo.direction] ??
+                                  photo.direction
+                                }
+                                className="aspect-video w-full object-cover"
+                              />
+                              <div className="bg-muted/50 px-2.5 py-1.5">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                  {DIRECTION_LABELS[photo.direction] ??
+                                    photo.direction}
+                                </p>
+                                {photo.notes && (
+                                  <p className="mt-0.5 text-[11px] leading-tight text-foreground">
+                                    {photo.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 )}
               </Card>
             )}
 
-            {/* Check-out return photos */}
-            {checkOutPhotos.length > 0 && (
+            {/* Check-out return card */}
+            {(checkOutPhotos.length > 0 ||
+              checkOutChecklist.length > 0 ||
+              Boolean(checkOutStaffNotes)) && (
               <Card className="rounded-xl shadow-sm overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setCheckOutPhotosOpen((v) => !v)}
                   className="w-full flex items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors text-left"
                 >
-                  <div className="flex items-center gap-2">
-                    <Camera className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+                      <Camera className="h-5 w-5 shrink-0" />
+                    </div>
                     <div>
                       <p className="font-semibold text-sm text-foreground">
-                        Ảnh trả xe (Check-out)
+                        Biên bản & ảnh trả xe (Check-out)
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {checkOutPhotos.length} ảnh · căn cứ đối chiếu hư hỏng
-                        (nếu có)
+                        {[
+                          checkOutPhotos.length > 0
+                            ? `${checkOutPhotos.length} ảnh`
+                            : null,
+                          checkOutChecklist.length > 0
+                            ? `${checkOutChecklist.length} mục kiểm tra`
+                            : null,
+                          "Căn cứ đối chiếu hiện trạng",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     </div>
                   </div>
@@ -1733,35 +1910,178 @@ export function BookingDetailPage() {
                   />
                 </button>
                 {checkOutPhotosOpen && (
-                  <CardContent className="pt-0 pb-5">
-                    <div className="grid grid-cols-2 gap-3">
-                      {checkOutPhotos.map((photo, idx) => (
-                        <div
-                          key={idx}
-                          className="overflow-hidden rounded-xl border border-border"
-                        >
-                          <ZoomableInspectionImage
-                            src={photo.url}
-                            alt={
-                              DIRECTION_LABELS[photo.direction] ??
-                              photo.direction
-                            }
-                            className="aspect-video w-full object-cover"
-                          />
-                          <div className="bg-muted/50 px-2.5 py-1.5">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                              {DIRECTION_LABELS[photo.direction] ??
-                                photo.direction}
-                            </p>
-                            {photo.notes && (
-                              <p className="mt-0.5 text-[11px] leading-tight text-foreground">
-                                {photo.notes}
-                              </p>
-                            )}
-                          </div>
+                  <CardContent className="pt-0 pb-5 space-y-4">
+                    {/* Ghi chú của nhân viên khi trả xe */}
+                    {checkOutStaffNotes && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+                        <FileText className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-bold text-amber-950 mb-0.5">
+                            Ghi chú trả xe của nhân viên:
+                          </p>
+                          <p className="text-amber-900 leading-relaxed whitespace-pre-line">
+                            {checkOutStaffNotes}
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* Checklist kiểm tra khi trả xe */}
+                    {checkOutChecklist.length > 0 && (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <ClipboardCheck className="h-4 w-4 text-emerald-600" />
+                            <span>Checklist nghiệm thu khi trả xe</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                            {
+                              checkOutChecklist.filter(
+                                (c: ChecklistItemUi) =>
+                                  c.checked !== false &&
+                                  c.status !== "DAMAGED" &&
+                                  c.status !== "NOT_OK",
+                              ).length
+                            }
+                            /{checkOutChecklist.length} Hạng mục đạt
+                          </span>
+                        </div>
+                        <div className="grid sm:grid-cols-2 gap-2">
+                          {checkOutChecklist.map((item: ChecklistItemUi, idx) => {
+                            const isOk =
+                              item.checked !== false &&
+                              item.status !== "DAMAGED" &&
+                              item.status !== "NOT_OK"
+                            const label =
+                              item.label ||
+                              item.itemLabel ||
+                              item.itemKey ||
+                              `Hạng mục ${idx + 1}`
+                            const note = item.notes || item.note
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-start gap-2 rounded-lg bg-white p-2.5 border border-slate-200/80 text-xs shadow-2xs"
+                              >
+                                {isOk ? (
+                                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5" />
+                                ) : (
+                                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-slate-800 leading-snug">
+                                    {label}
+                                  </p>
+                                  {note ? (
+                                    <p className="text-[11px] text-slate-500 mt-0.5 italic">
+                                      {note}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bảng kê hư hỏng & bồi thường linh kiện nếu có */}
+                    {checkOutDamageTotal > 0 && (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3.5 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-rose-900">
+                            <Wrench className="h-4 w-4 text-rose-600" />
+                            <span>Bảng kê bồi thường hư hại & sửa chữa xe</span>
+                          </div>
+                          <span className="text-xs font-extrabold text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-200">
+                            +{formatCurrency(checkOutDamageTotal)}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {checkOutDamageLineItems.map((item, idx: number) => {
+                            const partLabel =
+                              (item.partType
+                                ? (PART_TYPE_LABELS as Record<string, string>)[
+                                    item.partType
+                                  ]
+                                : undefined) ??
+                              item.partType ??
+                              item.customPartName ??
+                              `Linh kiện ${idx + 1}`
+                            const lineTotal =
+                              Number(item.lineTotal) ||
+                              Number(item.partsPrice || 0) + Number(item.laborPrice || 0)
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between rounded-lg bg-white p-2.5 border border-rose-100 text-xs shadow-2xs"
+                              >
+                                <div>
+                                  <p className="font-bold text-slate-900">
+                                    {partLabel}
+                                    {item.customPartName && item.partType !== "OTHER" && (
+                                      <span className="font-normal text-slate-500">
+                                        {" "}
+                                        — {item.customPartName}
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Linh kiện: {formatCurrency(Number(item.partsPrice || 0))}
+                                    {Number(item.laborPrice || 0) > 0 &&
+                                      ` · Công sửa: ${formatCurrency(Number(item.laborPrice))}`}
+                                  </p>
+                                </div>
+                                <span className="font-extrabold text-rose-600 tabular-nums">
+                                  {formatCurrency(lineTotal)}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Danh sách ảnh */}
+                    {checkOutPhotos.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Camera className="h-3.5 w-3.5 text-slate-500" />
+                          <span>
+                            Ảnh chụp hiện trạng lúc trả xe ({checkOutPhotos.length} ảnh)
+                          </span>
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {checkOutPhotos.map((photo, idx) => (
+                            <div
+                              key={idx}
+                              className="overflow-hidden rounded-xl border border-border"
+                            >
+                              <ZoomableInspectionImage
+                                src={photo.url}
+                                alt={
+                                  DIRECTION_LABELS[photo.direction] ??
+                                  photo.direction
+                                }
+                                className="aspect-video w-full object-cover"
+                              />
+                              <div className="bg-muted/50 px-2.5 py-1.5">
+                                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                                  {DIRECTION_LABELS[photo.direction] ??
+                                    photo.direction}
+                                </p>
+                                {photo.notes && (
+                                  <p className="mt-0.5 text-[11px] leading-tight text-foreground">
+                                    {photo.notes}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 )}
               </Card>
@@ -1945,59 +2265,94 @@ export function BookingDetailPage() {
                   {/* Status footer */}
                   {!isPaid && additionalOutstandingAmount > 0 ? (
                     <div className="space-y-3">
-                      <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 font-medium leading-relaxed">
-                        <p>
-                          Còn{" "}
-                          <strong>
-                            {formatCurrency(additionalOutstandingAmount)}
-                          </strong>{" "}
-                          phí phát sinh chưa thanh toán.
-                        </p>
-                        <p className="mt-1 text-amber-700">
-                          Chi tiết từng khoản được hiển thị ngay phía trên.
-                        </p>
-                      </div>
+                      {isCheckoutPending ? (
+                        <div className="rounded-xl bg-amber-100/70 border border-amber-300 p-3.5 text-xs text-amber-950 font-semibold space-y-1">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-950">
+                            <AlertTriangle className="h-4 w-4 text-amber-700 shrink-0" />
+                            <span>Chờ hoàn tất kiểm tra & trả xe</span>
+                          </div>
+                          <p className="text-[11px] leading-relaxed text-amber-900">
+                            {role === "customer"
+                              ? "Vui lòng hoàn tất kiểm tra và trả xe tại quầy với Nhân viên trước khi thực hiện thanh toán các khoản phát sinh."
+                              : "Khách đang trong ca chơi. Vui lòng thực hiện BƯỚC 1: KIỂM TRA TRẢ XE ở thẻ phía trên để chốt toàn bộ chi phí trước khi thu tiền mặt."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 font-medium leading-relaxed">
+                          <p>
+                            Còn{" "}
+                            <strong>
+                              {formatCurrency(additionalOutstandingAmount)}
+                            </strong>{" "}
+                            phí phát sinh chưa thanh toán.
+                          </p>
+                          <p className="mt-1 text-amber-700">
+                            Chi tiết từng khoản được hiển thị ngay phía trên.
+                          </p>
+                        </div>
+                      )}
                       {role === "customer" && (
                         <>
-                          {/* Chi nhánh có bật nhận chuyển khoản thì để quét mã
-                              lên trước — khách đang đứng ở quầy, mở app ngân
-                              hàng nhanh hơn đi qua cổng. */}
                           {canBankTransfer && settlementBankTransferPath && (
                             <Button
-                              asChild
-                              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                              asChild={!isCheckoutPending}
+                              disabled={isCheckoutPending}
+                              variant={isCheckoutPending ? "outline" : "default"}
+                              className={
+                                isCheckoutPending
+                                  ? "w-full font-bold text-xs h-10 rounded-xl bg-amber-100/90 text-amber-950 border-amber-300 cursor-not-allowed disabled:opacity-100 disabled:bg-amber-100 disabled:text-amber-950 disabled:border-amber-300"
+                                  : "w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                              }
                             >
-                              <Link to={settlementBankTransferPath}>
-                                <QrCode className="mr-1.5 size-4" />
-                                Quét mã chuyển khoản
-                              </Link>
+                              {isCheckoutPending ? (
+                                <span className="flex items-center justify-center gap-1.5">
+                                  <QrCode className="size-4 shrink-0 text-amber-700" />
+                                  <span>Quét mã chuyển khoản (Chờ trả xe)</span>
+                                </span>
+                              ) : (
+                                <Link to={settlementBankTransferPath}>
+                                  <QrCode className="mr-1.5 size-4" />
+                                  Quét mã chuyển khoản
+                                </Link>
+                              )}
                             </Button>
                           )}
                           <Button
                             onClick={handlePayAdditionalFees}
-                            disabled={payingAdditional}
-                            variant={canBankTransfer ? "outline" : "default"}
+                            disabled={payingAdditional || isCheckoutPending}
+                            variant={isCheckoutPending ? "outline" : canBankTransfer ? "outline" : "default"}
                             className={
-                              canBankTransfer
-                                ? "w-full font-bold text-xs h-10 rounded-xl"
-                                : "w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
+                              isCheckoutPending
+                                ? "w-full font-bold text-xs h-10 rounded-xl bg-amber-100/90 text-amber-950 border-amber-300 cursor-not-allowed disabled:opacity-100 disabled:bg-amber-100 disabled:text-amber-950 disabled:border-amber-300"
+                                : canBankTransfer
+                                  ? "w-full font-bold text-xs h-10 rounded-xl border border-orange-500 text-orange-600 hover:bg-orange-50"
+                                  : "w-full bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs h-10 rounded-xl"
                             }
                           >
                             {payingAdditional
                               ? "Đang khởi tạo..."
-                              : "Thanh toán qua VNPAY"}
+                              : isCheckoutPending
+                                ? "Thanh toán qua VNPAY (Chờ trả xe)"
+                                : "Thanh toán qua VNPAY"}
                           </Button>
                         </>
                       )}
                       {role === "staff" && (
                         <Button
                           onClick={handleSettleCash}
-                          disabled={settlingCash}
-                          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 rounded-xl"
+                          disabled={settlingCash || isCheckoutPending}
+                          variant={isCheckoutPending ? "outline" : "default"}
+                          className={
+                            isCheckoutPending
+                              ? "w-full font-bold text-xs h-10 rounded-xl bg-amber-100/90 text-amber-950 border-amber-300 cursor-not-allowed disabled:opacity-100 disabled:bg-amber-100 disabled:text-amber-950 disabled:border-amber-300"
+                              : "w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 rounded-xl"
+                          }
                         >
                           {settlingCash
                             ? "Đang xác nhận..."
-                            : "✓ Xác nhận đã thu tiền mặt"}
+                            : isCheckoutPending
+                              ? "🔒 Cần kiểm tra trả xe trước khi thu tiền"
+                              : "✓ Xác nhận đã thu tiền mặt"}
                         </Button>
                       )}
                     </div>

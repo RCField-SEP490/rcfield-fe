@@ -64,11 +64,13 @@ export type SortOption = "popularity" | "price_asc" | "price_desc" | "rating"
 
 export type CafeSearchParams = {
   query?: string
+  cafeId?: string
   city?: string
   trackType?: string
   priceRange?: string
   feature?: string
   date?: string
+  time?: string
   /** Năng lực chi nhánh: RENTAL (có xe cho thuê) hoặc BYOC (nhận xe khách mang). */
   playMode?: string
   vehicleType?: string

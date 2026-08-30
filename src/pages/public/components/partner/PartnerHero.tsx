@@ -30,9 +30,9 @@ function DashboardMockup() {
       {/* Booking rows */}
       <div className="divide-y divide-white/5 px-4">
         {[
-          { time: "09:00–11:00", customer: "Minh Tuấn", vehicle: "Traxxas Slash 4x4", status: "ACTIVE", color: "text-emerald-400" },
-          { time: "11:00–13:00", customer: "Quốc Bảo",  vehicle: "Arrma Kraton 8S",   status: "UPCOMING", color: "text-blue-400" },
-          { time: "14:00–16:00", customer: "Thảo Vy",   vehicle: "Losi LMT",           status: "UPCOMING", color: "text-blue-400" },
+          { time: "09:00–11:00", customer: "Minh Tuấn", vehicle: "Traxxas Slash 4x4", status: "ĐANG CHƠI", color: "text-emerald-400" },
+          { time: "11:00–13:00", customer: "Quốc Bảo",  vehicle: "Arrma Kraton 8S",   status: "SẮP TỚI",   color: "text-blue-400" },
+          { time: "14:00–16:00", customer: "Thảo Vy",   vehicle: "Losi LMT",           status: "SẮP TỚI",   color: "text-blue-400" },
         ].map((row) => (
           <div key={row.time} className="flex items-center justify-between py-2.5">
             <div>

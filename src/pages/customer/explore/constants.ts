@@ -7,10 +7,11 @@ export interface FilterOption {
 
 export const CITY_OPTIONS: FilterOption[] = [
   { value: "all", label: "Tất cả thành phố" },
-  { value: "Hồ Chí Minh", label: "Hồ Chí Minh" },
+  { value: "TP. Hồ Chí Minh", label: "TP. Hồ Chí Minh" },
   { value: "Hà Nội", label: "Hà Nội" },
   { value: "Đà Nẵng", label: "Đà Nẵng" },
   { value: "Hải Phòng", label: "Hải Phòng" },
+  { value: "Cần Thơ", label: "Cần Thơ" },
 ]
 
 export const PRICE_RANGE_OPTIONS: FilterOption[] = [

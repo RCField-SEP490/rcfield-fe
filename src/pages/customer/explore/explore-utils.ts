@@ -30,11 +30,15 @@ export function flattenCafeVehicles(cafes: Cafe[]): VehicleWithCafe[] {
 export function filterCafes(cafes: Cafe[], params: CafeSearchParams): Cafe[] {
   return cafes.filter((cafe) => {
     const query = params.query?.trim().toLowerCase() ?? ""
+    const cafeId = normalizeFilterValue(params.cafeId)
     const city = normalizeFilterValue(params.city)
     const trackType = normalizeFilterValue(params.trackType)
     const priceRange = normalizeFilterValue(params.priceRange)
     const feature = normalizeFilterValue(params.feature)
     const vehicleType = normalizeFilterValue(params.vehicleType)
+    const playMode = normalizeFilterValue(params.playMode)
+
+    const matchesCafeId = cafeId === DEFAULT_VALUE || cafe.id === cafeId
 
     const matchesQuery =
       query === "" ||
@@ -43,10 +47,17 @@ export function filterCafes(cafes: Cafe[], params: CafeSearchParams): Cafe[] {
       cafe.district.toLowerCase().includes(query) ||
       cafe.city.toLowerCase().includes(query)
 
-    const matchesCity = city === DEFAULT_VALUE || cafe.city === city
+    const matchesCity =
+      city === DEFAULT_VALUE ||
+      cafe.city.toLowerCase().includes(city.toLowerCase()) ||
+      city.toLowerCase().includes(cafe.city.toLowerCase())
+
+    const normalizedTrackParam = trackType.toLowerCase().replace(/_/g, "")
     const matchesTrack =
       trackType === DEFAULT_VALUE ||
-      cafe.trackTypes.some((type) => type.toLowerCase().includes(trackType.toLowerCase())) ||
+      cafe.trackTypes.some((type) =>
+        type.toLowerCase().replace(/[^a-z0-9]/g, "").includes(normalizedTrackParam),
+      ) ||
       cafe.trackTypeIds?.includes(trackType)
     const matchesFeature = feature === DEFAULT_VALUE || cafe.features.includes(feature)
     const matchesVehicleType =
@@ -54,13 +65,18 @@ export function filterCafes(cafes: Cafe[], params: CafeSearchParams): Cafe[] {
       cafe.availableVehicles.some((vehicle) => vehicle.type.toLowerCase().includes(vehicleType.toLowerCase()) || vehicle.scale.includes(vehicleType))
     const matchesPrice = priceRange === DEFAULT_VALUE || cafe.availableVehicles.some((vehicle) => isVehicleInPriceRange(vehicle.pricePerHour, priceRange))
 
+    const matchesPlayMode =
+      playMode === DEFAULT_VALUE ||
+      (playMode === "RENTAL" && cafe.availableVehicles && cafe.availableVehicles.length > 0) ||
+      (playMode === "BYOC" && (cafe.byocCapacity === undefined || cafe.byocCapacity > 0))
+
     // Price slider filter — uses slotFeeRate
     const matchesPriceSlider = matchesPriceSliderRange(cafe, params.priceMin, params.priceMax)
 
     // Popular filters — match track types or features
     const matchesPopular = matchesPopularFilters(cafe, params.popularFilters)
 
-    return matchesQuery && matchesCity && matchesTrack && matchesFeature && matchesVehicleType && matchesPrice && matchesPriceSlider && matchesPopular
+    return matchesCafeId && matchesQuery && matchesCity && matchesTrack && matchesFeature && matchesVehicleType && matchesPrice && matchesPlayMode && matchesPriceSlider && matchesPopular
   })
 }
 
@@ -105,7 +121,7 @@ export function sortCafes(cafes: Cafe[], sortBy: CafeSearchParams["sortBy"]): Ca
 }
 
 export function getActiveFilterCount(params: CafeSearchParams) {
-  let count = [params.city, params.trackType, params.priceRange, params.feature, params.vehicleType, params.date].filter(
+  let count = [params.cafeId, params.city, params.trackType, params.priceRange, params.feature, params.vehicleType, params.date, params.time, params.playMode].filter(
     (value) => value !== undefined && value !== "" && value !== DEFAULT_VALUE,
   ).length
 
@@ -116,9 +132,16 @@ export function getActiveFilterCount(params: CafeSearchParams) {
   return count
 }
 
-export function buildBookingUrl(cafeId: string, vehicleId?: string) {
+export function buildBookingUrl(
+  cafeId: string,
+  vehicleId?: string,
+  extra?: { date?: string; time?: string; playMode?: string },
+) {
   const params = new URLSearchParams({ cafeId })
   if (vehicleId) params.set("vehicleId", vehicleId)
+  if (extra?.date) params.set("date", extra.date)
+  if (extra?.time && extra.time !== "all") params.set("time", extra.time)
+  if (extra?.playMode && extra.playMode !== "all") params.set("playMode", extra.playMode)
   return `/booking/create?${params.toString()}`
 }
 
