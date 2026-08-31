@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import L from "leaflet"
 import type { Map, Marker } from "leaflet"
+import "leaflet/dist/leaflet.css"
 import { Loader2, MapPin, Navigation } from "lucide-react"
 
 import { Button } from "@/shared/ui/button"
@@ -31,6 +33,15 @@ type Props = {
   onConfirm: (lat: number, lng: number) => void
 }
 
+const MAPTILER_KEY = ((import.meta.env.VITE_MAPTILER_KEY as string | undefined) ?? "").trim()
+const TILE_URL = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}@2x.jpg?key=${MAPTILER_KEY}`
+  : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png"
+const TILE_ATTR = MAPTILER_KEY
+  ? '&copy; <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+const TILE_OPTIONS = { tileSize: 512, zoomOffset: -1, maxZoom: 20 } as const
+
 const DEFAULT_CENTER: [number, number] = [10.7769, 106.7009] // Ho Chi Minh City
 const DEFAULT_ZOOM = 13
 
@@ -38,7 +49,6 @@ export function LocationPickerDialog({ open, onOpenChange, initialLat, initialLn
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<Map | null>(null)
   const markerRef = useRef<Marker | null>(null)
-  const leafletRef = useRef<typeof import("leaflet") | null>(null)
   const [selected, setSelected] = useState<{ lat: number; lng: number } | null>(
     initialLat != null && initialLng != null ? { lat: initialLat, lng: initialLng } : null
   )
@@ -61,13 +71,12 @@ export function LocationPickerDialog({ open, onOpenChange, initialLat, initialLn
       return
     }
 
+    let resizeObserver: ResizeObserver | null = null
+
     // Wait for dialog animation + DOM to settle
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       if (!mapRef.current || mapInstanceRef.current) return
 
-      await import("leaflet/dist/leaflet.css")
-      const L = (await import("leaflet")).default
-      leafletRef.current = L
       fixLeafletIcons(L)
 
       const center: [number, number] =
@@ -78,10 +87,19 @@ export function LocationPickerDialog({ open, onOpenChange, initialLat, initialLn
       const map = L.map(mapRef.current, { zoomControl: true }).setView(center, DEFAULT_ZOOM)
       mapInstanceRef.current = map
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
+      L.tileLayer(TILE_URL, {
+        attribution: TILE_ATTR,
+        ...TILE_OPTIONS,
       }).addTo(map)
+
+      // Force map layout recalculation to prevent gray background
+      map.invalidateSize()
+
+      // Track size changes (especially during dialog open transitions)
+      resizeObserver = new ResizeObserver(() => {
+        map.invalidateSize()
+      })
+      resizeObserver.observe(mapRef.current)
 
       // Place initial marker if coordinates exist
       if (initialLat != null && initialLng != null) {
@@ -110,13 +128,17 @@ export function LocationPickerDialog({ open, onOpenChange, initialLat, initialLn
       })
     }, 150)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+      }
+    }
   }, [open, initialLat, initialLng])
 
   const placeMarker = (lat: number, lng: number) => {
-    const L = leafletRef.current
     const map = mapInstanceRef.current
-    if (!L || !map) return
+    if (!map) return
     setSelected({ lat, lng })
     if (markerRef.current) {
       markerRef.current.setLatLng([lat, lng])
