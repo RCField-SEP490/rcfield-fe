@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
 import React, { useState, useEffect, useMemo } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { z } from "zod"
+import { WalkInCashConfirmationModal } from "./components/WalkInCashConfirmationModal"
 import {
   Search as SearchIcon,
   Car,
@@ -260,6 +261,7 @@ function getBookingStatusLabel(status: string): string {
 export default function StaffTodayBookingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { assignedCafeId, createWalkInBooking, startCheckIn } =
     useStaffOperations()
   const [nowTime, setNowTime] = useState(() => Date.now())
@@ -284,6 +286,22 @@ export default function StaffTodayBookingsPage() {
     bookingCode?: string
     bankTransfer: BankTransferCheckout
     autoCheckIn: boolean
+  } | null>(null)
+
+  // Walk-in Cash Confirmation Modal state
+  const [cashModalData, setCashModalData] = useState<{
+    customerName: string
+    customerPhone: string
+    playMode: "RENTAL" | "BYOC"
+    trackName: string
+    slotCount: number
+    slotFeeTotal: number
+    vehicleCount: number
+    rentalFeeTotal: number
+    fnbTotalAmount: number
+    totalAmount: number
+    autoCheckIn: boolean
+    payload: any
   } | null>(null)
 
   const {
@@ -780,7 +798,6 @@ export default function StaffTodayBookingsPage() {
     }
 
     setFieldErrors({})
-    setIsWalkinSubmitting(true)
 
     const fnbItems = Object.values(selectedFnbCart).map((item) => ({
       menu_item_id: item.menuItem.id,
@@ -788,23 +805,47 @@ export default function StaffTodayBookingsPage() {
       quantity: item.quantity,
     }))
 
-    try {
-      const res = await createWalkInBooking({
+    const payload = {
+      playMode: parsed.data.playMode,
+      trackTypeId: parsed.data.trackTypeId,
+      slotStart: parsed.data.slotStart,
+      slotEnd: parsed.data.slotEnd,
+      paymentMethod: parsed.data.paymentMethod,
+      vehicleIds: parsed.data.vehicleIds,
+      participants: [
+        {
+          guest_name: parsed.data.customerName,
+          guest_phone: parsed.data.customerPhone,
+          participant_type: "WALK_IN_GUEST",
+        },
+      ],
+      fnbItems: fnbItems.length > 0 ? fnbItems : undefined,
+    }
+
+    // Nếu chọn TIỀN MẶT: Bật Modal xác nhận đã nhận đủ tiền mặt từ khách trước khi tạo đơn
+    if (parsed.data.paymentMethod === "CASH") {
+      setCashModalData({
+        customerName: parsed.data.customerName,
+        customerPhone: parsed.data.customerPhone,
         playMode: parsed.data.playMode,
-        trackTypeId: parsed.data.trackTypeId,
-        slotStart: parsed.data.slotStart,
-        slotEnd: parsed.data.slotEnd,
-        paymentMethod: parsed.data.paymentMethod,
-        vehicleIds: parsed.data.vehicleIds,
-        participants: [
-          {
-            guest_name: parsed.data.customerName,
-            guest_phone: parsed.data.customerPhone,
-            participant_type: "WALK_IN_GUEST",
-          },
-        ],
-        fnbItems: fnbItems.length > 0 ? fnbItems : undefined,
+        trackName: selectedTrackName || "Đường đua đã chọn",
+        slotCount,
+        slotFeeTotal,
+        vehicleCount: selectedSelectableVehicles.length,
+        rentalFeeTotal,
+        fnbTotalAmount,
+        totalAmount,
+        autoCheckIn,
+        payload,
       })
+      return
+    }
+
+    // Nếu chọn CHUYỂN KHOẢN: Gọi API tạo đơn giữ chỗ PENDING và mở Modal QR
+    setIsWalkinSubmitting(true)
+
+    try {
+      const res = await createWalkInBooking(payload)
 
       if (res?.bookingId) {
         if (res.bankTransfer && parsed.data.paymentMethod === "BANK_TRANSFER") {
@@ -831,8 +872,79 @@ export default function StaffTodayBookingsPage() {
         setActiveTab("LIST")
         setSearchParams({})
       }
+    } catch (err: any) {
+      toast.error(err?.message || "Không thể tạo đơn đặt lịch")
     } finally {
       setIsWalkinSubmitting(false)
+    }
+  }
+
+  // Xác nhận đã thu đủ tiền mặt từ WalkInCashConfirmationModal
+  const handleConfirmCashPayment = async () => {
+    if (!cashModalData || isWalkinSubmitting) return
+    try {
+      setIsWalkinSubmitting(true)
+      const res = await createWalkInBooking(cashModalData.payload)
+      if (res?.bookingId) {
+        toast.success("Tạo đơn vãng lai và thu tiền mặt thành công!")
+        const autoCheckIn = cashModalData.autoCheckIn
+        setCashModalData(null)
+        if (autoCheckIn) {
+          toast.info("Đang khởi tạo ca chơi cho khách...")
+          const checkInRes = await startCheckIn(res.bookingId)
+          const sessionId = checkInRes?.sessionId ?? checkInRes?.id
+          if (sessionId) {
+            resetWalkinForm()
+            navigate(`/staff/sessions/${sessionId}`)
+            return
+          }
+        }
+        resetWalkinForm()
+        setActiveTab("LIST")
+        setSearchParams({})
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Không thể tạo đơn đặt lịch")
+    } finally {
+      setIsWalkinSubmitting(false)
+    }
+  }
+
+  // Hủy đơn PENDING để giải phóng giữ chỗ xe và slot
+  const handleCancelPendingBooking = async (bookingId: string) => {
+    try {
+      await bookingApi.cancelBooking(bookingId, "Nhân viên hủy đơn để nhả giữ chỗ")
+      toast.success("Đã hủy đơn và giải phóng giữ chỗ xe/sân!")
+      setBankTransferModalData(null)
+      queryClient.invalidateQueries({ queryKey: staffQueryKeys.todayBookings() })
+      queryClient.invalidateQueries({ queryKey: ["cafe-slot-availability"] })
+      queryClient.invalidateQueries({ queryKey: ["cafe-day-slots"] })
+    } catch (err: any) {
+      toast.error(err?.message || "Không thể hủy đơn đặt lịch")
+    }
+  }
+
+  // Mở lại Modal QR từ danh sách đơn hôm nay
+  const handleOpenPendingQrModal = async (targetBookingId: string) => {
+    if (!targetBookingId) {
+      toast.error("Không tìm thấy mã đơn đặt lịch")
+      return
+    }
+    try {
+      toast.info("Đang tải mã QR chuyển khoản...")
+      const checkoutRes = await bookingApi.createCheckout(targetBookingId, "bank_transfer")
+      if (checkoutRes.bank_transfer) {
+        setBankTransferModalData({
+          bookingId: targetBookingId,
+          bookingCode: `RCF-${targetBookingId.substring(0, 4).toUpperCase()}`,
+          bankTransfer: checkoutRes.bank_transfer,
+          autoCheckIn: true,
+        })
+      } else {
+        toast.error("Không tìm thấy thông tin chuyển khoản cho đơn này")
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Không thể mở mã QR chuyển khoản")
     }
   }
 
@@ -1511,6 +1623,28 @@ export default function StaffTodayBookingsPage() {
                             {sessionActionLabel}
                             <ArrowRight className="size-3.5" />
                           </StaffButton>
+                        ) : b.status === "PENDING" ? (
+                          <div className="flex items-center gap-2">
+                            <StaffButton
+                              onClick={() => handleCancelPendingBooking(bookingId)}
+                              variant="outline"
+                              size="sm"
+                              className="border-red-200 text-red-600 hover:bg-red-50"
+                              title="Hủy đơn để nhả giữ chỗ slot và xe"
+                            >
+                              <X className="size-3.5 mr-1" />
+                              Hủy đơn
+                            </StaffButton>
+                            <StaffButton
+                              onClick={() => handleOpenPendingQrModal(bookingId)}
+                              variant="primary"
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                            >
+                              <Smartphone className="size-3.5 mr-1.5" />
+                              Mở mã QR
+                            </StaffButton>
+                          </div>
                         ) : b.status === "CONFIRMED" ? (
                           <StaffButton
                             onClick={() => handleStartCheckIn(b)}
@@ -2778,6 +2912,8 @@ export default function StaffTodayBookingsPage() {
                 >
                   {isWalkinSubmitting ? (
                     <Loader2 className="size-3.5 animate-spin" />
+                  ) : paymentMethod === "BANK_TRANSFER" ? (
+                    "Tạo mã QR & Lưu lịch"
                   ) : (
                     "Tạo đơn & Lưu lịch"
                   )}
@@ -2800,6 +2936,11 @@ export default function StaffTodayBookingsPage() {
                       <Loader2 className="size-3.5 animate-spin" />
                       Đang xử lý...
                     </>
+                  ) : paymentMethod === "BANK_TRANSFER" ? (
+                    <>
+                      <QrCode className="size-4 mr-1.5" />
+                      Quét mã QR & Nhận xe ngay
+                    </>
                   ) : (
                     <>
                       <Play className="size-4 mr-1.5 fill-current" />
@@ -2813,6 +2954,27 @@ export default function StaffTodayBookingsPage() {
         </div>
       )}
 
+      {/* Walk-in Cash Confirmation Modal */}
+      {cashModalData && (
+        <WalkInCashConfirmationModal
+          isOpen={true}
+          customerName={cashModalData.customerName}
+          customerPhone={cashModalData.customerPhone}
+          playMode={cashModalData.playMode}
+          trackName={cashModalData.trackName}
+          slotCount={cashModalData.slotCount}
+          slotFeeTotal={cashModalData.slotFeeTotal}
+          vehicleCount={cashModalData.vehicleCount}
+          rentalFeeTotal={cashModalData.rentalFeeTotal}
+          fnbTotalAmount={cashModalData.fnbTotalAmount}
+          totalAmount={cashModalData.totalAmount}
+          isSubmitting={isWalkinSubmitting}
+          autoCheckIn={cashModalData.autoCheckIn}
+          onConfirm={handleConfirmCashPayment}
+          onClose={() => setCashModalData(null)}
+        />
+      )}
+
       {/* Walk-in Bank Transfer QR Modal */}
       {bankTransferModalData && (
         <WalkInBankTransferModal
@@ -2823,6 +2985,7 @@ export default function StaffTodayBookingsPage() {
           autoCheckIn={bankTransferModalData.autoCheckIn}
           onSuccess={handleBankTransferSuccess}
           onClose={() => setBankTransferModalData(null)}
+          onCancelAndChangeMethod={handleCancelPendingBooking}
         />
       )}
     </div>
