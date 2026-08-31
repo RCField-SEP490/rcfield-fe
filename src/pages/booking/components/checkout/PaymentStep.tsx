@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Building2, CheckCircle2, Clock, QrCode, Zap } from "lucide-react"
+import { Building2, CheckCircle2, QrCode, Zap } from "lucide-react"
 import type { CustomerPaymentMethod } from "@/features/customer-booking/data/customer-booking-demo"
 import type { CafePaymentMethodOption } from "@/features/booking/types/booking.types"
 import {
@@ -87,7 +87,7 @@ export function PaymentStep({
         <CardHeader>
           <CardTitle>Phương thức thanh toán</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Chọn hình thức bạn muốn hoàn tất thanh toán hoặc giữ chỗ trước cho đơn đặt lịch này.
+            Chọn hình thức bạn muốn hoàn tất thanh toán cho đơn đặt lịch này.
           </p>
         </CardHeader>
         <CardContent>
@@ -109,13 +109,6 @@ export function PaymentStep({
                 onSelect={() => onMethodChange?.("bank_transfer")}
               />
             )}
-            <MethodOption
-              icon={Clock}
-              title="Giữ chỗ và thanh toán sau"
-              description="Giữ lịch chơi trong 30 phút. Bạn có thể thanh toán online sau hoặc tại quầy khi đến sân."
-              selected={selectedMethod === "pay_later"}
-              onSelect={() => onMethodChange?.("pay_later")}
-            />
           </div>
 
           {isSandbox && onMockPayment && (
