@@ -595,7 +595,7 @@ export function BookingDetailPage() {
   const currentSessionStatus = sessionDetail?.status ?? booking?.session?.status
   const isCheckoutPending =
     !!currentSessionStatus &&
-    ["ACTIVE", "EXTENDING"].includes(currentSessionStatus)
+    ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(currentSessionStatus)
 
   const handlePayAdditionalFees = async () => {
     if (!bookingId) return
@@ -757,7 +757,14 @@ export function BookingDetailPage() {
       status: component.status,
       payment: undefined,
     }))
-  const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
+  const rawPrepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
+  const seenPrepaidLines = new Set<string>()
+  const prepaidLines = rawPrepaidLines.filter((line) => {
+    const key = `${line.componentId || ''}_${line.label}_${line.amount}`
+    if (seenPrepaidLines.has(key)) return false
+    seenPrepaidLines.add(key)
+    return true
+  })
   const rawAdditionalLines =
     financialSummary?.additionalLines ?? fallbackAdditionalLines
   const hasDamageLine = rawAdditionalLines.some(
@@ -2307,7 +2314,7 @@ export function BookingDetailPage() {
                               {isCheckoutPending ? (
                                 <span className="flex items-center justify-center gap-1.5">
                                   <QrCode className="size-4 shrink-0 text-amber-700" />
-                                  <span>Quét mã chuyển khoản (Chờ trả xe)</span>
+                                  <span>Quét mã chuyển khoản (Chờ xác nhận trả xe)</span>
                                 </span>
                               ) : (
                                 <Link to={settlementBankTransferPath}>
@@ -2332,7 +2339,7 @@ export function BookingDetailPage() {
                             {payingAdditional
                               ? "Đang khởi tạo..."
                               : isCheckoutPending
-                                ? "Thanh toán qua VNPAY (Chờ trả xe)"
+                                ? "Thanh toán qua VNPAY (Chờ xác nhận trả xe)"
                                 : "Thanh toán qua VNPAY"}
                           </Button>
                         </>
