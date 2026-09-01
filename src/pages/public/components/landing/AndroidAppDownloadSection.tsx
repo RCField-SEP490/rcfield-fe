@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/button"
 import { fadeUpItem, landingViewport, staggerContainer } from "./landing-motion"
 
 export const ANDROID_APK_URL =
-  "https://expo.dev/artifacts/eas/N0ZylSpMrg_szP9m3WTs1Cy2-tLTA3_M3jBa1kfFCVI.apk"
+  "https://expo.dev/artifacts/eas/0YSsMEBiyX4FohWjob7K6wpNXQqXft606EXQLpSyAVc.apk"
 
 export function AndroidAppDownloadSection() {
   const prefersReducedMotion = useReducedMotion()
