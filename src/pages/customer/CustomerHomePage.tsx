@@ -142,7 +142,9 @@ function UpcomingBookingCard({ booking }: { booking: BookingListItem }) {
 
 function ActivePackageCard({ pkg }: { pkg: MyPackageItem }) {
   const [now] = useState(() => Date.now())
-  const pct = Math.round((pkg.slots_remaining / pkg.slots_total) * 100)
+  const slotsRemaining = Math.round(Number(pkg.slots_remaining))
+  const slotsTotal = Math.round(Number(pkg.slots_total))
+  const pct = slotsTotal > 0 ? Math.round((slotsRemaining / slotsTotal) * 100) : 0
   const expiresAt = new Date(pkg.expires_at)
   const daysLeft = Math.ceil((expiresAt.getTime() - now) / (1000 * 60 * 60 * 24))
   const isExpiringSoon = daysLeft <= 7
@@ -162,7 +164,7 @@ function ActivePackageCard({ pkg }: { pkg: MyPackageItem }) {
       {/* Slot progress */}
       <div className="mb-2">
         <div className="flex justify-between text-xs font-semibold text-slate-600 mb-1.5">
-          <span>Còn <span className="text-violet-700 font-extrabold">{pkg.slots_remaining}</span> / {pkg.slots_total} slot</span>
+          <span>Còn <span className="text-violet-700 font-extrabold">{slotsRemaining}</span> / {slotsTotal} slot</span>
           <span>{pct}%</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-violet-100">
