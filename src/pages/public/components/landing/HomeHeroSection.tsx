@@ -9,6 +9,7 @@ import { HomeSearchPanel } from "./HomeSearchPanel"
 import { HeroShowcaseRail } from "./HeroShowcaseRail"
 import { fadeUpItem, landingViewport, staggerContainer } from "./landing-motion"
 import { mapCafeToHeroVenue, rankLandingCafes } from "./landing-mappers"
+import { ANDROID_APK_URL } from "./AndroidAppDownloadSection"
 
 export function HomeHeroSection() {
   const prefersReducedMotion = useReducedMotion()
@@ -72,7 +73,7 @@ export function HomeHeroSection() {
               {/* Nút Tải App Android thiết kế viền cam bo cong pill-shape nằm bên dưới */}
               <div>
                 <a
-                  href="https://expo.dev/artifacts/eas/3DP15ELBbs7m-EHYNxAMGlALX2d7QWW2Caz4KLMBswo.apk"
+                  href={ANDROID_APK_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-3.5 rounded-full border border-orange-300 bg-white px-5 py-2.5 shadow-md hover:border-orange-400 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
