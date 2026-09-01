@@ -643,7 +643,14 @@ export default function StaffSessionDetailPage() {
       status: component.status,
       payment: undefined,
     }))
-  const prepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
+  const rawPrepaidLines = financialSummary?.prepaidLines ?? fallbackPrepaidLines
+  const seenPrepaidLines = new Set<string>()
+  const prepaidLines = rawPrepaidLines.filter((line) => {
+    const key = `${line.componentId || ''}_${line.label}_${line.amount}`
+    if (seenPrepaidLines.has(key)) return false
+    seenPrepaidLines.add(key)
+    return true
+  })
   const additionalLines =
     financialSummary?.additionalLines ?? fallbackAdditionalLines
   const prepaidDiscountAmount =

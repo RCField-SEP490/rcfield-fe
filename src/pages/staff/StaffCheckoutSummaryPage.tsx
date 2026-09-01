@@ -269,7 +269,7 @@ export default function StaffCheckoutSummaryPage() {
               itemKey: extra.itemKey || `ck-${idx}`,
               itemLabel: item.itemLabel,
               checked: item.checked,
-              notes: item.notes || "",
+              notes: item.checked ? "" : (item.notes || ""),
               partType:
                 extra.partType || getPartTypeFromLabel(item.itemLabel),
             }
@@ -293,7 +293,7 @@ export default function StaffCheckoutSummaryPage() {
     if (!targetItem) return
 
     const newChecklist = editChecklist.map((item, i) =>
-      i === idx ? { ...item, checked: isOk } : item,
+      i === idx ? { ...item, checked: isOk, notes: isOk ? "" : item.notes } : item,
     )
     setEditChecklist(newChecklist)
 
@@ -365,7 +365,7 @@ export default function StaffCheckoutSummaryPage() {
         itemKey: c.itemKey || c.itemLabel,
         itemLabel: c.itemLabel,
         status: c.checked ? "OK" : "BROKEN",
-        note: c.notes || "",
+        note: c.checked ? "" : (c.notes || "").trim(),
       }))
 
       const result = await staffApi.updateDamageItems(
@@ -846,7 +846,7 @@ export default function StaffCheckoutSummaryPage() {
                     <span className={item.checked ? "text-slate-800" : "text-rose-800 font-bold"}>
                       {item.itemLabel}
                     </span>
-                    {item.notes && (
+                    {!item.checked && item.notes && (
                       <p className="text-[11px] text-slate-500 font-normal mt-0.5 italic">
                         — {item.notes}
                       </p>
