@@ -19,8 +19,6 @@ import {
   Users,
   MapPin,
   QrCode,
-  ChevronDown,
-  ChevronUp,
   X,
   Trophy,
   Play,
@@ -34,6 +32,7 @@ import {
   Zap,
   Smartphone,
   AlertCircle,
+  Camera,
 } from "lucide-react"
 import { formatCurrency } from "@/shared/lib/format"
 import { useStaffOperations } from "./context/StaffOperationContext"
@@ -59,7 +58,7 @@ import {
   StaffBadge,
   StaffButton,
 } from "./components/StaffUI"
-import { QrCheckinUploader } from "@/features/staff/components/QrCheckinUploader"
+import { StaffCameraQrScannerModal } from "@/features/staff/components/StaffCameraQrScannerModal"
 import type { CustomerBookingDetail } from "@/shared/data/customer-operational-mock-data"
 import {
   useAvailability,
@@ -276,7 +275,7 @@ export default function StaffTodayBookingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("LIST")
 
   // QR check-in panel state
-  const [showQrPanel, setShowQrPanel] = useState(false)
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false)
   const [qrBookingId, setQrBookingId] = useState("")
   const [qrInputValue, setQrInputValue] = useState("")
 
@@ -968,7 +967,33 @@ export default function StaffTodayBookingsPage() {
     setSearchParams({})
   }
 
+  const handleQrScanDecoded = (rawCode: string) => {
+    let cleanCode = rawCode.trim()
+    if (cleanCode.includes("/")) {
+      const parts = cleanCode.split("/")
+      cleanCode = parts[parts.length - 1] || cleanCode
+    }
+    const lookupCode = cleanCode.replace(/^#/, "")
 
+    const match = displayBookings.find(
+      (b: any) =>
+        b.id?.toLowerCase() === cleanCode.toLowerCase() ||
+        b.bookingId?.toLowerCase() === cleanCode.toLowerCase() ||
+        b.id?.slice(0, 8).toLowerCase() === lookupCode.toLowerCase() ||
+        (b as any).shortCode?.toLowerCase() === cleanCode.toLowerCase(),
+    )
+
+    const resolvedId = match ? (match.id || (match as any).bookingId) : cleanCode
+
+    setQrBookingId(resolvedId)
+    setQrInputValue(cleanCode)
+  }
+
+  const handleQRSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!qrInputValue.trim()) return
+    handleQrScanDecoded(qrInputValue)
+  }
 
   const handleStartCheckIn = async (booking: CustomerBookingDetail | any) => {
     const isExpired = isCheckInDeadlineExpired(getSlotStart(booking), nowTime, {
@@ -1172,189 +1197,167 @@ export default function StaffTodayBookingsPage() {
           </div>
 
           {/* QR CHECK-IN PANEL */}
-          <StaffCard className="overflow-hidden">
-            <button
-              onClick={() => {
-                setShowQrPanel((v) => !v)
-                if (showQrPanel) {
-                  setQrBookingId("")
-                  setQrInputValue("")
-                }
-              }}
-              className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold text-[#1c1b1b] hover:bg-[#fcf8f8] transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <QrCode className="size-4 text-[#ea580c]" />
-                Quét mã QR nhận xe
-              </span>
-              {showQrPanel ? (
-                <ChevronUp className="size-4 text-[#a09e9d]" />
-              ) : (
-                <ChevronDown className="size-4 text-[#a09e9d]" />
-              )}
-            </button>
+          <StaffCard className="space-y-4 p-5" glow>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[#ea580c]">
+                <QrCode className="size-5" />
+                <h3 className="font-bold text-[#1c1b1b] text-base">Quét mã QR nhận xe</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCameraScannerOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-[#ea580c] bg-[#fff3eb] hover:bg-[#ffe5d4] rounded-lg transition-colors border border-[#ffdbca] shadow-xs cursor-pointer"
+              >
+                <Camera className="size-4" />
+                <span>Mở Camera quét</span>
+              </button>
+            </div>
 
-            {showQrPanel && (
-              <div className="px-4 pb-4 space-y-4 border-t border-[#f0eeee] pt-4">
-                <QrCheckinUploader
-                  onDecoded={(id) => {
-                    setQrBookingId(id)
-                    setQrInputValue(id)
-                  }}
+            <form onSubmit={handleQRSubmit} className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Nhập mã đơn đặt lịch (ví dụ: RCF-8829 hoặc #2E382080)"
+                  value={qrInputValue}
+                  onChange={(e) => setQrInputValue(e.target.value)}
+                  className="w-full rounded-lg border border-[#e5e2e1] bg-white px-4 py-2.5 pr-11 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c] placeholder-[#a09e9d] transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraScannerOpen(true)}
+                  title="Mở camera quét mã QR"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex size-7 items-center justify-center rounded-md text-[#747878] hover:bg-[#fff3eb] hover:text-[#ea580c] transition-colors cursor-pointer"
+                >
+                  <Camera className="size-4" />
+                </button>
+              </div>
+              <StaffButton type="submit" variant="primary">
+                Tìm
+              </StaffButton>
+              {qrBookingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQrBookingId("")
+                    setQrInputValue("")
+                  }}
+                  className="rounded-lg border border-[#e5e2e1] text-[#6b7280] px-3 py-2 hover:bg-[#fcf8f8] transition-colors cursor-pointer"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </form>
+            <p className="text-xs text-[#6b7280] leading-relaxed">
+              Nhập mã đơn, dùng máy quét hoặc bấm <strong>Mở Camera quét</strong> để nhận diện nhanh mã QR của khách và mở giao diện bàn giao xe.
+            </p>
 
-                <div className="relative flex items-center">
-                  <div className="flex-grow border-t border-[#e5e2e1]" />
-                  <span className="mx-3 text-xs font-bold text-[#a09e9d] bg-white px-1">
-                    hoặc
-                  </span>
-                  <div className="flex-grow border-t border-[#e5e2e1]" />
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nhập mã đơn đặt lịch..."
-                    value={qrInputValue}
-                    onChange={(e) => setQrInputValue(e.target.value)}
-                    className="flex-1 rounded-lg border border-[#e5e2e1] bg-white px-3.5 py-2 text-sm font-semibold text-[#1c1b1b] focus:border-[#ea580c] focus:outline-none focus:ring-1 focus:ring-[#ea580c]"
-                  />
-                  <button
-                    onClick={() => setQrBookingId(qrInputValue.trim())}
-                    disabled={!qrInputValue.trim()}
-                    className="rounded-lg bg-[#ea580c] text-white text-sm font-bold px-4 py-2 hover:bg-[#c2410c] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Tìm
-                  </button>
-                  {qrBookingId && (
-                    <button
-                      onClick={() => {
-                        setQrBookingId("")
-                        setQrInputValue("")
-                      }}
-                      className="rounded-lg border border-[#e5e2e1] text-[#6b7280] px-3 py-2 hover:bg-[#fcf8f8] transition-colors"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  )}
-                </div>
-
-                {qrBookingId && (
-                  <div className="rounded-xl border border-[#e5e2e1] overflow-hidden">
-                    {qrBookingLoading && (
-                      <div className="flex items-center justify-center py-6 gap-2 text-sm text-[#6b7280]">
-                        <Loader2 className="size-4 animate-spin" />
-                        Đang tải thông tin đơn đặt lịch...
-                      </div>
-                    )}
-                    {qrBookingError && (
-                      <div className="py-4 px-4 text-sm text-red-600 font-semibold">
-                        Không tìm thấy đơn đặt lịch. Kiểm tra lại mã QR hoặc mã đơn.
-                      </div>
-                    )}
-                    {qrBookingData && (
-                      <div className="p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-bold text-[#a09e9d]">
-                            #{qrBookingData.id.slice(0, 8).toUpperCase()}
-                          </span>
-                          <StaffBadge
-                            variant={
-                              qrBookingData.status === "CONFIRMED"
-                                ? "info"
-                                : qrBookingData.status === "COMPLETED"
-                                  ? "success"
-                                  : "neutral"
-                            }
-                          >
-                            {getBookingStatusLabel(qrBookingData.status)}
-                          </StaffBadge>
+            {qrBookingId && (
+              <div className="rounded-xl border border-[#e5e2e1] overflow-hidden">
+                {qrBookingLoading && (
+                  <div className="flex items-center justify-center py-6 gap-2 text-sm text-[#6b7280]">
+                    <Loader2 className="size-4 animate-spin" />
+                    Đang tải thông tin đơn đặt lịch...
+                  </div>
+                )}
+                {qrBookingError && (
+                  <div className="py-4 px-4 text-sm text-red-600 font-semibold">
+                    Không tìm thấy đơn đặt lịch. Kiểm tra lại mã QR hoặc mã đơn.
+                  </div>
+                )}
+                {qrBookingData && (
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-mono font-bold text-[#a09e9d]">
+                        #{qrBookingData.id.slice(0, 8).toUpperCase()}
+                      </span>
+                      <StaffBadge
+                        variant={
+                          qrBookingData.status === "CONFIRMED"
+                            ? "info"
+                            : qrBookingData.status === "COMPLETED"
+                              ? "success"
+                              : "neutral"
+                        }
+                      >
+                        {getBookingStatusLabel(qrBookingData.status)}
+                      </StaffBadge>
+                    </div>
+                    <div className="text-xs space-y-1 text-[#4c4a49] font-semibold">
+                      <p>
+                        <span className="text-[#a09e9d]">Khách:</span>{" "}
+                        {qrBookingData.participants?.[0]?.resolvedName ?? "—"}
+                      </p>
+                      <p>
+                        <span className="text-[#a09e9d]">Giờ:</span>{" "}
+                        {new Date(qrBookingData.slotStart).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        –{" "}
+                        {new Date(qrBookingData.slotEnd).toLocaleTimeString("vi-VN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      <p>
+                        <span className="text-[#a09e9d]">Chế độ:</span>{" "}
+                        {qrBookingData.playMode === "RENTAL" ? "Thuê xe" : "Xe tự mang"}
+                      </p>
+                    </div>
+                    {qrBookingData.status === "CONFIRMED" &&
+                      isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
+                        source: (qrBookingData as any).source,
+                        slotEnd: qrBookingData.slotEnd,
+                        createdAt: qrBookingData.createdAt,
+                      }) && (
+                        <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                          Đơn đã quá thời hạn nhận xe 30 phút kể từ giờ bắt đầu.
                         </div>
-                        <div className="text-xs space-y-1 text-[#4c4a49] font-semibold">
-                          <p>
-                            <span className="text-[#a09e9d]">Khách:</span>{" "}
-                            {qrBookingData.participants?.[0]?.resolvedName ??
-                              "—"}
-                          </p>
-                          <p>
-                            <span className="text-[#a09e9d]">Giờ:</span>{" "}
-                            {new Date(
-                              qrBookingData.slotStart,
-                            ).toLocaleTimeString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                            {" – "}
-                            {new Date(qrBookingData.slotEnd).toLocaleTimeString(
-                              "vi-VN",
-                              { hour: "2-digit", minute: "2-digit" },
-                            )}
-                          </p>
-                          <p>
-                            <span className="text-[#a09e9d]">Chế độ:</span>{" "}
-                            {qrBookingData.playMode === "RENTAL"
-                              ? "Thuê xe"
-                              : "Xe tự mang"}
-                          </p>
-                        </div>
-                        {qrBookingData.status === "CONFIRMED" &&
-                          isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
-                            source: (qrBookingData as any).source,
-                            slotEnd: qrBookingData.slotEnd,
-                            createdAt: qrBookingData.createdAt,
-                          }) && (
-                            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
-                              Đơn đã quá thời hạn nhận xe 30 phút kể từ giờ bắt đầu.
-                            </div>
-                          )}
-                        {qrBookingData.status !== "CONFIRMED" && (
-                          <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
-                            {qrBookingData.status === "COMPLETED"
-                              ? "Đơn đặt lịch này đã hoàn thành."
-                              : qrBookingData.status === "CANCELLED"
-                                ? "Đơn đặt lịch này đã bị hủy."
-                                : qrBookingData.status === "NO_SHOW"
-                                  ? "Đơn đặt lịch này đã quá hạn nhận xe."
-                                  : qrBookingData.status === "PENDING"
-                                    ? "Đơn đặt lịch chưa thanh toán, không thể nhận xe."
-                                    : "Không thể nhận xe với trạng thái hiện tại."}
-                          </div>
-                        )}
-                        {qrBookingData.status === "CONFIRMED" &&
-                          !isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
-                            source: (qrBookingData as any).source,
-                            slotEnd: qrBookingData.slotEnd,
-                            createdAt: qrBookingData.createdAt,
-                          }) &&
-                          qrBookingData.session && (
-                            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
-                              Đã nhận xe lúc{" "}
-                              {qrBookingData.session.actualStartAt
-                                ? new Date(
-                                    qrBookingData.session.actualStartAt,
-                                  ).toLocaleTimeString("vi-VN")
-                                : "—"}
-                              .
-                            </div>
-                          )}
-                        {qrBookingData.status === "CONFIRMED" &&
-                          !isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
-                            source: (qrBookingData as any).source,
-                            slotEnd: qrBookingData.slotEnd,
-                            createdAt: qrBookingData.createdAt,
-                          }) &&
-                          !qrBookingData.session && (
-                            <StaffButton
-                              onClick={() => handleStartCheckIn(qrBookingData)}
-                              variant="primary"
-                              className="w-full"
-                            >
-                              Xác nhận nhận xe
-                              <ArrowRight className="size-3.5" />
-                            </StaffButton>
-                          )}
+                      )}
+                    {qrBookingData.status !== "CONFIRMED" && (
+                      <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs font-semibold text-red-700">
+                        {qrBookingData.status === "COMPLETED"
+                          ? "Đơn đặt lịch này đã hoàn thành."
+                          : qrBookingData.status === "CANCELLED"
+                            ? "Đơn đặt lịch này đã bị hủy."
+                            : qrBookingData.status === "NO_SHOW"
+                              ? "Đơn đặt lịch này đã quá hạn nhận xe."
+                              : qrBookingData.status === "PENDING"
+                                ? "Đơn đặt lịch chưa thanh toán, không thể nhận xe."
+                                : "Không thể nhận xe với trạng thái hiện tại."}
                       </div>
                     )}
+                    {qrBookingData.status === "CONFIRMED" &&
+                      !isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
+                        source: (qrBookingData as any).source,
+                        slotEnd: qrBookingData.slotEnd,
+                        createdAt: qrBookingData.createdAt,
+                      }) &&
+                      qrBookingData.session && (
+                        <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700">
+                          Đã nhận xe lúc{" "}
+                          {qrBookingData.session.actualStartAt
+                            ? new Date(qrBookingData.session.actualStartAt).toLocaleTimeString("vi-VN")
+                            : "—"}
+                          .
+                        </div>
+                      )}
+                    {qrBookingData.status === "CONFIRMED" &&
+                      !isCheckInDeadlineExpired(qrBookingData.slotStart, nowTime, {
+                        source: (qrBookingData as any).source,
+                        slotEnd: qrBookingData.slotEnd,
+                        createdAt: qrBookingData.createdAt,
+                      }) &&
+                      !qrBookingData.session && (
+                        <StaffButton
+                          onClick={() => handleStartCheckIn(qrBookingData)}
+                          variant="primary"
+                          className="w-full"
+                        >
+                          Xác nhận nhận xe
+                          <ArrowRight className="size-3.5" />
+                        </StaffButton>
+                      )}
                   </div>
                 )}
               </div>
@@ -2988,6 +2991,16 @@ export default function StaffTodayBookingsPage() {
           onCancelAndChangeMethod={handleCancelPendingBooking}
         />
       )}
+
+      {/* Camera QR Scanner Modal */}
+      <StaffCameraQrScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScanSuccess={(code) => {
+          handleQrScanDecoded(code)
+          setIsCameraScannerOpen(false)
+        }}
+      />
     </div>
   )
 }
