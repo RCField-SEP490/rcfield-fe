@@ -168,8 +168,10 @@ function OwnedPackageCard({
     showUsage ? pkg.id : undefined,
   )
 
-  const usedSlots = pkg.slots_total - pkg.slots_remaining
-  const pct = pkg.slots_total > 0 ? (usedSlots / pkg.slots_total) * 100 : 0
+  const slotsRemaining = Math.round(Number(pkg.slots_remaining))
+  const slotsTotal = Math.round(Number(pkg.slots_total))
+  const usedSlots = slotsTotal - slotsRemaining
+  const pct = slotsTotal > 0 ? (usedSlots / slotsTotal) * 100 : 0
   const expiryDate = new Date(pkg.expires_at)
   const expiresAt = expiryDate.toLocaleDateString("vi-VN")
   const [now] = useState(() => Date.now())
@@ -216,7 +218,7 @@ function OwnedPackageCard({
         <div className="space-y-1.5">
           <div className="flex justify-between text-[11px] font-bold text-slate-600">
             <span>Slots đã dùng</span>
-            <span className="text-slate-950">{usedSlots} / {pkg.slots_total} lượt</span>
+            <span className="text-slate-950">{usedSlots} / {slotsTotal} lượt</span>
           </div>
           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
             <div
@@ -229,9 +231,9 @@ function OwnedPackageCard({
           <p
             className={`text-[10px] font-bold text-right ${isExpired ? "text-slate-400" : "text-slate-500"}`}
           >
-            {isExpired && pkg.slots_remaining > 0
-              ? `${pkg.slots_remaining} lượt không dùng được`
-              : `${pkg.slots_remaining} lượt còn lại`}
+            {isExpired && slotsRemaining > 0
+              ? `${slotsRemaining} lượt không dùng được`
+              : `${slotsRemaining} lượt còn lại`}
           </p>
         </div>
 

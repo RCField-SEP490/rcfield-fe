@@ -862,7 +862,10 @@ export function CreateBookingPage() {
               slotsNeeded={numSlots}
               slotFeeRate={cafe.slotFeeRate ?? 0}
               selectedPackageId={selectedPackageId}
-              onPackageSelect={setSelectedPackageId}
+              onPackageSelect={(pkgId) => {
+                setSelectedPackageId(pkgId)
+                if (bankTransfer) setBankTransfer(null)
+              }}
             />
           )}
           {currentStep === "track" &&
