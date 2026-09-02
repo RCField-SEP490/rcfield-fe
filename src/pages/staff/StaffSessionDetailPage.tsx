@@ -298,6 +298,8 @@ export default function StaffSessionDetailPage() {
   }, [menuItems])
   const [settlingPayment, setSettlingPayment] = useState(false)
   const [confirmSettleOpen, setConfirmSettleOpen] = useState(false)
+  const [confirmCompleteByocOpen, setConfirmCompleteByocOpen] = useState(false)
+  const [completingByoc, setCompletingByoc] = useState(false)
   const [settledBookingId, setSettledBookingId] = useState<string | null>(null)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [settleBankTransferData, setSettleBankTransferData] =
@@ -476,6 +478,27 @@ export default function StaffSessionDetailPage() {
     }
   }
 
+  const handleCompleteByocSession = async () => {
+    if (!session) return
+    try {
+      setCompletingByoc(true)
+      await staffApi.completeByocSession(session.sessionId)
+      toast.success(
+        "Đã kết thúc và hoàn tất ca chơi xe cá nhân (BYOC) thành công!",
+      )
+      setConfirmCompleteByocOpen(false)
+      await refreshData()
+      await refetchSessionDetail()
+    } catch (err: unknown) {
+      const message =
+        getApiErrorInfo(err).message ||
+        (err instanceof Error ? err.message : String(err))
+      toast.error("Không thể kết thúc phiên: " + message)
+    } finally {
+      setCompletingByoc(false)
+    }
+  }
+
   // Compute Badge variant dynamically
   const sessionBadgeVariant =
     session.status === "ACTIVE"
@@ -629,6 +652,7 @@ export default function StaffSessionDetailPage() {
     )
     .map((component) => ({
       componentId: component.id,
+      type: component.type,
       label:
         component.type === "FNB_ON_SITE" ||
         component.type === "FNB_PREORDER" ||
@@ -653,6 +677,128 @@ export default function StaffSessionDetailPage() {
   })
   const additionalLines =
     financialSummary?.additionalLines ?? fallbackAdditionalLines
+
+  const onsiteFnbComponents = additionalLines.filter(
+    (l) => l.type === "FNB_ON_SITE" || l.label.includes("Đồ ăn & thức uống"),
+  )
+  const pendingOnsiteFnbAmount = onsiteFnbComponents
+    .filter((l) => l.status === "PENDING")
+    .reduce((sum, l) => sum + Number(l.amount), 0)
+  const paidOnsiteFnbAmount = onsiteFnbComponents
+    .filter((l) => l.status === "DISBURSED" || l.status === "CAPTURED")
+    .reduce((sum, l) => sum + Number(l.amount), 0)
+
+  const onsiteOrderPaidMap = (() => {
+    const map = new Map<string, boolean>()
+    if (onsiteFnbOrders.length === 0) return map
+
+    if (pendingOnsiteFnbAmount === 0) {
+      onsiteFnbOrders.forEach((o) => map.set(o.orderId, true))
+      return map
+    }
+    if (paidOnsiteFnbAmount === 0) {
+      onsiteFnbOrders.forEach((o) => map.set(o.orderId, false))
+      return map
+    }
+
+    const exactPendingMatch = onsiteFnbOrders.find(
+      (o) => Number(o.total) === pendingOnsiteFnbAmount,
+    )
+    if (exactPendingMatch) {
+      onsiteFnbOrders.forEach((o) => {
+        map.set(o.orderId, o.orderId !== exactPendingMatch.orderId)
+      })
+      return map
+    }
+
+    let remainingPending = pendingOnsiteFnbAmount
+    const reversed = [...onsiteFnbOrders].reverse()
+    for (const order of reversed) {
+      const orderTotal = Number(order.total)
+      if (remainingPending >= orderTotal && orderTotal > 0) {
+        map.set(order.orderId, false)
+        remainingPending -= orderTotal
+      } else {
+        map.set(order.orderId, true)
+      }
+    }
+    return map
+  })()
+
+  const groupedAdditionalLines = (() => {
+    const fnbLines = additionalLines.filter(
+      (l) => l.type === "FNB_ON_SITE" || l.label.includes("Đồ ăn & thức uống"),
+    )
+    const otherLines = additionalLines.filter(
+      (l) => l.type !== "FNB_ON_SITE" && !l.label.includes("Đồ ăn & thức uống"),
+    )
+
+    const paidFnb = fnbLines.filter(
+      (l) => l.status === "DISBURSED" || l.status === "CAPTURED",
+    )
+    const pendingFnb = fnbLines.filter(
+      (l) => l.status !== "DISBURSED" && l.status !== "CAPTURED",
+    )
+
+    const paidFnbTotal = paidFnb.reduce((sum, l) => sum + Number(l.amount), 0)
+    const pendingFnbTotal = pendingFnb.reduce((sum, l) => sum + Number(l.amount), 0)
+
+    const paidGateway = paidFnb.find((l) => l.payment?.gateway)?.payment?.gateway
+    const gatewayFormatted = paidGateway ? formatPaymentGatewayInline(paidGateway) : undefined
+
+    const result: Array<{
+      id: string
+      label: string
+      amount: number
+      paid: boolean
+      gateway?: string
+    }> = []
+
+    if (paidFnbTotal > 0 && pendingFnbTotal > 0) {
+      result.push({
+        id: "fnb-paid-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: paidFnbTotal,
+        paid: true,
+        gateway: gatewayFormatted,
+      })
+      result.push({
+        id: "fnb-pending-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: pendingFnbTotal,
+        paid: false,
+      })
+    } else if (paidFnbTotal > 0) {
+      result.push({
+        id: "fnb-paid-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: paidFnbTotal,
+        paid: true,
+        gateway: gatewayFormatted,
+      })
+    } else if (pendingFnbTotal > 0) {
+      result.push({
+        id: "fnb-pending-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: pendingFnbTotal,
+        paid: false,
+      })
+    }
+
+    for (const line of otherLines) {
+      const isPaid = line.status === "DISBURSED" || line.status === "CAPTURED"
+      result.push({
+        id: line.componentId,
+        label: line.label,
+        amount: Number(line.amount),
+        paid: isPaid,
+        gateway: line.payment?.gateway ? formatPaymentGatewayInline(line.payment.gateway) : undefined,
+      })
+    }
+
+    return result
+  })()
+
   const prepaidDiscountAmount =
     financialSummary?.prepaidDiscountAmount ??
     Number(booking.discountAmount ?? 0)
@@ -677,7 +823,9 @@ export default function StaffSessionDetailPage() {
     !counterSettled && additionalOutstandingAmount > 0
   const isFullySettled =
     session.status === "COMPLETED" && !hasPendingCounterPayment
-  const isCheckoutPending = ["ACTIVE", "EXTENDING"].includes(session.status)
+  const isCheckoutPending =
+    booking.playMode !== "BYOC" &&
+    ["ACTIVE", "EXTENDING"].includes(session.status)
 
   return (
     <div className="space-y-6">
@@ -705,9 +853,15 @@ export default function StaffSessionDetailPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <StaffBadge variant={sessionBadgeVariant}>
               {session.status === "ACTIVE" && "ĐANG CHƠI"}
-              {session.status === "CHECKED_IN" && "ĐANG BÀN GIAO XE"}
+              {session.status === "CHECKED_IN" &&
+                (booking.playMode === "BYOC"
+                  ? "ĐANG CHECK-IN VÀO SÂN"
+                  : "ĐANG BÀN GIAO XE")}
               {session.status === "EXTENDING" && "YÊU CẦU GIA HẠN"}
-              {session.status === "CHECKING_OUT" && "ĐANG TRẢ XE"}
+              {session.status === "CHECKING_OUT" &&
+                (booking.playMode === "BYOC"
+                  ? "ĐANG KẾT THÚC PHIÊN"
+                  : "ĐANG TRẢ XE")}
               {session.status === "COMPLETED" && "ĐÃ ĐÓNG"}
             </StaffBadge>
             {isWalkInBooking ? (
@@ -718,7 +872,7 @@ export default function StaffSessionDetailPage() {
             ) : (
               <span className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700">
                 <Smartphone className="size-3" />
-                Khách Đặt Qua App
+                Khách Đặt Qua Web/App
               </span>
             )}
             {isContestBooking &&
@@ -752,7 +906,9 @@ export default function StaffSessionDetailPage() {
                 {operationalTiming.state === "ON_TIME"
                   ? "Còn lại"
                   : operationalTiming.state === "DUE_FOR_CHECKOUT"
-                    ? "Đến giờ trả xe"
+                    ? booking.playMode === "BYOC"
+                      ? "Hết giờ chơi"
+                      : "Đến giờ trả xe"
                     : operationalTiming.state === "OVERDUE"
                       ? "Quá giờ"
                       : "Phiên chạy"}
@@ -762,7 +918,9 @@ export default function StaffSessionDetailPage() {
                   ? timeLeft
                   : operationalTiming.state === "OVERDUE"
                     ? `+${operationalTiming.minutesPastPlannedEnd}p`
-                    : "Xử lý trả xe"}
+                    : booking.playMode === "BYOC"
+                      ? "Hết ca"
+                      : "Xử lý trả xe"}
               </span>
             </div>
           )}
@@ -865,8 +1023,9 @@ export default function StaffSessionDetailPage() {
           {/* Vehicles with image */}
           <div className="rounded-xl border border-[#e5e2e1] bg-white px-4 py-3 min-w-0">
             <p className="text-[10px] font-extrabold uppercase tracking-wide text-[#6b7280] mb-2">
-              Xe bàn giao (
-              {session.vehicles.length || booking.plannedVehicles.length})
+              {booking.playMode === "BYOC"
+                ? "Xe tự mang (BYOC)"
+                : `Xe bàn giao (${session.vehicles.length || booking.plannedVehicles.length})`}
             </p>
             {session.vehicles.length > 0 ? (
               <div className="space-y-2">
@@ -1063,7 +1222,7 @@ export default function StaffSessionDetailPage() {
                   <div className="flex items-center justify-between gap-3">
                     <h4 className="text-sm font-bold text-[#991b1b] uppercase tracking-wider flex items-center gap-2">
                       <AlertTriangle className="size-4 text-red-600" />
-                      Phiên quá giờ
+                      {booking.playMode === "BYOC" ? "Phiên BYOC quá giờ" : "Phiên quá giờ"}
                     </h4>
                     <span className="text-[11px] font-semibold text-red-700">
                       +{operationalTiming.minutesPastPlannedEnd} phút
@@ -1074,24 +1233,48 @@ export default function StaffSessionDetailPage() {
                       Gia hạn đã được khóa để tránh tính phí hồi tố.
                     </p>
                     <p className="mt-1 text-red-800">
-                      Nếu khách đã trả xe đúng giờ nhưng nhân viên xử lý muộn,
-                      khách không bị thu thêm. Hãy kiểm tra và xử lý trả xe; chỉ
-                      khoản phụ phí đã được thỏa thuận riêng mới được thu sau
-                      đó.
+                      {booking.playMode === "BYOC"
+                        ? "Khách tham gia ca chơi xe cá nhân (BYOC). Vui lòng chốt thanh toán các chi phí phát sinh (nếu có) và kết thúc phiên chơi cho khách."
+                        : "Nếu khách đã trả xe đúng giờ nhưng nhân viên xử lý muộn, khách không bị thu thêm. Hãy kiểm tra và xử lý trả xe; chỉ khoản phụ phí đã được thỏa thuận riêng mới được thu sau đó."}
                     </p>
                   </div>
-                  <StaffButton
-                    onClick={() =>
-                      navigate(
-                        `/staff/inspections/${session.sessionId}?type=CHECK_OUT`,
-                      )
-                    }
-                    variant="primary"
-                    className="w-fit px-5 bg-amber-600 hover:bg-amber-700 text-xs uppercase tracking-wider"
-                  >
-                    <ClipboardCheck className="size-4" />
-                    Xử lý trả xe
-                  </StaffButton>
+                  {booking.playMode === "BYOC" ? (
+                    additionalOutstandingAmount === 0 ? (
+                      <StaffButton
+                        onClick={() => setConfirmCompleteByocOpen(true)}
+                        variant="primary"
+                        className="w-fit px-5 bg-emerald-600 hover:bg-emerald-700 text-xs uppercase tracking-wider font-bold"
+                      >
+                        <CheckCircle2 className="size-4" />
+                        Kết thúc phiên chơi (BYOC)
+                      </StaffButton>
+                    ) : (
+                      <StaffButton
+                        onClick={() => {
+                          const settleElem = document.getElementById("settlement-card")
+                          settleElem?.scrollIntoView({ behavior: "smooth" })
+                        }}
+                        variant="secondary"
+                        className="w-fit px-5 text-xs uppercase tracking-wider font-bold border-amber-300 text-amber-900 bg-amber-100 hover:bg-amber-200"
+                      >
+                        <Banknote className="size-4" />
+                        Cần thu {additionalOutstandingAmount.toLocaleString("vi-VN")} đ phát sinh trước
+                      </StaffButton>
+                    )
+                  ) : (
+                    <StaffButton
+                      onClick={() =>
+                        navigate(
+                          `/staff/inspections/${session.sessionId}?type=CHECK_OUT`,
+                        )
+                      }
+                      variant="primary"
+                      className="w-fit px-5 bg-amber-600 hover:bg-amber-700 text-xs uppercase tracking-wider"
+                    >
+                      <ClipboardCheck className="size-4" />
+                      Xử lý trả xe
+                    </StaffButton>
+                  )}
                 </>
               ) : (
                 <>
@@ -1367,7 +1550,9 @@ export default function StaffSessionDetailPage() {
       )}
 
       {/* 4. RENDER INSPECTION BANNER */}
-      {session.status === "CHECKED_IN" && !checkInInspection && (
+      {session.status === "CHECKED_IN" &&
+        booking.playMode !== "BYOC" &&
+        !checkInInspection && (
         <StaffCard
           variant="warning"
           className="flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -1461,6 +1646,77 @@ export default function StaffSessionDetailPage() {
               <ClipboardCheck className="size-4" />
               Lập lại biên bản trả xe
             </StaffButton>
+          </StaffCard>
+        )}
+
+      {(session.status === "ACTIVE" || session.status === "EXTENDING") &&
+        booking?.playMode === "BYOC" &&
+        !extensionWindowClosed && (
+          <StaffCard
+            variant={additionalOutstandingAmount > 0 ? "warning" : "default"}
+            className={cn(
+              "flex flex-col md:flex-row md:items-center justify-between gap-4",
+              additionalOutstandingAmount === 0 &&
+                "bg-emerald-50/70 border-emerald-300 shadow-2xs",
+            )}
+          >
+            <div className="space-y-1">
+              <h4
+                className={cn(
+                  "text-sm font-black flex items-center gap-2",
+                  additionalOutstandingAmount > 0
+                    ? "text-amber-900"
+                    : "text-emerald-950",
+                )}
+              >
+                {operationalTiming.state === "OVERDUE" ? (
+                  <>
+                    <AlertTriangle className="size-4 text-amber-600" />
+                    Phiên BYOC đã quá giờ{" "}
+                    {operationalTiming.minutesPastPlannedEnd} phút
+                  </>
+                ) : additionalOutstandingAmount > 0 ? (
+                  <>
+                    <AlertTriangle className="size-4 text-amber-600" />
+                    Còn chi phí phát sinh cần thanh toán
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-4 text-emerald-600" />
+                    Phiên chơi xe cá nhân (BYOC) — Đủ điều kiện kết thúc
+                  </>
+                )}
+              </h4>
+              <p
+                className={cn(
+                  "text-xs leading-relaxed font-semibold",
+                  additionalOutstandingAmount > 0
+                    ? "text-amber-800"
+                    : "text-emerald-800",
+                )}
+              >
+                {additionalOutstandingAmount > 0
+                  ? `Khách còn ${additionalOutstandingAmount.toLocaleString("vi-VN")} đ phí phát sinh. Vui lòng quyết toán thu tiền ở thẻ phía dưới trước khi kết thúc phiên.`
+                  : "Toàn bộ chi phí phát sinh đã được thanh toán đầy đủ. Nhân viên có thể bấm nút bên phải để kết thúc phiên chơi cho khách mà không cần đợi hết giờ."}
+              </p>
+            </div>
+            {additionalOutstandingAmount === 0 ? (
+              <StaffButton
+                onClick={() => setConfirmCompleteByocOpen(true)}
+                variant="primary"
+                disabled={completingByoc}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider text-xs shadow-sm shrink-0 flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="size-4" />
+                {completingByoc
+                  ? "Đang xử lý..."
+                  : "Kết thúc phiên chơi (BYOC)"}
+              </StaffButton>
+            ) : (
+              <span className="text-[11px] font-extrabold text-amber-800 bg-amber-100/90 px-3 py-1.5 rounded-xl border border-amber-300 shrink-0">
+                🔒 Cần thu tiền phát sinh trước
+              </span>
+            )}
           </StaffCard>
         )}
 
@@ -1632,56 +1888,92 @@ export default function StaffSessionDetailPage() {
               </h4>
 
               <div className="space-y-1.5">
-                {onsiteFnbOrders.map((order) => (
-                  <div
-                    key={order.orderId}
-                    className="rounded-lg bg-[#fcf8f8] px-3 py-2 border border-[#e5e2e1] text-xs flex justify-between items-start gap-2 font-semibold"
-                  >
-                    <div className="space-y-0.5 flex-1 min-w-0">
-                      {order.items.map((i, idx) => (
-                        <span key={idx} className="block text-[#1c1b1b]">
-                          {i.name}
-                          {i.variantName ? ` · ${i.variantName}` : ""}{" "}
-                          <span className="text-[#6b7280] font-normal">
-                            ×{i.qty}
-                          </span>
-                          {i.notes && (
-                            <span className="block mt-0.5 text-[10px] text-[#b45309] font-medium">
-                              Ghi chú: {i.notes}
+                {onsiteFnbOrders.map((order) => {
+                  const isOrderPaid =
+                    onsiteOrderPaidMap.get(order.orderId) ?? true
+                  return (
+                    <div
+                      key={order.orderId}
+                      className={`rounded-lg px-3 py-2 border text-xs flex justify-between items-start gap-2 font-semibold transition-colors ${
+                        isOrderPaid
+                          ? "bg-[#fcf8f8] border-[#e5e2e1]"
+                          : "bg-amber-50/70 border-amber-300 shadow-sm"
+                      }`}
+                    >
+                      <div className="space-y-0.5 flex-1 min-w-0">
+                        {order.items.map((i, idx) => (
+                          <span key={idx} className="block text-[#1c1b1b]">
+                            {i.name}
+                            {i.variantName ? ` · ${i.variantName}` : ""}{" "}
+                            <span className="text-[#6b7280] font-normal">
+                              ×{i.qty}
                             </span>
-                          )}
+                            {i.notes && (
+                              <span className="block mt-0.5 text-[10px] text-[#b45309] font-medium">
+                                Ghi chú: {i.notes}
+                              </span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                        <span className="font-extrabold text-[#ea580c]">
+                          {order.total.toLocaleString("vi-VN")} đ
                         </span>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-extrabold text-[#ea580c]">
-                        {order.total.toLocaleString("vi-VN")} đ
-                      </span>
-                      {order.status === "CONFIRMED" && (
-                        <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                          Đang làm
-                        </span>
-                      )}
-                      {order.status === "DELIVERED" && (
-                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          Đã phục vụ
-                        </span>
-                      )}
-                      {(session.status === "ACTIVE" ||
-                        session.status === "EXTENDING") &&
-                        order.status === "PENDING" && (
-                        <button
-                          type="button"
-                          onClick={() => void handleCancelFnbOrder(order.orderId)}
-                          title="Huỷ món này (chưa chế biến)"
-                          className="flex size-5 items-center justify-center rounded-full bg-[#f5f3f2] hover:bg-rose-100 hover:text-rose-600 text-[#9b8fa8] transition-colors"
+                        {order.status === "CONFIRMED" && (
+                          <span className="text-[10px] text-amber-700 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            Đang làm
+                          </span>
+                        )}
+                        {order.status === "DELIVERED" && (
+                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            Đã phục vụ
+                          </span>
+                        )}
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                            isOrderPaid
+                              ? "text-emerald-700 bg-emerald-100/70 border-emerald-200"
+                              : "text-amber-900 bg-amber-200/80 border-amber-400 font-extrabold"
+                          }`}
                         >
-                          <X className="size-3" />
-                        </button>
-                      )}
+                          {isOrderPaid ? "Đã thanh toán" : "Chờ thanh toán"}
+                        </span>
+                        {(session.status === "ACTIVE" ||
+                          session.status === "EXTENDING") &&
+                          order.status === "PENDING" && (
+                          <button
+                            type="button"
+                            onClick={() => void handleCancelFnbOrder(order.orderId)}
+                            title="Huỷ món này (chưa chế biến)"
+                            className="flex size-5 items-center justify-center rounded-full bg-[#f5f3f2] hover:bg-rose-100 hover:text-rose-600 text-[#9b8fa8] transition-colors"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
+
+                {onsiteFnbOrders.length > 0 &&
+                  pendingOnsiteFnbAmount > 0 &&
+                  paidOnsiteFnbAmount > 0 && (
+                    <div className="mt-2 flex flex-wrap justify-between items-center text-[11px] rounded-md bg-amber-50/90 border border-amber-200 px-2.5 py-1.5 font-medium">
+                      <span className="text-emerald-700">
+                        Đã thanh toán:{" "}
+                        <strong className="font-bold">
+                          {paidOnsiteFnbAmount.toLocaleString("vi-VN")} đ
+                        </strong>
+                      </span>
+                      <span className="text-amber-800 font-bold">
+                        Còn chờ thanh toán:{" "}
+                        <strong className="font-extrabold text-amber-900">
+                          {pendingOnsiteFnbAmount.toLocaleString("vi-VN")} đ
+                        </strong>
+                      </span>
+                    </div>
+                  )}
 
                 {onsiteFnbOrders.length === 0 && (
                   <p className="text-xs text-[#6b7280] italic py-3 text-center">
@@ -1693,7 +1985,7 @@ export default function StaffSessionDetailPage() {
           </div>
 
           {/* Financial summary is shared with the customer booking detail. */}
-          <StaffCard className="md:col-span-3 space-y-4">
+          <StaffCard id="settlement-card" className="md:col-span-3 space-y-4">
             <h4 className="text-sm font-bold text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
               <FileText className="size-4.5 text-[#ea580c]" />
               Quyết toán phiên chơi
@@ -1771,34 +2063,27 @@ export default function StaffSessionDetailPage() {
                 <span className="text-[10px] font-extrabold text-[#ea580c] uppercase tracking-wider block">
                   Chi phí phát sinh tại quầy
                 </span>
-                {additionalLines.length > 0 ? (
-                  additionalLines.map((line) => {
-                    const paid =
-                      line.status === "DISBURSED" || line.status === "CAPTURED"
-                    const gateway = line.payment?.gateway
-                      ? formatPaymentGatewayInline(line.payment.gateway)
-                      : undefined
-                    return (
-                      <div
-                        key={line.componentId}
-                        className="rounded-lg bg-[#fcf8f8] px-2.5 py-2"
-                      >
-                        <div className="flex justify-between gap-4 text-[#4c4a49]">
-                          <span>{line.label}</span>
-                          <span className="text-[#ea580c] font-extrabold shrink-0">
-                            +{Number(line.amount).toLocaleString("vi-VN")} đ
-                          </span>
-                        </div>
-                        <p
-                          className={`mt-1 text-[10px] ${paid ? "text-emerald-700" : "text-orange-700"}`}
-                        >
-                          {paid
-                            ? `Đã thanh toán${gateway ? ` · ${gateway}` : ""}`
-                            : "Chờ thanh toán"}
-                        </p>
+                {groupedAdditionalLines.length > 0 ? (
+                  groupedAdditionalLines.map((line) => (
+                    <div
+                      key={line.id}
+                      className="rounded-lg bg-[#fcf8f8] px-2.5 py-2"
+                    >
+                      <div className="flex justify-between gap-4 text-[#4c4a49]">
+                        <span>{line.label}</span>
+                        <span className="text-[#ea580c] font-extrabold shrink-0">
+                          +{line.amount.toLocaleString("vi-VN")} đ
+                        </span>
                       </div>
-                    )
-                  })
+                      <p
+                        className={`mt-1 text-[10px] ${line.paid ? "text-emerald-700 font-medium" : "text-orange-700 font-bold"}`}
+                      >
+                        {line.paid
+                          ? `Đã thanh toán${line.gateway ? ` · ${line.gateway}` : ""}`
+                          : "Chờ thanh toán"}
+                      </p>
+                    </div>
+                  ))
                 ) : (
                   <p className="text-[11px] text-[#6b7280] italic">
                     Không phát sinh chi phí tại quầy.
@@ -1881,37 +2166,54 @@ export default function StaffSessionDetailPage() {
             <div>
               <h4 className="text-sm font-black text-[#1c1b1b] uppercase tracking-wider flex items-center gap-2">
                 <FileCheck className="size-4.5 text-[#ea580c]" />
-                Hồ sơ biên bản bàn giao & nghiệm thu trả xe
+                {booking.playMode === "BYOC"
+                  ? "Hồ sơ xác nhận xe khách (Check-in)"
+                  : "Hồ sơ biên bản bàn giao & nghiệm thu trả xe"}
               </h4>
               <p className="text-[11px] text-[#6b7280] font-semibold mt-0.5">
-                Bằng chứng ảnh chụp, checklist linh kiện và ghi chú đối chiếu tình trạng xe
+                {booking.playMode === "BYOC"
+                  ? "Ảnh chụp xác nhận xe cá nhân và checklist an toàn khi vào sân"
+                  : "Bằng chứng ảnh chụp, checklist linh kiện và ghi chú đối chiếu tình trạng xe"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {checkInInspection && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full">
-                  <CheckCircle2 className="size-3 text-sky-600" /> Biên bản nhận xe ({checkInInspection.photos.length} ảnh)
+                  <CheckCircle2 className="size-3 text-sky-600" />{" "}
+                  {booking.playMode === "BYOC"
+                    ? "Xác nhận xe khách"
+                    : "Biên bản nhận xe"}{" "}
+                  ({checkInInspection.photos.length} ảnh)
                 </span>
               )}
-              {checkOutInspection && (
+              {booking.playMode !== "BYOC" && checkOutInspection && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                  <CheckCircle2 className="size-3 text-emerald-600" /> Biên bản trả xe ({checkOutInspection.photos.length} ảnh)
+                  <CheckCircle2 className="size-3 text-emerald-600" /> Biên bản
+                  trả xe ({checkOutInspection.photos.length} ảnh)
                 </span>
               )}
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6 items-start">
+          <div
+            className={
+              booking.playMode === "BYOC"
+                ? "space-y-4"
+                : "grid lg:grid-cols-2 gap-6 items-start"
+            }
+          >
             {/* 1. BIÊN BẢN BÀN GIAO (CHECK-IN) */}
             {checkInInspection ? (
               <div className="rounded-2xl border border-sky-200 bg-sky-50/30 p-4 space-y-4 shadow-2xs">
                 <div className="flex items-center justify-between border-b border-sky-200/70 pb-2.5">
                   <div className="flex items-center gap-2">
                     <span className="flex size-6 items-center justify-center rounded-lg bg-sky-600 text-white text-[11px] font-black">
-                      1
+                      {booking.playMode === "BYOC" ? "✓" : "1"}
                     </span>
                     <span className="text-xs font-black uppercase tracking-wide text-sky-950">
-                      Biên bản nhận xe (Check-in)
+                      {booking.playMode === "BYOC"
+                        ? "Biên bản xác nhận xe khách (Check-in)"
+                        : "Biên bản nhận xe (Check-in)"}
                     </span>
                   </div>
                   <span className="text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
@@ -1923,65 +2225,85 @@ export default function StaffSessionDetailPage() {
                 <div className="rounded-xl border border-sky-200/80 bg-white p-3 space-y-1">
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-sky-800 flex items-center gap-1">
                     <Info className="size-3.5 text-sky-600" />
-                    Ghi chú khi bàn giao:
+                    {booking.playMode === "BYOC"
+                      ? "Ghi chú của nhân viên trực ca:"
+                      : "Ghi chú khi bàn giao:"}
                   </span>
                   <p className="text-xs font-semibold text-slate-800 leading-relaxed pl-4">
                     {checkInInspection.staffNotes ||
                       (checkInInspection as { notes?: string }).notes ||
                       checkInInspection.damageDescription ||
-                      "Không có ghi chú bất thường khi bàn giao xe."}
+                      (booking.playMode === "BYOC"
+                        ? "Không có ghi chú khi nhận xe."
+                        : "Không có ghi chú bất thường khi bàn giao xe.")}
                   </p>
                 </div>
 
                 {/* Checklist linh kiện */}
-                {checkInInspection.checklist && checkInInspection.checklist.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-sky-900 block">
-                      Tình trạng linh kiện bàn giao:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {checkInInspection.checklist.map((item, idx) => {
-                        const isOk = item.checked ?? ((item as { status?: string }).status === "OK")
-                        const itemLabel = item.label || (item as { itemLabel?: string }).itemLabel || item.id
-                        const itemNote = item.notes || (item as { note?: string }).note
-                        return (
-                          <div
-                            key={idx}
-                            className={cn(
-                              "flex items-center justify-between p-2 rounded-lg border bg-white text-xs",
-                              isOk ? "border-slate-200" : "border-amber-300 bg-amber-50/50",
-                            )}
-                          >
-                            <span className="font-semibold text-slate-800 truncate mr-2 text-[11px]">
-                              {itemLabel}
-                            </span>
-                            {isOk ? (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
-                                ✓ Đạt
+                {checkInInspection.checklist &&
+                  checkInInspection.checklist.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wide text-sky-900 block">
+                        {booking.playMode === "BYOC"
+                          ? "Checklist an toàn xe tự mang:"
+                          : "Tình trạng linh kiện bàn giao:"}
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {checkInInspection.checklist.map((item, idx) => {
+                          const isOk =
+                            item.checked ??
+                            (item as { status?: string }).status === "OK"
+                          const itemLabel =
+                            item.label ||
+                            (item as { itemLabel?: string }).itemLabel ||
+                            item.id
+                          const itemNote =
+                            item.notes || (item as { note?: string }).note
+                          return (
+                            <div
+                              key={idx}
+                              className={cn(
+                                "flex items-center justify-between p-2 rounded-lg border bg-white text-xs",
+                                isOk
+                                  ? "border-slate-200"
+                                  : "border-amber-300 bg-amber-50/50",
+                              )}
+                            >
+                              <span className="font-semibold text-slate-800 truncate mr-2 text-[11px]">
+                                {itemLabel}
                               </span>
-                            ) : (
-                              <span
-                                className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0"
-                                title={itemNote}
-                              >
-                                ⚠️ {itemNote || "Lỗi"}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
+                              {isOk ? (
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                                  ✓ Đạt
+                                </span>
+                              ) : (
+                                <span
+                                  className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0"
+                                  title={itemNote}
+                                >
+                                  ⚠️ {itemNote || "Lỗi"}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Ảnh bàn giao */}
                 <div className="space-y-2">
                   <span className="text-[10px] font-extrabold uppercase tracking-wide text-sky-900 block">
-                    Hình ảnh bàn giao xe ({checkInInspection.photos.length} ảnh):
+                    {booking.playMode === "BYOC"
+                      ? `Hình ảnh xác nhận xe khách (${checkInInspection.photos.length} ảnh):`
+                      : `Hình ảnh bàn giao xe (${checkInInspection.photos.length} ảnh):`}
                   </span>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {checkInInspection.photos.map((photo, index) => {
-                      const dir = photo.direction || (photo as { angle?: string }).angle || "OTHER"
+                      const dir =
+                        photo.direction ||
+                        (photo as { angle?: string }).angle ||
+                        "OTHER"
                       return (
                         <div
                           key={`${photo.url}-${index}`}
@@ -2007,102 +2329,101 @@ export default function StaffSessionDetailPage() {
               </div>
             )}
 
-            {/* 2. BIÊN BẢN TRẢ XE (CHECK-OUT) */}
-            {checkOutInspection ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4 space-y-4 shadow-2xs">
-                <div className="flex items-center justify-between border-b border-emerald-200/70 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="flex size-6 items-center justify-center rounded-lg bg-emerald-600 text-white text-[11px] font-black">
-                      2
-                    </span>
-                    <span className="text-xs font-black uppercase tracking-wide text-emerald-950">
-                      Biên bản trả xe (Check-out)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {checkOutInspection.damageFlagged ? (
-                      <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full">
-                        ⚠️ Phát hiện hư hại
+            {/* 2. BIÊN BẢN TRẢ XE (CHECK-OUT) - ONLY FOR RENTAL */}
+            {booking.playMode !== "BYOC" &&
+              (checkOutInspection ? (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-4 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-emerald-200/70 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-6 items-center justify-center rounded-lg bg-emerald-600 text-white text-[11px] font-black">
+                        2
                       </span>
-                    ) : (
-                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        ✓ Nguyên vẹn
+                      <span className="text-xs font-black uppercase tracking-wide text-emerald-950">
+                        Biên bản trả xe (Check-out)
                       </span>
-                    )}
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      {checkOutInspection.photos.length} ảnh
-                    </span>
-                  </div>
-                </div>
-
-                {/* Ghi chú */}
-                <div className="rounded-xl border border-emerald-200/80 bg-white p-3 space-y-1">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-800 flex items-center gap-1">
-                    <Info className="size-3.5 text-emerald-600" />
-                    Ghi chú khi trả xe:
-                  </span>
-                  <p className="text-xs font-semibold text-slate-800 leading-relaxed pl-4">
-                    {checkOutInspection.staffNotes ||
-                      (checkOutInspection as { notes?: string }).notes ||
-                      checkOutInspection.damageDescription ||
-                      "Xe được trả nguyên vẹn, không phát sinh hư hỏng."}
-                  </p>
-                </div>
-
-                {/* Checklist nghiệm thu */}
-                {checkOutInspection.checklist && checkOutInspection.checklist.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-900 block">
-                      Tình trạng linh kiện khi trả:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {checkOutInspection.checklist.map((item, idx) => {
-                        const isOk = item.checked ?? ((item as { status?: string }).status === "OK")
-                        const itemLabel = item.label || (item as { itemLabel?: string }).itemLabel || item.id
-                        const itemNote = item.notes || (item as { note?: string }).note
-                        return (
-                          <div
-                            key={idx}
-                            className={cn(
-                              "flex items-center justify-between p-2 rounded-lg border bg-white text-xs",
-                              isOk ? "border-slate-200" : "border-rose-300 bg-rose-50/50",
-                            )}
-                          >
-                            <span className="font-semibold text-slate-800 truncate mr-2 text-[11px]">
-                              {itemLabel}
-                            </span>
-                            {isOk ? (
-                              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
-                                ✓ Đạt
-                              </span>
-                            ) : (
-                              <span
-                                className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shrink-0"
-                                title={itemNote}
-                              >
-                                ✕ {itemNote || "Hư hại"}
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {checkOutInspection.damageFlagged ? (
+                        <span className="text-[10px] font-black text-rose-700 bg-rose-100 border border-rose-200 px-2 py-0.5 rounded-full">
+                          ⚠️ Phát hiện hư hại
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          ✓ Nguyên vẹn
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        {checkOutInspection.photos.length} ảnh
+                      </span>
                     </div>
                   </div>
-                )}
 
-                {/* Đền bù hư hỏng nếu có */}
-                {(
-                  checkOutInspection as {
-                    damageLineItems?: Array<{
-                      customPartName?: string
-                      partType?: string
-                      lineTotal?: number
-                      partsPrice?: number
-                      laborPrice?: number
-                    }>
-                  }
-                ).damageLineItems &&
-                  (
+                  {/* Ghi chú */}
+                  <div className="rounded-xl border border-emerald-200/80 bg-white p-3 space-y-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-800 flex items-center gap-1">
+                      <Info className="size-3.5 text-emerald-600" />
+                      Ghi chú khi trả xe:
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800 leading-relaxed pl-4">
+                      {checkOutInspection.staffNotes ||
+                        (checkOutInspection as { notes?: string }).notes ||
+                        checkOutInspection.damageDescription ||
+                        "Xe được trả nguyên vẹn, không phát sinh hư hỏng."}
+                    </p>
+                  </div>
+
+                  {/* Checklist nghiệm thu */}
+                  {checkOutInspection.checklist &&
+                    checkOutInspection.checklist.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-900 block">
+                          Tình trạng linh kiện khi trả:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {checkOutInspection.checklist.map((item, idx) => {
+                            const isOk =
+                              item.checked ??
+                              (item as { status?: string }).status === "OK"
+                            const itemLabel =
+                              item.label ||
+                              (item as { itemLabel?: string }).itemLabel ||
+                              item.id
+                            const itemNote =
+                              item.notes || (item as { note?: string }).note
+                            return (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "flex items-center justify-between p-2 rounded-lg border bg-white text-xs",
+                                  isOk
+                                    ? "border-slate-200"
+                                    : "border-rose-300 bg-rose-50/50",
+                                )}
+                              >
+                                <span className="font-semibold text-slate-800 truncate mr-2 text-[11px]">
+                                  {itemLabel}
+                                </span>
+                                {isOk ? (
+                                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 shrink-0">
+                                    ✓ Đạt
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 shrink-0"
+                                    title={itemNote}
+                                  >
+                                    ✕ {itemNote || "Hư hại"}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Đền bù hư hỏng nếu có */}
+                  {(
                     checkOutInspection as {
                       damageLineItems?: Array<{
                         customPartName?: string
@@ -2112,81 +2433,92 @@ export default function StaffSessionDetailPage() {
                         laborPrice?: number
                       }>
                     }
-                  ).damageLineItems!.length > 0 && (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 space-y-2">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-rose-900 flex items-center gap-1">
-                        <AlertTriangle className="size-3.5 text-rose-600" />
-                        Chi tiết đền bù hư hỏng:
-                      </span>
-                      <div className="space-y-1.5 text-xs">
-                        {(
-                          checkOutInspection as {
-                            damageLineItems?: Array<{
-                              customPartName?: string
-                              partType?: string
-                              lineTotal?: number
-                              partsPrice?: number
-                              laborPrice?: number
-                            }>
-                          }
-                        ).damageLineItems!.map((d, idx) => (
+                  ).damageLineItems &&
+                    (
+                      checkOutInspection as {
+                        damageLineItems?: Array<{
+                          customPartName?: string
+                          partType?: string
+                          lineTotal?: number
+                          partsPrice?: number
+                          laborPrice?: number
+                        }>
+                      }
+                    ).damageLineItems!.length > 0 && (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-3 space-y-2">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-rose-900 flex items-center gap-1">
+                          <AlertTriangle className="size-3.5 text-rose-600" />
+                          Chi tiết đền bù hư hỏng:
+                        </span>
+                        <div className="space-y-1.5 text-xs">
+                          {(
+                            checkOutInspection as {
+                              damageLineItems?: Array<{
+                                customPartName?: string
+                                partType?: string
+                                lineTotal?: number
+                                partsPrice?: number
+                                laborPrice?: number
+                              }>
+                            }
+                          ).damageLineItems!.map((d, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center bg-white p-2 rounded-lg border border-rose-100"
+                            >
+                              <span className="font-bold text-slate-800">
+                                {d.customPartName || d.partType}
+                              </span>
+                              <span className="font-black text-rose-600">
+                                {(
+                                  Number(
+                                    d.lineTotal ??
+                                      (d.partsPrice ?? 0) + (d.laborPrice ?? 0),
+                                  )
+                                ).toLocaleString("vi-VN")}{" "}
+                                đ
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Ảnh trả xe */}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-900 block">
+                      Hình ảnh trả xe ({checkOutInspection.photos.length} ảnh):
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {checkOutInspection.photos.map((photo, index) => {
+                        const dir =
+                          photo.direction ||
+                          (photo as { angle?: string }).angle ||
+                          "OTHER"
+                        return (
                           <div
-                            key={idx}
-                            className="flex justify-between items-center bg-white p-2 rounded-lg border border-rose-100"
+                            key={`${photo.url}-${index}`}
+                            className="group relative overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-2xs"
                           >
-                            <span className="font-bold text-slate-800">
-                              {d.customPartName || d.partType}
-                            </span>
-                            <span className="font-black text-rose-600">
-                              {(
-                                Number(
-                                  d.lineTotal ??
-                                    (d.partsPrice ?? 0) + (d.laborPrice ?? 0),
-                                )
-                              ).toLocaleString("vi-VN")}{" "}
-                              đ
+                            <ZoomableInspectionImage
+                              src={photo.url}
+                              alt={`Ảnh trả xe ${index + 1}`}
+                              className="aspect-video w-full object-cover"
+                            />
+                            <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-xs">
+                              {DIRECTION_LABEL[dir] ?? dir}
                             </span>
                           </div>
-                        ))}
-                      </div>
+                        )
+                      })}
                     </div>
-                  )}
-
-                {/* Ảnh trả xe */}
-                <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wide text-emerald-900 block">
-                    Hình ảnh trả xe ({checkOutInspection.photos.length} ảnh):
-                  </span>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {checkOutInspection.photos.map((photo, index) => {
-                      const dir =
-                        photo.direction ||
-                        (photo as { angle?: string }).angle ||
-                        "OTHER"
-                      return (
-                        <div
-                          key={`${photo.url}-${index}`}
-                          className="group relative overflow-hidden rounded-xl border border-emerald-200 bg-white shadow-2xs"
-                        >
-                          <ZoomableInspectionImage
-                            src={photo.url}
-                            alt={`Ảnh trả xe ${index + 1}`}
-                            className="aspect-video w-full object-cover"
-                          />
-                          <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur-xs">
-                            {DIRECTION_LABEL[dir] ?? dir}
-                          </span>
-                        </div>
-                      )
-                    })}
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-slate-400 text-xs">
-                Chưa có dữ liệu biên bản trả xe (phiên chưa kết thúc trả xe).
-              </div>
-            )}
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-slate-400 text-xs">
+                  Chưa có dữ liệu biên bản trả xe (phiên chưa kết thúc trả xe).
+                </div>
+              ))}
           </div>
         </StaffCard>
       )}
@@ -2198,8 +2530,9 @@ export default function StaffSessionDetailPage() {
           Lưu ý vận hành ca chơi
         </div>
         <p className="text-[11px] text-[#6b7280] leading-relaxed">
-          Đảm bảo kiểm tra và đối chiếu kỹ tình trạng xe với biên bản bàn giao
-          trước khi hoàn tất nghiệm thu và quyết toán phiên chơi.
+          {booking.playMode === "BYOC"
+            ? "Đơn mang xe cá nhân (BYOC) không yêu cầu biên bản bàn giao xe. Khách tự quản lý xe cá nhân khi chơi trên sân."
+            : "Đảm bảo kiểm tra và đối chiếu kỹ tình trạng xe với biên bản bàn giao trước khi hoàn tất nghiệm thu và quyết toán phiên chơi."}
         </p>
       </div>
 
@@ -2263,6 +2596,58 @@ export default function StaffSessionDetailPage() {
               >
                 <CheckCircle2 className="size-4" />
                 Đã thu xong
+              </StaffButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* COMPLETE BYOC CONFIRMATION MODAL */}
+      {confirmCompleteByocOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-10 items-center justify-center rounded-full bg-emerald-100">
+                <CheckCircle2 className="size-5 text-emerald-700" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">
+                  Xác nhận kết thúc phiên
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Phiên chơi xe cá nhân (BYOC)
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 space-y-2 text-xs font-semibold text-emerald-950">
+              <p>
+                Khách mang xe riêng đã hoàn thành ca chơi và thanh toán đủ các
+                khoản phát sinh.
+              </p>
+              <p className="text-[11px] text-emerald-800 font-normal leading-relaxed">
+                Hệ thống sẽ chuyển trạng thái phiên chơi và đơn đặt sang{" "}
+                <strong>HOÀN TẤT</strong> ngay lập tức.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5">
+              <StaffButton
+                onClick={() => setConfirmCompleteByocOpen(false)}
+                variant="outline"
+                disabled={completingByoc}
+                className="flex-1"
+              >
+                Hủy bỏ
+              </StaffButton>
+              <StaffButton
+                onClick={() => void handleCompleteByocSession()}
+                variant="primary"
+                disabled={completingByoc}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              >
+                <CheckCircle2 className="size-4" />
+                {completingByoc ? "Đang xử lý..." : "Kết thúc ngay"}
               </StaffButton>
             </div>
           </div>
