@@ -79,9 +79,6 @@ export function PublicContestsPage() {
     return rankContestsForDiscovery(matches)
   }, [filteredContests, statusFilter])
 
-  const featuredContest = rankedContests[0] ?? null
-  const secondaryContests = rankedContests.slice(1)
-
   const formatOptions = useMemo(
     () =>
       (formatsQuery.data ?? []).map((f) => ({ value: f.id, label: f.name })),
@@ -115,7 +112,7 @@ export function PublicContestsPage() {
                   Đấu Trường RC Field
                 </h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-7 text-white/80">
-                  Chọn giải phù hợp, xem bracket và leaderboard công khai, rồi
+                  Chọn giải đấu phù hợp, xem các cặp đấu và bảng xếp hạng công khai, rồi
                   đăng ký thi đấu tại chi nhánh gần bạn.
                 </p>
               </div>
@@ -188,24 +185,19 @@ export function PublicContestsPage() {
               />
             ) : (
               <div className="space-y-6">
-                {featuredContest ? (
-                  <FeaturedContestShowcase contest={featuredContest} />
-                ) : null}
-
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-black text-foreground">
                       Tất cả giải đấu
                     </h2>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Ưu tiên giải đang live, đang mở đăng ký và sắp mở để người
-                      chơi không bỏ lỡ mốc quan trọng.
+                      Ưu tiên xếp các giải đấu có lệ phí từ cao đến thấp để người chơi dễ tham khảo.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {secondaryContests.map((contest) => (
+                  {rankedContests.map((contest) => (
                     <ContestListCard key={contest.id} contest={contest} />
                   ))}
                 </div>
@@ -482,6 +474,12 @@ function rankContestsForDiscovery(contests: ContestItem[]) {
   return [...contests].sort((a, b) => {
     const statusDiff = score(a) - score(b)
     if (statusDiff !== 0) return statusDiff
+
+    const feeA = Number(a.entry_fee) || 0
+    const feeB = Number(b.entry_fee) || 0
+    const feeDiff = feeB - feeA
+    if (feeDiff !== 0) return feeDiff
+
     return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
   })
 }
