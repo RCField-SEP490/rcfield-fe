@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowRight,
   Calendar,
   MapPin,
   Users,
@@ -336,17 +335,6 @@ function ContestListCard({ contest }: { contest: ContestItem }) {
   )
 }
 
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-muted p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-black text-foreground">{value}</p>
-    </div>
-  )
-}
-
 function MetaLine({ icon, value }: { icon: ReactNode; value: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -440,21 +428,4 @@ function formatCurrency(value: number) {
   }).format(value)
 }
 
-function getContestHint(
-  availability: ContestRegistrationAvailability,
-  status: ContestItem["status"],
-) {
-  if (availability === "AVAILABLE") {
-    return "Đang nhận đăng ký. Kiểm tra điều kiện xe, booking phù hợp và giữ chỗ trước khi hết suất."
-  }
-  if (availability === "NOT_OPEN_YET") {
-    return "Sắp mở đăng ký. Xem trước thể thức, chi nhánh và chuẩn bị booking phù hợp."
-  }
-  if (status === "RUNNING") {
-    return "Giải đang diễn ra. Vào chi tiết để xem sơ đồ đấu và người đã vào vòng trong."
-  }
-  if (status === "COMPLETED") {
-    return "Giải đã kết thúc. Xem bảng xếp hạng và hành trình thi đấu đã công bố."
-  }
-  return "Xem thông tin chi tiết và các mốc vận hành của giải."
 }
