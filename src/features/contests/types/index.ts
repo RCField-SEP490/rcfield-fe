@@ -224,6 +224,13 @@ export type ContestPublicStats = {
   registration_count: number
   confirmed_count: number
   checked_in_count: number
+  /**
+   * Số vận động viên đã nộp lệ phí.
+   *
+   * Khác 0 nghĩa là backend sẽ TỪ CHỐI huỷ giải — nền tảng không có luồng hoàn
+   * lệ phí, nên phải hoàn tiền và miễn lệ phí cho từng người trước.
+   */
+  entry_fee_paid_count: number
   capacity_remaining: number | null
 }
 
@@ -663,6 +670,9 @@ export type ContestFeePayOSLink = {
 
 export type AdminContestFeeOrder = ContestFeeOrder & {
   contest_name: string | null
+  /** Ảnh và mô tả để admin xem nội dung ngay tại bước đối soát tiền. */
+  contest_banner_url?: string | null
+  contest_description?: string | null
 }
 
 export type PendingFeaturedPopup = {

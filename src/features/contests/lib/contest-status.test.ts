@@ -155,12 +155,44 @@ describe("getContestCheckInAvailability", () => {
 })
 
 describe("getContestEditAvailability", () => {
-  it("cho sửa khi còn bản nháp hoặc đang mở đăng ký", () => {
+  it("cho sửa khi còn bản nháp", () => {
     expect(getContestEditAvailability({ status: "DRAFT" })).toEqual({
       allowed: true,
     })
-    expect(getContestEditAvailability({ status: "OPEN" })).toEqual({
-      allowed: true,
+  })
+
+  it("mở đăng ký mà chưa ai đăng ký thì vẫn sửa được", () => {
+    // Khoảng thời gian chủ sân bấm mở xong mới thấy sai giờ hay sai chính tả.
+    expect(
+      getContestEditAvailability({
+        status: "OPEN",
+        public_stats: {
+          registration_count: 0,
+          confirmed_count: 0,
+          checked_in_count: 0,
+          entry_fee_paid_count: 0,
+          capacity_remaining: 8,
+        },
+      }),
+    ).toEqual({ allowed: true })
+  })
+
+  it("có người đăng ký rồi thì chốt — mỗi trường là một cam kết đã đưa ra", () => {
+    expect(
+      getContestEditAvailability({
+        status: "OPEN",
+        public_stats: {
+          registration_count: 3,
+          confirmed_count: 3,
+          checked_in_count: 0,
+          entry_fee_paid_count: 0,
+          capacity_remaining: 5,
+        },
+      }),
+    ).toMatchObject({
+      allowed: false,
+      reason:
+        "Đã có 3 người đăng ký — thông tin giải là cam kết với họ, không sửa được nữa",
     })
   })
 

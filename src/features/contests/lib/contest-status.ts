@@ -226,9 +226,27 @@ const ALLOWED: ContestActionAvailability = { allowed: true }
  * giấc, sức chứa, lệ phí đều đã là căn cứ để khách sắp lịch, đổi là sai lệch.
  */
 export function getContestEditAvailability(
-  contest: Pick<ContestItem, "status">,
+  contest: Pick<ContestItem, "status" | "public_stats">,
 ): ContestActionAvailability {
-  if (contest.status === "DRAFT" || contest.status === "OPEN") return ALLOWED
+  if (contest.status === "DRAFT") return ALLOWED
+
+  /*
+    Mở đăng ký rồi vẫn sửa được — nhưng chỉ khi CHƯA AI đăng ký.
+
+    Đó là khoảng thời gian chủ sân bấm mở xong mới thấy sai giờ hay sai chính
+    tả. Có người đăng ký rồi thì mỗi trường là một cam kết đã đưa ra, và backend
+    (`CONTEST_HAS_REGISTRATIONS`) từ chối — điều kiện ở đây phải trùng với nó,
+    nếu không nút mở ra được mà lưu thì báo lỗi.
+  */
+  if (contest.status === "OPEN") {
+    const soNguoiDangKy = contest.public_stats?.registration_count ?? 0
+    if (soNguoiDangKy === 0) return ALLOWED
+    return {
+      allowed: false,
+      reason: `Đã có ${soNguoiDangKy} người đăng ký — thông tin giải là cam kết với họ, không sửa được nữa`,
+    }
+  }
+
   return {
     allowed: false,
     reason:

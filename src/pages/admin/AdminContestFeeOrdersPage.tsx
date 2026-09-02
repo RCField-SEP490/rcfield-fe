@@ -139,10 +139,29 @@ export function AdminContestFeeOrdersPage() {
                 className="rounded-xl border border-slate-200 p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  {/*
+                    Ảnh quảng bá hiện NGAY Ở ĐÂY, không tách ra một bước duyệt
+                    riêng. Đây là lúc duy nhất có người nhìn vào đơn chuyển
+                    khoản — xác nhận tiền cũng chính là chấp nhận nội dung sẽ
+                    lên trang chủ, nên hai thứ đó phải nằm trước cùng một cặp
+                    mắt, cùng một lúc.
+                  */}
+                  {order.contest_banner_url ? (
+                    <img
+                      src={order.contest_banner_url}
+                      alt=""
+                      className="h-20 w-32 shrink-0 rounded-lg border border-slate-200 object-cover"
+                    />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-slate-900">
                       {order.contest_name ?? "Giải đấu"}
                     </p>
+                    {order.contest_description ? (
+                      <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">
+                        {order.contest_description}
+                      </p>
+                    ) : null}
                     <p className="mt-1 text-xs text-slate-500">
                       {order.plan?.name} · {formatVnd(order.amount)}
                       {order.featured_days > 0
@@ -164,14 +183,18 @@ export function AdminContestFeeOrdersPage() {
                       onClick={async () => {
                         try {
                           await confirmMutation.mutateAsync(order.id)
-                          toast.success("Đã xác nhận đơn phí")
+                          toast.success(
+                            order.featured_days > 0
+                              ? "Đã xác nhận và đưa lên trang chủ"
+                              : "Đã xác nhận đơn phí",
+                          )
                         } catch {
                           toast.error("Không xác nhận được đơn")
                         }
                       }}
                     >
                       <CheckCircle className="size-3.5" />
-                      Xác nhận
+                      {order.featured_days > 0 ? "Xác nhận & đăng" : "Xác nhận"}
                     </Button>
                     <Button
                       variant="outline"
@@ -192,17 +215,24 @@ export function AdminContestFeeOrdersPage() {
         )}
       </AdminPanel>
 
+      {/*
+        Ô này chỉ còn cho đơn thanh toán qua PayOS.
+
+        Đơn chuyển khoản được duyệt nội dung ngay lúc đối soát tiền — admin đã
+        nhìn thấy ảnh và tiêu đề trên thẻ ở ô trên, nên hỏi lại lần nữa ở đây là
+        hỏi cùng một người cùng một câu hỏi hai lần.
+        
+        PayOS thì tiền về tự động, không ai nhìn, nên vẫn phải qua đây. Không có
+        đơn nào chờ thì ẩn hẳn ô, đừng bày một khung rỗng.
+      */}
+      {pendingPopups.length > 0 ? (
       <AdminPanel>
         <AdminPanelTitle
           title={`Duyệt nội dung quảng bá (${pendingPopups.length})`}
-          subtitle="Provider đã trả tiền, nhưng nội dung chỉ lên trang chủ sau khi bạn duyệt ảnh và tiêu đề."
+          subtitle="Đơn thanh toán qua PayOS — tiền về tự động nên chưa ai xem nội dung. Duyệt xong mới lên trang chủ."
         />
         {pendingPopupsQuery.isLoading ? (
           <p className="text-sm text-slate-500">Đang tải...</p>
-        ) : pendingPopups.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-            Không có nội dung nào chờ duyệt.
-          </p>
         ) : (
           <div className="space-y-3">
             {pendingPopups.map((popup) => (
@@ -231,6 +261,7 @@ export function AdminContestFeeOrdersPage() {
           </div>
         )}
       </AdminPanel>
+      ) : null}
 
       <Dialog
         open={Boolean(rejectTarget)}
@@ -320,18 +351,48 @@ function PendingPopupRow({
               {popup.subtitle}
             </p>
           ) : null}
+          {/*
+            Suất chờ duyệt thì KHÔNG in ngày cụ thể.
+
+            Đồng hồ hiển thị được neo lại vào lúc duyệt, nên hai ngày đang lưu
+            chỉ là chỗ giữ chân — in ra sẽ thành lời hứa sai với chính người
+            đang bấm nút, và tệ hơn là làm họ tưởng duyệt muộn thì chủ sân mất
+            ngày.
+          */}
           <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-slate-500">
             <Sparkles className="size-3" />
-            Hiển thị {new Date(popup.starts_at).toLocaleDateString(
-              "vi-VN",
-            )} → {new Date(popup.ends_at).toLocaleDateString("vi-VN")}
+            {(() => {
+              const soNgay = Math.max(
+                1,
+                Math.round(
+                  (new Date(popup.ends_at).getTime() -
+                    new Date(popup.starts_at).getTime()) /
+                    86_400_000,
+                ),
+              )
+              return `Hiển thị ${soNgay} ngày, tính từ lúc bạn duyệt`
+            })()}
           </p>
 
+          {/*
+            Bỏ nút "Từ chối" khỏi giao diện.
+
+            Từ chối hiện là ngõ cụt về tiền: `reviewFeaturedPopup` đóng suất
+            vĩnh viễn (`REJECTED`, và trạng thái đó không quay lại `PENDING`
+            được), trong khi chủ sân đã trả đủ gói tổ chức. Không có đường nộp
+            lại ảnh khác, nên một cú bấm là mất trắng.
+
+            Chừng nào chưa có luồng "sửa nội dung rồi gửi duyệt lại" thì không
+            nên bày một cái nút mà hậu quả của nó không gỡ được.
+
+            Điểm cuối ở backend VẪN nhận `approve: false` — chốt chặn không nằm
+            ở đây. Đây chỉ là gỡ cái nút.
+          */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Textarea
               rows={1}
               value={notes}
-              placeholder="Ghi chú cho provider (bắt buộc khi từ chối)"
+              placeholder="Ghi chú cho provider (không bắt buộc)"
               className="min-w-[16rem] flex-1"
               onChange={(event) => setNotes(event.target.value)}
             />
@@ -341,14 +402,6 @@ function PendingPopupRow({
               onClick={() => onReview(true, notes.trim() || undefined)}
             >
               Cho lên trang chủ
-            </Button>
-            <Button
-              variant="outline"
-              className="h-9 border-red-200 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
-              disabled={pending || notes.trim().length < 5}
-              onClick={() => onReview(false, notes.trim())}
-            >
-              Từ chối
             </Button>
           </div>
         </div>
