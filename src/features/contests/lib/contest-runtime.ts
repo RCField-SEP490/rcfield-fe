@@ -201,37 +201,63 @@ export function getQualifyingStandings(
   const bestByRegistration = new Map<string, QualifyingStanding>()
   for (const match of matches) {
     for (const participant of match.participants) {
+      // Khớp với aggregateQualifyingResults ở backend: người không có một kết
+      // quả hợp lệ nào không được chiếm suất chung kết.
+      if (["DNS", "DNF", "DQ"].includes(participant.status)) continue
+
       const current = bestByRegistration.get(participant.registration_id)
       const bestLap = participant.best_lap_seconds
+      const totalTime = participant.total_time_seconds
+      if (bestLap === null && totalTime === null) continue
+
       if (!current) {
         bestByRegistration.set(participant.registration_id, {
           registrationId: participant.registration_id,
           participant,
           bestLapSeconds: bestLap,
-          totalTimeSeconds: participant.total_time_seconds,
+          totalTimeSeconds: totalTime,
           matchId: match.id,
         })
         continue
       }
-      const isBetter =
+
+      const hasBetterLap =
         bestLap !== null &&
         (current.bestLapSeconds === null || bestLap < current.bestLapSeconds)
-      if (isBetter) {
-        bestByRegistration.set(participant.registration_id, {
-          registrationId: participant.registration_id,
-          participant,
-          bestLapSeconds: bestLap,
-          totalTimeSeconds: participant.total_time_seconds,
-          matchId: match.id,
-        })
-      }
+      bestByRegistration.set(participant.registration_id, {
+        ...current,
+        participant: hasBetterLap ? participant : current.participant,
+        matchId: hasBetterLap ? match.id : current.matchId,
+        bestLapSeconds:
+          bestLap === null
+            ? current.bestLapSeconds
+            : current.bestLapSeconds === null
+              ? bestLap
+              : Math.min(current.bestLapSeconds, bestLap),
+        totalTimeSeconds:
+          totalTime === null
+            ? current.totalTimeSeconds
+            : current.totalTimeSeconds === null
+              ? totalTime
+              : Math.min(current.totalTimeSeconds, totalTime),
+      })
     }
   }
   return [...bestByRegistration.values()].sort((a, b) => {
-    if (a.bestLapSeconds === null && b.bestLapSeconds === null) return 0
-    if (a.bestLapSeconds === null) return 1
-    if (b.bestLapSeconds === null) return -1
-    return a.bestLapSeconds - b.bestLapSeconds
+    const lapDelta =
+      (a.bestLapSeconds ?? Number.MAX_SAFE_INTEGER) -
+      (b.bestLapSeconds ?? Number.MAX_SAFE_INTEGER)
+    if (lapDelta !== 0) return lapDelta
+
+    const totalDelta =
+      (a.totalTimeSeconds ?? Number.MAX_SAFE_INTEGER) -
+      (b.totalTimeSeconds ?? Number.MAX_SAFE_INTEGER)
+    if (totalDelta !== 0) return totalDelta
+
+    return (
+      (a.participant.seed_no ?? Number.MAX_SAFE_INTEGER) -
+      (b.participant.seed_no ?? Number.MAX_SAFE_INTEGER)
+    )
   })
 }
 
