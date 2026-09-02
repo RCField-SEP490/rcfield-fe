@@ -22,7 +22,6 @@ import {
   getContestCtaLabel,
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
-  type ContestRegistrationAvailability,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 import { Badge } from "@/shared/ui/badge"
@@ -426,6 +425,4 @@ function formatCurrency(value: number) {
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(value)
-}
-
 }
