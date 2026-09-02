@@ -1010,7 +1010,7 @@ export default function StaffTodayBookingsPage() {
     const startedSession = await startCheckIn(getBookingId(booking))
     const sessionId = startedSession?.sessionId ?? startedSession?.id
     if (sessionId) {
-      navigate(`/staff/sessions/${sessionId}`)
+      navigate(`/staff/inspections/${sessionId}?type=CHECK_IN`)
     }
   }
 
@@ -1624,7 +1624,11 @@ export default function StaffTodayBookingsPage() {
                           <StaffButton
                             onClick={() =>
                               navigate(
-                                `/staff/sessions/${activeSession.sessionId}`,
+                                activeSession.status === "CHECKING_OUT"
+                                  ? `/staff/sessions/${activeSession.sessionId}/checkout-summary`
+                                  : activeSession.status === "CHECKED_IN"
+                                    ? `/staff/inspections/${activeSession.sessionId}?type=CHECK_IN`
+                                    : `/staff/sessions/${activeSession.sessionId}`,
                               )
                             }
                             variant="outline"

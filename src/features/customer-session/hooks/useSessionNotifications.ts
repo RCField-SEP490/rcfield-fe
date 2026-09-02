@@ -66,6 +66,13 @@ export function useSessionNotifications(enabled = true): void {
         return
       }
 
+      if (msg.event === "BOOKING_CHECKED_IN") {
+        toast.info("Đã bắt đầu check-in", {
+          description: "Nhân viên đang tiến hành kiểm tra xe và hỗ trợ bạn vào sân.",
+        })
+        return
+      }
+
       if (msg.event === "SESSION_CHECKIN_INSPECTION") {
         toast.success("Phiên chơi đã bắt đầu", {
           description: "Biên bản bàn giao xe đã sẵn sàng để bạn xem lại.",

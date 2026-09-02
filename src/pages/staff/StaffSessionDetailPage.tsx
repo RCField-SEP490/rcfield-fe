@@ -1550,20 +1550,21 @@ export default function StaffSessionDetailPage() {
       )}
 
       {/* 4. RENDER INSPECTION BANNER */}
-      {session.status === "CHECKED_IN" &&
-        booking.playMode !== "BYOC" &&
-        !checkInInspection && (
+      {session.status === "CHECKED_IN" && !checkInInspection && (
         <StaffCard
           variant="warning"
           className="flex flex-col md:flex-row md:items-center justify-between gap-4"
         >
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-amber-900">
-              Yêu cầu chụp ảnh kiểm xe bàn giao
+              {booking.playMode === "BYOC"
+                ? "Yêu cầu chụp ảnh xe cá nhân khi vào sân"
+                : "Yêu cầu chụp ảnh kiểm xe bàn giao"}
             </h4>
             <p className="text-xs text-amber-800 leading-relaxed">
-              Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi
-              cho khách khởi động lượt chạy.
+              {booking.playMode === "BYOC"
+                ? "Nhân viên cần chụp ảnh xe cá nhân của từng người chơi để xác thực xe vào sân và kiểm tra an toàn trước khi mở phiên chạy."
+                : "Nhân viên cần chụp ảnh thực tế 4 góc của xe để đối chiếu trước khi cho khách khởi động lượt chạy."}
             </p>
           </div>
           <StaffButton
@@ -1574,7 +1575,7 @@ export default function StaffSessionDetailPage() {
             className="bg-amber-600 hover:bg-amber-700 font-bold uppercase tracking-wider text-xs shadow-sm shrink-0"
           >
             <ClipboardCheck className="size-4" />
-            Lập biên bản bàn giao xe
+            {booking.playMode === "BYOC" ? "Chụp ảnh xe cá nhân" : "Lập biên bản bàn giao xe"}
           </StaffButton>
         </StaffCard>
       )}
@@ -2531,7 +2532,7 @@ export default function StaffSessionDetailPage() {
         </div>
         <p className="text-[11px] text-[#6b7280] leading-relaxed">
           {booking.playMode === "BYOC"
-            ? "Đơn mang xe cá nhân (BYOC) không yêu cầu biên bản bàn giao xe. Khách tự quản lý xe cá nhân khi chơi trên sân."
+            ? "Đơn mang xe cá nhân (BYOC): Nhân viên chụp ảnh xe cá nhân của từng người chơi lúc vào sân để kiểm tra an toàn và xác nhận lượt chạy. Khách tự quản lý xe cá nhân khi chơi trên sân."
             : "Đảm bảo kiểm tra và đối chiếu kỹ tình trạng xe với biên bản bàn giao trước khi hoàn tất nghiệm thu và quyết toán phiên chơi."}
         </p>
       </div>

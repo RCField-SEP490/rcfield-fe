@@ -394,6 +394,10 @@ export function BookingDetailPage() {
 
       if (
         [
+          "BOOKING_CHECKED_IN",
+          "SESSION_UPDATED",
+          "SESSION_CHECKIN_INSPECTION",
+          "CUSTOMER_CHECKIN_CONFIRMED",
           "CUSTOMER_CHECKOUT_CONFIRMED",
           "SESSION_CHECKOUT_COMPLETED",
           "CUSTOMER_PAYMENT_CONFIRMED",
@@ -431,6 +435,7 @@ export function BookingDetailPage() {
   useEffect(() => {
     const needsLiveRefresh =
       booking?.status === "AWAITING_PAYMENT" ||
+      booking?.status === "CONFIRMED" ||
       ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(
         booking?.session?.status ?? "",
       )
