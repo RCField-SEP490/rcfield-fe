@@ -5,6 +5,7 @@ import {
   formatDurationSeconds,
   getAuditGroup,
   getEligibleRuntimeRegistrations,
+  getQualifyingStandings,
   getMatchParticipantName,
   groupMatchesByRound,
   findNextPendingMatchId,
@@ -156,5 +157,64 @@ describe("findNextPendingMatchId", () => {
 
   it("trả null với danh sách rỗng", () => {
     expect(findNextPendingMatchId([], "m1")).toBeNull()
+  })
+})
+
+describe("getQualifyingStandings", () => {
+  const participant = (
+    id: string,
+    bestLap: number | null,
+    totalTime: number | null,
+    status = "FINISHED",
+    seed = 1,
+  ) =>
+    ({
+      id: `participant-${id}-${bestLap}`,
+      registration_id: id,
+      best_lap_seconds: bestLap,
+      total_time_seconds: totalTime,
+      status,
+      seed_no: seed,
+    }) as never
+
+  it("gộp nhiều lượt và xếp hạng giống backend", () => {
+    const standings = getQualifyingStandings([
+      {
+        id: "run-1",
+        participants: [
+          participant("a", 30, 40, "FINISHED", 2),
+          participant("b", 30, 39, "FINISHED", 3),
+        ],
+      },
+      {
+        id: "run-2",
+        participants: [
+          participant("a", 31, 38, "FINISHED", 2),
+          participant("c", 30, 39, "FINISHED", 1),
+        ],
+      },
+    ] as never)
+
+    expect(standings.map((item) => item.registrationId)).toEqual([
+      "a",
+      "c",
+      "b",
+    ])
+    expect(standings[0].totalTimeSeconds).toBe(38)
+  })
+
+  it("loại người không có thành tích hợp lệ khỏi top chung kết", () => {
+    const standings = getQualifyingStandings([
+      {
+        id: "run-1",
+        participants: [
+          participant("valid", 31, 40),
+          participant("dns", null, null, "DNS"),
+          participant("empty", null, null, "READY"),
+        ],
+      },
+    ] as never)
+
+    expect(standings.map((item) => item.registrationId)).toEqual(["valid"])
   })
 })

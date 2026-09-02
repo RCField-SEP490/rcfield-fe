@@ -55,6 +55,8 @@ export function ContestKnockoutBracket({
   canUndo,
   hasChanges,
   readOnly = false,
+  title = "Sơ đồ đấu",
+  emptyMessage = "Chưa bốc thăm nên chưa có sơ đồ.",
 }: {
   matches: ContestMatch[]
   selectedMatchId: string | null
@@ -71,6 +73,8 @@ export function ContestKnockoutBracket({
   hasChanges: boolean
   /** Nhân viên chỉ xem và chọn trận; sắp lại cặp đấu là việc của ban tổ chức. */
   readOnly?: boolean
+  title?: string
+  emptyMessage?: string
 }) {
   // Trận tranh hạng 3 nằm cùng vòng với chung kết nhưng không nhận người thắng
   // từ đâu cả, để chung vào cây sẽ làm lệch toàn bộ đường nối.
@@ -137,7 +141,7 @@ export function ContestKnockoutBracket({
   return (
     <Panel>
       <PanelTitle
-        title="Sơ đồ đấu"
+        title={title}
         subtitle={
           readOnly
             ? "Người thắng mỗi trận đi sang trận nối bên phải. Nhấp vào trận để nhập kết quả."
@@ -186,7 +190,7 @@ export function ContestKnockoutBracket({
 
       {groups.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[#c4c7c8] p-8 text-center text-sm font-semibold text-[#747878]">
-          Chưa bốc thăm nên chưa có sơ đồ.
+          {emptyMessage}
         </div>
       ) : (
         <div className="overflow-x-auto pb-2">
