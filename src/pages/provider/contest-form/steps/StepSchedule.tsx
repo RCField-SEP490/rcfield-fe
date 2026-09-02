@@ -8,6 +8,7 @@ import { ContestFormField } from "../ContestFormField"
 import { DateTimeField } from "../DateTimeField"
 import type { ContestFormState } from "../contest-form-types"
 import type { ContestRuntimeFormat } from "../contest-form-utils"
+import { KNOCKOUT_CAPACITIES } from "../contest-wizard"
 
 /* Lịch chuẩn cho một giải mới, tính XUÔI từ lúc mở đăng ký. */
 const REGISTRATION_WINDOW_DAYS = 7
@@ -137,13 +138,13 @@ export function StepSchedule({
                 >
                   {/* Giải cũ đang để số lẻ thì vẫn hiện ra, kèm nhãn, để provider
                       biết vì sao bước này báo lỗi thay vì thấy ô rỗng khó hiểu. */}
-                  {!["8", "16", "32"].includes(form.capacity) &&
+                  {!KNOCKOUT_CAPACITIES.map(String).includes(form.capacity) &&
                   form.capacity ? (
                     <option value={form.capacity}>
                       {form.capacity} VĐV (không dùng được cho đấu loại)
                     </option>
                   ) : null}
-                  {["8", "16", "32"].map((size) => (
+                  {KNOCKOUT_CAPACITIES.map((size) => (
                     <option key={size} value={size}>
                       {size} VĐV
                     </option>

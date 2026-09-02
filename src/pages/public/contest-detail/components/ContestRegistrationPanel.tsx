@@ -342,7 +342,21 @@ export function ContestRegistrationPanel({
                 </p>
               </div>
             </div>
-            {activeRegistration.checkInCode ? (
+            {/*
+              Mã điểm danh chỉ hiện khi nó THẬT SỰ DÙNG ĐƯỢC.
+
+              Backend chặn điểm danh bằng `ENTRY_FEE_PENDING` khi lệ phí chưa
+              ngã ngũ. Nên với đăng ký chưa trả tiền, cái mã này không mở được
+              cửa nào — mà bày nó ra thì nó nói "bạn đã vào", ngay bên dưới dòng
+              chữ đỏ nói suất sắp bị trả lại cho người khác. Hai câu trên cùng
+              một thẻ nói ngược nhau, và khách sẽ tin câu dễ chịu hơn.
+
+              Điều kiện phải trùng với backend: lệ phí đã ngã ngũ VÀ đăng ký đã
+              được duyệt.
+            */}
+            {activeRegistration.checkInCode &&
+            activeRegistration.paymentStatus !== "PENDING_PAYMENT" &&
+            activeRegistration.status === "CONFIRMED" ? (
               <div className="rounded-xl border border-orange-100/50 bg-white p-3 text-center">
                 <p className="text-2xs font-bold uppercase tracking-wider text-slate-400">
                   Mã điểm danh (Check-in)

@@ -370,7 +370,25 @@ export function ProviderContestsPage() {
                         Đóng đăng ký
                       </Button>
                     ) : null}
-                    {!["COMPLETED", "CANCELLED"].includes(contest.status) ? (
+                    {/*
+                      Ẩn hẳn nút Huỷ khi backend chắc chắn từ chối.
+
+                      Bày một cái nút rồi để nó báo lỗi mỗi lần bấm là tệ hơn
+                      không có nút: người dùng không biết mình làm sai ở đâu, và
+                      lần sau vẫn bấm lại vì nút vẫn ở đó mời gọi.
+
+                      Điều kiện phải TRÙNG với `assertNoCollectedEntryFees` ở
+                      backend — cùng một câu hỏi thì phải cùng một câu trả lời.
+                    */}
+                    {!["COMPLETED", "CANCELLED"].includes(contest.status) &&
+                    (contest.public_stats?.entry_fee_paid_count ?? 0) > 0 ? (
+                      <p className="max-w-[220px] text-right text-xs font-semibold text-[#747878]">
+                        Không huỷ được — {contest.public_stats?.entry_fee_paid_count} người đã
+                        nộp lệ phí. Hoàn tiền và miễn lệ phí cho họ trước.
+                      </p>
+                    ) : null}
+                    {!["COMPLETED", "CANCELLED"].includes(contest.status) &&
+                    (contest.public_stats?.entry_fee_paid_count ?? 0) === 0 ? (
                       /*
                         Hỏi lại trước khi huỷ. Trước đây một cú bấm là huỷ luôn
                         cả giải LẪN toàn bộ đăng ký của vận động viên, không có
@@ -382,8 +400,27 @@ export function ProviderContestsPage() {
                         chặn cú bấm nhầm, không thay cho chốt đó.
                       */
                       <ConfirmDialog
-                        title="Huỷ giải đấu này?"
-                        description={`Toàn bộ ${contest.public_stats?.registration_count ?? 0} đăng ký sẽ bị huỷ theo và không khôi phục được. Nếu đã có người nộp lệ phí, hệ thống sẽ từ chối — hoàn tiền cho họ trước rồi mới huỷ được giải.`}
+                        title={
+                          contest.status === "RUNNING"
+                            ? "Huỷ giải đang diễn ra?"
+                            : "Huỷ giải đấu này?"
+                        }
+                        description={[
+                          contest.status === "RUNNING"
+                            ? "Giải này ĐANG DIỄN RA."
+                            : null,
+                          `Toàn bộ ${contest.public_stats?.registration_count ?? 0} đăng ký sẽ bị huỷ theo và không khôi phục được.`,
+                          // Giải đang chạy thì đã có kết quả trên sân. Nói rõ
+                          // thứ sắp mất — người bấm nút đang nghĩ tới việc huỷ
+                          // một sự kiện, không nghĩ tới việc xoá thành tích của
+                          // những người đã thi đấu xong.
+                          (contest.match_stats?.total_rounds ?? 0) > 0
+                            ? `${contest.match_stats?.total_rounds} vòng đấu và mọi kết quả đã nhập cũng bị huỷ.`
+                            : null,
+                          "Nếu đã có người nộp lệ phí, hệ thống sẽ từ chối — hoàn tiền cho họ trước rồi mới huỷ được giải.",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                         confirmLabel="Huỷ giải đấu"
                         trigger={
                           <Button

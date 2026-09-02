@@ -429,9 +429,20 @@ export function CustomerContestRegistrationsPage() {
             const badge = getUnifiedBadge(registration, now)
             const accent = getAccentColor(registration, now)
 
+            /*
+              Hiện mã QR điểm danh khi backend THẬT SỰ cho điểm danh, không phải
+              khi một trong hai điều kiện đúng.
+
+              `checkInRegistration` đòi ĐỒNG THỜI `status === CONFIRMED` và lệ
+              phí đã ngã ngũ (`ENTRY_FEE_PENDING` chặn nếu chưa). Điều kiện cũ
+              dùng "hoặc", nên một đăng ký được chủ sân duyệt trước khi khách trả
+              tiền vẫn hiện mã — khách mang tới quầy, nhân viên quét, hệ thống từ
+              chối, và không ai hiểu vì sao vì trên màn hình mã vẫn ở đó.
+            */
             const showQr =
               !isEffectiveCancelled &&
-              (registration.status === "CONFIRMED" || isPaid) &&
+              registration.status === "CONFIRMED" &&
+              registration.paymentStatus !== "PENDING_PAYMENT" &&
               !!registration.checkInCode
 
             return (
@@ -595,9 +606,7 @@ export function CustomerContestRegistrationsPage() {
                       </div>
 
                       {/* Nhắc nhở check-in */}
-                      {registration.status === "CONFIRMED" &&
-                        contestUpcoming &&
-                        registration.checkInCode ? (
+                      {showQr && contestUpcoming ? (
                         <p className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
                           <Ticket className="size-4 shrink-0" />
                           Hãy đưa mã này cho nhân viên để check-in:{" "}

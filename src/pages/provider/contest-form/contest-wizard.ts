@@ -14,6 +14,19 @@ import type { ContestRuntimeFormat } from "./contest-form-utils"
  * hay không. Form một trang cũ bắt provider điền theo thứ tự bất kỳ rồi mới báo
  * lỗi lúc bấm Lưu, nên phần lớn thời gian là sửa ngược.
  */
+/**
+ * Các mức sức chứa dùng được cho sơ đồ đấu loại trực tiếp.
+ *
+ * Phải là luỹ thừa của 2 thì sơ đồ mới chia đôi được tới tận chung kết. Backend
+ * (`resolveBracketSize`) chấp nhận MỌI luỹ thừa của 2, và còn tự làm tròn lên
+ * khi sức chứa không hợp lệ — danh sách này chỉ là những mức hợp lý với quy mô
+ * một quán xe RC, để chủ sân chọn thay vì phải tự nhớ 2, 4, 8, 16…
+ *
+ * Có 4 vì giải nội bộ bốn người là chuyện rất thường; thiếu nó thì chủ sân buộc
+ * phải khai 8 suất rồi để nửa sơ đồ trống. Có 64 cho sự kiện lớn.
+ */
+export const KNOCKOUT_CAPACITIES: number[] = [4, 8, 16, 32, 64]
+
 export const CONTEST_WIZARD_STEPS = [
   {
     id: "branches",
@@ -203,11 +216,10 @@ export function validateContestStep(
       } else if (
         form.capacity &&
         context.runtimeFormat === "KNOCKOUT" &&
-        ![8, 16, 32].includes(capacity)
+        !KNOCKOUT_CAPACITIES.includes(capacity)
       ) {
         // Sơ đồ đấu loại phải chia đôi được tới tận chung kết.
-        errors.capacity =
-          "Đấu loại trực tiếp chỉ nhận sức chứa 8, 16 hoặc 32 VĐV"
+        errors.capacity = `Đấu loại trực tiếp chỉ nhận sức chứa ${KNOCKOUT_CAPACITIES.join(", ")} VĐV`
       }
       const entryFee = Number(form.entry_fee)
       if (form.entry_fee && (!Number.isFinite(entryFee) || entryFee < 0)) {
