@@ -175,6 +175,7 @@ export interface FnbOrder {
   orderType: string
   status?: string
   totalAmount?: number
+  createdAt?: string
   items: FnbOrderItem[]
 }
 
