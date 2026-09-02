@@ -557,6 +557,13 @@ export const staffApi = {
     return res.data.data
   },
 
+  completeByocSession: async (sessionId: string): Promise<any> => {
+    const res = await api.post<{ success: boolean; data: any }>(
+      `/v1/staff/sessions/${sessionId}/complete-byoc`,
+    )
+    return res.data.data
+  },
+
   confirmRefund: async (
     bookingId: string,
     confirmation: { method: "CASH" | "BANK_TRANSFER" },

@@ -1410,11 +1410,12 @@ export default function StaffTodayBookingsPage() {
                         (session: any) => session.status === "COMPLETED",
                       )
                     : undefined
+                const isByoc = b.playMode === "BYOC" || (b as any).play_mode === "BYOC"
                 const sessionStatusLabel: Record<string, string> = {
-                  CHECKED_IN: "ĐANG NHẬN XE",
+                  CHECKED_IN: isByoc ? "ĐANG VÀO SÂN" : "ĐANG NHẬN XE",
                   ACTIVE: "ĐANG CHƠI",
                   EXTENDING: "GIA HẠN",
-                  CHECKING_OUT: "ĐANG TRẢ XE",
+                  CHECKING_OUT: isByoc ? "ĐANG KẾT THÚC PHIÊN" : "ĐANG TRẢ XE",
                 }
                 const hasPendingSettlement =
                   b.status === "COMPLETED" &&
@@ -1431,7 +1432,9 @@ export default function StaffTodayBookingsPage() {
                   CANCELLED: "ĐÃ HỦY",
                 }
                 const displayLabel = checkInWindowExpired
-                  ? "QUÁ GIỜ NHẬN XE"
+                  ? isByoc
+                    ? "QUÁ GIỜ CHECK-IN"
+                    : "QUÁ GIỜ NHẬN XE"
                   : activeSession
                   ? (sessionStatusLabel[activeSession.status] ??
                     activeSession.status)
@@ -1463,10 +1466,14 @@ export default function StaffTodayBookingsPage() {
                   : null
                 const sessionActionLabel =
                   activeSession?.status === "CHECKING_OUT"
-                    ? "Tiếp tục trả xe"
+                    ? isByoc
+                      ? "Hoàn tất phiên"
+                      : "Tiếp tục trả xe"
                     : operationalTiming?.state === "DUE_FOR_CHECKOUT" ||
                         operationalTiming?.state === "OVERDUE"
-                      ? "Xử lý trả xe"
+                      ? isByoc
+                        ? "Xử lý phiên"
+                        : "Xử lý trả xe"
                       : "Mở phiên"
 
                 return (
@@ -1488,7 +1495,7 @@ export default function StaffTodayBookingsPage() {
                         ) : (
                           <span className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700">
                             <Smartphone className="size-3" />
-                            Đặt qua App
+                            Đặt qua Web/App
                           </span>
                         )}
                         {b.status === "CANCELLED" && Boolean(b.hasPendingRefund) && (
@@ -1611,7 +1618,7 @@ export default function StaffTodayBookingsPage() {
                       <div className="ml-auto">
                         {checkInWindowExpired ? (
                           <StaffButton disabled variant="outline" size="sm">
-                            Quá giờ nhận xe
+                            {isByoc ? "Quá giờ check-in" : "Quá giờ nhận xe"}
                           </StaffButton>
                         ) : activeSession ? (
                           <StaffButton
@@ -1661,11 +1668,15 @@ export default function StaffTodayBookingsPage() {
                             {isWalkIn ? (
                               <>
                                 <Play className="size-3.5 fill-current" />
-                                Bàn giao & Mở phiên
+                                {b.playMode === "BYOC"
+                                  ? "Vào sân & Mở phiên"
+                                  : "Bàn giao & Mở phiên"}
                               </>
                             ) : (
                               <>
-                                Nhận xe & bàn giao
+                                {b.playMode === "BYOC"
+                                  ? "Check-in vào sân"
+                                  : "Nhận xe & bàn giao"}
                                 <ArrowRight className="size-3.5" />
                               </>
                             )}

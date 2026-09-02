@@ -253,10 +253,10 @@ export const StaffOperationContextProvider: React.FC<{ children: React.ReactNode
       }
 
       if (msg.event === "SESSION_OVERDUE_ALERT") {
-        toast.error("Phiên chạy quá giờ chưa trả xe", {
+        toast.error("Phiên chơi quá giờ chưa kết thúc", {
           description: data?.sessionId
-            ? `Phiên ${data.sessionId.slice(0, 8).toUpperCase()} cần được xử lý trả xe.`
-            : "Vui lòng kiểm tra và hoàn tất trả xe.",
+            ? `Phiên ${data.sessionId.slice(0, 8).toUpperCase()} cần được xử lý kết thúc phiên.`
+            : "Vui lòng kiểm tra và hoàn tất phiên chơi.",
         })
         void fetchData()
         return

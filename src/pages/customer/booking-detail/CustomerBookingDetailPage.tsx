@@ -535,7 +535,9 @@ export function CustomerBookingDetailPage() {
                           booking.session.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" :
                           "bg-slate-200 text-slate-800"
                         }`}>
-                          {SESSION_STATUS_LABELS[booking.session.status] ?? booking.session.status}
+                          {booking.session.status === "CHECKED_IN"
+                            ? (booking.playMode === "BYOC" ? "Đã vào sân" : "Đã nhận xe")
+                            : (SESSION_STATUS_LABELS[booking.session.status] ?? booking.session.status)}
                         </Badge>
                       </div>
                       <p className="text-xs font-semibold text-slate-600">
@@ -662,7 +664,9 @@ export function CustomerBookingDetailPage() {
                 </div>
 
                 <p className="text-[10px] text-slate-400 font-semibold leading-normal px-2">
-                  Staff tại quán sẽ quét mã QR này để bắt đầu thủ tục bàn giao xe và tạo phiên chơi.
+                  {booking.playMode === "BYOC"
+                    ? "Staff tại quán sẽ quét mã QR này để bắt đầu thủ tục vào sân và tạo phiên chơi."
+                    : "Staff tại quán sẽ quét mã QR này để bắt đầu thủ tục bàn giao xe và tạo phiên chơi."}
                 </p>
               </Card>
             )}
