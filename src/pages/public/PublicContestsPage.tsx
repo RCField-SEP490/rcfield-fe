@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowRight,
   Calendar,
   MapPin,
   Users,
@@ -23,7 +22,6 @@ import {
   getContestCtaLabel,
   getContestRegistrationAvailability,
   getEffectiveContestStatus,
-  type ContestRegistrationAvailability,
 } from "@/features/contests/lib/contest-status"
 import type { ContestItem } from "@/features/contests/types"
 import { Badge } from "@/shared/ui/badge"
@@ -79,9 +77,6 @@ export function PublicContestsPage() {
     return rankContestsForDiscovery(matches)
   }, [filteredContests, statusFilter])
 
-  const featuredContest = rankedContests[0] ?? null
-  const secondaryContests = rankedContests.slice(1)
-
   const formatOptions = useMemo(
     () =>
       (formatsQuery.data ?? []).map((f) => ({ value: f.id, label: f.name })),
@@ -115,7 +110,7 @@ export function PublicContestsPage() {
                   Đấu Trường RC Field
                 </h1>
                 <p className="mt-3 max-w-xl text-sm font-medium leading-7 text-white/80">
-                  Chọn giải phù hợp, xem bracket và leaderboard công khai, rồi
+                  Chọn giải đấu phù hợp, xem các cặp đấu và bảng xếp hạng công khai, rồi
                   đăng ký thi đấu tại chi nhánh gần bạn.
                 </p>
               </div>
@@ -188,24 +183,19 @@ export function PublicContestsPage() {
               />
             ) : (
               <div className="space-y-6">
-                {featuredContest ? (
-                  <FeaturedContestShowcase contest={featuredContest} />
-                ) : null}
-
                 <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-black text-foreground">
                       Tất cả giải đấu
                     </h2>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Ưu tiên giải đang live, đang mở đăng ký và sắp mở để người
-                      chơi không bỏ lỡ mốc quan trọng.
+                      Ưu tiên hiển thị các giải đấu được đăng ký gói phí tổ chức cao hơn từ nhà cung cấp.
                     </p>
                   </div>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {secondaryContests.map((contest) => (
+                  {rankedContests.map((contest) => (
                     <ContestListCard key={contest.id} contest={contest} />
                   ))}
                 </div>
@@ -243,76 +233,7 @@ function FilterPill({
   )
 }
 
-function FeaturedContestShowcase({ contest }: { contest: ContestItem }) {
-  const effectiveStatus = getEffectiveContestStatus(contest)
-  const registrationAvailability = getContestRegistrationAvailability(contest)
-  const capacityLabel = getCapacityLabel(contest)
 
-  return (
-    <Link
-      to={routePaths.contestDetail.replace(":contestId", contest.id)}
-      className="group grid overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition hover:border-primary/30 hover:shadow-md lg:grid-cols-[1.35fr_0.85fr]"
-    >
-      <div className="relative min-h-[320px] overflow-hidden">
-        {contest.banner_image_url ? (
-          <img
-            src={contest.banner_image_url}
-            alt={contest.name}
-            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="contest-hero-gradient absolute inset-0" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/10" />
-        <div className="relative flex min-h-[320px] flex-col justify-between p-6 text-white sm:p-8">
-          <div className="flex flex-wrap gap-2">
-            <ContestAvailabilityBadge
-              contest={contest}
-              className="rounded-full px-3 py-1 text-[11px] font-black shadow-sm"
-            />
-            {effectiveStatus === "RUNNING" ? (
-              <span className="live-pulse-dot rounded-full border border-white/20 bg-white/15 pl-5 pr-3 py-1 text-[11px] font-black text-white backdrop-blur">
-                Bracket live
-              </span>
-            ) : null}
-          </div>
-          <div className="max-w-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-amber">
-              {contest.contest_format?.name ?? "RC Contest"} ·{" "}
-              {contest.track_type?.name ?? "Track"}
-            </p>
-            <h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
-              {contest.name}
-            </h2>
-            <p className="mt-4 line-clamp-2 text-sm font-medium leading-7 text-slate-200">
-              {contest.description ??
-                "Theo dõi lịch thi đấu, sơ đồ đấu và bảng xếp hạng của cộng đồng RCField."}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col justify-between gap-5 p-6">
-        <div className="grid grid-cols-2 gap-3">
-          <InfoTile
-            label="Đăng ký"
-            value={String(contest.public_stats?.registration_count ?? 0)}
-          />
-          <InfoTile label="Còn chỗ" value={capacityLabel} />
-          <InfoTile label="Bắt đầu" value={formatDateTime(contest.starts_at)} />
-          <InfoTile label="Lệ phí" value={formatCurrency(contest.entry_fee)} />
-        </div>
-        <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm font-bold text-primary">
-          {getContestHint(registrationAvailability, effectiveStatus)}
-        </div>
-        <div className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-black text-background transition group-hover:bg-primary">
-          {getContestCtaLabel(registrationAvailability, effectiveStatus)}
-          <ArrowRight className="size-4" />
-        </div>
-      </div>
-    </Link>
-  )
-}
 
 function ContestListCard({ contest }: { contest: ContestItem }) {
   const effectiveStatus = getEffectiveContestStatus(contest)
@@ -413,17 +334,6 @@ function ContestListCard({ contest }: { contest: ContestItem }) {
   )
 }
 
-function InfoTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-muted p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-black text-foreground">{value}</p>
-    </div>
-  )
-}
-
 function MetaLine({ icon, value }: { icon: ReactNode; value: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -482,6 +392,13 @@ function rankContestsForDiscovery(contests: ContestItem[]) {
   return [...contests].sort((a, b) => {
     const statusDiff = score(a) - score(b)
     if (statusDiff !== 0) return statusDiff
+
+    // Ưu tiên giải mà Provider chi trả phí tổ chức (provider_fee_amount) cao hơn cho Admin (500k -> 200k -> 150k -> 0k)
+    const feeA = Number(a.provider_fee_amount) || 0
+    const feeB = Number(b.provider_fee_amount) || 0
+    const feeDiff = feeB - feeA
+    if (feeDiff !== 0) return feeDiff
+
     return new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
   })
 }
@@ -508,23 +425,4 @@ function formatCurrency(value: number) {
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(value)
-}
-
-function getContestHint(
-  availability: ContestRegistrationAvailability,
-  status: ContestItem["status"],
-) {
-  if (availability === "AVAILABLE") {
-    return "Đang nhận đăng ký. Kiểm tra điều kiện xe, booking phù hợp và giữ chỗ trước khi hết suất."
-  }
-  if (availability === "NOT_OPEN_YET") {
-    return "Sắp mở đăng ký. Xem trước thể thức, chi nhánh và chuẩn bị booking phù hợp."
-  }
-  if (status === "RUNNING") {
-    return "Giải đang diễn ra. Vào chi tiết để xem sơ đồ đấu và người đã vào vòng trong."
-  }
-  if (status === "COMPLETED") {
-    return "Giải đã kết thúc. Xem bảng xếp hạng và hành trình thi đấu đã công bố."
-  }
-  return "Xem thông tin chi tiết và các mốc vận hành của giải."
 }
