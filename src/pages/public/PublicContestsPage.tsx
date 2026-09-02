@@ -191,7 +191,7 @@ export function PublicContestsPage() {
                       Tất cả giải đấu
                     </h2>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Ưu tiên xếp các giải đấu có lệ phí từ cao đến thấp để người chơi dễ tham khảo.
+                      Ưu tiên hiển thị các giải đấu được đăng ký gói phí tổ chức cao hơn từ nhà cung cấp.
                     </p>
                   </div>
                 </div>
@@ -475,8 +475,9 @@ function rankContestsForDiscovery(contests: ContestItem[]) {
     const statusDiff = score(a) - score(b)
     if (statusDiff !== 0) return statusDiff
 
-    const feeA = Number(a.entry_fee) || 0
-    const feeB = Number(b.entry_fee) || 0
+    // Ưu tiên giải mà Provider chi trả phí tổ chức (provider_fee_amount) cao hơn cho Admin (500k -> 200k -> 150k -> 0k)
+    const feeA = Number(a.provider_fee_amount) || 0
+    const feeB = Number(b.provider_fee_amount) || 0
     const feeDiff = feeB - feeA
     if (feeDiff !== 0) return feeDiff
 

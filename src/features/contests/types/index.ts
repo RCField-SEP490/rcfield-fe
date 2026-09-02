@@ -275,6 +275,7 @@ export type ContestItem = {
   registration_closes_at: string | null
   capacity: number | null
   entry_fee: number
+  provider_fee_amount?: number
   banner_image_url: string | null
   vehicle_rule: Record<string, unknown>
   config: Record<string, unknown>
