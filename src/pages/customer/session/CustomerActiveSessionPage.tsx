@@ -188,6 +188,11 @@ export function CustomerActiveSessionPage() {
     session.status,
     currentTime,
   )
+  const isByoc = Boolean(
+    session.vehicles &&
+      session.vehicles.length > 0 &&
+      session.vehicles.every((v) => v.type === "BYOC"),
+  )
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -259,7 +264,9 @@ export function CustomerActiveSessionPage() {
               <div>
                 <p className="text-sm font-black">Yêu cầu gia hạn không còn được xử lý</p>
                 <p className="mt-1 text-xs leading-relaxed text-red-800">
-                  Phiên đã quá giờ và cần được nhân viên kiểm tra, trả xe. Hệ thống không tự tính phí quá giờ theo thời điểm checkout.
+                  {isByoc
+                    ? "Phiên đã quá giờ và cần được nhân viên hoàn tất phiên chơi. Hệ thống không tự tính phí quá giờ theo thời điểm kết thúc."
+                    : "Phiên đã quá giờ và cần được nhân viên kiểm tra, trả xe. Hệ thống không tự tính phí quá giờ theo thời điểm checkout."}
                 </p>
               </div>
             </div>
@@ -346,10 +353,14 @@ export function CustomerActiveSessionPage() {
                 <p className="text-sm font-black">
                   {operationalTiming.state === "OVERDUE"
                     ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
-                    : "Đã đến giờ trả xe"}
+                    : isByoc
+                      ? "Đã hết giờ chơi"
+                      : "Đã đến giờ trả xe"}
                 </p>
                 <p className="mt-1 text-xs font-semibold leading-relaxed opacity-80">
-                  Vui lòng trả xe tại quầy để nhân viên kiểm tra và hoàn tất phiên. Xe vẫn được giữ trong phiên cho đến khi checkout hoàn thành.
+                  {isByoc
+                    ? "Vui lòng liên hệ quầy để nhân viên hoàn tất phiên chơi cho bạn."
+                    : "Vui lòng trả xe tại quầy để nhân viên kiểm tra và hoàn tất phiên. Xe vẫn được giữ trong phiên cho đến khi checkout hoàn thành."}
                 </p>
               </div>
             </div>
@@ -400,18 +411,32 @@ export function CustomerActiveSessionPage() {
               {/* Inner details */}
               <div className="absolute flex flex-col items-center justify-center space-y-1">
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                  {operationalTiming.state === "ON_TIME" ? "CÒN LẠI" : operationalTiming.state === "OVERDUE" ? "QUÁ GIỜ" : "ĐẾN GIỜ TRẢ XE"}
+                  {operationalTiming.state === "ON_TIME"
+                    ? "CÒN LẠI"
+                    : operationalTiming.state === "OVERDUE"
+                      ? "QUÁ GIỜ"
+                      : isByoc
+                        ? "HẾT GIỜ"
+                        : "ĐẾN GIỜ TRẢ XE"}
                 </span>
                 <span className="text-3xl font-black text-slate-950 tracking-tight leading-none">
                   {operationalTiming.state === "ON_TIME"
                     ? formatCountdown(secondsLeft)
                     : operationalTiming.state === "OVERDUE"
                       ? `+${operationalTiming.minutesPastPlannedEnd}p`
-                      : "Trả xe"}
+                      : isByoc
+                        ? "Hết ca"
+                        : "Trả xe"}
                 </span>
                 <span className={`inline-flex items-center gap-1 text-[9px] font-black leading-none ${operationalTiming.state === "OVERDUE" ? "text-red-600" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "text-amber-600" : "text-emerald-500"}`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${operationalTiming.state === "OVERDUE" ? "bg-red-500" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "bg-amber-500" : "bg-emerald-500 animate-ping"}`} />
-                  {operationalTiming.state === "ON_TIME" ? "ĐANG CHƠI" : "CHỜ TRẢ XE"}
+                  {operationalTiming.state === "ON_TIME"
+                    ? "ĐANG CHƠI"
+                    : isByoc
+                      ? operationalTiming.state === "OVERDUE"
+                        ? "QUÁ GIỜ"
+                        : "HẾT GIỜ CHƠI"
+                      : "CHỜ TRẢ XE"}
                 </span>
               </div>
             </div>

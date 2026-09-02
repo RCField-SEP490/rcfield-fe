@@ -592,10 +592,14 @@ export function BookingDetailPage() {
     currentTime,
   )
 
+  const isByoc = booking?.playMode === "BYOC"
   const currentSessionStatus = sessionDetail?.status ?? booking?.session?.status
   const isCheckoutPending =
+    !isByoc &&
     !!currentSessionStatus &&
-    ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(currentSessionStatus)
+    ["CHECKED_IN", "ACTIVE", "EXTENDING", "CHECKING_OUT"].includes(
+      currentSessionStatus,
+    )
 
   const handlePayAdditionalFees = async () => {
     if (!bookingId) return
@@ -743,6 +747,7 @@ export function BookingDetailPage() {
     )
     .map((component) => ({
       componentId: component.id,
+      type: component.type,
       label:
         component.type === "FNB_ON_SITE" ||
         component.type === "FNB_PREORDER" ||
@@ -779,6 +784,7 @@ export function BookingDetailPage() {
       ? [
           {
             componentId: "checkout-damage-charge",
+            type: "DAMAGE_CHARGE" as const,
             label: "Phí bồi thường hư hỏng",
             amount: checkOutDamageTotal,
             status: "PENDING",
@@ -811,13 +817,97 @@ export function BookingDetailPage() {
       Math.max(0, additionalTotal - additionalOutstandingAmount)
   const isPaid =
     financialSummary?.isSettled ?? additionalOutstandingAmount === 0
-  const customerFnbOrders = (
-    booking?.fnb_orders?.length
-      ? booking.fnb_orders
-      : booking?.fnb_order
-        ? [booking.fnb_order]
-        : []
-  ).filter((order) => order.items.length > 0)
+
+  const groupedAdditionalLines = (() => {
+    const fnbLines = additionalLines.filter(
+      (l) => l.type === "FNB_ON_SITE" || l.label.includes("Đồ ăn & thức uống"),
+    )
+    const otherLines = additionalLines.filter(
+      (l) => l.type !== "FNB_ON_SITE" && !l.label.includes("Đồ ăn & thức uống"),
+    )
+
+    const paidFnb = fnbLines.filter(
+      (l) => l.status === "DISBURSED" || l.status === "CAPTURED",
+    )
+    const pendingFnb = fnbLines.filter(
+      (l) => l.status !== "DISBURSED" && l.status !== "CAPTURED",
+    )
+
+    const paidFnbTotal = paidFnb.reduce((sum, l) => sum + Number(l.amount), 0)
+    const pendingFnbTotal = pendingFnb.reduce((sum, l) => sum + Number(l.amount), 0)
+
+    const paidGateway = paidFnb.find((l) => l.payment?.gateway)?.payment?.gateway
+    const gatewayFormatted = paidGateway ? formatPaymentGatewayInline(paidGateway) : undefined
+
+    const result: Array<{
+      id: string
+      label: string
+      amount: number
+      paid: boolean
+      gateway?: string
+    }> = []
+
+    if (paidFnbTotal > 0 && pendingFnbTotal > 0) {
+      result.push({
+        id: "fnb-paid-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: paidFnbTotal,
+        paid: true,
+        gateway: gatewayFormatted,
+      })
+      result.push({
+        id: "fnb-pending-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: pendingFnbTotal,
+        paid: false,
+      })
+    } else if (paidFnbTotal > 0) {
+      result.push({
+        id: "fnb-paid-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: paidFnbTotal,
+        paid: true,
+        gateway: gatewayFormatted,
+      })
+    } else if (pendingFnbTotal > 0) {
+      result.push({
+        id: "fnb-pending-aggregate",
+        label: "Đồ ăn & thức uống gọi tại quầy",
+        amount: pendingFnbTotal,
+        paid: false,
+      })
+    }
+
+    for (const line of otherLines) {
+      const isPaid = line.status === "DISBURSED" || line.status === "CAPTURED"
+      result.push({
+        id: line.componentId,
+        label: line.label,
+        amount: Number(line.amount),
+        paid: isPaid,
+        gateway: line.payment?.gateway ? formatPaymentGatewayInline(line.payment.gateway) : undefined,
+      })
+    }
+
+    return result
+  })()
+  const customerFnbOrders = (() => {
+    const list = (
+      booking?.fnb_orders?.length
+        ? booking.fnb_orders
+        : booking?.fnb_order
+          ? [booking.fnb_order]
+          : []
+    ).filter((order) => order.items.length > 0)
+
+    return [...list].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      if (timeA && timeB) return timeA - timeB
+      return 0
+    })
+  })()
+
   const cancelledFnbOrders = customerFnbOrders.filter(
     (order) => order.status === "CANCELLED",
   )
@@ -846,13 +936,76 @@ export function BookingDetailPage() {
           )),
       0,
     )
-  const onsiteFnbComponent = booking?.payment_components?.find(
+  const onsiteFnbComponents = (booking?.payment_components ?? []).filter(
     (component) => component.type === "FNB_ON_SITE",
   )
-  const onsiteFnbPaid =
-    onsiteFnbComponent?.status === "DISBURSED" ||
-    onsiteFnbComponent?.status === "HELD"
+  const pendingOnsiteFnbAmount = onsiteFnbComponents
+    .filter((c) => c.status === "PENDING")
+    .reduce((sum, c) => sum + Number(c.amount), 0)
+  const paidOnsiteFnbAmount = onsiteFnbComponents
+    .filter(
+      (c) =>
+        c.status === "DISBURSED" ||
+        c.status === "HELD" ||
+        c.status === "CAPTURED",
+    )
+    .reduce((sum, c) => sum + Number(c.amount), 0)
+
+  const isOnsiteFnbAllPaid =
+    onsiteFnbOrders.length > 0 &&
+    pendingOnsiteFnbAmount === 0 &&
+    paidOnsiteFnbAmount > 0
+  const isOnsiteFnbPartiallyPaid =
+    pendingOnsiteFnbAmount > 0 && paidOnsiteFnbAmount > 0
   const preorderFnbPaid = initialPaymentWasSuccessful
+
+  // Map each onsite order to whether it is paid or pending
+  const onsiteOrderPaidMap = (() => {
+    const map = new Map<string, boolean>()
+    if (onsiteFnbOrders.length === 0) return map
+
+    if (pendingOnsiteFnbAmount === 0) {
+      onsiteFnbOrders.forEach((o) => map.set(o.id, true))
+      return map
+    }
+    if (paidOnsiteFnbAmount === 0) {
+      onsiteFnbOrders.forEach((o) => map.set(o.id, false))
+      return map
+    }
+
+    // Check if there is an exact single order whose amount matches pendingOnsiteFnbAmount
+    const exactPendingMatch = onsiteFnbOrders.find(
+      (o) =>
+        Number(
+          o.totalAmount ??
+            o.items.reduce((s, it) => s + Number(it.subtotal || 0), 0),
+        ) === pendingOnsiteFnbAmount,
+    )
+    if (exactPendingMatch) {
+      onsiteFnbOrders.forEach((o) => {
+        map.set(o.id, o.id !== exactPendingMatch.id)
+      })
+      return map
+    }
+
+    // General case: The newly added orders at the end of the session are pending
+    let remainingPending = pendingOnsiteFnbAmount
+    const reversed = [...onsiteFnbOrders].reverse()
+    for (const order of reversed) {
+      const orderTotal = Number(
+        order.totalAmount ??
+          order.items.reduce((s, it) => s + Number(it.subtotal || 0), 0),
+      )
+      if (remainingPending >= orderTotal && orderTotal > 0) {
+        map.set(order.id, false)
+        remainingPending -= orderTotal
+      } else {
+        map.set(order.id, true)
+      }
+    }
+    return map
+  })()
+
   const renderFnbGroup = (
     orders: typeof customerFnbOrders,
     options: {
@@ -861,9 +1014,14 @@ export function BookingDetailPage() {
       paymentLabel: string
       className: string
       badgeClassName: string
+      paidAmount?: number
+      pendingAmount?: number
+      isPreorder?: boolean
     },
   ) => {
     if (orders.length === 0) return null
+
+    const groupTotal = getFnbGroupTotal(orders)
 
     return (
       <section
@@ -882,49 +1040,85 @@ export function BookingDetailPage() {
             {options.paymentLabel}
           </Badge>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {orders
             .flatMap((order) =>
               order.items.map((item) => ({ orderId: order.id, item })),
             )
-            .map(({ orderId, item }) => (
-              <div
-                key={`${orderId}-${item.id}`}
-                className="flex items-start justify-between gap-4 text-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-slate-900">
-                    {item.itemName ?? "Sản phẩm"}
-                    {item.variantName && (
-                      <span className="text-slate-500">
-                        {" "}
-                        · {item.variantName}
-                      </span>
+            .map(({ orderId, item }) => {
+              const itemSubtotal = Number(item.subtotal)
+              const isItemPaid = options.isPreorder
+                ? preorderFnbPaid
+                : onsiteOrderPaidMap.get(orderId) ?? true
+
+              return (
+                <div
+                  key={`${orderId}-${item.id}`}
+                  className="flex items-start justify-between gap-4 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-slate-900">
+                        {item.itemName ?? "Sản phẩm"}
+                        {item.variantName && (
+                          <span className="text-slate-500">
+                            {" "}
+                            · {item.variantName}
+                          </span>
+                        )}
+                      </p>
+                      {!options.isPreorder && (
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                            isItemPaid
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-800 border border-amber-300"
+                          }`}
+                        >
+                          {isItemPaid ? "Đã thanh toán" : "Chờ thanh toán"}
+                        </span>
+                      )}
+                    </div>
+                    {item.notes && (
+                      <p className="mt-1 text-xs text-slate-600">
+                        <span className="font-semibold text-slate-700">
+                          Ghi chú:
+                        </span>{" "}
+                        {item.notes}
+                      </p>
                     )}
-                  </p>
-                  {item.notes && (
-                    <p className="mt-1 text-xs text-slate-600">
-                      <span className="font-semibold text-slate-700">
-                        Ghi chú:
-                      </span>{" "}
-                      {item.notes}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-slate-500">
+                      ×{item.quantity} · {formatCurrency(Number(item.unitPrice))}
                     </p>
-                  )}
+                    <p className="font-semibold text-slate-900">
+                      {formatCurrency(itemSubtotal)}
+                    </p>
+                  </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-xs text-slate-500">
-                    ×{item.quantity} · {formatCurrency(Number(item.unitPrice))}
-                  </p>
-                  <p className="font-semibold text-slate-900">
-                    {formatCurrency(Number(item.subtotal))}
-                  </p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
         </div>
-        <div className="flex justify-between border-t border-current/10 pt-3 text-sm font-semibold text-slate-800">
-          <span>Tổng cộng</span>
-          <span>{formatCurrency(getFnbGroupTotal(orders))}</span>
+        <div className="space-y-1 border-t border-current/10 pt-3 text-xs text-slate-600">
+          {options.pendingAmount !== undefined && options.pendingAmount > 0 && (
+            <>
+              {options.paidAmount !== undefined && options.paidAmount > 0 && (
+                <div className="flex justify-between font-medium text-emerald-700">
+                  <span>Đã thanh toán</span>
+                  <span>{formatCurrency(options.paidAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-amber-700">
+                <span>Còn chờ thanh toán</span>
+                <span>{formatCurrency(options.pendingAmount)}</span>
+              </div>
+            </>
+          )}
+          <div className="flex justify-between pt-1 text-sm font-semibold text-slate-800">
+            <span>Tổng cộng</span>
+            <span>{formatCurrency(groupTotal)}</span>
+          </div>
         </div>
       </section>
     )
@@ -1141,14 +1335,18 @@ export function BookingDetailPage() {
                               ? "CÒN LẠI"
                               : operationalTiming.state === "OVERDUE"
                                 ? "QUÁ GIỜ"
-                                : "ĐẾN GIỜ TRẢ XE"}
+                                : isByoc
+                                  ? "HẾT GIỜ"
+                                  : "ĐẾN GIỜ TRẢ XE"}
                           </span>
                           <span className="text-2xl font-black text-slate-950 tracking-tight tabular-nums">
                             {operationalTiming.state === "ON_TIME"
                               ? formatCountdown(secondsLeft)
                               : operationalTiming.state === "OVERDUE"
                                 ? `+${operationalTiming.minutesPastPlannedEnd}p`
-                                : "Trả xe"}
+                                : isByoc
+                                  ? "Hết ca"
+                                  : "Trả xe"}
                           </span>
                           <span
                             className={`inline-flex items-center gap-1 text-[9px] font-black ${operationalTiming.state === "OVERDUE" ? "text-red-600" : operationalTiming.state === "DUE_FOR_CHECKOUT" ? "text-amber-600" : "text-emerald-500"}`}
@@ -1158,7 +1356,11 @@ export function BookingDetailPage() {
                             />
                             {operationalTiming.state === "ON_TIME"
                               ? "ĐANG CHƠI"
-                              : "CHỜ TRẢ XE"}
+                              : isByoc
+                                ? operationalTiming.state === "OVERDUE"
+                                  ? "QUÁ GIỜ"
+                                  : "HẾT GIỜ CHƠI"
+                                : "CHỜ TRẢ XE"}
                           </span>
                         </div>
                       </div>
@@ -1170,15 +1372,21 @@ export function BookingDetailPage() {
                             {operationalTiming.state === "OVERDUE"
                               ? `Phiên đã quá giờ ${operationalTiming.minutesPastPlannedEnd} phút`
                               : operationalTiming.state === "DUE_FOR_CHECKOUT"
-                                ? "Đã đến giờ trả xe"
+                                ? isByoc
+                                  ? "Đã hết giờ chơi"
+                                  : "Đã đến giờ trả xe"
                                 : "Phiên chơi đang diễn ra"}
                           </h4>
                           <p className="text-xs text-slate-500 mt-0.5">
                             {operationalTiming.state === "OVERDUE"
-                              ? "Vui lòng trả xe tại quầy để nhân viên kiểm tra và hoàn tất checkout."
+                              ? isByoc
+                                ? "Vui lòng liên hệ quầy để nhân viên hoàn tất phiên chơi."
+                                : "Vui lòng trả xe tại quầy để nhân viên kiểm tra và hoàn tất checkout."
                               : booking.session.status === "EXTENDING"
                                 ? "Phiên đang được gia hạn thêm"
-                                : "Phiên chơi đang hoạt động bình thường"}
+                                : isByoc && operationalTiming.state === "DUE_FOR_CHECKOUT"
+                                  ? "Vui lòng hoàn tất phiên chơi tại quầy."
+                                  : "Phiên chơi đang hoạt động bình thường"}
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1246,7 +1454,9 @@ export function BookingDetailPage() {
                         </h4>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {booking.session.status === "CHECKED_IN"
-                            ? "Nhân viên đang hoàn tất thủ tục bàn giao xe"
+                            ? booking.playMode === "BYOC"
+                              ? "Nhân viên đang xác nhận xe khách để vào sân"
+                              : "Nhân viên đang hoàn tất thủ tục bàn giao xe"
                             : "Vui lòng chờ nhân viên hoàn tất kiểm tra trả xe"}
                         </p>
                       </div>
@@ -1327,8 +1537,12 @@ export function BookingDetailPage() {
                       ? `Dự kiến: ${slotLabel}`
                       : sessStatus === "CHECKED_IN"
                         ? checkinStaff
-                          ? `Nhân viên ${checkinStaff} đang xác nhận tình trạng xe bàn giao`
-                          : "Nhân viên đang xác nhận tình trạng xe bàn giao"
+                          ? booking.playMode === "BYOC"
+                            ? `Nhân viên ${checkinStaff} đang xác nhận thông tin xe tự mang`
+                            : `Nhân viên ${checkinStaff} đang xác nhận tình trạng xe bàn giao`
+                          : booking.playMode === "BYOC"
+                            ? "Nhân viên đang xác nhận thông tin xe tự mang"
+                            : "Nhân viên đang xác nhận tình trạng xe bàn giao"
                         : sess.actualStartAt
                           ? `Bắt đầu lúc ${new Date(sess.actualStartAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}${checkinStaff ? ` · NV: ${checkinStaff}` : ""}`
                           : checkinStaff
@@ -1381,6 +1595,8 @@ export function BookingDetailPage() {
                       "Phiên chơi đã kết thúc. Vui lòng thanh toán phí phát sinh để hoàn tất đơn."
                     ) : timelineStatus === "COMPLETED" && sess?.actualEndAt ? (
                       formatDateTime(new Date(sess.actualEndAt))
+                    ) : isByoc ? (
+                      "Sau khi hoàn tất phiên chơi"
                     ) : (
                       "Sau khi check-out hoàn tất"
                     )
@@ -1682,20 +1898,30 @@ export function BookingDetailPage() {
                       ? "border-emerald-200 bg-emerald-50/40"
                       : "border-amber-200 bg-amber-50/40",
                     badgeClassName: preorderFnbPaid
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-amber-100 text-amber-700",
+                      ? "bg-emerald-100 text-emerald-700 font-bold"
+                      : "bg-amber-100 text-amber-700 font-bold",
+                    isPreorder: true,
                   })}
                   {renderFnbGroup(onsiteFnbOrders, {
                     title: "Gọi trong phiên chơi",
-                    description:
-                      "Các món phát sinh trong lúc chơi và được quyết toán riêng.",
-                    paymentLabel: onsiteFnbPaid
+                    description: isOnsiteFnbAllPaid
+                      ? "Các món phát sinh trong lúc chơi đã được thanh toán đầy đủ."
+                      : isOnsiteFnbPartiallyPaid
+                        ? `Đã thanh toán ${formatCurrency(paidOnsiteFnbAmount)}; còn ${formatCurrency(pendingOnsiteFnbAmount)} đang chờ thanh toán.`
+                        : "Các món phát sinh trong lúc chơi và được quyết toán riêng.",
+                    paymentLabel: isOnsiteFnbAllPaid
                       ? "Đã thanh toán"
-                      : "Chờ thanh toán",
-                    className: "border-orange-200 bg-orange-50/40",
-                    badgeClassName: onsiteFnbPaid
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-amber-100 text-amber-700",
+                      : isOnsiteFnbPartiallyPaid
+                        ? `Chờ thanh toán · ${formatCurrency(pendingOnsiteFnbAmount)}`
+                        : "Chờ thanh toán",
+                    className: isOnsiteFnbAllPaid
+                      ? "border-emerald-200 bg-emerald-50/40"
+                      : "border-amber-200 bg-amber-50/40",
+                    badgeClassName: isOnsiteFnbAllPaid
+                      ? "bg-emerald-100 text-emerald-700 font-bold"
+                      : "bg-amber-100 text-amber-800 font-bold border border-amber-300",
+                    paidAmount: paidOnsiteFnbAmount,
+                    pendingAmount: pendingOnsiteFnbAmount,
                   })}
                   {renderFnbGroup(legacyFnbOrders, {
                     title: "Đồ ăn & thức uống",
@@ -1738,7 +1964,9 @@ export function BookingDetailPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-sm text-foreground">
-                        Biên bản & ảnh bàn giao xe (Check-in)
+                        {booking.playMode === "BYOC"
+                          ? "Biên bản & ảnh xác nhận xe khách (Check-in)"
+                          : "Biên bản & ảnh bàn giao xe (Check-in)"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {[
@@ -1748,7 +1976,9 @@ export function BookingDetailPage() {
                           checkInChecklist.length > 0
                             ? `${checkInChecklist.length} mục kiểm tra`
                             : null,
-                          "Biên bản bàn giao xe",
+                          booking.playMode === "BYOC"
+                            ? "Biên bản xe khách"
+                            : "Biên bản bàn giao xe",
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -1782,7 +2012,11 @@ export function BookingDetailPage() {
                         <div className="flex items-center justify-between mb-2.5">
                           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
                             <ClipboardCheck className="h-4 w-4 text-emerald-600" />
-                            <span>Checklist kiểm tra kỹ thuật khi nhận xe</span>
+                            <span>
+                              {booking.playMode === "BYOC"
+                                ? "Checklist an toàn xe tự mang (Check-in)"
+                                : "Checklist kiểm tra kỹ thuật khi nhận xe"}
+                            </span>
                           </div>
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
                             {
@@ -1841,7 +2075,9 @@ export function BookingDetailPage() {
                         <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                           <Camera className="h-3.5 w-3.5 text-slate-500" />
                           <span>
-                            Ảnh chụp hiện trạng bàn giao xe ({checkInPhotos.length} ảnh)
+                            {booking.playMode === "BYOC"
+                              ? `Ảnh chụp xác nhận xe khách (${checkInPhotos.length} ảnh)`
+                              : `Ảnh chụp hiện trạng bàn giao xe (${checkInPhotos.length} ảnh)`}
                           </span>
                         </p>
                         <div className="grid grid-cols-2 gap-3">
@@ -2107,7 +2343,9 @@ export function BookingDetailPage() {
                         Mã Check-in
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        Quét mã này tại quầy để nhận xe
+                        {booking.playMode === "BYOC"
+                          ? "Quét mã này tại quầy để check-in vào sân"
+                          : "Quét mã này tại quầy để nhận xe"}
                       </p>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center gap-3">
@@ -2212,34 +2450,29 @@ export function BookingDetailPage() {
                           </span>
                         </div>
                         <div className="pl-5 space-y-1.5">
-                          {additionalLines.length > 0 ? (
-                            additionalLines.map((line) => {
-                              const paid =
-                                line.status === "DISBURSED" ||
-                                line.status === "CAPTURED"
-                              return (
-                                <div
-                                  key={line.componentId}
-                                  className="flex items-start justify-between gap-3 text-sm"
-                                >
-                                  <div>
-                                    <span className="text-slate-500">
-                                      {line.label}
-                                    </span>
-                                    <p
-                                      className={`mt-0.5 text-[10px] font-medium ${paid ? "text-emerald-600" : "text-amber-700"}`}
-                                    >
-                                      {paid
-                                        ? `Đã thanh toán${line.payment?.gateway ? ` · ${gatewayLabel(line.payment.gateway)}` : ""}`
-                                        : "Chờ thanh toán"}
-                                    </p>
-                                  </div>
-                                  <span className="font-semibold text-orange-600 tabular-nums shrink-0">
-                                    +{formatCurrency(Number(line.amount))}
+                          {groupedAdditionalLines.length > 0 ? (
+                            groupedAdditionalLines.map((line) => (
+                              <div
+                                key={line.id}
+                                className="flex items-start justify-between gap-3 text-sm"
+                              >
+                                <div>
+                                  <span className="text-slate-500">
+                                    {line.label}
                                   </span>
+                                  <p
+                                    className={`mt-0.5 text-[10px] font-medium ${line.paid ? "text-emerald-600" : "text-amber-700 font-bold"}`}
+                                  >
+                                    {line.paid
+                                      ? `Đã thanh toán${line.gateway ? ` · ${line.gateway}` : ""}`
+                                      : "Chờ thanh toán"}
+                                  </p>
                                 </div>
-                              )
-                            })
+                                <span className="font-semibold text-orange-600 tabular-nums shrink-0">
+                                  +{formatCurrency(line.amount)}
+                                </span>
+                              </div>
+                            ))
                           ) : (
                             <p className="text-sm text-slate-400">
                               Không phát sinh phí tại quầy.
