@@ -235,76 +235,7 @@ function FilterPill({
   )
 }
 
-function FeaturedContestShowcase({ contest }: { contest: ContestItem }) {
-  const effectiveStatus = getEffectiveContestStatus(contest)
-  const registrationAvailability = getContestRegistrationAvailability(contest)
-  const capacityLabel = getCapacityLabel(contest)
 
-  return (
-    <Link
-      to={routePaths.contestDetail.replace(":contestId", contest.id)}
-      className="group grid overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition hover:border-primary/30 hover:shadow-md lg:grid-cols-[1.35fr_0.85fr]"
-    >
-      <div className="relative min-h-[320px] overflow-hidden">
-        {contest.banner_image_url ? (
-          <img
-            src={contest.banner_image_url}
-            alt={contest.name}
-            className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="contest-hero-gradient absolute inset-0" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/10" />
-        <div className="relative flex min-h-[320px] flex-col justify-between p-6 text-white sm:p-8">
-          <div className="flex flex-wrap gap-2">
-            <ContestAvailabilityBadge
-              contest={contest}
-              className="rounded-full px-3 py-1 text-[11px] font-black shadow-sm"
-            />
-            {effectiveStatus === "RUNNING" ? (
-              <span className="live-pulse-dot rounded-full border border-white/20 bg-white/15 pl-5 pr-3 py-1 text-[11px] font-black text-white backdrop-blur">
-                Bracket live
-              </span>
-            ) : null}
-          </div>
-          <div className="max-w-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-brand-amber">
-              {contest.contest_format?.name ?? "RC Contest"} ·{" "}
-              {contest.track_type?.name ?? "Track"}
-            </p>
-            <h2 className="mt-3 text-3xl font-black leading-tight sm:text-4xl">
-              {contest.name}
-            </h2>
-            <p className="mt-4 line-clamp-2 text-sm font-medium leading-7 text-slate-200">
-              {contest.description ??
-                "Theo dõi lịch thi đấu, sơ đồ đấu và bảng xếp hạng của cộng đồng RCField."}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col justify-between gap-5 p-6">
-        <div className="grid grid-cols-2 gap-3">
-          <InfoTile
-            label="Đăng ký"
-            value={String(contest.public_stats?.registration_count ?? 0)}
-          />
-          <InfoTile label="Còn chỗ" value={capacityLabel} />
-          <InfoTile label="Bắt đầu" value={formatDateTime(contest.starts_at)} />
-          <InfoTile label="Lệ phí" value={formatCurrency(contest.entry_fee)} />
-        </div>
-        <div className="rounded-xl border border-primary/10 bg-primary/5 px-4 py-3 text-sm font-bold text-primary">
-          {getContestHint(registrationAvailability, effectiveStatus)}
-        </div>
-        <div className="inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-black text-background transition group-hover:bg-primary">
-          {getContestCtaLabel(registrationAvailability, effectiveStatus)}
-          <ArrowRight className="size-4" />
-        </div>
-      </div>
-    </Link>
-  )
-}
 
 function ContestListCard({ contest }: { contest: ContestItem }) {
   const effectiveStatus = getEffectiveContestStatus(contest)
