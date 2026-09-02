@@ -30,7 +30,6 @@ import {
   getMatchParticipantName,
   getMatchPhase,
   getPublishedLeaderboard,
-  splitMatchesByPhase,
   findNextPendingMatchId,
 } from "@/features/contests/lib/contest-runtime"
 import { getContestEditAvailability } from "@/features/contests/lib/contest-status"
@@ -62,6 +61,7 @@ import { ContestFinancePanel } from "./components/ContestFinancePanel"
 import { ContestStaffPanel } from "./components/ContestStaffPanel"
 import { ContestFeePanel } from "./components/ContestFeePanel"
 import { ContestKnockoutBracket } from "./components/ContestKnockoutBracket"
+import { ContestGrandPrixFlow } from "./components/ContestGrandPrixFlow"
 import { ContestLeaderboardPanel } from "./components/ContestLeaderboardPanel"
 import { ContestMatchBoard } from "./components/ContestMatchBoard"
 import { ContestMatchDetailPanel } from "./components/match-detail/ContestMatchDetailPanel"
@@ -186,6 +186,8 @@ export function ProviderContestWorkspacePage({
       "KNOCKOUT",
   )
   const isKnockoutRuntime = runtimeFormat === "KNOCKOUT"
+  const isQualifyingFinalRuntime = runtimeFormat === "QUALIFYING_FINAL"
+  const isBracketRuntime = isKnockoutRuntime || isQualifyingFinalRuntime
 
   const feeQuery = useQuery({
     queryKey: contestQueryKeys.fee(contestId),
@@ -194,11 +196,6 @@ export function ProviderContestWorkspacePage({
   })
   const order = feeQuery.data?.order ?? null
 
-  const isQualifyingFinalRuntime = runtimeFormat === "QUALIFYING_FINAL"
-  const { final: finalPhaseMatches } = useMemo(
-    () => splitMatchesByPhase(matches),
-    [matches],
-  )
   const selectedMatchIsKnockout =
     isKnockoutRuntime ||
     (isQualifyingFinalRuntime &&
@@ -260,6 +257,31 @@ export function ProviderContestWorkspacePage({
       setStagedHistory([])
     })
   }, [contestId])
+
+  // Sơ đồ knockout và Grand Prix phải luôn nhận đủ trận. Nếu URL còn bộ lọc
+  // từ thể thức dạng danh sách, xoá chúng ngay để không làm khuyết cây/standings.
+  useEffect(() => {
+    if (
+      section !== "bracket" ||
+      !isBracketRuntime ||
+      (!matchStatus && !participantQuery && !roundNo)
+    ) {
+      return
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete("matchStatus")
+    next.delete("participantQuery")
+    next.delete("roundNo")
+    setSearchParams(next, { replace: true })
+  }, [
+    isBracketRuntime,
+    matchStatus,
+    participantQuery,
+    roundNo,
+    searchParams,
+    section,
+    setSearchParams,
+  ])
 
   const handleAuditPageChange = (nextPage: number) => {
     updateWorkspaceSearchParams(searchParams, setSearchParams, {
@@ -648,7 +670,7 @@ export function ProviderContestWorkspacePage({
         <div className="space-y-4">
           {/* Lọc bớt trận sẽ làm khuyết cây nhánh — sơ đồ chỉ đúng khi có đủ
               mọi trận. Các thể thức dạng danh sách thì vẫn cần lọc. */}
-          {isKnockoutRuntime ? null : (
+          {isBracketRuntime ? null : (
             <section className="grid gap-3 rounded-xl border border-[#e5e2e1] bg-white p-4 lg:grid-cols-3">
               <input
                 value={participantQuery}
@@ -723,9 +745,11 @@ export function ProviderContestWorkspacePage({
                 onSelectMatch={setSelectedMatchId}
                 runtime={workspace.runtime}
                 showGenerate
+                showMatchList={false}
               />
-              <ContestKnockoutBracket
-                matches={finalPhaseMatches}
+              <ContestGrandPrixFlow
+                contest={contest}
+                matches={matches}
                 selectedMatchId={selectedMatchId}
                 onSelectMatch={setSelectedMatchId}
                 canUndo={stagedHistory.length > 0}

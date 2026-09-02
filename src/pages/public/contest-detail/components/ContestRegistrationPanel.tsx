@@ -86,7 +86,7 @@ export function ContestRegistrationPanel({
   const rentalOptionsQuery = useQuery({
     queryKey: ["contests", "rental-options", contest.id],
     queryFn: () => contestApi.getContestRentalOptions(contest.id),
-    enabled: !byocOnly,
+    enabled: !byocOnly && role === "customer",
     staleTime: 60_000,
   })
   const rentalOptions = rentalOptionsQuery.data ?? null
