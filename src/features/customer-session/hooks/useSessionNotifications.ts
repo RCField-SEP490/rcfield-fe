@@ -69,6 +69,12 @@ export function useSessionNotifications(enabled = true): void {
       if (msg.event === "SESSION_CHECKIN_INSPECTION") {
         toast.success("Phiên chơi đã bắt đầu", {
           description: "Biên bản bàn giao xe đã sẵn sàng để bạn xem lại.",
+          action: bookingId
+            ? {
+                label: "Xem biên bản",
+                onClick: () => navigate(`/customer/bookings/${bookingId}?section=handover`),
+              }
+            : undefined,
         })
         return
       }
@@ -83,6 +89,12 @@ export function useSessionNotifications(enabled = true): void {
       if (msg.event === "SESSION_CHECKOUT_INSPECTION") {
         toast.info("Nhân viên vừa lập biên bản trả xe", {
           description: "Vui lòng kiểm tra biên bản và xác nhận tình trạng xe.",
+          action: bookingId
+            ? {
+                label: "Xem chi tiết",
+                onClick: () => navigate(`/customer/bookings/${bookingId}?section=handover`),
+              }
+            : undefined,
         })
         return
       }

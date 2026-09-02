@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
+import { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import {
   CheckCircle2,
   Copy,
   Clock,
-  ExternalLink,
   Loader2,
   X,
   ShieldCheck,
   Smartphone,
-  Sparkles,
+  RotateCcw,
 } from "lucide-react"
 import { toast } from "sonner"
 import type {
@@ -29,6 +28,7 @@ interface WalkInBankTransferModalProps {
   autoCheckIn: boolean
   onSuccess: (bookingId: string, autoCheckIn: boolean) => void
   onClose: () => void
+  onCancelAndChangeMethod?: (bookingId: string) => Promise<void>
 }
 
 function useCountdown(expiresAt: string): { minutes: number; seconds: number; isExpired: boolean } {
@@ -51,7 +51,7 @@ function useCountdown(expiresAt: string): { minutes: number; seconds: number; is
   return { minutes, seconds, isExpired: remaining <= 0 }
 }
 
-export const WalkInBankTransferModal: React.FC<WalkInBankTransferModalProps> = ({
+export function WalkInBankTransferModal({
   isOpen,
   bookingId,
   bookingCode,
@@ -59,12 +59,27 @@ export const WalkInBankTransferModal: React.FC<WalkInBankTransferModalProps> = (
   autoCheckIn,
   onSuccess,
   onClose,
-}) => {
+  onCancelAndChangeMethod,
+}: WalkInBankTransferModalProps) {
   const [isPaid, setIsPaid] = useState(false)
   const [isConfirming, setIsConfirming] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
   const { confirmWalkInBankTransfer } = useStaffOperations()
   const { minutes, seconds } = useCountdown(bankTransfer.expires_at)
   const hasTriggeredSuccess = useRef(false)
+
+  const handleCancelAndChange = async () => {
+    if (!onCancelAndChangeMethod) {
+      onClose()
+      return
+    }
+    try {
+      setIsCancelling(true)
+      await onCancelAndChangeMethod(bookingId)
+    } finally {
+      setIsCancelling(false)
+    }
+  }
 
   const handleSuccess = useCallback(() => {
     if (hasTriggeredSuccess.current) return
@@ -183,8 +198,10 @@ export const WalkInBankTransferModal: React.FC<WalkInBankTransferModalProps> = (
           </div>
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all cursor-pointer"
+            onClick={handleCancelAndChange}
+            disabled={isCancelling || isConfirming}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-all cursor-pointer disabled:opacity-50"
+            title="Đóng & Hủy giữ chỗ này"
           >
             <X className="size-5" />
           </button>
@@ -314,50 +331,47 @@ export const WalkInBankTransferModal: React.FC<WalkInBankTransferModalProps> = (
                 <span>Đang chờ khách quét mã và chuyển tiền...</span>
               </div>
 
-              {/* Sandbox Dev Mode Simulator Button */}
-              {bankTransfer.is_sandbox && bankTransfer.sandbox_url && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-blue-600" />
-                    <span className="text-[11px] font-semibold text-blue-900">
-                      Môi trường Thử nghiệm (Sandbox Bank)
-                    </span>
-                  </div>
-                  <a
-                    href={bankTransfer.sandbox_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1 text-[11px] font-bold text-white shadow-xs hover:bg-blue-700 transition-all cursor-pointer"
-                  >
-                    <span>Mô phỏng trả tiền</span>
-                    <ExternalLink className="size-3" />
-                  </a>
-                </div>
-              )}
-
               {/* Action Buttons */}
-              <div className="pt-2 flex flex-col-reverse sm:flex-row items-center gap-2.5 justify-between border-t border-slate-100">
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-2 justify-between border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="w-full sm:w-auto rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
+                  onClick={handleCancelAndChange}
+                  disabled={isCancelling || isConfirming}
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50/70 px-3.5 py-2.5 text-xs font-bold text-red-600 hover:bg-red-100/80 transition-all cursor-pointer disabled:opacity-50"
+                  title="Hủy giữ chỗ này để đổi sang tiền mặt hoặc chọn xe khác"
                 >
-                  Đóng & Chờ sau
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleManualConfirm}
-                  disabled={isConfirming}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {isConfirming ? (
+                  {isCancelling ? (
                     <Loader2 className="size-3.5 animate-spin" />
                   ) : (
-                    <ShieldCheck className="size-4" />
+                    <RotateCcw className="size-3.5" />
                   )}
-                  <span>Xác nhận đã nhận tiền vào tài khoản</span>
+                  <span>Hủy đơn & Đổi cách khác</span>
                 </button>
+
+                <div className="flex w-full sm:w-auto flex-col sm:flex-row items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    disabled={isCancelling || isConfirming}
+                    className="w-full sm:w-auto rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Đóng & Lưu chờ sau
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleManualConfirm}
+                    disabled={isConfirming || isCancelling}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isConfirming ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <ShieldCheck className="size-4" />
+                    )}
+                    <span>Xác nhận đã nhận tiền</span>
+                  </button>
+                </div>
               </div>
             </>
           )}

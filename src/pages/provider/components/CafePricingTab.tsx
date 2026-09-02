@@ -173,7 +173,7 @@ function SlotSettingsPanel({
   return (
     <Panel>
       <div className="flex items-center justify-between">
-        <PanelTitle title="Cài đặt slot" subtitle="Giá, thời lượng và thời gian đặt trước" />
+        <PanelTitle title="Cài đặt slot" subtitle="Giá và thời gian đặt trước" />
         {!isEditing && (
           <Button
             size="sm"
@@ -190,13 +190,12 @@ function SlotSettingsPanel({
       {!isEditing ? (
         <div className="mt-3 space-y-2">
           <SlotInfoRow label="Phí slot" value={`${slotFee.toLocaleString("vi-VN")}đ / slot`} />
-          <SlotInfoRow label="Thời lượng slot" value={`${slotDuration} phút`} />
           <SlotInfoRow label="Đặt trước tối thiểu" value={`${bookingNotice} phút`} />
           <SlotInfoRow label="Đặt trước tối đa" value={`${maxAdvanceBookingDays} ngày`} />
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <Label className="text-xs text-[#5c5a5a]">Phí slot (VNĐ)</Label>
               <Input
@@ -207,17 +206,6 @@ function SlotSettingsPanel({
                   const digits = e.target.value.replace(/\D/g, "")
                   setSlotFee(digits === "" ? 0 : Number(digits))
                 }}
-                className="rounded-lg border-[#c4c7c8]"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-[#5c5a5a]">Thời lượng slot (phút)</Label>
-              <Input
-                type="number"
-                min={1}
-                max={1440}
-                value={slotDuration}
-                onChange={(e) => setSlotDuration(Number(e.target.value) || 60)}
                 className="rounded-lg border-[#c4c7c8]"
               />
             </div>

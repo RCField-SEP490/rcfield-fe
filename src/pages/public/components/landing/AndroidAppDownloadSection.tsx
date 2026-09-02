@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/button"
 import { fadeUpItem, landingViewport, staggerContainer } from "./landing-motion"
 
 export const ANDROID_APK_URL =
-  "https://expo.dev/artifacts/eas/3DP15ELBbs7m-EHYNxAMGlALX2d7QWW2Caz4KLMBswo.apk"
+  "https://expo.dev/artifacts/eas/0YSsMEBiyX4FohWjob7K6wpNXQqXft606EXQLpSyAVc.apk"
 
 export function AndroidAppDownloadSection() {
   const prefersReducedMotion = useReducedMotion()
@@ -30,8 +30,8 @@ export function AndroidAppDownloadSection() {
               <span>RCField App Mobile for Android</span>
             </div>
 
-            <h2 className="text-4xl font-black tracking-tight text-white md:text-5xl lg:leading-[1.1]">
-              Trải nghiệm RCField mượt mà hơn trên <span className="text-orange-500">Ứng dụng Android</span>
+            <h2 className="text-4xl font-black tracking-tight text-white md:text-4xl lg:leading-[1.1]">
+              Trải nghiệm RCField mượt mà hơn trên <span className="text-orange-400">Ứng dụng Android</span>
             </h2>
 
             <p className="max-w-xl text-base font-medium leading-relaxed text-slate-300 md:text-lg">
@@ -78,9 +78,11 @@ export function AndroidAppDownloadSection() {
             <div className="relative mx-auto max-w-md rounded-[32px] border border-white/15 bg-gradient-to-b from-white/10 to-white/5 p-8 shadow-2xl backdrop-blur-xl">
               <div className="flex items-center justify-between border-b border-white/10 pb-6">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-600 text-white font-black text-xl shadow-md">
-                    RC
-                  </div>
+                  <img
+                    src="/brand/rcfield-logo.png"
+                    alt="RCField Logo"
+                    className="h-12 w-12 rounded-2xl border border-white/10 bg-white object-contain p-1 shadow-md"
+                  />
                   <div>
                     <h3 className="text-lg font-black text-white">RCField Mobile</h3>
                     <p className="text-xs text-slate-400 font-medium">Bản Android APK chính thức</p>

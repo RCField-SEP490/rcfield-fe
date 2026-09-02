@@ -1,3 +1,4 @@
+import type { ComponentType } from "react"
 import type { Cafe } from "@/shared/data/explore-data"
 
 export type HowItWorksStep = {
@@ -5,6 +6,7 @@ export type HowItWorksStep = {
   eyebrow: string
   title: string
   description: string
+  icon?: ComponentType<{ className?: string }>
 }
 
 export type HeroVenueCardViewModel = {
