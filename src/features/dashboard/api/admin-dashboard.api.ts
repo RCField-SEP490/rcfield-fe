@@ -8,7 +8,8 @@ export interface AdminKpiItem {
 export interface AdminKpi {
   totalCafes: AdminKpiItem
   totalUsers: AdminKpiItem
-  monthlyRevenue: AdminKpiItem
+  totalRevenue?: AdminKpiItem
+  monthlyRevenue?: AdminKpiItem
   activeSessions: AdminKpiItem
 }
 
@@ -42,13 +43,14 @@ export interface AdminDashboardSummary {
   kpi: AdminKpi
   cafeGrowth: CafeGrowthItem[]
   revenueByPlan: SaaSRevenueItem[]
+  revenueByContestPlan: SaaSRevenueItem[]
   activeSessionsTrend: ActiveSessionsTrendItem[]
   recentCafes: RecentCafeItem[]
 }
 
 export const adminDashboardApi = {
-  getSummary: async (): Promise<AdminDashboardSummary> => {
-    const res = await api.get<{ success: boolean; data: AdminDashboardSummary }>("/v1/admin/dashboard/summary")
+  getSummary: async (params?: { period?: string; from?: string; to?: string }): Promise<AdminDashboardSummary> => {
+    const res = await api.get<{ success: boolean; data: AdminDashboardSummary }>("/v1/admin/dashboard/summary", { params })
     return res.data.data
   },
 }

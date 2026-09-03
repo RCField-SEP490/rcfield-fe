@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
 import { adminDashboardApi } from "../api/admin-dashboard.api"
 
-export function useAdminDashboard() {
+export function useAdminDashboard(params?: { period?: string; from?: string; to?: string }) {
   const query = useQuery({
-    queryKey: ["admin-dashboard", "summary"],
-    queryFn: () => adminDashboardApi.getSummary(),
+    queryKey: ["admin-dashboard", "summary", params],
+    queryFn: () => adminDashboardApi.getSummary(params),
     staleTime: 30000,
-    // Tránh polling liên tục để tiết kiệm tài nguyên, cập nhật khi F5 hoặc chuyển màn
   })
 
   return {
