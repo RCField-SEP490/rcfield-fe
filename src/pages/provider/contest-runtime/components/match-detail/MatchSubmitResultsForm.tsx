@@ -23,6 +23,7 @@ export function MatchSubmitResultsForm({
   results,
   participantMap,
   onUpdateResult,
+  showTimingFields,
 }: {
   results: MatchResultDraft[]
   participantMap: Map<string, ContestMatchParticipant>
@@ -31,6 +32,15 @@ export function MatchSubmitResultsForm({
     field: EditableResultField,
     value: number | string | boolean | null,
   ) => void
+  /**
+   * Có hiện hai ô lap và tổng thời gian không.
+   *
+   * Chỉ trận tính giờ mới dùng tới. Ở đấu loại trực tiếp, kết quả là ai thắng —
+   * `KnockoutEngine.buildResultSummary` chỉ đọc `isWinner`, và bảng xếp hạng xếp
+   * theo vòng đi được chứ không theo thời gian. Bày hai ô đó ra khiến người nhập
+   * tưởng phải có số mới lưu được.
+   */
+  showTimingFields: boolean
 }) {
   return (
     <section>
@@ -95,6 +105,7 @@ export function MatchSubmitResultsForm({
                   }
                 />
               </MatchDetailField>
+              {showTimingFields && (
               <MatchDetailField label="Lap tốt nhất (giây)">
                 <Input
                   type="number"
@@ -109,6 +120,8 @@ export function MatchSubmitResultsForm({
                   }
                 />
               </MatchDetailField>
+              )}
+              {showTimingFields && (
               <MatchDetailField label="Tổng thời gian (giây)">
                 <Input
                   type="number"
@@ -123,6 +136,7 @@ export function MatchSubmitResultsForm({
                   }
                 />
               </MatchDetailField>
+              )}
             </div>
             <div className="mt-3 grid gap-3 md:grid-cols-[180px_minmax(0,1fr)]">
               <MatchDetailField label="Trạng thái người chơi">
@@ -182,10 +196,12 @@ export function MatchSubmitResultsForm({
               />
               Đánh dấu người thắng
             </label>
+            {showTimingFields && (
             <div className="mt-2 text-xs font-semibold text-[#747878]">
               Lap tốt nhất: {formatDurationSeconds(result.best_lap_seconds)} ·
               Tổng thời gian: {formatDurationSeconds(result.total_time_seconds)}
             </div>
+            )}
           </div>
         ))}
       </div>

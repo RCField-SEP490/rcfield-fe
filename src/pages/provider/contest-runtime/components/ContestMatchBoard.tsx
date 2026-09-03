@@ -23,6 +23,7 @@ import {
 } from "@/features/contests/lib/contest-runtime"
 import {
   getContestDrawAvailability,
+  getParticipantAnomalyBadge,
   getMatchStatusClass,
   getMatchStatusLabel,
   getMatchTypeLabel,
@@ -834,6 +835,20 @@ function MatchCard({
               label={participant.registration?.driver_title_label}
               className="px-2 py-0 text-[10px]"
             />
+            {/* Vắng mặt / bỏ cuộc / bị loại — cùng nhãn với sơ đồ đấu, để hai
+                màn hình không kể hai câu chuyện khác nhau về cùng một trận. */}
+            {(() => {
+              const anomaly = getParticipantAnomalyBadge(participant.status)
+              if (!anomaly) return null
+              return (
+                <span
+                  title={anomaly.full}
+                  className={`rounded-full border px-1.5 py-0 text-[10px] font-bold ${anomaly.className}`}
+                >
+                  {anomaly.short}
+                </span>
+              )
+            })()}
           </div>
         ))}
       </div>

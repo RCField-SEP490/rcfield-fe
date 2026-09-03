@@ -569,9 +569,23 @@ export function CustomerContestRegistrationsPage() {
                             label="Người thi đấu"
                             value={getRegistrationDisplayName(registration)}
                           />
+                          {/*
+                            Ô chữ này dùng CHUNG điều kiện với ảnh QR ngay bên
+                            cạnh. Trước đây chỉ ảnh QR bị khoá, còn dãy mã vẫn in
+                            ra — mà nhân viên tại quầy gõ tay được dãy mã đó, nên
+                            khoá ảnh mà để lộ chữ thì chẳng khoá gì cả.
+
+                            Chưa dùng được thì nói ra ĐIỀU KIỆN, đừng in "--".
+                            Dấu gạch đọc ra như lỗi tải dữ liệu; câu bên dưới nói
+                            đúng việc khách cần làm.
+                          */}
                           <InfoTile
                             label="Mã check-in"
-                            value={registration.checkInCode ?? "--"}
+                            value={
+                              showQr
+                                ? (registration.checkInCode ?? "--")
+                                : "Có sau khi thanh toán"
+                            }
                           />
                           <InfoTile
                             label="Lịch thi đấu"

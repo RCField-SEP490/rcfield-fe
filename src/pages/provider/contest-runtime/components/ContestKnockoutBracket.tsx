@@ -6,6 +6,7 @@ import {
   getMatchParticipantName,
   groupMatchesByRound,
 } from "@/features/contests/lib/contest-runtime"
+import { getParticipantAnomalyBadge } from "@/features/contests/lib/contest-status"
 import type {
   ContestMatch,
   ContestMatchParticipant,
@@ -509,6 +510,26 @@ function ParticipantSlot({
         label={participant.registration?.driver_title_label}
         className="px-1 py-0 text-[9px]"
       />
+      {/*
+        Vắng mặt / bỏ cuộc / bị loại phải hiện ra ngay trên sơ đồ.
+
+        Không có nhãn này thì người bị xử thua vắng mặt trông y hệt người thua
+        trên sân, và nhìn vào sơ đồ không biết trận đó có diễn ra hay không —
+        thông tin đó cần cho cả ban tổ chức lẫn người khiếu nại.
+      */}
+      {(() => {
+        const anomaly = getParticipantAnomalyBadge(participant.status)
+        if (!anomaly) return null
+        return (
+          <Badge
+            variant="outline"
+            title={anomaly.full}
+            className={`shrink-0 px-1 text-[9px] font-bold ${anomaly.className}`}
+          >
+            {anomaly.short}
+          </Badge>
+        )
+      })()}
       {participant.is_winner ? (
         <Badge
           variant="outline"

@@ -94,6 +94,9 @@ export function MatchResultEntry({
       results={results}
       participantMap={participantMap}
       onUpdateResult={onUpdateResult}
+      // Trận đấu loại chỉ cần biết ai thắng — backend không đọc lap hay tổng
+      // thời gian của loại trận này ở bất kỳ đâu.
+      showTimingFields={match.match_type === "TIME_ATTACK"}
     />
   )
 }

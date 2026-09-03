@@ -30,7 +30,9 @@ const BENEFITS = [
   {
     icon: KeyRound,
     title: "Mã check-in riêng",
-    body: "Đăng ký xong bạn nhận ngay mã điểm danh, tới nơi chỉ cần đọc mã cho nhân viên.",
+    // "Đăng ký xong nhận ngay" là sai với giải có thu lệ phí: mã chỉ cấp sau
+    // khi trả tiền, và backend cũng chặn điểm danh khi lệ phí chưa ngã ngũ.
+    body: "Thanh toán xong bạn nhận mã điểm danh, tới nơi chỉ cần đọc mã cho nhân viên.",
   },
 ]
 
