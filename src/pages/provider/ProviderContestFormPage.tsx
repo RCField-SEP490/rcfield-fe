@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { ArrowLeft, ArrowRight, PlayCircle, Save } from "lucide-react"
+import { ArrowLeft, ArrowRight, Check, PlayCircle, Save } from "lucide-react"
 import { useNavigate } from "react-router"
 
 import { routePaths } from "@/app/router/route-paths"
@@ -7,6 +7,7 @@ import { ProviderPageHeader } from "@/pages/provider/components/ProviderPrimitiv
 import { ProviderShell } from "@/pages/provider/components/ProviderShell"
 import { Button } from "@/shared/ui/button"
 import { getContestWorkspacePath } from "./contest-runtime/contest-workspace"
+import { ContestFeePanel } from "./contest-runtime/components/ContestFeePanel"
 import { ContestRuntimePanel } from "./contest-form/ContestRuntimePanel"
 import { ContestWizardNav } from "./contest-form/ContestWizardNav"
 import {
@@ -31,6 +32,7 @@ export function ProviderContestFormPage() {
   const {
     contestId,
     isEdit,
+    createdContest,
     form,
     setForm,
     validationErrors,
@@ -152,6 +154,63 @@ export function ProviderContestFormPage() {
     selectedTemplate,
     trackTypesQuery.data,
   ])
+
+  // 5 bước đã xong, giải vừa tạo — nối tiếp luôn màn thanh toán tại đây thay
+  // vì điều hướng đi nơi khác, để "trả phí" đọc như bước cuối của cùng một
+  // luồng chứ không phải một việc rời rạc phải tự mò vào lại mới thấy.
+  if (createdContest) {
+    return (
+      <ProviderShell>
+        <ProviderPageHeader
+          title="Tạo giải đấu"
+          description="Đi lần lượt từng bước — mỗi bước chỉ hỏi những gì cần cho bước tiếp theo."
+        />
+
+        <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4 shadow-sm">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <Check className="size-4" />
+          </span>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-orange-600">
+              Bước 6/6
+            </p>
+            <h2 className="text-lg font-black tracking-tight text-[#1c1b1b]">
+              Đã tạo "{createdContest.name}" — còn bước trả phí tổ chức
+            </h2>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <ContestFeePanel contest={createdContest} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-3 rounded-xl border border-[#c4c7c8] bg-white px-5 py-4 shadow-sm">
+          <p className="mr-auto text-xs font-semibold text-[#747878]">
+            Chưa trả phí thì giải vẫn ở dạng nháp — bạn trả sau ở đây cũng
+            được, không mất gì đã điền.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 gap-2 rounded-lg border-[#c4c7c8] bg-white text-[#1c1b1b] hover:bg-[#f6f3f2]"
+            onClick={() => navigate(routePaths.providerContests)}
+          >
+            Để sau, về danh sách giải
+          </Button>
+          <Button
+            type="button"
+            className="h-10 gap-2 rounded-lg bg-orange-600 px-5 font-bold text-white hover:bg-orange-700"
+            onClick={() =>
+              navigate(getContestWorkspacePath(createdContest.id, "overview"))
+            }
+          >
+            Vào trang quản lý giải
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      </ProviderShell>
+    )
+  }
 
   return (
     <ProviderShell>
@@ -283,12 +342,16 @@ export function ProviderContestFormPage() {
               disabled={saveMutation.isPending}
               className="h-11 gap-2 rounded-lg bg-orange-600 px-6 font-bold text-white hover:bg-orange-700"
             >
-              <Save className="size-4" />
+              {isEdit ? (
+                <Save className="size-4" />
+              ) : (
+                <ArrowRight className="size-4" />
+              )}
               {saveMutation.isPending
                 ? "Đang lưu..."
                 : isEdit
                   ? "Lưu thay đổi"
-                  : "Tạo giải đấu"}
+                  : "Tiếp tục thanh toán"}
             </Button>
           ) : (
             <Button

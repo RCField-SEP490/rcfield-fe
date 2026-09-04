@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { toast } from "sonner"
 import { contestApi } from "@/features/contests/api/contest.api"
 import type { ContestRegistration } from "@/features/contests/types"
 import {
@@ -12,33 +11,11 @@ import {
   getPaymentStatusLabel,
   getRegistrationStatusLabel,
 } from "@/features/contests/lib/contest-status"
-import { uploadImage } from "@/features/uploads/api/upload.api"
 import {
   StaffBadge,
   StaffButton,
   StaffCard,
 } from "@/pages/staff/components/StaffUI"
-
-type ByocInspectionPhoto = { url: string; angle?: string; notes?: string }
-type ByocPhotoSlot = ByocInspectionPhoto & { uploading?: boolean }
-type ByocInspectionChecklistItem = {
-  itemKey: string
-  itemLabel: string
-  status?: "OK" | "NOT_OK" | "NA"
-  note?: string
-}
-
-function defaultByocChecklist(): ByocInspectionChecklistItem[] {
-  return [
-    { itemKey: "body", itemLabel: "Thân xe / vỏ xe", status: "OK" },
-    {
-      itemKey: "power_system",
-      itemLabel: "Hệ thống nguồn / pin / motor",
-      status: "OK",
-    },
-    { itemKey: "wheels", itemLabel: "Bánh xe / lốp / trục bánh", status: "OK" },
-  ]
-}
 
 export function ContestCheckInResultCard({
   registration,
@@ -49,28 +26,19 @@ export function ContestCheckInResultCard({
   onCheckIn: (payload: {
     rentalVehicleId?: string
     byocConfirmed?: boolean
-    byocInspection?: {
-      photos: ByocInspectionPhoto[]
-      checklist: ByocInspectionChecklistItem[]
-    }
   }) => void
   isPending?: boolean
 }) {
   const [rentalVehicleId, setRentalVehicleId] = useState<string | null>(null)
   const [byocConfirmed, setByocConfirmed] = useState(false)
-  const [byocPhotos, setByocPhotos] = useState<ByocPhotoSlot[]>([])
-  const [byocChecklist, setByocChecklist] =
-    useState<ByocInspectionChecklistItem[]>(defaultByocChecklist)
 
-  // Reset trạng thái kiểm tra khi tra cứu sang đăng ký khác để ảnh/checklist
-  // của người trước không bị rò rỉ sang người sau.
+  // Reset trạng thái xác nhận khi tra cứu sang đăng ký khác để lựa chọn của
+  // người trước không rò rỉ sang người sau.
   const registrationId = registration?.id
   useEffect(() => {
     queueMicrotask(() => {
       setRentalVehicleId(null)
       setByocConfirmed(false)
-      setByocPhotos([])
-      setByocChecklist(defaultByocChecklist())
     })
   }, [registrationId])
 
@@ -103,81 +71,17 @@ export function ContestCheckInResultCard({
   // đã khai hay không.
   const declaredPhotos = (byocDeclaration?.photos ?? []).filter(Boolean)
 
-  const requiredChecklistKeys = new Set(["body", "power_system", "wheels"])
-  const providedChecklistKeys = new Set(
-    byocChecklist.map((item) => item.itemKey),
-  )
-  const missingChecklistKeys = Array.from(requiredChecklistKeys).filter(
-    (key) => !providedChecklistKeys.has(key),
-  )
-
-  const validPhotoCount = byocPhotos.filter(
-    (photo) => photo.url.trim().length > 0 && !photo.uploading,
-  ).length
-  const anyUploading = byocPhotos.some((photo) => photo.uploading)
-  // BE từ chối check-in BYOC khi có hạng mục NOT_OK (CONTEST_BYOC_INSPECTION_FAILED).
-  const hasNotOkItem = byocChecklist.some((item) => item.status === "NOT_OK")
   const canCheckIn =
     (!needsHandover || Boolean(rentalVehicleId)) &&
-    (!isByoc ||
-      (byocConfirmed &&
-        validPhotoCount >= 2 &&
-        missingChecklistKeys.length === 0 &&
-        !anyUploading &&
-        !hasNotOkItem))
+    (!isByoc || byocConfirmed)
 
   const handleCheckIn = () => {
     if (!registration) return
     if (isByoc) {
-      onCheckIn({
-        byocConfirmed,
-        byocInspection: {
-          photos: byocPhotos
-            .filter((photo) => photo.url.trim().length > 0)
-            .map(({ url, angle, notes }) => ({ url, angle, notes })),
-          checklist: byocChecklist,
-        },
-      })
+      onCheckIn({ byocConfirmed })
     } else {
       onCheckIn(rentalVehicleId ? { rentalVehicleId } : {})
     }
-  }
-
-  const addPhoto = () => {
-    setByocPhotos((prev) => [...prev, { url: "" }])
-  }
-
-  const updatePhoto = (index: number, patch: Partial<ByocPhotoSlot>) => {
-    setByocPhotos((prev) =>
-      prev.map((p, i) => (i === index ? { ...p, ...patch } : p)),
-    )
-  }
-
-  const removePhoto = (index: number) => {
-    setByocPhotos((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const handlePhotoFile = async (index: number, file: File) => {
-    updatePhoto(index, { uploading: true })
-    try {
-      const uploaded = await uploadImage(file, "contest-checkin")
-      updatePhoto(index, { url: uploaded.url, uploading: false })
-    } catch (error) {
-      updatePhoto(index, { uploading: false })
-      toast.error("Không thể tải ảnh lên", {
-        description:
-          error instanceof Error ? error.message : "Vui lòng thử lại.",
-      })
-    }
-  }
-
-  const updateChecklistItem = (
-    index: number,
-    patch: Partial<ByocInspectionChecklistItem>,
-  ) => {
-    setByocChecklist((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, ...patch } : item)),
-    )
   }
 
   return (
@@ -305,118 +209,8 @@ export function ContestCheckInResultCard({
                     ) : (
                       <p className="text-xs font-semibold text-amber-800">
                         Khách không nộp ảnh nào lúc đăng ký — không có gì để đối
-                        chiếu. Chụp kỹ ở phần dưới và ghi rõ vào ghi chú nếu
-                        thấy bất thường.
+                        chiếu.
                       </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
-                      Checklist kiểm tra xe
-                    </h5>
-                    {byocChecklist.map((item, index) => (
-                      <div
-                        key={item.itemKey}
-                        className="flex items-start gap-2 text-sm text-amber-900"
-                      >
-                        <span className="font-semibold min-w-[140px]">
-                          {item.itemLabel}
-                        </span>
-                        <select
-                          className="rounded border border-amber-300 bg-white px-2 py-1 text-xs"
-                          value={item.status ?? "OK"}
-                          onChange={(e) =>
-                            updateChecklistItem(index, {
-                              status: e.target.value as "OK" | "NOT_OK" | "NA",
-                            })
-                          }
-                        >
-                          <option value="OK">Đạt</option>
-                          <option value="NOT_OK">Không đạt</option>
-                          <option value="NA">Không áp dụng</option>
-                        </select>
-                        <input
-                          type="text"
-                          placeholder="Ghi chú"
-                          className="flex-1 rounded border border-amber-300 bg-white px-2 py-1 text-xs"
-                          value={item.note ?? ""}
-                          onChange={(e) =>
-                            updateChecklistItem(index, { note: e.target.value })
-                          }
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-xs font-extrabold text-amber-900 uppercase tracking-wide">
-                        Ảnh kiểm tra xe (tối thiểu 2 ảnh)
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={addPhoto}
-                        className="text-xs font-bold text-amber-800 hover:text-amber-950"
-                      >
-                        + Thêm ảnh
-                      </button>
-                    </div>
-                    {byocPhotos.length === 0 ? (
-                      <p className="text-xs text-amber-700">Chưa có ảnh nào.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {byocPhotos.map((photo, index) => (
-                          <div key={index} className="flex items-start gap-2">
-                            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-amber-300 bg-white">
-                              {photo.uploading ? (
-                                <span className="text-[10px] font-bold text-amber-700">
-                                  Đang tải...
-                                </span>
-                              ) : photo.url ? (
-                                <img
-                                  src={photo.url}
-                                  alt={`Ảnh kiểm tra ${index + 1}`}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-[10px] font-bold text-amber-500">
-                                  Chưa có
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                disabled={photo.uploading}
-                                className="w-full rounded border border-amber-300 bg-white px-2 py-1 text-xs file:mr-2 file:rounded file:border-0 file:bg-amber-100 file:px-2 file:py-0.5 file:text-xs file:font-bold file:text-amber-800"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0]
-                                  if (file) void handlePhotoFile(index, file)
-                                }}
-                              />
-                              <input
-                                type="text"
-                                placeholder="Góc chụp"
-                                className="w-full rounded border border-amber-300 bg-white px-2 py-1 text-xs"
-                                value={photo.angle ?? ""}
-                                onChange={(e) =>
-                                  updatePhoto(index, { angle: e.target.value })
-                                }
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removePhoto(index)}
-                              disabled={photo.uploading}
-                              className="text-xs font-bold text-red-600 hover:text-red-800 disabled:opacity-50"
-                            >
-                              Xóa
-                            </button>
-                          </div>
-                        ))}
-                      </div>
                     )}
                   </div>
 
@@ -433,16 +227,9 @@ export function ContestCheckInResultCard({
                     </span>
                   </label>
 
-                  {hasNotOkItem ? (
-                    <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
-                      Xe không đạt hạng mục kiểm tra — không thể điểm danh
-                    </p>
-                  ) : null}
-
-                  {isByoc && !canCheckIn && !hasNotOkItem ? (
+                  {isByoc && !canCheckIn ? (
                     <p className="text-xs text-amber-700">
-                      Vui lòng hoàn tất checklist, tải lên ít nhất 2 ảnh (chờ
-                      tải xong), và xác nhận xe đạt chuẩn trước khi điểm danh.
+                      Cần tick xác nhận xe đạt chuẩn trước khi điểm danh.
                     </p>
                   ) : null}
                 </div>
@@ -489,7 +276,7 @@ export function ContestCheckInResultCard({
 
               <StaffButton
                 onClick={handleCheckIn}
-                disabled={isPending || !canCheckIn || anyUploading}
+                disabled={isPending || !canCheckIn}
               >
                 {isPending ? "Đang điểm danh..." : "Xác nhận điểm danh"}
               </StaffButton>

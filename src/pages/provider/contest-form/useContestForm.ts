@@ -16,8 +16,7 @@ import {
   contestQueryKeys,
 } from "@/features/contests/api/contest.api"
 import { contestUpsertSchema } from "@/features/contests/schemas/contest.schema"
-import { getContestWorkspacePath } from "@/pages/provider/contest-runtime/contest-workspace"
-import type { ContestUpsertBody } from "@/features/contests/types"
+import type { ContestItem, ContestUpsertBody } from "@/features/contests/types"
 import {
   buildResourceLocks,
   getErrorMessage,
@@ -87,6 +86,12 @@ export function useContestForm() {
   >({})
   const [resourceLocks, setResourceLocks] = useState<ResourceLockState>({})
   const [extraConfig, setExtraConfig] = useState<Record<string, unknown>>({})
+  // Giải vừa tạo xong (chỉ ở luồng tạo mới) — có giá trị nghĩa là 5 bước đã
+  // xong, hiện màn thanh toán ngay tại trang này thay vì điều hướng đi luôn.
+  // `createContest` đã trả về nguyên object giải nên không cần fetch lại.
+  const [createdContest, setCreatedContest] = useState<ContestItem | null>(
+    null,
+  )
 
   // Bước đang xem và bước xa nhất đã mở khoá. Ở chế độ sửa, dữ liệu đã đầy đủ
   // nên mở hết ngay từ đầu — bắt provider đi lại từ bước 1 chỉ để đổi lệ phí là vô lý.
@@ -487,16 +492,24 @@ export function useContestForm() {
 
       // Gói đã chọn ở màn giới thiệu được đặt luôn thành đơn phí, để provider
       // không phải chọn lại lần hai. Đặt đơn hỏng thì giải vẫn tạo xong — họ
-      // chọn lại được ở màn vận hành, không mất công điền năm bước.
+      // chọn lại được ngay ở màn thanh toán bên dưới, không mất công điền năm bước.
       if (!isEdit && selectedFeePlanId && saved?.id) {
         try {
           await contestApi.createContestFeeOrder(saved.id, selectedFeePlanId)
         } catch (error) {
           toast.warning("Chưa đặt được gói tổ chức", {
-            description: `${getErrorMessage(error)} Bạn chọn lại gói ở màn giải đấu.`,
+            description: `${getErrorMessage(error)} Bạn chọn lại gói ở bước này.`,
           })
         }
-        navigate(getContestWorkspacePath(saved.id, "overview"))
+      }
+
+      // Tạo mới xong thì ở lại ngay trang này, hiện màn thanh toán tiếp nối —
+      // không điều hướng đi đâu cả. Trước đây redirect thẳng ra danh sách
+      // (hoặc màn vận hành nếu có sẵn `?plan=`), khiến việc trả phí trở thành
+      // một việc rời rạc phải tự mò vào lại mới thấy.
+      if (!isEdit && saved?.id) {
+        setCreatedContest(saved)
+        window.scrollTo({ top: 0, behavior: "smooth" })
         return
       }
       navigate(routePaths.providerContests)
@@ -510,6 +523,7 @@ export function useContestForm() {
   return {
     contestId,
     isEdit,
+    createdContest,
     form,
     setForm,
     validationErrors,

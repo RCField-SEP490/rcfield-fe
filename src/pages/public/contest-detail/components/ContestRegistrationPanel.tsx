@@ -258,10 +258,16 @@ export function ContestRegistrationPanel({
     ? new Date(existingRegistration.entryFeeHoldExpiresAt).getTime() <= now
     : false
 
+  // Đã huỷ thì đã huỷ, bất kể có từng trả tiền hay chưa — Từ chối/Huỷ/Loại
+  // khỏi giải đều set status=CANCELLED sau khi khách đã thanh toán xong, và
+  // paymentStatus vẫn giữ nguyên MARKED_PAID (không có gì tự động reset về
+  // chưa trả). Trước đây gác thêm `!isPaid` ở đây khiến ca đã trả tiền rồi bị
+  // từ chối rơi vào nhánh "vẫn còn đăng ký", ẩn mất form đăng ký lại.
   const isCancelled =
-    !isPaid &&
-    (existingRegistration?.status === "CANCELLED" ||
-      (existingRegistration?.paymentStatus === "PENDING_PAYMENT" && isHoldExpired))
+    existingRegistration?.status === "CANCELLED" ||
+    (!isPaid &&
+      existingRegistration?.paymentStatus === "PENDING_PAYMENT" &&
+      isHoldExpired)
 
   const activeRegistration =
     existingRegistration && !isCancelled ? existingRegistration : null
@@ -371,7 +377,11 @@ export function ContestRegistrationPanel({
           <div className="space-y-4">
             {isCancelled ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
-                Đơn đăng ký trước đó của bạn đã bị hủy (do hủy thanh toán hoặc quá hạn). Bạn có thể chọn xe và đăng ký lại từ đầu ngay bên dưới.
+                Đơn đăng ký trước đó của bạn đã bị hủy
+                {existingRegistration?.cancellationReason
+                  ? ` — Lý do: ${existingRegistration.cancellationReason}.`
+                  : " (do hủy thanh toán hoặc quá hạn)."}{" "}
+                Bạn có thể chọn xe và đăng ký lại từ đầu ngay bên dưới.
               </div>
             ) : null}
 

@@ -118,9 +118,12 @@ export function ContestMatchDetailPanel({
               onUpdateParticipant={updateParticipantValue}
               onSave={handleSaveParticipants}
             />
-          ) : (
+          ) : !readyForResultEntry ? (
+            // Đủ người rồi thì form "Ai thắng trận này?" bên dưới đã liệt kê
+            // đúng hai người này kèm email — lặp lại ở đây chỉ để xem vị trí/
+            // trạng thái, không thêm thông tin gì mới, chỉ tổ dài trang.
             <MatchParticipantView match={match} />
-          )}
+          ) : null}
 
           <MatchResultEntry
             match={match}

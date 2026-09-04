@@ -18,6 +18,7 @@ import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import type { useContestWorkspace } from "@/features/contests/hooks/useContestWorkspace"
+import { useAuthStore } from "@/features/auth/stores/auth.store"
 import { ContestRegistrationTable } from "./ContestRegistrationTable"
 import { ContestBanList } from "./registration/ContestBanList"
 import { RegistrationActionDialog } from "./registration/RegistrationActionDialog"
@@ -63,6 +64,11 @@ export function ContestRegistrationPanel({
   onChangeSelectedCafeId: (cafeId: string) => void
 }) {
   const [lookupCode, setLookupCode] = useState("")
+  // Điểm danh là việc của nhân viên đứng quầy. Provider quản lý tổng thể
+  // nhiều chi nhánh, admin xem để hỗ trợ/giám sát — cả hai đều không đứng
+  // quầy nên không cần nút thao tác trực tiếp này.
+  const role = useAuthStore((state) => state.role)
+  const canCheckInFromHere = role === "staff"
 
   const {
     search,
@@ -202,7 +208,11 @@ export function ContestRegistrationPanel({
         <ContestRegistrationTable
           registrations={filteredRegistrations}
           onAction={openDialog}
-          onCheckIn={(registration) => void handleCheckIn(registration)}
+          onCheckIn={
+            canCheckInFromHere
+              ? (registration) => void handleCheckIn(registration)
+              : undefined
+          }
           resolveCheckInBlock={(registration) =>
             contestCheckInBlock ?? getRowCheckInBlock(registration)
           }

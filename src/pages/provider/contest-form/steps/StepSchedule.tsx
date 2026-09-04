@@ -74,7 +74,9 @@ export function StepSchedule({
           <DateTimeField
             label="Mở đăng ký"
             value={form.registration_opens_at}
-            min={minMoment}
+            // Cho phép chọn quá khứ ngay cả lúc tạo mới — dùng để demo giải
+            // đã mở đăng ký sẵn. Backend cũng đã bỏ ràng buộc "phải ở tương
+            // lai" riêng cho mốc này (khác với "khởi tranh", vẫn phải tương lai).
             max={form.registration_closes_at || form.starts_at || undefined}
             onChange={setField("registration_opens_at")}
             error={errors.registration_opens_at}
