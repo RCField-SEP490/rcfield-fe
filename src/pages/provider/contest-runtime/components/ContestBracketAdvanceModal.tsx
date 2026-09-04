@@ -86,7 +86,17 @@ export function ContestBracketAdvanceModal({
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<string>("")
   const [status, setStatus] = useState<ContestParticipantStatus>("FINISHED")
   const [resultNote, setResultNote] = useState<string>("")
-  const [isWinner, setIsWinner] = useState<boolean>(true)
+  /*
+    Không còn ô chọn "ai là người thắng".
+
+    Hành động ở đây là KÉO NGƯỜI NÀY SANG VÒNG SAU — trong sơ đồ đấu loại, đó
+    chính là tuyên bố họ thắng trận nguồn. Hỏi lại bằng một ô tick là hỏi lại
+    đúng thứ vừa nói bằng thao tác kéo.
+
+    Tệ hơn, ô đó từng nằm BÊN TRONG khối "cập nhật nhanh kết quả" vốn mặc định
+    tắt — nên kéo thả bình thường thì trận nguồn không được ghi người thắng nào,
+    và bảng xếp hạng cuối giải thiếu dữ liệu mà không ai biết.
+  */
   const [quickUpdateResult, setQuickUpdateResult] = useState<boolean>(false)
 
   const formId = useId()
@@ -114,7 +124,6 @@ export function ContestBracketAdvanceModal({
       )
       setStatus(p.status ?? "FINISHED")
       setResultNote(p.result_note ?? "")
-      setIsWinner(p.is_winner ?? true)
       setQuickUpdateResult(false)
     }
   }
@@ -122,6 +131,23 @@ export function ContestBracketAdvanceModal({
   if (!payload) return null
 
   const { sourceMatch, targetMatch, participant } = payload
+  /*
+    Trận này có tính giờ không.
+
+    Đấu loại trực tiếp chỉ quan tâm AI THẮNG. `KnockoutEngine.buildResultSummary`
+    ở backend chỉ đọc đúng `isWinner`; lap và tổng thời gian không được đọc ở
+    đâu cả, và bảng xếp hạng đấu loại xếp theo vòng đi được với số trận thắng
+    thật, không theo thời gian.
+
+    Nên với trận đấu loại, hai ô thời gian là chỗ để gõ vào rồi không ai dùng —
+    tệ hơn là nó khiến người nhập tưởng phải có số mới lưu được kết quả.
+
+    Suy từ chính trận đấu (`match_type`) chứ không truyền thêm thể thức từ ngoài
+    vào: một giải Grand Prix có CẢ hai loại trận, nên cờ theo giải sẽ sai ở một
+    nửa số trận.
+  */
+  const laTranTinhGio = sourceMatch.match_type === "TIME_ATTACK"
+
   const participantName = getMatchParticipantName(participant)
   const participantSubtitle = getMatchParticipantSubtitle(participant)
 
@@ -131,17 +157,22 @@ export function ContestBracketAdvanceModal({
       sourceMatchId: sourceMatch.id,
       targetMatchId: targetMatch.id,
       registrationId: participant.registration_id,
-      submitResult: quickUpdateResult
-        ? {
-            finishPosition: parseNumberInput(finishPosition),
-            score: parseNumberInput(score),
-            bestLapSeconds: parseNumberInput(bestLapSeconds),
-            totalTimeSeconds: parseNumberInput(totalTimeSeconds),
-            status,
-            isWinner,
-            resultNote: resultNote || null,
-          }
-        : undefined,
+      // Luôn ghi người thắng. Chỉ phần THÀNH TÍCH (lap, điểm, ghi chú) mới phụ
+      // thuộc vào ô "nhập thêm thành tích" — không nhập thì giữ nguyên số cũ
+      // chứ không ghi đè bằng rỗng.
+      submitResult: {
+        isWinner: true,
+        ...(quickUpdateResult
+          ? {
+              finishPosition: parseNumberInput(finishPosition),
+              score: parseNumberInput(score),
+              bestLapSeconds: parseNumberInput(bestLapSeconds),
+              totalTimeSeconds: parseNumberInput(totalTimeSeconds),
+              status,
+              resultNote: resultNote || null,
+            }
+          : {}),
+      },
     })
     onClose()
   }
@@ -203,7 +234,19 @@ export function ContestBracketAdvanceModal({
             </div>
           </div>
 
-          {/* Option: Nhập/cập nhật nhanh kết quả cho trận nguồn */}
+          {/*
+            Nói thẳng thứ sắp được ghi, thay vì bắt người dùng tick để khẳng
+            định lại điều họ vừa làm bằng thao tác kéo.
+          */}
+          <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-sm font-semibold text-emerald-900">
+            <Trophy className="size-4 shrink-0 text-emerald-600 mt-0.5" />
+            <span>
+              {participantName} được ghi nhận <b>thắng</b>{" "}
+              {formatMatchLabel(sourceMatch)}, đối thủ ghi nhận thua.
+            </span>
+          </div>
+
+          {/* Tuỳ chọn: nhập thêm thành tích chi tiết cho trận nguồn */}
           <div className="space-y-4">
             <label className="flex items-center gap-3 cursor-pointer text-sm font-bold text-[#1c1b1b] rounded-xl border border-[#e5e2e1] bg-[#fcf8f8] p-3.5 transition-colors hover:bg-[#f6f3f2]">
               <input
@@ -213,8 +256,9 @@ export function ContestBracketAdvanceModal({
                 className="size-4 rounded border-[#c4c7c8] text-orange-600 focus:ring-orange-500"
               />
               <span>
-                Cập nhật nhanh kết quả trận nguồn (
-                {formatMatchLabel(sourceMatch)})
+                {laTranTinhGio
+                  ? "Nhập thêm thành tích (lap, điểm, ghi chú) — không bắt buộc"
+                  : "Ghi thêm chi tiết trận (trạng thái, ghi chú) — không bắt buộc"}
               </span>
             </label>
 
@@ -229,6 +273,9 @@ export function ContestBracketAdvanceModal({
                   />
                 </div>
 
+                {/* Bốn ô số chỉ có nghĩa ở trận tính giờ. Trận đấu loại thì
+                    thắng thua đã quyết bằng thao tác kéo, không có gì để đo. */}
+                {laTranTinhGio && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="space-y-1.5">
                     <Label
@@ -305,6 +352,7 @@ export function ContestBracketAdvanceModal({
                     />
                   </div>
                 </div>
+                )}
 
                 <div className="grid gap-4 sm:grid-cols-[220px_minmax(0,1fr)]">
                   <div className="space-y-1.5">
@@ -349,18 +397,10 @@ export function ContestBracketAdvanceModal({
                   </div>
                 </div>
 
-                <label className="flex items-center gap-3 text-sm font-semibold text-[#1c1b1b] pt-1">
-                  <input
-                    type="checkbox"
-                    checked={isWinner}
-                    onChange={(e) => setIsWinner(e.target.checked)}
-                    className="size-4 rounded border-[#c4c7c8] text-orange-600 focus:ring-orange-500"
-                  />
-                  <Trophy className="size-4 text-emerald-600" />
-                  Đánh dấu là người thắng trận nguồn
-                </label>
-
-                <div className="text-xs font-semibold text-[#747878]">
+                <div
+                  className="text-xs font-semibold text-[#747878]"
+                  hidden={!laTranTinhGio}
+                >
                   Lap tốt nhất:{" "}
                   {formatDurationSeconds(parseNumberInput(bestLapSeconds))} ·
                   Tổng thời gian:{" "}

@@ -342,16 +342,26 @@ export function ProviderContestWorkspacePage({
         const derivedFinishPosition =
           submitResult.finishPosition ?? (submitResult.isWinner ? 1 : 2)
         const derivedStatus = submitResult.status ?? "FINISHED"
+        /*
+          Không nhập thành tích thì GIỮ NGUYÊN số cũ, đừng ghi đè bằng rỗng.
+
+          Hộp thoại giờ luôn gửi kết quả (để ghi người thắng), còn phần lap và
+          điểm chỉ có khi người dùng mở ô "nhập thêm thành tích". Nếu ở đây vẫn
+          quy về `null` thì mỗi lần kéo thả lại xoá sạch thành tích đã nhập ở
+          màn nhập kết quả trước đó.
+        */
         const updatedResults = [
           {
             registration_id: registrationId,
-            score: submitResult.score ?? 10,
-            best_lap_seconds: submitResult.bestLapSeconds ?? null,
-            total_time_seconds: submitResult.totalTimeSeconds ?? null,
+            score: submitResult.score ?? participant.score ?? 10,
+            best_lap_seconds:
+              submitResult.bestLapSeconds ?? participant.best_lap_seconds ?? null,
+            total_time_seconds:
+              submitResult.totalTimeSeconds ?? participant.total_time_seconds ?? null,
             is_winner: submitResult.isWinner ?? true,
             finish_position: derivedFinishPosition,
             status: derivedStatus,
-            result_note: submitResult.resultNote ?? null,
+            result_note: submitResult.resultNote ?? participant.result_note ?? null,
           },
         ]
         if (otherParticipant) {

@@ -31,6 +31,7 @@ import {
   CreditCard,
   Zap,
   Smartphone,
+  MessageCircle,
   AlertCircle,
   Camera,
 } from "lucide-react"
@@ -1487,17 +1488,46 @@ export default function StaffTodayBookingsPage() {
                         <StaffBadge variant={badgeVariant}>
                           {displayLabel}
                         </StaffBadge>
-                        {isWalkIn ? (
-                          <span className="flex items-center gap-1 rounded-full border border-orange-300 bg-[#fff7ed] px-2.5 py-0.5 text-[10px] font-black text-[#ea580c] shadow-2xs">
-                            <Zap className="size-3 fill-current" />
-                            Vãng lai (Tại quầy)
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700">
-                            <Smartphone className="size-3" />
-                            Đặt qua Web/App
-                          </span>
-                        )}
+                        {/*
+                          Nhãn kênh đặt phải kể ĐỦ các kênh, không phải "vãng
+                          lai hay không".
+
+                          Nhánh cũ chỉ có hai lựa chọn, nên mọi đơn không phải
+                          khách vãng lai đều bị dán "Đặt qua Web/App" — kể cả đơn
+                          đặt qua Facebook. Với nhân viên tại quầy đó là thông
+                          tin sai có hậu quả: khách Facebook là tài khoản mềm,
+                          KHÔNG đăng nhập được, nên những bước cần khách tự bấm
+                          xác nhận (biên bản nhận xe, đồng ý gia hạn) phải đi qua
+                          đường thao tác hộ. Tưởng họ có app là chờ mãi không
+                          thấy ai bấm.
+                        */}
+                        {(() => {
+                          if (isWalkIn) {
+                            return (
+                              <span className="flex items-center gap-1 rounded-full border border-orange-300 bg-[#fff7ed] px-2.5 py-0.5 text-[10px] font-black text-[#ea580c] shadow-2xs">
+                                <Zap className="size-3 fill-current" />
+                                Vãng lai (Tại quầy)
+                              </span>
+                            )
+                          }
+                          if (b.source === "FACEBOOK") {
+                            return (
+                              <span className="flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700">
+                                <MessageCircle className="size-3" />
+                                Đặt qua Messenger
+                              </span>
+                            )
+                          }
+                          // Đơn giải đấu đã có nhãn Contest riêng ngay bên cạnh,
+                          // thêm nhãn kênh nữa là nói hai lần cùng một chuyện.
+                          if (b.source === "CONTEST") return null
+                          return (
+                            <span className="flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-bold text-sky-700">
+                              <Smartphone className="size-3" />
+                              Đặt qua Web/App
+                            </span>
+                          )
+                        })()}
                         {b.status === "CANCELLED" && Boolean(b.hasPendingRefund) && (
                           <StaffBadge variant="warning">
                             Chờ xác nhận hoàn tiền

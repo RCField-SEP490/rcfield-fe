@@ -149,6 +149,14 @@ export interface CustomerBookingDetail {
   totalAmount: number
   paymentStatus: "UNPAID" | "PAID" | "REFUNDED"
   source?: string
+  /**
+   * Khách có tự đăng nhập để bấm xác nhận được không.
+   *
+   * `false` = tài khoản mềm (đặt qua Messenger, hoặc khách vãng lai nhân viên
+   * tạo tại quầy). Những bước bắt buộc khách xác nhận phải đi qua đường thao
+   * tác hộ, vì họ không có mật khẩu để đăng nhập.
+   */
+  customerCanSelfServe?: boolean
   payment_components?: PaymentComponentResponse[]
   plannedParticipants: string[]
   participantDetails?: { name: string; phone?: string; isBooker: boolean }[]

@@ -476,6 +476,43 @@ export function getParticipantStatusLabel(
   }
 }
 
+/**
+ * Nhãn ngắn cho những trạng thái BẤT THƯỜNG của một tay đua trong trận.
+ *
+ * Trả `null` cho `READY`/`STARTED`/`FINISHED` — đó là đường đi bình thường,
+ * không cần dán nhãn. Chỉ ba trạng thái còn lại mới là chuyện phải nói ra, vì
+ * chúng giải thích vì sao một người thua mà không cần thi đấu.
+ *
+ * Thiếu nhãn này thì trên sơ đồ, người bị xử thua vắng mặt trông y hệt người
+ * thua trên sân — và không có cách nào biết trận đó có diễn ra hay không.
+ */
+export function getParticipantAnomalyBadge(
+  status: ContestParticipantStatus,
+): { short: string; full: string; className: string } | null {
+  switch (status) {
+    case "DNS":
+      return {
+        short: "Vắng",
+        full: "Không xuất phát — xử thua vắng mặt",
+        className: "border-amber-200 bg-amber-50 text-amber-800",
+      }
+    case "DNF":
+      return {
+        short: "Bỏ cuộc",
+        full: "Không hoàn thành phần thi",
+        className: "border-amber-200 bg-amber-50 text-amber-800",
+      }
+    case "DQ":
+      return {
+        short: "Bị loại",
+        full: "Bị loại khỏi trận",
+        className: "border-red-200 bg-red-50 text-red-700",
+      }
+    default:
+      return null
+  }
+}
+
 export function getJourneyStatusClass(status: CustomerJourneyStatus | null) {
   switch (status) {
     case "CHECKED_IN_WAITING_BRACKET":

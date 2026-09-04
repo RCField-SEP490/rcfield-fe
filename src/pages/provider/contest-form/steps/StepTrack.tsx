@@ -208,14 +208,33 @@ export function StepTrack({
                         selected={lock.scope === "SELECTED_TRACKS"}
                         tone="neutral"
                         onSelect={() =>
-                          setResourceLocks((current) => ({
-                            ...current,
-                            [cafe.id]: {
-                              scope: "SELECTED_TRACKS",
-                              track_config_ids:
-                                current[cafe.id]?.track_config_ids ?? [],
-                            },
-                          }))
+                          setResourceLocks((current) => {
+                            // Sân đúng loại đường đua của giải luôn phải nằm
+                            // trong danh sách khoá (bắt buộc, không cho bỏ
+                            // tick — xem checkbox bên dưới). Phải tự thêm ngay
+                            // ở đây, không chờ effect đồng bộ chạy lại — effect
+                            // đó chỉ chạy khi đổi chi nhánh/loại đường đua, còn
+                            // đây là đổi scope, effect không hay biết.
+                            const requiredIds = activeConfigs
+                              .filter(
+                                (item) =>
+                                  item.track_type_id === form.track_type_id,
+                              )
+                              .map((item) => item.id)
+                            return {
+                              ...current,
+                              [cafe.id]: {
+                                scope: "SELECTED_TRACKS",
+                                track_config_ids: Array.from(
+                                  new Set([
+                                    ...(current[cafe.id]?.track_config_ids ??
+                                      []),
+                                    ...requiredIds,
+                                  ]),
+                                ),
+                              },
+                            }
+                          })
                         }
                       />
                     </div>

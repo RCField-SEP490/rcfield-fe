@@ -133,7 +133,7 @@ export interface TodayBookingItem {
   trackType: string
   bookingMode: "SINGLE" | "PACKAGE" | "SUBSCRIPTION"
   playMode: "RENTAL" | "BYOC" | "MIXED"
-  source: "APP" | "STAFF_MANUAL" | "CONTEST"
+  source: "APP" | "STAFF_MANUAL" | "CONTEST" | "FACEBOOK"
   contestId?: string | null
   status:
     | "PENDING"
@@ -535,6 +535,43 @@ export const staffApi = {
   simulateClientCheckOut: async (sessionId: string): Promise<any> => {
     const res = await api.post<{ success: boolean; data: any }>(
       `/v1/staff/sessions/${sessionId}/simulate-check-out-response`,
+    )
+    return res.data.data
+  },
+
+  /*
+    Hai hàm dưới đây là đường THAO TÁC HỘ chính thức, khác hẳn `simulate*`.
+
+    Khác biệt không nằm ở kết quả mà ở trách nhiệm:
+
+      • `simulate-*` là công cụ thử — không kiểm khách có tự bấm được không, và
+        ghi nhật ký như thể chính khách đã bấm;
+      • `*-for-customer` chỉ chạy khi chủ đơn là tài khoản mềm (backend trả
+        `403 CUSTOMER_CAN_SELF_SERVE` nếu khách có mật khẩu), và nhật ký ghi rõ
+        nhân viên nào làm hộ khách nào.
+
+    Giải quyết tranh chấp sau này đọc nhật ký. Ghi sai người thực hiện là xoá
+    mất chính thứ mà biên bản bàn giao sinh ra để bảo vệ.
+  */
+  respondExtensionForCustomer: async (
+    sessionId: string,
+    data: { approved: boolean; reason?: string },
+  ): Promise<unknown> => {
+    const res = await api.post<{ success: boolean; data: unknown }>(
+      `/v1/sessions/${sessionId}/extension/respond-for-customer`,
+      data,
+    )
+    return res.data.data
+  },
+
+  confirmInspectionForCustomer: async (
+    sessionId: string,
+    inspectionId: string,
+    data: { agreed: boolean; reason?: string },
+  ): Promise<unknown> => {
+    const res = await api.post<{ success: boolean; data: unknown }>(
+      `/v1/sessions/${sessionId}/inspections/${inspectionId}/confirm-for-customer`,
+      data,
     )
     return res.data.data
   },

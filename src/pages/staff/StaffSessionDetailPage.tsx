@@ -154,6 +154,7 @@ export default function StaffSessionDetailPage() {
       apiBooking
         ? {
             bookingId: apiBooking.bookingId ?? apiBooking.id ?? "",
+            customerCanSelfServe: apiBooking.customerCanSelfServe,
             shortCode: apiBooking.shortCode ?? "",
             cafeId: apiBooking.cafeId ?? apiBooking.cafe?.id ?? "",
             cafeName: apiBooking.cafeName ?? apiBooking.cafe?.name ?? "",
@@ -195,6 +196,7 @@ export default function StaffSessionDetailPage() {
   } | null>(null)
   const [submittingExtension, setSubmittingExtension] = useState(false)
   const [simulatingExtension, setSimulatingExtension] = useState(false)
+  const [confirmingInspection, setConfirmingInspection] = useState(false)
 
   /**
    * Bấm hộ khách khi họ trả lời trực tiếp tại quầy.
@@ -202,11 +204,63 @@ export default function StaffSessionDetailPage() {
    * Gọi đúng endpoint mà ứng dụng của khách gọi, nên đề nghị đi qua đủ mọi kiểm
    * tra nghiệp vụ — không phải sửa trạng thái tắt.
    */
+  /*
+    Khách xác nhận biên bản NGAY TẠI QUẦY.
+
+    Biên bản bàn giao bắt buộc khách xác nhận ở cả hai đầu — đó là bằng chứng
+    duy nhất khi có tranh chấp hư hỏng. Khách đặt qua Messenger là tài khoản
+    mềm, không đăng nhập được, nên nếu không có đường này thì phiên của họ đứng
+    lại vĩnh viễn ở bước chờ xác nhận: không trả xe được, không quyết toán được.
+
+    Backend chỉ chấp nhận khi chủ đơn thật sự không có mật khẩu, và ghi nhật ký
+    rõ nhân viên nào xác nhận hộ khách nào.
+  */
+  const handleConfirmInspectionForCustomer = async (
+    inspectionId: string,
+    agreed: boolean,
+  ) => {
+    if (!session) return
+    setConfirmingInspection(true)
+    try {
+      await staffApi.confirmInspectionForCustomer(session.sessionId, inspectionId, {
+        agreed,
+      })
+      toast.success(
+        agreed
+          ? "Đã ghi nhận khách xác nhận biên bản"
+          : "Đã ghi nhận khách không đồng ý",
+      )
+      await refreshData()
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
+      toast.error(msg ?? "Không ghi nhận được xác nhận của khách")
+    } finally {
+      setConfirmingInspection(false)
+    }
+  }
+
   const handleSimulateExtension = async (approved: boolean) => {
     if (!session) return
     setSimulatingExtension(true)
     try {
-      await staffApi.simulateClientExtension(session.sessionId, { approved })
+      /*
+        Khách tài khoản mềm đi đường THAO TÁC HỘ, khách có tài khoản đi đường mô
+        phỏng như cũ.
+
+        Hai đường cho ra cùng kết quả nhưng ghi nhật ký khác nhau: đường thao
+        tác hộ ghi rõ nhân viên nào bấm thay khách nào, còn `simulate` ghi như
+        thể chính khách đã bấm. Với khách Facebook — người KHÔNG BAO GIỜ tự bấm
+        được vì không đăng nhập được — ghi như thế là ghi sai sự thật, và nhật ký
+        đó chính là thứ đem ra đối chiếu khi có tranh chấp.
+      */
+      if (booking?.customerCanSelfServe === false) {
+        await staffApi.respondExtensionForCustomer(session.sessionId, {
+          approved,
+        })
+      } else {
+        await staffApi.simulateClientExtension(session.sessionId, { approved })
+      }
       toast.success(
         approved
           ? "Đã ghi nhận khách đồng ý gia hạn"
@@ -1778,6 +1832,60 @@ export default function StaffSessionDetailPage() {
           className="border-[#e5e2e1]"
         />
       )}
+
+      {/*
+        Xác nhận biên bản hộ khách — CHỈ với khách không đăng nhập được.
+
+        Khách có tài khoản riêng phải tự bấm trên máy họ; backend cũng từ chối
+        (`CUSTOMER_CAN_SELF_SERVE`) nên bày nút ở đó chỉ tạo ra một cú bấm hỏng.
+      */}
+      {booking?.customerCanSelfServe === false &&
+        session.inspections
+          .filter((inspection) => !inspection.customerConfirmedAt)
+          .map((inspection) => (
+            <StaffCard
+              key={inspection.inspectionId ?? inspection.type}
+              className="space-y-3 border-sky-200 bg-sky-50/60"
+            >
+              <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-sky-900">
+                <Info className="size-4" />
+                Khách xác nhận biên bản tại quầy
+              </h4>
+              <p className="text-xs font-semibold text-sky-800">
+                Khách đặt qua Messenger không có tài khoản để tự bấm. Cho khách
+                xem biên bản{" "}
+                {inspection.type === "CHECK_IN" ? "nhận xe" : "trả xe"} trên máy
+                bạn, rồi bấm giúp họ — nhật ký sẽ ghi rõ bạn xác nhận hộ ai.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <StaffButton
+                  type="button"
+                  disabled={confirmingInspection}
+                  onClick={() =>
+                    handleConfirmInspectionForCustomer(
+                      inspection.inspectionId,
+                      true,
+                    )
+                  }
+                >
+                  Khách đồng ý biên bản
+                </StaffButton>
+                <StaffButton
+                  type="button"
+                  variant="outline"
+                  disabled={confirmingInspection}
+                  onClick={() =>
+                    handleConfirmInspectionForCustomer(
+                      inspection.inspectionId,
+                      false,
+                    )
+                  }
+                >
+                  Khách không đồng ý
+                </StaffButton>
+              </div>
+            </StaffCard>
+          ))}
 
       {/* Trả lời thay khách — chỉ hiện khi đang có đề nghị gia hạn chờ phản hồi.
           Đề nghị gửi đi rồi thì phiên đứng ở EXTENDING cho tới khi khách bấm trên
