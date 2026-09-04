@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, RefreshCw, AlertTriangle, TrendingUp, Users, Car, BarChart2, GitBranch } from "lucide-react"
+import { Sparkles, RefreshCw, AlertTriangle, Info, TrendingUp, Users, Car, BarChart2, GitBranch } from "lucide-react"
 import { toast } from "sonner"
 import { providerDashboardApi } from "../api/provider-dashboard.api"
 import type { AiInsightResponse, AiInsight, InsightSeverity, InsightType } from "../types/dashboard.types"
@@ -132,7 +132,9 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
           </div>
           <div>
             <h3 className="text-sm font-bold text-[#1c1b1b]">AI Phân Tích Doanh Thu</h3>
-            <p className="text-xs text-[#747878] font-medium">Phân tích bởi Gemini · Tiếng Việt</p>
+            <p className="text-xs text-[#747878] font-medium">
+              Tự động tổng hợp từ dữ liệu trong kỳ đã chọn
+            </p>
           </div>
         </div>
 
@@ -156,13 +158,18 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
       <div className="p-5">
         {/* Idle */}
         {isIdle && (
-          <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-            <Sparkles className="size-8 text-violet-200" />
-            <p className="text-sm font-semibold text-[#747878]">
-              Nhấn "✨ Phân tích AI" để nhận báo cáo doanh thu thông minh
-            </p>
-            <p className="text-xs text-[#b0b3b3]">Kết quả phân tích trong khoảng 10–15 giây</p>
-          </div>
+          <>
+            <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+              <Sparkles className="size-8 text-violet-200" />
+              <p className="text-sm font-semibold text-[#747878]">
+                Nhấn "✨ Phân tích AI" để nhận báo cáo doanh thu thông minh
+              </p>
+              <p className="text-xs text-[#b0b3b3]">Kết quả phân tích trong khoảng 10–15 giây</p>
+            </div>
+            {/* Nói trước khi họ bấm: đặt đúng kỳ vọng ngay từ đầu thì tốt hơn
+                là để họ đọc xong một bản phân tích rồi mới thấy dòng miễn trừ. */}
+            <ReferenceNote />
+          </>
         )}
 
         {/* Loading */}
@@ -170,7 +177,7 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
           <div className="flex flex-col items-center justify-center py-10 gap-3">
             <RefreshCw className="size-6 text-violet-400 animate-spin" />
             <p className="text-sm font-semibold text-[#5d5f5f]">Đang phân tích dữ liệu doanh thu...</p>
-            <p className="text-xs text-[#b0b3b3]">Gemini đang xử lý, vui lòng đợi</p>
+            <p className="text-xs text-[#b0b3b3]">Đang xử lý, vui lòng đợi trong giây lát</p>
           </div>
         )}
 
@@ -263,6 +270,10 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
               </div>
             )}
 
+            {/* Nhắc lại ngay dưới kết quả — đây là lúc người đọc dễ coi mấy
+                nhận định này là kết luận đã kiểm chứng nhất. */}
+            <ReferenceNote />
+
             {/* Footer */}
             <p className="text-[10px] text-[#b0b3b3] text-right">
               Phân tích lúc {new Date(panel.data.generatedAt).toLocaleString("vi-VN")}
@@ -270,6 +281,26 @@ export function AiInsightsPanel({ from, to, cafeId, isFeatureEnabled }: AiInsigh
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Ghi chú "chỉ mang tính tham khảo".
+ *
+ * Tách thành một chỗ dùng chung để hai lần xuất hiện (trước khi phân tích và
+ * ngay dưới kết quả) không bao giờ nói lệch nhau — sửa một chỗ là cả hai đổi.
+ */
+function ReferenceNote() {
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-[#e5e2e1] bg-[#fcfbfb] px-3 py-2.5">
+      <Info className="mt-0.5 size-3.5 shrink-0 text-[#a3a3a3]" />
+      <p className="text-[11px] leading-5 text-[#747878]">
+        Nội dung do AI tạo tự động từ dữ liệu trong kỳ đã chọn —{" "}
+        <span className="font-bold text-[#5d5f5f]">chỉ mang tính tham khảo</span>, không
+        thay thế cho báo cáo chính thức. Hãy đối chiếu số liệu chi tiết trước khi ra quyết
+        định kinh doanh.
+      </p>
     </div>
   )
 }
